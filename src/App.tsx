@@ -1,32 +1,24 @@
 import { useState, useEffect } from 'react'
-import LoginForm from './components/auth/LoginForm'
-import Dashboard from './components/dashboard/Dashboard'
 import './App.css'
+import { BrowserRouter } from 'react-router-dom'
+import { Provider } from 'react-redux'
+import { PersistGate } from 'redux-persist/integration/react'
+import { store, persistor } from './store'
+import AppRoutes from './routes'
+import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     // Check if user is authenticated
     const checkAuth = () => {
-      const token = localStorage.getItem('accessToken');
-      const user = localStorage.getItem('user');
-      
-      if (token && user) {
-        setIsAuthenticated(true);
-      } else {
-        setIsAuthenticated(false);
-      }
+      // Authentication logic can be added here if needed
       setLoading(false);
     };
 
     checkAuth();
   }, []);
-
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
 
   if (loading) {
     return (
@@ -40,9 +32,15 @@ function App() {
   }
 
   return (
-    <>
-      {isAuthenticated ? <Dashboard /> : <LoginForm onLoginSuccess={handleLoginSuccess} />}
-    </>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <PersistGate loading={null} persistor={persistor}>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </PersistGate>
+      </Provider>
+    </ErrorBoundary>
   )
 }
 
