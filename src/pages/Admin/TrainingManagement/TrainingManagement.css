@@ -1,0 +1,523 @@
+/* Training Management Styles */
+.training-management {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  color: #333;
+}
+
+.training-management .container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.training-management .header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 2rem;
+  border-radius: 20px;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.training-management .header h1 {
+  color: #2c3e50;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.training-management .breadcrumb {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.training-management .breadcrumb a {
+  color: #3498db;
+  text-decoration: none;
+}
+
+.training-management .tabs {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.training-management .tab-nav {
+  display: flex;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.training-management .tab-button {
+  flex: 1;
+  padding: 1.5rem 2rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #666;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.training-management .tab-button.active {
+  color: #3498db;
+  background: rgba(52, 152, 219, 0.05);
+}
+
+.training-management .tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2ecc71);
+}
+
+.training-management .tab-content {
+  padding: 2rem;
+}
+
+.training-management .btn {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.training-management .btn-primary {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+}
+
+.training-management .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
+}
+
+.training-management .btn-secondary {
+  background: rgba(108, 117, 125, 0.1);
+  border: 2px solid rgba(108, 117, 125, 0.3);
+  color: #6c757d;
+}
+
+.training-management .btn-success {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+  color: white;
+}
+
+.training-management .btn-danger {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+}
+
+.training-management .btn-warning {
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  color: white;
+}
+
+.training-management .btn-sm {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.training-management .controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.training-management .search-filters {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex: 1;
+}
+
+.training-management .search-box {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.training-management .search-box input {
+  width: 100%;
+  padding: 0.8rem 1rem 0.8rem 2.5rem;
+  border: 2px solid rgba(52, 152, 219, 0.3);
+  border-radius: 25px;
+  background: rgba(255, 255, 255, 0.9);
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.training-management .search-box input:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 15px rgba(52, 152, 219, 0.2);
+}
+
+.training-management .search-box i {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #3498db;
+}
+
+.training-management .filter-select {
+  padding: 0.8rem 1rem;
+  border: 2px solid rgba(52, 152, 219, 0.3);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  outline: none;
+  cursor: pointer;
+}
+
+.training-management .data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 2rem;
+}
+
+.training-management .course-card,
+.training-management .session-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.training-management .course-card:hover,
+.training-management .session-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.training-management .card-header {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(155, 89, 182, 0.1));
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.training-management .card-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.training-management .card-description {
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.training-management .mandatory-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+  border: 2px solid rgba(231, 76, 60, 0.3);
+}
+
+.training-management .card-body {
+  padding: 1.5rem;
+}
+
+.training-management .course-info,
+.training-management .session-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.training-management .info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.training-management .info-item i {
+  color: #3498db;
+  width: 16px;
+}
+
+.training-management .enrollment-stats {
+  background: rgba(52, 152, 219, 0.05);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.training-management .stats-title {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.training-management .stats-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.training-management .progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.training-management .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3498db, #2ecc71);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.training-management .card-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.training-management .status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+.training-management .status-scheduled {
+  background: rgba(243, 156, 18, 0.1);
+  color: #f39c12;
+  border: 2px solid rgba(243, 156, 18, 0.3);
+}
+
+.training-management .status-ongoing {
+  background: rgba(46, 204, 113, 0.1);
+  color: #27ae60;
+  border: 2px solid rgba(46, 204, 113, 0.3);
+}
+
+.training-management .status-completed {
+  background: rgba(52, 152, 219, 0.1);
+  color: #3498db;
+  border: 2px solid rgba(52, 152, 219, 0.3);
+}
+
+.training-management .status-cancelled {
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+  border: 2px solid rgba(231, 76, 60, 0.3);
+}
+
+.training-management .status-enrolled {
+  background: rgba(52, 152, 219, 0.1);
+  color: #3498db;
+  border: 2px solid rgba(52, 152, 219, 0.3);
+}
+
+.training-management .status-failed {
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+  border: 2px solid rgba(231, 76, 60, 0.3);
+}
+
+.training-management .modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+
+.training-management .modal.active {
+  display: flex;
+}
+
+.training-management .modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 20px;
+  max-width: 700px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.training-management .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.training-management .modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.training-management .close-modal {
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #999;
+  transition: color 0.3s ease;
+}
+
+.training-management .close-modal:hover {
+  color: #666;
+}
+
+.training-management .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.training-management .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.training-management .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.training-management .form-label {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.training-management .form-input {
+  padding: 0.8rem 1rem;
+  border: 2px solid rgba(52, 152, 219, 0.3);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.training-management .form-input:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 15px rgba(52, 152, 219, 0.2);
+}
+
+.training-management .form-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.training-management .form-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.training-management .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.training-management .data-table {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.training-management .data-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.training-management .data-table thead {
+  background: rgba(52, 152, 219, 0.05);
+}
+
+.training-management .data-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.training-management .data-table td {
+  padding: 1rem;
+  color: #666;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.training-management .data-table tbody tr:hover {
+  background: rgba(52, 152, 219, 0.02);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .training-management .data-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .training-management .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .training-management .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .training-management .search-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

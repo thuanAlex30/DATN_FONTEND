@@ -26,12 +26,16 @@ export const login = createAsyncThunk<
   async (credentials, { rejectWithValue }) => {
     try {
       const response: AxiosResponse<LoginResponse> = await authService.login(credentials);
-      const { tokens, user } = response.data;
+      const { data } = response.data;
+      const { tokens, user } = data;
+      
       localStorage.setItem('accessToken', tokens.accessToken);
       localStorage.setItem('refreshToken', tokens.refreshToken);
+      
       return { user, accessToken: tokens.accessToken };
     } catch (error: any) {
-      return rejectWithValue(error.response?.data || 'Login failed');
+      const errorMessage = error.response?.data?.message || error.response?.data || 'Login failed';
+      return rejectWithValue(errorMessage);
     }
   }
 );

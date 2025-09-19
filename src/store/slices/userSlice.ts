@@ -118,8 +118,9 @@ const userSlice = createSlice({
       })
       // delete user
       .addCase(deleteUser.fulfilled, (state, action) => {
-        state.users = state.users.filter((u) => u.id !== action.payload);
-        if (state.selectedUser?.id === action.payload) {
+        const deletedId = parseInt(action.payload);
+        state.users = state.users.filter((u) => u.id !== deletedId);
+        if (state.selectedUser?.id === deletedId) {
           state.selectedUser = null;
         }
       });

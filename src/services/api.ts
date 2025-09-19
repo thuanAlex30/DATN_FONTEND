@@ -8,6 +8,7 @@ const api: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // 启用跨域凭证
 });
 
 // Request interceptor - Thêm token vào header
@@ -39,8 +40,9 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
           const response = await axios.post(
-            'http://localhost:3000/api/v1/auth/refresh',
-            { refreshToken }
+            'http://localhost:3000/api/v1/auth/refresh-token',
+            { refreshToken },
+            { withCredentials: true }
           );
           
           const { accessToken } = response.data.data.tokens;

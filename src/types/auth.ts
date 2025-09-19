@@ -4,11 +4,17 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  tokens: {
-    accessToken: string;
-    refreshToken: string;
+  success: boolean;
+  message: string;
+  data: {
+    user: UserProfile;
+    tokens: {
+      accessToken: string;
+      refreshToken: string;
+      expiresIn: string;
+    };
   };
-  user: UserProfile;
+  timestamp: string;
 }
 
 export interface RegisterRequest {
@@ -22,8 +28,10 @@ export interface UserProfile {
   username: string;
   email: string;
   full_name: string;
+  phone: string;
   role: string;
-  created_at: string;
+  is_active: boolean;
+  last_login: string;
 }
 
 export interface ChangePasswordRequest {
