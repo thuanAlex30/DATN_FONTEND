@@ -1,145 +1,63 @@
 import React, { useState, useEffect } from 'react';
 import './ProjectManagement.css';
-
-interface ProjectLeader {
-    id: number;
-    name: string;
-    department: string;
-    position: string;
-}
-
-interface ProjectSite {
-    id: number;
-    name: string;
-    address: string;
-}
-
-interface TeamMember {
-    id: number;
-    name: string;
-    avatar: string;
-    role: string;
-}
-
-interface ProjectEvidence {
-    id: number;
-    file_url: string;
-    description: string;
-}
-
-interface Project {
-    id: number;
-    name: string;
-    description: string;
-    status: 'active' | 'completed' | 'pending' | 'cancelled';
-    start_date: string;
-    end_date: string;
-    progress: number;
-    leader: ProjectLeader;
-    site: ProjectSite;
-    team_members: TeamMember[];
-    evidences: ProjectEvidence[];
-}
+import projectService from '../../../services/projectService';
+import userService from '../../../services/userService';
+import type { Project, ProjectStats, Site, CreateProjectData, UpdateProjectData } from '../../../types/project';
+import type { User } from '../../../types/user';
 
 const ProjectManagement: React.FC = () => {
-    const [projects, setProjects] = useState<Project[]>([
-        {
-            id: 1,
-            name: "Xây dựng nhà máy sản xuất",
-            description: "Dự án xây dựng nhà máy sản xuất thiết bị điện tử với quy mô lớn",
-            status: "active",
-            start_date: "2024-01-15",
-            end_date: "2024-06-30",
-            progress: 65,
-            leader: {
-                id: 1,
-                name: "Nguyễn Văn A",
-                department: "Kỹ thuật",
-                position: "Quản lý dự án"
-            },
-            site: {
-                id: 1,
-                name: "Công trường A",
-                address: "123 Đường ABC, Quận 1"
-            },
-            team_members: [
-                { id: 2, name: "Trần B", avatar: "TB", role: "Kỹ sư" },
-                { id: 3, name: "Lê C", avatar: "LC", role: "Giám sát" },
-            ],
-            evidences: [
-                { id: 1, file_url: "path/to/file1.jpg", description: "Hình ảnh công trường" },
-                { id: 2, file_url: "path/to/file2.pdf", description: "Báo cáo tiến độ" }
-            ]
-        },
-        {
-            id: 2,
-            name: "Cải tạo hệ thống an toàn",
-            description: "Nâng cấp và cải tạo toàn bộ hệ thống an toàn lao động",
-            status: "completed",
-            start_date: "2023-10-01",
-            end_date: "2024-01-31",
-            progress: 100,
-            leader: {
-                id: 2,
-                name: "Trần Thị B",
-                department: "Kỹ thuật",
-                position: "Quản lý dự án"
-            },
-            site: {
-                id: 2,
-                name: "Công trường B",
-                address: "456 Đường DEF, Quận 2"
-            },
-            team_members: [
-                { id: 4, name: "Nguyễn F", avatar: "NF", role: "Kỹ sư" },
-                { id: 5, name: "Vũ G", avatar: "VG", role: "Giám sát" }
-            ],
-            evidences: [
-                { id: 3, file_url: "path/to/file3.jpg", description: "Hình ảnh công trình hoàn thành" },
-                { id: 4, file_url: "path/to/file4.pdf", description: "Báo cáo hoàn thành dự án" }
-            ]
-        },
-        {
-            id: 3,
-            name: "Đào tạo nhân viên mới",
-            description: "Chương trình đào tạo toàn diện cho 50 nhân viên mới tuyển dụng",
-            status: "pending",
-            start_date: "2024-03-01",
-            end_date: "2024-04-15",
-            progress: 0,
-            leader: {
-                id: 3,
-                name: "Lê Văn C",
-                department: "Nhân sự",
-                position: "Trưởng phòng Nhân sự"
-            },
-            site: {
-                id: 3,
-                name: "Văn phòng",
-                address: "789 Đường GHI, Quận 3"
-            },
-            team_members: [
-                { id: 6, name: "Phạm D", avatar: "PD", role: "Giảng viên" },
-                { id: 7, name: "Hoàng E", avatar: "HE", role: "Giảng viên" }
-            ],
-            evidences: []
-        }
-    ]);
-
-    const [filteredProjects, setFilteredProjects] = useState<Project[]>(projects);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+    const [sites, setSites] = useState<Site[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
+    const [employees, setEmployees] = useState<User[]>([]);
+    const [positionOptions, setPositionOptions] = useState<any[]>([]);
+    const [stats, setStats] = useState<ProjectStats>({
+        total: 0,
+        active: 0,
+        completed: 0,
+        pending: 0,
+        cancelled: 0
+    });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [siteFilter, setSiteFilter] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProject, setEditingProject] = useState<Project | null>(null);
-    const [formData, setFormData] = useState({
-        name: '',
-        status: 'pending' as Project['status'],
+    
+    // New state for additional features
+    const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+    const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+    const [progressValue, setProgressValue] = useState(0);
+    const [isTimelineModalOpen, setIsTimelineModalOpen] = useState(false);
+    const [projectTimeline, setProjectTimeline] = useState<any[]>([]);
+    const [isSiteModalOpen, setIsSiteModalOpen] = useState(false);
+    const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
+    const [projectAssignments, setProjectAssignments] = useState<any[]>([]);
+    const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+    const [memberFormData, setMemberFormData] = useState({
+        user_id: '',
+        role_in_project: '',
+        start_date: '',
+        end_date: ''
+    });
+    const [siteFormData, setSiteFormData] = useState({
+        site_name: '',
+        address: '',
+        description: ''
+    });
+    const [formData, setFormData] = useState<CreateProjectData>({
+        project_name: '',
+        description: '',
         start_date: '',
         end_date: '',
-        leaderId: '',
-        siteId: '',
-        description: ''
+        leader_id: '',
+        site_name: '',
+        status: 'pending',
+        priority: 'medium'
     });
 
     const statusLabels = {
@@ -149,17 +67,99 @@ const ProjectManagement: React.FC = () => {
         cancelled: 'Đã hủy'
     };
 
+    // Load initial data
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    // Filter projects when filters change
     useEffect(() => {
         filterProjects();
     }, [searchTerm, statusFilter, siteFilter, projects]);
 
+    const loadData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // Load projects, sites, stats, users (for leaders), employees (for members), and position options in parallel
+            const [projectsResult, sitesResult, statsResult, usersResult, employeesResult, positionResult] = await Promise.all([
+                projectService.getAllProjects(),
+                projectService.getAllSites(),
+                projectService.getProjectStats(),
+                userService.getUsers().catch(err => {
+                    console.error('Error loading users:', err);
+                    return { success: false, message: err.message, data: [] };
+                }),
+                projectService.getAvailableEmployees(),
+                projectService.getPositionOptions()
+            ]);
+
+            if (projectsResult.success) {
+                setProjects(projectsResult.data || []);
+            } else {
+                setError(projectsResult.message);
+            }
+
+            if (sitesResult.success) {
+                setSites(sitesResult.data || []);
+            }
+
+            if (statsResult.success) {
+                setStats(statsResult.data || stats);
+            }
+
+            if (usersResult.success) {
+                console.log('Users API response:', usersResult);
+                console.log('Users data:', usersResult.data);
+                
+                // Temporarily show all users for debugging
+                console.log('All users (for debugging):', usersResult.data);
+                setUsers(usersResult.data || []);
+                
+                // Filter only users with Manager or Leader role
+                const managerUsers = (usersResult.data || []).filter(user => {
+                    console.log('Checking user:', user.full_name, 'Role:', user.role);
+                    if (!user.role) return false;
+                    
+                    const roleName = user.role.role_name?.toLowerCase();
+                    console.log('Role name (lowercase):', roleName);
+                    
+                    const isManagerOrLeader = roleName === 'manager' || roleName === 'leader';
+                    console.log('Is manager or leader:', isManagerOrLeader);
+                    
+                    return isManagerOrLeader;
+                });
+                console.log('Filtered manager users:', managerUsers);
+                // setUsers(managerUsers);
+            } else {
+                console.error('Users API failed:', usersResult);
+                setError(`Lỗi khi tải danh sách users: ${usersResult.message}`);
+            }
+
+            if (employeesResult.success) {
+                setEmployees(employeesResult.data || []);
+            }
+
+            if (positionResult.success) {
+                setPositionOptions(positionResult.data || []);
+            }
+
+        } catch (err) {
+            console.error('Error loading data:', err);
+            setError('Lỗi khi tải dữ liệu');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const filterProjects = () => {
         let filtered = projects.filter(project => {
-            const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            const matchesSearch = project.project_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                 project.description.toLowerCase().includes(searchTerm.toLowerCase());
             
             const matchesStatus = !statusFilter || project.status === statusFilter;
-            const matchesSite = !siteFilter || project.site.id.toString() === siteFilter;
+            const matchesSite = !siteFilter || project.site_id.id === siteFilter;
 
             return matchesSearch && matchesStatus && matchesSite;
         });
@@ -175,24 +175,26 @@ const ProjectManagement: React.FC = () => {
         if (project) {
             setEditingProject(project);
             setFormData({
-                name: project.name,
-                status: project.status,
+                project_name: project.project_name,
+                description: project.description,
                 start_date: project.start_date,
                 end_date: project.end_date,
-                leaderId: project.leader.id.toString(),
-                siteId: project.site.id.toString(),
-                description: project.description
+                leader_id: project.leader_id.id,
+                site_name: project.site_id.site_name,
+                status: project.status,
+                priority: project.priority
             });
         } else {
             setEditingProject(null);
             setFormData({
-                name: '',
-                status: 'pending',
+                project_name: '',
+                description: '',
                 start_date: '',
                 end_date: '',
-                leaderId: '',
-                siteId: '',
-                description: ''
+                leader_id: '',
+                site_name: '',
+                status: 'pending',
+                priority: 'medium'
             });
         }
         setIsModalOpen(true);
@@ -202,17 +204,18 @@ const ProjectManagement: React.FC = () => {
         setIsModalOpen(false);
         setEditingProject(null);
         setFormData({
-            name: '',
-            status: 'pending',
+            project_name: '',
+            description: '',
             start_date: '',
             end_date: '',
-            leaderId: '',
-            siteId: '',
-            description: ''
+            leader_id: '',
+            site_name: '',
+            status: 'pending',
+            priority: 'medium'
         });
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
         // Validate dates
@@ -221,89 +224,244 @@ const ProjectManagement: React.FC = () => {
             return;
         }
 
-        const projectData = {
-            ...formData,
-            leaderId: parseInt(formData.leaderId) || 0,
-            siteId: parseInt(formData.siteId) || 0
-        };
-
+        try {
+            let result;
         if (editingProject) {
             // Update existing project
-            const updatedProjects = projects.map(project => 
-                project.id === editingProject.id 
-                    ? { ...project, ...projectData }
-                    : project
-            );
-            setProjects(updatedProjects);
-            alert('Đã cập nhật dự án thành công!');
+                const updateData: UpdateProjectData = {
+                    project_name: formData.project_name,
+                    description: formData.description,
+                    start_date: formData.start_date,
+                    end_date: formData.end_date,
+                    leader_id: formData.leader_id,
+                    site_name: formData.site_name,
+                    status: formData.status,
+                    priority: formData.priority
+                };
+                result = await projectService.updateProject(editingProject.id, updateData);
+            } else {
+                // Create new project
+                result = await projectService.createProject(formData);
+            }
+
+            if (result.success) {
+                alert(editingProject ? 'Đã cập nhật dự án thành công!' : 'Đã tạo dự án mới thành công!');
+                await loadData(); // Reload data
+                closeModal();
         } else {
-            // Add new project
-            const newProject: Project = {
-                id: Math.max(...projects.map(p => p.id)) + 1,
-                name: projectData.name,
-                description: projectData.description,
-                status: projectData.status,
-                start_date: projectData.start_date,
-                end_date: projectData.end_date,
-                progress: 0,
-                leader: {
-                    id: projectData.leaderId,
-                    name: getLeaderName(projectData.leaderId),
-                    department: 'Kỹ thuật',
-                    position: 'Quản lý dự án'
-                },
-                site: {
-                    id: projectData.siteId,
-                    name: getSiteName(projectData.siteId),
-                    address: 'Địa chỉ công trường'
-                },
-                team_members: [],
-                evidences: []
-            };
-            setProjects([...projects, newProject]);
-            alert('Đã tạo dự án mới thành công!');
+                alert(result.message);
+            }
+        } catch (error) {
+            console.error('Error saving project:', error);
+            alert('Lỗi khi lưu dự án');
         }
-
-        closeModal();
-    };
-
-    const getLeaderName = (leaderId: number) => {
-        const leaders: { [key: number]: string } = {
-            1: 'Nguyễn Văn A',
-            2: 'Trần Thị B',
-            3: 'Lê Văn C'
-        };
-        return leaders[leaderId] || '';
-    };
-
-    const getSiteName = (siteId: number) => {
-        const sites: { [key: number]: string } = {
-            1: 'Công trường A',
-            2: 'Công trường B',
-            3: 'Văn phòng'
-        };
-        return sites[siteId] || '';
     };
 
     const viewProject = (project: Project) => {
-        alert(`Chi tiết dự án:\n\nTên: ${project.name}\nMô tả: ${project.description}\nTrạng thái: ${statusLabels[project.status]}\nTiến độ: ${project.progress}%\nTrưởng dự án: ${project.leader.name}\nĐịa điểm: ${project.site.name}`);
+        alert(`Chi tiết dự án:\n\nTên: ${project.project_name}\nMô tả: ${project.description}\nTrạng thái: ${statusLabels[project.status]}\nTiến độ: ${project.progress}%\nTrưởng dự án: ${project.leader_id.full_name}\nĐịa điểm: ${project.site_id.site_name}`);
     };
 
-    const manageTeam = (project: Project) => {
-        const teamList = project.team_members.map(member => member.name).join('\n');
-        alert(`Nhóm dự án "${project.name}":\n\nTrưởng dự án: ${project.leader.name}\n\nThành viên:\n${teamList}`);
+
+    const deleteProject = async (project: Project) => {
+        if (window.confirm(`Bạn có chắc chắn muốn xóa dự án "${project.project_name}"?`)) {
+            try {
+                const result = await projectService.deleteProject(project.id);
+                if (result.success) {
+                    alert('Đã xóa dự án thành công!');
+                    await loadData(); // Reload data
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                console.error('Error deleting project:', error);
+                alert('Lỗi khi xóa dự án');
+            }
+        }
     };
 
-    const getStats = () => {
-        return {
-            total: projects.length,
-            active: projects.filter(p => p.status === 'active').length,
-            completed: projects.filter(p => p.status === 'completed').length,
-            pending: projects.filter(p => p.status === 'pending').length
-        };
+    // ========== NEW FEATURES ==========
+    
+    // Update project progress
+    const openProgressModal = (project: Project) => {
+        setSelectedProject(project);
+        setProgressValue(project.progress);
+        setIsProgressModalOpen(true);
     };
 
-    const stats = getStats();
+    const updateProgress = async () => {
+        if (!selectedProject) return;
+        
+        try {
+            const result = await projectService.updateProjectProgress(selectedProject.id, progressValue);
+            if (result.success) {
+                alert('Cập nhật tiến độ thành công!');
+                setIsProgressModalOpen(false);
+                await loadData();
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            console.error('Error updating progress:', error);
+            alert('Lỗi khi cập nhật tiến độ');
+        }
+    };
+
+    // View project timeline
+    const viewTimeline = async (project: Project) => {
+        try {
+            console.log('Project object:', project);
+            console.log('Project ID:', project.id);
+            console.log('Project _id:', (project as any)._id);
+            const projectId = project.id || (project as any)._id;
+            console.log('Using project ID:', projectId);
+            
+            const result = await projectService.getProjectTimeline(projectId);
+            if (result.success) {
+                setProjectTimeline(Array.isArray(result.data) ? result.data : []);
+                setSelectedProject(project);
+                setIsTimelineModalOpen(true);
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            console.error('Error getting timeline:', error);
+            alert('Lỗi khi lấy timeline dự án');
+        }
+    };
+
+    // Site management
+    const openSiteModal = () => {
+        setSiteFormData({ site_name: '', address: '', description: '' });
+        setIsSiteModalOpen(true);
+    };
+
+    const createSite = async () => {
+        try {
+            const result = await projectService.createSite(siteFormData);
+            if (result.success) {
+                alert('Tạo địa điểm thành công!');
+                setIsSiteModalOpen(false);
+                await loadData();
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            console.error('Error creating site:', error);
+            alert('Lỗi khi tạo địa điểm');
+        }
+    };
+
+    // Assignment management
+    const openAssignmentModal = async (project: Project) => {
+        try {
+            console.log('Project object for assignments:', project);
+            console.log('Project ID:', project.id);
+            console.log('Project _id:', (project as any)._id);
+            const projectId = project.id || (project as any)._id;
+            console.log('Using project ID for assignments:', projectId);
+            
+            const result = await projectService.getProjectAssignments(projectId);
+            if (result.success) {
+                setProjectAssignments(result.data || []);
+                setSelectedProject(project);
+                setIsAssignmentModalOpen(true);
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            console.error('Error getting assignments:', error);
+            alert('Lỗi khi lấy danh sách thành viên');
+        }
+    };
+
+    // Add member to project
+    const openAddMemberModal = () => {
+        console.log('openAddMemberModal called');
+        setMemberFormData({
+            user_id: '',
+            role_in_project: '',
+            start_date: '',
+            end_date: ''
+        });
+        setIsAddMemberModalOpen(true);
+    };
+
+    const addMemberToProject = async () => {
+        if (!selectedProject) return;
+        
+        try {
+            const assignmentData = {
+                project_id: selectedProject.id,
+                user_id: memberFormData.user_id,
+                role_in_project: memberFormData.role_in_project,
+                start_date: memberFormData.start_date,
+                end_date: memberFormData.end_date
+            };
+
+            const result = await projectService.addProjectAssignment(assignmentData);
+            
+            if (result.success) {
+                alert('Thêm thành viên thành công!');
+                setIsAddMemberModalOpen(false);
+                // Reload assignments
+                await openAssignmentModal(selectedProject);
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            console.error('Error adding member:', error);
+            alert('Lỗi khi thêm thành viên');
+        }
+    };
+
+    // Advanced search
+    const performAdvancedSearch = async () => {
+        if (!searchTerm.trim()) {
+            filterProjects();
+            return;
+        }
+
+        try {
+            const result = await projectService.searchProjects(searchTerm, {
+                status: statusFilter,
+                site_id: siteFilter
+            });
+            
+            if (result.success) {
+                setFilteredProjects(result.data || []);
+            } else {
+                setError(result.message);
+            }
+        } catch (error) {
+            console.error('Error searching projects:', error);
+            setError('Lỗi khi tìm kiếm dự án');
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="project-management-container">
+                <div className="loading">
+                    <i className="fas fa-spinner fa-spin"></i>
+                    <span>Đang tải dữ liệu...</span>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="project-management-container">
+                <div className="error">
+                    <i className="fas fa-exclamation-triangle"></i>
+                    <span>{error}</span>
+                    <button onClick={loadData} className="btn btn-primary">
+                        <i className="fas fa-refresh"></i> Thử lại
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="project-management-container">
@@ -350,7 +508,11 @@ const ProjectManagement: React.FC = () => {
                             placeholder="Tìm kiếm dự án..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && performAdvancedSearch()}
                         />
+                        <button className="search-btn" onClick={performAdvancedSearch}>
+                            <i className="fas fa-search"></i>
+                        </button>
                     </div>
                     
                     <select 
@@ -371,15 +533,22 @@ const ProjectManagement: React.FC = () => {
                         onChange={(e) => setSiteFilter(e.target.value)}
                     >
                         <option value="">Tất cả địa điểm</option>
-                        <option value="1">Công trường A</option>
-                        <option value="2">Công trường B</option>
-                        <option value="3">Văn phòng</option>
+                        {sites.map(site => (
+                            <option key={site.id} value={site.id}>
+                                {site.site_name}
+                            </option>
+                        ))}
                     </select>
                 </div>
                 
+                <div className="action-buttons">
+                    <button className="btn btn-secondary" onClick={openSiteModal}>
+                        <i className="fas fa-map-marker-alt"></i> Quản lý địa điểm
+                    </button>
                 <button className="btn btn-primary" onClick={() => openModal()}>
                     <i className="fas fa-plus"></i> Tạo dự án mới
                 </button>
+                </div>
             </div>
 
             {/* Project Grid */}
@@ -387,7 +556,7 @@ const ProjectManagement: React.FC = () => {
                 {filteredProjects.map(project => (
                     <div key={project.id} className="project-card">
                         <div className="project-header">
-                            <div className="project-title">{project.name}</div>
+                            <div className="project-title">{project.project_name}</div>
                             <div className="project-description">{project.description}</div>
                             <div className={`project-status status-${project.status}`}>
                                 {statusLabels[project.status]}
@@ -407,10 +576,10 @@ const ProjectManagement: React.FC = () => {
                             </div>
                             
                             <div className="project-leader">
-                                <div className="leader-avatar">{project.leader.name.charAt(0)}</div>
+                                <div className="leader-avatar">{(project.leader_id.full_name || 'L').charAt(0)}</div>
                                 <div className="leader-info">
-                                    <div className="leader-name">{project.leader.name}</div>
-                                    <div className="leader-role">{project.leader.position}</div>
+                                    <div className="leader-name">{project.leader_id.full_name}</div>
+                                    <div className="leader-role">Trưởng dự án</div>
                                 </div>
                             </div>
                             
@@ -424,17 +593,11 @@ const ProjectManagement: React.FC = () => {
                                 </div>
                             </div>
                             
-                            <div className="project-team">
-                                <div className="team-label">Thành viên ({project.team_members.length})</div>
-                                <div className="team-avatars">
-                                    {project.team_members.slice(0, 5).map(member => (
-                                        <div key={member.id} className="team-avatar" title={member.name}>
-                                            {member.avatar}
-                                        </div>
-                                    ))}
-                                    {project.team_members.length > 5 && (
-                                        <div className="team-count">+{project.team_members.length - 5}</div>
-                                    )}
+                            <div className="project-site">
+                                <div className="site-label">Địa điểm</div>
+                                <div className="site-info">
+                                    <i className="fas fa-map-marker-alt"></i>
+                                    <span>{project.site_id.site_name}</span>
                                 </div>
                             </div>
                             
@@ -442,11 +605,20 @@ const ProjectManagement: React.FC = () => {
                                 <button className="btn btn-sm btn-primary" onClick={() => viewProject(project)}>
                                     <i className="fas fa-eye"></i> Chi tiết
                                 </button>
-                                <button className="btn btn-sm btn-warning" onClick={() => openModal(project)}>
+                                <button className="btn btn-sm btn-secondary" onClick={() => openModal(project)}>
                                     <i className="fas fa-edit"></i> Sửa
                                 </button>
-                                <button className="btn btn-sm btn-success" onClick={() => manageTeam(project)}>
-                                    <i className="fas fa-users"></i> Nhóm
+                                <button className="btn btn-sm btn-success" onClick={() => openProgressModal(project)}>
+                                    <i className="fas fa-chart-line"></i> Tiến độ
+                                </button>
+                                <button className="btn btn-sm btn-info" onClick={() => viewTimeline(project)}>
+                                    <i className="fas fa-timeline"></i> Timeline
+                                </button>
+                                <button className="btn btn-sm btn-warning" onClick={() => openAssignmentModal(project)}>
+                                    <i className="fas fa-users"></i> Thành viên
+                                </button>
+                                <button className="btn btn-sm btn-danger" onClick={() => deleteProject(project)}>
+                                    <i className="fas fa-trash"></i> Xóa
                                 </button>
                             </div>
                         </div>
@@ -472,8 +644,8 @@ const ProjectManagement: React.FC = () => {
                                     <input 
                                         type="text" 
                                         className="form-input" 
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                        value={formData.project_name}
+                                        onChange={(e) => setFormData({...formData, project_name: e.target.value})}
                                         required 
                                     />
                                 </div>
@@ -483,7 +655,7 @@ const ProjectManagement: React.FC = () => {
                                     <select 
                                         className="form-input" 
                                         value={formData.status}
-                                        onChange={(e) => setFormData({...formData, status: e.target.value as Project['status']})}
+                                        onChange={(e) => setFormData({...formData, status: e.target.value as any})}
                                     >
                                         <option value="pending">Đang chờ</option>
                                         <option value="active">Đang thực hiện</option>
@@ -515,48 +687,58 @@ const ProjectManagement: React.FC = () => {
                                 </div>
                                 
                                 <div className="form-group">
-                                    <label className="form-label">Trưởng dự án</label>
+                                    <label className="form-label">Trưởng dự án *</label>
                                     <select 
                                         className="form-input" 
-                                        value={formData.leaderId}
-                                        onChange={(e) => setFormData({...formData, leaderId: e.target.value})}
+                                        value={formData.leader_id}
+                                        onChange={(e) => setFormData({...formData, leader_id: e.target.value})}
                                         required
                                     >
                                         <option value="">Chọn trưởng dự án</option>
-                                        <option value="1">Nguyễn Văn A</option>
-                                        <option value="2">Trần Thị B</option>
-                                        <option value="3">Lê Văn C</option>
+                                        {users.map(user => (
+                                            <option key={user.id} value={user.id}>
+                                                {user.full_name} ({user.email})
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                                 
                                 <div className="form-group">
-                                    <label className="form-label">Công trường/Địa điểm</label>
+                                    <label className="form-label">Công trường/Địa điểm *</label>
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        value={formData.site_name || ''}
+                                        onChange={(e) => setFormData({...formData, site_name: e.target.value})}
+                                        placeholder="Nhập địa điểm dự án"
+                                        required
+                                    />
+                                </div>
+                                
+                                
+                                <div className="form-group">
+                                    <label className="form-label">Độ ưu tiên</label>
                                     <select 
                                         className="form-input" 
-                                        value={formData.siteId}
-                                        onChange={(e) => setFormData({...formData, siteId: e.target.value})}
-                                        required
+                                        value={formData.priority}
+                                        onChange={(e) => setFormData({...formData, priority: e.target.value as any})}
                                     >
-                                        <option value="">Chọn địa điểm</option>
-                                        <option value="1">Công trường A</option>
-                                        <option value="2">Công trường B</option>
-                                        <option value="3">Văn phòng</option>
+                                        <option value="low">Thấp</option>
+                                        <option value="medium">Trung bình</option>
+                                        <option value="high">Cao</option>
+                                        <option value="urgent">Khẩn cấp</option>
                                     </select>
                                 </div>
                                 
                                 <div className="form-group full-width">
-                                    <label className="form-label">Mô tả dự án</label>
+                                    <label className="form-label">Mô tả dự án *</label>
                                     <textarea 
                                         className="form-input" 
                                         rows={4}
                                         value={formData.description}
                                         onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                        required
                                     ></textarea>
-                                </div>
-
-                                <div className="form-group full-width">
-                                    <label className="form-label">Tài liệu đính kèm</label>
-                                    <input type="file" className="form-input" multiple />
                                 </div>
                             </div>
                             
@@ -569,6 +751,273 @@ const ProjectManagement: React.FC = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Progress Update Modal */}
+            {isProgressModalOpen && selectedProject && (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && setIsProgressModalOpen(false)}>
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h2 className="modal-title">Cập nhật tiến độ dự án</h2>
+                            <span className="close-modal" onClick={() => setIsProgressModalOpen(false)}>&times;</span>
+                        </div>
+                        
+                        <div className="form-group">
+                            <label className="form-label">Dự án: {selectedProject.project_name}</label>
+                            <div className="progress-input-group">
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="100" 
+                                    value={progressValue}
+                                    onChange={(e) => setProgressValue(Number(e.target.value))}
+                                    className="progress-slider"
+                                />
+                                <div className="progress-display">
+                                    <span className="progress-value">{progressValue}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="form-actions">
+                            <button type="button" className="btn btn-secondary" onClick={() => setIsProgressModalOpen(false)}>
+                                Hủy
+                            </button>
+                            <button type="button" className="btn btn-primary" onClick={updateProgress}>
+                                <i className="fas fa-save"></i> Cập nhật tiến độ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Timeline Modal */}
+            {isTimelineModalOpen && selectedProject && (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && setIsTimelineModalOpen(false)}>
+                    <div className="modal-content timeline-modal">
+                        <div className="modal-header">
+                            <h2 className="modal-title">Timeline dự án: {selectedProject.project_name}</h2>
+                            <span className="close-modal" onClick={() => setIsTimelineModalOpen(false)}>&times;</span>
+                        </div>
+                        
+                        <div className="timeline-container">
+                            {projectTimeline.length > 0 ? (
+                                <div className="timeline">
+                                    {projectTimeline.map((event, index) => (
+                                        <div key={index} className="timeline-item">
+                                            <div className="timeline-marker"></div>
+                                            <div className="timeline-content">
+                                                <div className="timeline-date">{event.date}</div>
+                                                <div className="timeline-title">{event.title}</div>
+                                                <div className="timeline-description">{event.description}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="no-timeline">
+                                    <i className="fas fa-clock"></i>
+                                    <p>Chưa có timeline cho dự án này</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Member Modal */}
+            {isAddMemberModalOpen && selectedProject && (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && setIsAddMemberModalOpen(false)}>
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h2 className="modal-title">Thêm thành viên vào dự án: {selectedProject.project_name}</h2>
+                            <span className="close-modal" onClick={() => setIsAddMemberModalOpen(false)}>&times;</span>
+                        </div>
+                        
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label htmlFor="user_id">Chọn thành viên:</label>
+                                <select
+                                    id="user_id"
+                                    value={memberFormData.user_id}
+                                    onChange={(e) => setMemberFormData({...memberFormData, user_id: e.target.value})}
+                                    required
+                                >
+                                    <option value="">-- Chọn thành viên --</option>
+                                    {employees.map(employee => (
+                                        <option key={employee.id} value={employee.id}>
+                                            {employee.full_name} ({employee.email})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            
+                            <div className="form-group">
+                                <label htmlFor="role_in_project">Vai trò trong dự án:</label>
+                                <select
+                                    id="role_in_project"
+                                    value={memberFormData.role_in_project}
+                                    onChange={(e) => setMemberFormData({...memberFormData, role_in_project: e.target.value})}
+                                    required
+                                >
+                                    <option value="">Chọn vai trò...</option>
+                                    {positionOptions.map((position) => (
+                                        <option key={position.id} value={position.name}>
+                                            {position.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            
+                            <div className="form-group">
+                                <label htmlFor="start_date">Ngày bắt đầu:</label>
+                                <input
+                                    type="date"
+                                    id="start_date"
+                                    value={memberFormData.start_date}
+                                    onChange={(e) => setMemberFormData({...memberFormData, start_date: e.target.value})}
+                                    required
+                                />
+                            </div>
+                            
+                            <div className="form-group">
+                                <label htmlFor="end_date">Ngày kết thúc:</label>
+                                <input
+                                    type="date"
+                                    id="end_date"
+                                    value={memberFormData.end_date}
+                                    onChange={(e) => setMemberFormData({...memberFormData, end_date: e.target.value})}
+                                    required
+                                />
+                            </div>
+                        </div>
+                        
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setIsAddMemberModalOpen(false)}>
+                                Hủy
+                            </button>
+                            <button className="btn btn-primary" onClick={addMemberToProject}>
+                                Thêm thành viên
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Site Management Modal */}
+            {isSiteModalOpen && (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && setIsSiteModalOpen(false)}>
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h2 className="modal-title">Tạo địa điểm mới</h2>
+                            <span className="close-modal" onClick={() => setIsSiteModalOpen(false)}>&times;</span>
+                        </div>
+                        
+                        <form onSubmit={(e) => { e.preventDefault(); createSite(); }}>
+                            <div className="form-group">
+                                <label className="form-label">Tên địa điểm *</label>
+                                <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    value={siteFormData.site_name}
+                                    onChange={(e) => setSiteFormData({...siteFormData, site_name: e.target.value})}
+                                    required 
+                                />
+                            </div>
+                            
+                            <div className="form-group">
+                                <label className="form-label">Địa chỉ</label>
+                                <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    value={siteFormData.address}
+                                    onChange={(e) => setSiteFormData({...siteFormData, address: e.target.value})}
+                                />
+                            </div>
+                            
+                            <div className="form-group">
+                                <label className="form-label">Mô tả</label>
+                                <textarea 
+                                    className="form-input" 
+                                    rows={3}
+                                    value={siteFormData.description}
+                                    onChange={(e) => setSiteFormData({...siteFormData, description: e.target.value})}
+                                ></textarea>
+                            </div>
+                            
+                            <div className="form-actions">
+                                <button type="button" className="btn btn-secondary" onClick={() => setIsSiteModalOpen(false)}>
+                                    Hủy
+                                </button>
+                                <button type="submit" className="btn btn-primary">
+                                    <i className="fas fa-save"></i> Tạo địa điểm
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Assignment Management Modal */}
+            {isAssignmentModalOpen && selectedProject && (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && setIsAssignmentModalOpen(false)}>
+                    <div className="modal-content assignment-modal">
+                        <div className="modal-header">
+                            <h2 className="modal-title">Thành viên dự án: {selectedProject.project_name}</h2>
+                            <span className="close-modal" onClick={() => setIsAssignmentModalOpen(false)}>&times;</span>
+                        </div>
+                        
+                        <div className="assignment-container">
+                            <div className="project-leader-info">
+                                <h3>Trưởng dự án</h3>
+                                <div className="leader-card">
+                                    <div className="leader-avatar">{(selectedProject.leader_id.full_name || 'L').charAt(0)}</div>
+                                    <div className="leader-details">
+                                        <div className="leader-name">{selectedProject.leader_id.full_name}</div>
+                                        <div className="leader-email">{selectedProject.leader_id.email}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="team-members">
+                                <div className="members-header">
+                                    <h3>Thành viên nhóm ({projectAssignments.length})</h3>
+                                    <button className="btn btn-sm btn-primary" onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log('Button clicked');
+                                        openAddMemberModal();
+                                    }}>
+                                        <i className="fas fa-plus"></i> Thêm thành viên
+                                    </button>
+                                </div>
+                                {projectAssignments.length > 0 ? (
+                                    <div className="members-list">
+                                        {projectAssignments.map((assignment) => (
+                                            <div key={assignment.id} className="member-card">
+                                                <div className="member-avatar">{(assignment.user_id.full_name || 'M').charAt(0)}</div>
+                                                <div className="member-details">
+                                                    <div className="member-name">{assignment.user_id.full_name}</div>
+                                                    <div className="member-role">{assignment.role || 'Thành viên'}</div>
+                                                </div>
+                                                <div className="member-actions">
+                                                    <button className="btn btn-sm btn-danger">
+                                                        <i className="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="no-members">
+                                        <i className="fas fa-users"></i>
+                                        <p>Chưa có thành viên nào trong dự án</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

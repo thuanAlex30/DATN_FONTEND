@@ -6,10 +6,708 @@ import userService from '../../../services/userService';
 import type { 
   Employee, 
   Project, 
-  DepartmentStats
+  DepartmentStats,
+  OrganizationChartProps,
+  HierarchyTreeProps,
+  HierarchyListProps,
+  AnalyticsDashboardProps,
+  AnalyticsData,
+  DepartmentAnalytics,
+  EmployeeDistributionData,
+  PositionAnalytics,
+  OverallStats
 } from './types';
 import type { Department as APIDepartment } from '../../../types/department';
 import type { Position as APIPosition } from '../../../types/position';
+
+// Organization Chart Component
+const OrganizationChart: React.FC<OrganizationChartProps> = ({ 
+  departments, 
+  departmentEmployeeCounts 
+}) => {
+  const buildHierarchy = () => {
+    // Group departments by manager level
+    const departmentsByLevel = departments.reduce((acc, dept) => {
+      const level = dept.manager_id ? 2 : 1; // Root level = 1, Managed level = 2
+      if (!acc[level]) acc[level] = [];
+      acc[level].push(dept);
+      return acc;
+    }, {} as Record<number, APIDepartment[]>);
+
+    return departmentsByLevel;
+  };
+
+  const hierarchy = buildHierarchy();
+
+  return (
+    <div className="organization-chart">
+      <div className="chart-container">
+        {Object.entries(hierarchy).map(([level, depts]) => (
+          <div key={level} className={`chart-level level-${level}`}>
+            {(depts as APIDepartment[]).map((dept: APIDepartment) => {
+              const employeeCount = departmentEmployeeCounts[dept.id] || 0;
+              const managerName = dept.manager_id ? 
+                (dept.manager_id.full_name || dept.manager_id.username) : 
+                'Chưa có quản lý';
+              
+              return (
+                <div key={dept.id} className="chart-node department-node">
+                  <div className="node-header">
+                    <div className="node-icon">
+                      <i className="fas fa-building"></i>
+                    </div>
+                    <div className="node-title">{dept.department_name}</div>
+                  </div>
+                  <div className="node-body">
+                    <div className="node-manager">
+                      <i className="fas fa-user-crown"></i>
+                      <span>{managerName}</span>
+                    </div>
+                    <div className="node-employees">
+                      <i className="fas fa-users"></i>
+                      <span>{employeeCount} nhân viên</span>
+                    </div>
+                    <div className="node-status">
+                      <i className={`fas fa-circle ${dept.is_active ? 'text-success' : 'text-danger'}`}></i>
+                      <span>{dept.is_active ? 'Hoạt động' : 'Không hoạt động'}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Hierarchy Tree Component
+const HierarchyTree: React.FC<HierarchyTreeProps> = ({ 
+  departments, 
+  positions, 
+  departmentEmployeeCounts 
+}) => {
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+
+  const toggleNode = (nodeId: string) => {
+    const newExpanded = new Set(expandedNodes);
+    if (newExpanded.has(nodeId)) {
+      newExpanded.delete(nodeId);
+    } else {
+      newExpanded.add(nodeId);
+    }
+    setExpandedNodes(newExpanded);
+  };
+
+  const buildTreeStructure = () => {
+    // Create a tree structure based on manager relationships
+    const rootDepartments = departments.filter(dept => !dept.manager_id);
+    const managedDepartments = departments.filter(dept => dept.manager_id);
+    
+    return {
+      root: rootDepartments,
+      managed: managedDepartments
+    };
+  };
+
+  const treeStructure = buildTreeStructure();
+
+  return (
+    <div className="hierarchy-tree">
+      <div className="tree-container">
+        {/* Root Level */}
+        <div className="tree-level root-level">
+          <div className="level-label">
+            <i className="fas fa-crown"></i>
+            <span>Cấp điều hành</span>
+          </div>
+          <div className="tree-nodes">
+            {treeStructure.root.map(dept => {
+              const employeeCount = departmentEmployeeCounts[dept.id] || 0;
+              const isExpanded = expandedNodes.has(dept.id);
+              
+              return (
+                <div key={dept.id} className="tree-node root-node">
+                  <div className="node-content" onClick={() => toggleNode(dept.id)}>
+                    <div className="node-icon">
+                      <i className="fas fa-building"></i>
+                    </div>
+                    <div className="node-info">
+                      <div className="node-name">{dept.department_name}</div>
+                      <div className="node-details">
+                        <span className="employee-count">{employeeCount} nhân viên</span>
+                        <span className={`status ${dept.is_active ? 'active' : 'inactive'}`}>
+                          {dept.is_active ? 'Hoạt động' : 'Không hoạt động'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="expand-icon">
+                      <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`}></i>
+                    </div>
+                  </div>
+                  
+                  {isExpanded && (
+                    <div className="node-children">
+                      {/* Show positions in this department */}
+                      {positions.filter(pos => pos.is_active).map(pos => (
+                        <div key={pos.id} className="tree-node child-node position-node">
+                          <div className="node-content">
+                            <div className="node-icon">
+                              <i className="fas fa-user-tie"></i>
+                            </div>
+                            <div className="node-info">
+                              <div className="node-name">{pos.position_name}</div>
+                              <div className="node-details">
+                                <span className="level">Cấp {pos.level}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Managed Level */}
+        <div className="tree-level managed-level">
+          <div className="level-label">
+            <i className="fas fa-users"></i>
+            <span>Cấp quản lý</span>
+          </div>
+          <div className="tree-nodes">
+            {treeStructure.managed.map(dept => {
+              const employeeCount = departmentEmployeeCounts[dept.id] || 0;
+              const managerName = dept.manager_id ? 
+                (dept.manager_id.full_name || dept.manager_id.username) : 
+                'Chưa có quản lý';
+              const isExpanded = expandedNodes.has(dept.id);
+              
+              return (
+                <div key={dept.id} className="tree-node managed-node">
+                  <div className="node-content" onClick={() => toggleNode(dept.id)}>
+                    <div className="node-icon">
+                      <i className="fas fa-building"></i>
+                    </div>
+                    <div className="node-info">
+                      <div className="node-name">{dept.department_name}</div>
+                      <div className="node-details">
+                        <span className="manager">QL: {managerName}</span>
+                        <span className="employee-count">{employeeCount} nhân viên</span>
+                        <span className={`status ${dept.is_active ? 'active' : 'inactive'}`}>
+                          {dept.is_active ? 'Hoạt động' : 'Không hoạt động'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="expand-icon">
+                      <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'}`}></i>
+                    </div>
+                  </div>
+                  
+                  {isExpanded && (
+                    <div className="node-children">
+                      {/* Show positions in this department */}
+                      {positions.filter(pos => pos.is_active).map(pos => (
+                        <div key={pos.id} className="tree-node child-node position-node">
+                          <div className="node-content">
+                            <div className="node-icon">
+                              <i className="fas fa-user-tie"></i>
+                            </div>
+                            <div className="node-info">
+                              <div className="node-name">{pos.position_name}</div>
+                              <div className="node-details">
+                                <span className="level">Cấp {pos.level}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Hierarchy List Component
+const HierarchyList: React.FC<HierarchyListProps> = ({ 
+  departments, 
+  positions, 
+  departmentEmployeeCounts 
+}) => {
+  const groupedData = departments.reduce((acc, dept) => {
+    const level = dept.manager_id ? 'managed' : 'root';
+    if (!acc[level]) acc[level] = [];
+    acc[level].push(dept);
+    return acc;
+  }, {} as Record<string, APIDepartment[]>);
+
+  return (
+    <div className="hierarchy-list">
+      <div className="list-container">
+        {/* Root Departments */}
+        <div className="list-section">
+          <div className="section-header">
+            <i className="fas fa-crown"></i>
+            <h4>Cấp điều hành ({groupedData.root?.length || 0})</h4>
+          </div>
+          <div className="list-items">
+            {groupedData.root?.map((dept: APIDepartment) => {
+              const employeeCount = departmentEmployeeCounts[dept.id] || 0;
+              return (
+                <div key={dept.id} className="list-item root-item">
+                  <div className="item-icon">
+                    <i className="fas fa-building"></i>
+                  </div>
+                  <div className="item-content">
+                    <div className="item-name">{dept.department_name}</div>
+                    <div className="item-description">{dept.description || 'Chưa có mô tả'}</div>
+                    <div className="item-stats">
+                      <span className="stat">
+                        <i className="fas fa-users"></i>
+                        {employeeCount} nhân viên
+                      </span>
+                      <span className={`status ${dept.is_active ? 'active' : 'inactive'}`}>
+                        <i className={`fas fa-circle ${dept.is_active ? 'text-success' : 'text-danger'}`}></i>
+                        {dept.is_active ? 'Hoạt động' : 'Không hoạt động'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="item-actions">
+                    <button className="btn btn-sm btn-primary">
+                      <i className="fas fa-eye"></i>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Managed Departments */}
+        <div className="list-section">
+          <div className="section-header">
+            <i className="fas fa-users"></i>
+            <h4>Cấp quản lý ({groupedData.managed?.length || 0})</h4>
+          </div>
+          <div className="list-items">
+            {groupedData.managed?.map((dept: APIDepartment) => {
+              const employeeCount = departmentEmployeeCounts[dept.id] || 0;
+              const managerName = dept.manager_id ? 
+                (dept.manager_id.full_name || dept.manager_id.username) : 
+                'Chưa có quản lý';
+              
+              return (
+                <div key={dept.id} className="list-item managed-item">
+                  <div className="item-icon">
+                    <i className="fas fa-building"></i>
+                  </div>
+                  <div className="item-content">
+                    <div className="item-name">{dept.department_name}</div>
+                    <div className="item-description">{dept.description || 'Chưa có mô tả'}</div>
+                    <div className="item-stats">
+                      <span className="stat">
+                        <i className="fas fa-user-crown"></i>
+                        QL: {managerName}
+                      </span>
+                      <span className="stat">
+                        <i className="fas fa-users"></i>
+                        {employeeCount} nhân viên
+                      </span>
+                      <span className={`status ${dept.is_active ? 'active' : 'inactive'}`}>
+                        <i className={`fas fa-circle ${dept.is_active ? 'text-success' : 'text-danger'}`}></i>
+                        {dept.is_active ? 'Hoạt động' : 'Không hoạt động'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="item-actions">
+                    <button className="btn btn-sm btn-primary">
+                      <i className="fas fa-eye"></i>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Positions Summary */}
+        <div className="list-section">
+          <div className="section-header">
+            <i className="fas fa-user-tie"></i>
+            <h4>Tổng quan vị trí ({positions.length})</h4>
+          </div>
+          <div className="positions-summary">
+            {positions.filter(pos => pos.is_active).map(pos => (
+              <div key={pos.id} className="position-item">
+                <div className="position-icon">
+                  <i className="fas fa-user-tie"></i>
+                </div>
+                <div className="position-info">
+                  <div className="position-name">{pos.position_name}</div>
+                  <div className="position-level">Cấp {pos.level}</div>
+                </div>
+                <div className="position-status">
+                  <span className={`status ${pos.is_active ? 'active' : 'inactive'}`}>
+                    {pos.is_active ? 'Hoạt động' : 'Không hoạt động'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Analytics Dashboard Component
+const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ 
+  departments, 
+  positions, 
+  departmentEmployeeCounts 
+}) => {
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [selectedChart, setSelectedChart] = useState<string>('overview');
+
+  useEffect(() => {
+    const generateAnalyticsData = (): AnalyticsData => {
+      // Calculate department analytics
+      const departmentStats: DepartmentAnalytics[] = departments.map(dept => ({
+        id: dept.id,
+        name: dept.department_name,
+        employeeCount: departmentEmployeeCounts[dept.id] || 0,
+        positionCount: positions.filter(pos => pos.department_id === dept.id).length,
+        managerName: dept.manager_id ? 
+          (dept.manager_id.full_name || dept.manager_id.username) : 
+          'Chưa có quản lý',
+        status: dept.is_active ? 'Hoạt động' : 'Không hoạt động',
+        level: dept.manager_id ? 'managed' : 'root'
+      }));
+
+      // Calculate employee distribution
+      const totalEmployees = Object.values(departmentEmployeeCounts).reduce((sum, count) => sum + count, 0);
+      const employeeDistribution: EmployeeDistributionData[] = departments.map(dept => ({
+        departmentId: dept.id,
+        departmentName: dept.department_name,
+        employeeCount: departmentEmployeeCounts[dept.id] || 0,
+        percentage: totalEmployees > 0 ? ((departmentEmployeeCounts[dept.id] || 0) / totalEmployees) * 100 : 0
+      }));
+
+      // Calculate position analytics
+      const positionStats: PositionAnalytics[] = departments.map(dept => {
+        const deptPositions = positions.filter(pos => pos.department_id === dept.id);
+        return {
+          departmentId: dept.id,
+          departmentName: dept.department_name,
+          positions: deptPositions.map(pos => ({
+            name: pos.position_name,
+            count: 1, // Each position is unique
+            level: `Cấp ${pos.level}`
+          }))
+        };
+      });
+
+      // Calculate overall stats
+      const overallStats: OverallStats = {
+        totalDepartments: departments.length,
+        totalEmployees: totalEmployees,
+        totalPositions: positions.length,
+        rootDepartments: departments.filter(dept => !dept.manager_id).length,
+        managedDepartments: departments.filter(dept => dept.manager_id).length,
+        departmentsWithManagers: departments.filter(dept => dept.manager_id).length,
+        departmentsWithoutManagers: departments.filter(dept => !dept.manager_id).length
+      };
+
+      return {
+        departmentStats,
+        employeeDistribution,
+        positionStats,
+        overallStats
+      };
+    };
+
+    setAnalyticsData(generateAnalyticsData());
+  }, [departments, positions, departmentEmployeeCounts]);
+
+  const exportToCSV = () => {
+    if (!analyticsData) return;
+
+    const csvContent = [
+      ['Phòng ban', 'Số nhân viên', 'Số vị trí', 'Quản lý', 'Trạng thái', 'Cấp độ'].join(','),
+      ...analyticsData.departmentStats.map(dept => [
+        dept.name,
+        dept.employeeCount,
+        dept.positionCount,
+        dept.managerName,
+        dept.status,
+        dept.level === 'root' ? 'Điều hành' : 'Quản lý'
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `department_analytics_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (!analyticsData) {
+    return <div className="analytics-loading">Đang tải dữ liệu phân tích...</div>;
+  }
+
+  return (
+    <div className="analytics-dashboard">
+      <div className="analytics-header">
+        <h2><i className="fas fa-chart-bar"></i> Phân tích tổng quan</h2>
+        <div className="analytics-actions">
+          <button className="export-btn" onClick={exportToCSV}>
+            <i className="fas fa-download"></i> Xuất báo cáo
+          </button>
+        </div>
+      </div>
+
+      {/* Overall Statistics Cards */}
+      <div className="stats-cards">
+        <div className="stat-card">
+          <div className="stat-icon">
+            <i className="fas fa-building"></i>
+          </div>
+          <div className="stat-content">
+            <div className="stat-number">{analyticsData.overallStats.totalDepartments}</div>
+            <div className="stat-label">Tổng phòng ban</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">
+            <i className="fas fa-users"></i>
+          </div>
+          <div className="stat-content">
+            <div className="stat-number">{analyticsData.overallStats.totalEmployees}</div>
+            <div className="stat-label">Tổng nhân viên</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">
+            <i className="fas fa-briefcase"></i>
+          </div>
+          <div className="stat-content">
+            <div className="stat-number">{analyticsData.overallStats.totalPositions}</div>
+            <div className="stat-label">Tổng vị trí</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">
+            <i className="fas fa-crown"></i>
+          </div>
+          <div className="stat-content">
+            <div className="stat-number">{analyticsData.overallStats.rootDepartments}</div>
+            <div className="stat-label">Cấp điều hành</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Chart Selection */}
+      <div className="chart-selection">
+        <button 
+          className={`chart-btn ${selectedChart === 'overview' ? 'active' : ''}`}
+          onClick={() => setSelectedChart('overview')}
+        >
+          <i className="fas fa-chart-pie"></i> Tổng quan
+        </button>
+        <button 
+          className={`chart-btn ${selectedChart === 'departments' ? 'active' : ''}`}
+          onClick={() => setSelectedChart('departments')}
+        >
+          <i className="fas fa-building"></i> Phòng ban
+        </button>
+        <button 
+          className={`chart-btn ${selectedChart === 'employees' ? 'active' : ''}`}
+          onClick={() => setSelectedChart('employees')}
+        >
+          <i className="fas fa-users"></i> Nhân viên
+        </button>
+        <button 
+          className={`chart-btn ${selectedChart === 'positions' ? 'active' : ''}`}
+          onClick={() => setSelectedChart('positions')}
+        >
+          <i className="fas fa-briefcase"></i> Vị trí
+        </button>
+      </div>
+
+      {/* Charts */}
+      <div className="charts-container">
+        {selectedChart === 'overview' && (
+          <div className="chart-section">
+            <h3>Tổng quan cơ cấu tổ chức</h3>
+            <div className="overview-charts">
+              <div className="chart-card">
+                <h4>Phân bố phòng ban theo cấp độ</h4>
+                <div className="pie-chart">
+                  <div className="pie-slice root">
+                    <div className="slice-label">Cấp điều hành</div>
+                    <div className="slice-value">{analyticsData.overallStats.rootDepartments}</div>
+                  </div>
+                  <div className="pie-slice managed">
+                    <div className="slice-label">Cấp quản lý</div>
+                    <div className="slice-value">{analyticsData.overallStats.managedDepartments}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="chart-card">
+                <h4>Trạng thái phòng ban</h4>
+                <div className="status-chart">
+                  <div className="status-item">
+                    <div className="status-bar active"></div>
+                    <span>Hoạt động: {analyticsData.departmentStats.filter(d => d.status === 'Hoạt động').length}</span>
+                  </div>
+                  <div className="status-item">
+                    <div className="status-bar inactive"></div>
+                    <span>Không hoạt động: {analyticsData.departmentStats.filter(d => d.status === 'Không hoạt động').length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedChart === 'departments' && (
+          <div className="chart-section">
+            <h3>Thống kê phòng ban</h3>
+            <div className="department-charts">
+              <div className="chart-card">
+                <h4>Top phòng ban có nhiều nhân viên</h4>
+                <div className="bar-chart">
+                  {analyticsData.departmentStats
+                    .sort((a, b) => b.employeeCount - a.employeeCount)
+                    .slice(0, 5)
+                    .map((dept) => (
+                      <div key={dept.id} className="bar-item">
+                        <div className="bar-label">{dept.name}</div>
+                        <div className="bar-container">
+                          <div 
+                            className="bar-fill" 
+                            style={{ width: `${(dept.employeeCount / Math.max(...analyticsData.departmentStats.map(d => d.employeeCount))) * 100}%` }}
+                          ></div>
+                          <span className="bar-value">{dept.employeeCount}</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedChart === 'employees' && (
+          <div className="chart-section">
+            <h3>Phân bố nhân viên</h3>
+            <div className="employee-charts">
+              <div className="chart-card">
+                <h4>Phân bố nhân viên theo phòng ban</h4>
+                <div className="distribution-chart">
+                  {analyticsData.employeeDistribution
+                    .filter(item => item.employeeCount > 0)
+                    .sort((a, b) => b.employeeCount - a.employeeCount)
+                    .map(item => (
+                      <div key={item.departmentId} className="distribution-item">
+                        <div className="distribution-label">{item.departmentName}</div>
+                        <div className="distribution-bar">
+                          <div 
+                            className="distribution-fill" 
+                            style={{ width: `${item.percentage}%` }}
+                          ></div>
+                          <span className="distribution-value">{item.employeeCount} ({item.percentage.toFixed(1)}%)</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedChart === 'positions' && (
+          <div className="chart-section">
+            <h3>Thống kê vị trí công việc</h3>
+            <div className="position-charts">
+              <div className="chart-card">
+                <h4>Vị trí theo phòng ban</h4>
+                <div className="position-grid">
+                  {analyticsData.positionStats.map(dept => (
+                    <div key={dept.departmentId} className="position-dept">
+                      <h5>{dept.departmentName}</h5>
+                      <div className="position-list">
+                        {dept.positions.map((pos, index) => (
+                          <div key={index} className="position-item">
+                            <span className="position-name">{pos.name}</span>
+                            <span className="position-level">{pos.level}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Detailed Statistics Table */}
+      <div className="analytics-table">
+        <h3>Bảng thống kê chi tiết</h3>
+        <div className="table-container">
+          <table className="stats-table">
+            <thead>
+              <tr>
+                <th>Phòng ban</th>
+                <th>Số nhân viên</th>
+                <th>Số vị trí</th>
+                <th>Quản lý</th>
+                <th>Trạng thái</th>
+                <th>Cấp độ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analyticsData.departmentStats.map(dept => (
+                <tr key={dept.id}>
+                  <td>{dept.name}</td>
+                  <td>{dept.employeeCount}</td>
+                  <td>{dept.positionCount}</td>
+                  <td>{dept.managerName}</td>
+                  <td>
+                    <span className={`status-badge ${dept.status === 'Hoạt động' ? 'active' : 'inactive'}`}>
+                      {dept.status}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`level-badge ${dept.level}`}>
+                      {dept.level === 'root' ? 'Điều hành' : 'Quản lý'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DepartmentPositionPage: React.FC = () => {
   // State management
@@ -59,6 +757,9 @@ const DepartmentPositionPage: React.FC = () => {
   // Filter states
   const [filteredDepartments, setFilteredDepartments] = useState<APIDepartment[]>([]);
   const [filteredPositions, setFilteredPositions] = useState<APIPosition[]>([]);
+  
+  // Hierarchy view state
+  const [hierarchyView, setHierarchyView] = useState<'chart' | 'tree' | 'list'>('chart');
   
   // Search and filter states
   const [departmentSearch, setDepartmentSearch] = useState<string>('');
@@ -285,7 +986,7 @@ const DepartmentPositionPage: React.FC = () => {
   };
 
 
-  // Load all data on component mount
+  // Load all data on component mount and when component becomes visible
   useEffect(() => {
     const loadAllData = async () => {
       setIsLoading(true);
@@ -306,6 +1007,29 @@ const DepartmentPositionPage: React.FC = () => {
     };
 
     loadAllData();
+  }, []);
+
+  // Refresh data when component becomes visible (to catch updates from other pages)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Page became visible, refreshing department data...');
+        loadDepartments();
+      }
+    };
+
+    const handleFocus = () => {
+      console.log('Window focused, refreshing department data...');
+      loadDepartments();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   // Modal management
@@ -376,9 +1100,21 @@ const DepartmentPositionPage: React.FC = () => {
             <a href="/admin/dashboard">Dashboard</a> / Phòng ban và vị trí
           </div>
         </div>
-        <a href="/admin/dashboard" className="btn btn-secondary">
-          <i className="fas fa-arrow-left"></i> Quay lại
-        </a>
+        <div className="header-actions">
+          <button 
+            className="btn btn-primary" 
+            onClick={() => {
+              console.log('Manual refresh triggered');
+              loadDepartments();
+            }}
+            title="Làm mới dữ liệu"
+          >
+            <i className="fas fa-sync-alt"></i> Làm mới
+          </button>
+          <a href="/admin/dashboard" className="btn btn-secondary">
+            <i className="fas fa-arrow-left"></i> Quay lại
+          </a>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -754,14 +1490,56 @@ const DepartmentPositionPage: React.FC = () => {
         {activeTab === 'hierarchy' && (
           <div className="tab-content active">
             <div className="hierarchy-view">
-              <h3 style={{marginBottom: '1.5rem', color: '#2c3e50'}}>
-                <i className="fas fa-sitemap"></i> Cơ cấu tổ chức công ty
-              </h3>
-              <div className="tree-view">
-                {/* Organization chart will be rendered here */}
-                <div className="alert alert-info">
-                  Cơ cấu tổ chức sẽ được hiển thị ở đây
+              <div className="hierarchy-header">
+                <h3>
+                  <i className="fas fa-sitemap"></i> Cơ cấu tổ chức công ty
+                </h3>
+                <div className="hierarchy-controls">
+                  <button 
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => setHierarchyView('chart')}
+                  >
+                    <i className="fas fa-project-diagram"></i> Sơ đồ
+                  </button>
+                  <button 
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => setHierarchyView('tree')}
+                  >
+                    <i className="fas fa-tree"></i> Cây phân cấp
+                  </button>
+                  <button 
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => setHierarchyView('list')}
+                  >
+                    <i className="fas fa-list"></i> Danh sách
+                  </button>
                 </div>
+              </div>
+              
+              <div className="organization-chart-container">
+                {hierarchyView === 'chart' && (
+                  <OrganizationChart 
+                    departments={departments}
+                    positions={positions}
+                    departmentEmployeeCounts={departmentEmployeeCounts}
+                  />
+                )}
+                
+                {hierarchyView === 'tree' && (
+                  <HierarchyTree 
+                    departments={departments}
+                    positions={positions}
+                    departmentEmployeeCounts={departmentEmployeeCounts}
+                  />
+                )}
+                
+                {hierarchyView === 'list' && (
+                  <HierarchyList 
+                    departments={departments}
+                    positions={positions}
+                    departmentEmployeeCounts={departmentEmployeeCounts}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -769,34 +1547,11 @@ const DepartmentPositionPage: React.FC = () => {
 
         {activeTab === 'analytics' && (
           <div className="tab-content active">
-            <div className="stats-grid">
-              <div className="stat-card">
-                <h3 style={{color: '#2c3e50', marginBottom: '1rem'}}>
-                  <i className="fas fa-chart-pie"></i> Phân bố nhân viên theo phòng ban
-                </h3>
-                <div className="alert alert-info">
-                  Biểu đồ phân bố nhân viên sẽ được hiển thị ở đây
-                </div>
-              </div>
-              
-              <div className="stat-card">
-                <h3 style={{color: '#2c3e50', marginBottom: '1rem'}}>
-                  <i className="fas fa-chart-bar"></i> Phân bố theo vị trí
-                </h3>
-                <div className="alert alert-info">
-                  Biểu đồ phân bố vị trí sẽ được hiển thị ở đây
-                </div>
-              </div>
-            </div>
-            
-            <div className="hierarchy-view">
-              <h3 style={{marginBottom: '1.5rem', color: '#2c3e50'}}>
-                <i className="fas fa-clipboard-list"></i> Báo cáo chi tiết
-              </h3>
-              <div className="alert alert-info">
-                Báo cáo chi tiết sẽ được hiển thị ở đây
-              </div>
-            </div>
+            <AnalyticsDashboard 
+              departments={departments}
+              positions={positions}
+              departmentEmployeeCounts={departmentEmployeeCounts}
+            />
           </div>
         )}
       </div>

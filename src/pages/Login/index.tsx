@@ -6,6 +6,7 @@ import { login } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import type { LoginRequest } from '../../types/auth';
 import { useSafeNavigate } from '../../hooks/useSafeNavigate';
+
 import './Login.css';
 
 const LoginPage: React.FC = () => {
@@ -68,7 +69,7 @@ const LoginPage: React.FC = () => {
         const user = resultAction.payload.user;
         
         // Check if user is admin
-        if (user.role === 'admin') {
+        if (user.role?.role_name === 'admin') {
           safeNavigate('/admin/dashboard', { replace: true });
         } else {
           // Handle non-admin users (redirect to appropriate page)

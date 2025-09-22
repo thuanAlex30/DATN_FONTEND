@@ -1,179 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './RoleManagement.css';
+import RoleService from '../../../services/roleService';
+import type { Role, PermissionGroup } from '../../../types/role';
 
-interface Role {
-    id: number;
-    name: string;
-    description: string;
-    userCount: number;
-    isActive: boolean;
-    permissions: {
-        [key: string]: string[];
-    };
-}
+const RoleManagementPage: React.FC = () => {
+    const [roles, setRoles] = useState<Role[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-interface PermissionDefinition {
-    title: string;
-    icon: string;
-    permissions: {
-        [key: string]: {
-            name: string;
-            desc: string;
-        };
-    };
-}
-
-const UserManagementPage: React.FC = () => {
-    const [roles, setRoles] = useState<Role[]>([
-        {
-            id: 1,
-            name: "Admin",
-            description: "Quản trị viên hệ thống với quyền truy cập đầy đủ",
-            userCount: 2,
-            isActive: true,
-            permissions: {
-                user_management: ['create_user', 'read_user', 'update_user', 'delete_user'],
-                project_management: ['create_project', 'read_project', 'update_project', 'delete_project'],
-                training_management: ['create_training', 'read_training', 'update_training', 'delete_training'],
-                ppe_management: ['create_ppe', 'read_ppe', 'update_ppe', 'delete_ppe'],
-                safety_management: ['create_incident', 'read_incident', 'update_incident', 'delete_incident'],
-                system_management: ['view_logs', 'manage_settings', 'backup_restore']
-            }
-        },
-        {
-            id: 2,
-            name: "Manager",
-            description: "Quản lý dự án và nhân viên",
-            userCount: 5,
-            isActive: true,
-            permissions: {
-                user_management: ['read_user'],
-                project_management: ['create_project', 'read_project', 'update_project'],
-                training_management: ['read_training'],
-                ppe_management: ['read_ppe', 'update_ppe'],
-                safety_management: ['create_incident', 'read_incident', 'update_incident'],
-                system_management: []
-            }
-        },
-        {
-            id: 3,
-            name: "Employee",
-            description: "Nhân viên thường",
-            userCount: 45,
-            isActive: true,
-            permissions: {
-                user_management: [],
-                project_management: ['read_project'],
-                training_management: ['read_training'],
-                ppe_management: ['read_ppe'],
-                safety_management: ['create_incident', 'read_incident'],
-                system_management: []
-            }
-        },
-        {
-            id: 4,
-            name: "Trainer",
-            description: "Giảng viên đào tạo",
-            userCount: 8,
-            isActive: true,
-            permissions: {
-                user_management: ['read_user'],
-                project_management: ['read_project'],
-                training_management: ['create_training', 'read_training', 'update_training'],
-                ppe_management: ['read_ppe'],
-                safety_management: ['read_incident'],
-                system_management: []
-            }
-        },
-        {
-            id: 5,
-            name: "Safety Officer",
-            description: "Chuyên viên an toàn lao động",
-            userCount: 3,
-            isActive: true,
-            permissions: {
-                user_management: ['read_user'],
-                project_management: ['read_project'],
-                training_management: ['read_training'],
-                ppe_management: ['create_ppe', 'read_ppe', 'update_ppe'],
-                safety_management: ['create_incident', 'read_incident', 'update_incident', 'delete_incident'],
-                system_management: []
-            }
-        }
-    ]);
-
-    const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
-    const [currentPermissions, setCurrentPermissions] = useState<{[key: string]: string[]}>({});
+    const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+    const [currentPermissions, setCurrentPermissions] = useState<Record<string, boolean>>({});
     const [isModalOpen, setIsModalOpen] = useState<string | null>(null);
     const [editingRole, setEditingRole] = useState<Role | null>(null);
+    const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
-        name: '',
+        role_name: '',
         description: ''
     });
 
-    const permissionDefinitions: {[key: string]: PermissionDefinition} = {
-        user_management: {
+    const permissionDefinitions: PermissionGroup = {
+        user: {
             title: "Quản lý người dùng",
             icon: "fas fa-users",
             permissions: {
-                create_user: { name: "Tạo người dùng", desc: "Thêm người dùng mới vào hệ thống" },
-                read_user: { name: "Xem người dùng", desc: "Xem thông tin người dùng" },
-                update_user: { name: "Sửa người dùng", desc: "Chỉnh sửa thông tin người dùng" },
-                delete_user: { name: "Xóa người dùng", desc: "Xóa người dùng khỏi hệ thống" }
+                "user:create": { name: "Tạo người dùng", desc: "Thêm người dùng mới vào hệ thống" },
+                "user:read": { name: "Xem người dùng", desc: "Xem thông tin người dùng" },
+                "user:update": { name: "Sửa người dùng", desc: "Chỉnh sửa thông tin người dùng" },
+                "user:delete": { name: "Xóa người dùng", desc: "Xóa người dùng khỏi hệ thống" },
+                "user:list": { name: "Danh sách người dùng", desc: "Xem danh sách tất cả người dùng" }
             }
         },
-        project_management: {
-            title: "Quản lý dự án",
-            icon: "fas fa-project-diagram",
+        role: {
+            title: "Quản lý vai trò",
+            icon: "fas fa-user-shield",
             permissions: {
-                create_project: { name: "Tạo dự án", desc: "Tạo dự án mới" },
-                read_project: { name: "Xem dự án", desc: "Xem thông tin dự án" },
-                update_project: { name: "Sửa dự án", desc: "Chỉnh sửa thông tin dự án" },
-                delete_project: { name: "Xóa dự án", desc: "Xóa dự án khỏi hệ thống" }
+                "role:create": { name: "Tạo vai trò", desc: "Tạo vai trò mới" },
+                "role:read": { name: "Xem vai trò", desc: "Xem thông tin vai trò" },
+                "role:update": { name: "Sửa vai trò", desc: "Chỉnh sửa thông tin vai trò" },
+                "role:delete": { name: "Xóa vai trò", desc: "Xóa vai trò khỏi hệ thống" },
+                "role:list": { name: "Danh sách vai trò", desc: "Xem danh sách tất cả vai trò" }
             }
         },
-        training_management: {
-            title: "Quản lý đào tạo",
-            icon: "fas fa-graduation-cap",
+        department: {
+            title: "Quản lý phòng ban",
+            icon: "fas fa-building",
             permissions: {
-                create_training: { name: "Tạo khóa đào tạo", desc: "Tạo khóa đào tạo mới" },
-                read_training: { name: "Xem đào tạo", desc: "Xem thông tin đào tạo" },
-                update_training: { name: "Sửa đào tạo", desc: "Chỉnh sửa khóa đào tạo" },
-                delete_training: { name: "Xóa đào tạo", desc: "Xóa khóa đào tạo" }
+                "department:create": { name: "Tạo phòng ban", desc: "Tạo phòng ban mới" },
+                "department:read": { name: "Xem phòng ban", desc: "Xem thông tin phòng ban" },
+                "department:update": { name: "Sửa phòng ban", desc: "Chỉnh sửa thông tin phòng ban" },
+                "department:delete": { name: "Xóa phòng ban", desc: "Xóa phòng ban khỏi hệ thống" },
+                "department:list": { name: "Danh sách phòng ban", desc: "Xem danh sách tất cả phòng ban" }
             }
         },
-        ppe_management: {
-            title: "Quản lý PPE",
-            icon: "fas fa-hard-hat",
-            permissions: {
-                create_ppe: { name: "Thêm PPE", desc: "Thêm thiết bị bảo hộ mới" },
-                read_ppe: { name: "Xem PPE", desc: "Xem thông tin thiết bị bảo hộ" },
-                update_ppe: { name: "Sửa PPE", desc: "Chỉnh sửa thông tin PPE" },
-                delete_ppe: { name: "Xóa PPE", desc: "Xóa thiết bị bảo hộ" }
-            }
-        },
-        safety_management: {
-            title: "Quản lý an toàn",
+        safety_report: {
+            title: "Quản lý báo cáo an toàn",
             icon: "fas fa-shield-alt",
             permissions: {
-                create_incident: { name: "Báo cáo sự cố", desc: "Tạo báo cáo sự cố mới" },
-                read_incident: { name: "Xem sự cố", desc: "Xem thông tin sự cố" },
-                update_incident: { name: "Sửa sự cố", desc: "Chỉnh sửa thông tin sự cố" },
-                delete_incident: { name: "Xóa sự cố", desc: "Xóa báo cáo sự cố" }
-            }
-        },
-        system_management: {
-            title: "Quản lý hệ thống",
-            icon: "fas fa-cogs",
-            permissions: {
-                view_logs: { name: "Xem nhật ký", desc: "Xem nhật ký hệ thống" },
-                manage_settings: { name: "Cài đặt hệ thống", desc: "Quản lý cài đặt hệ thống" },
-                backup_restore: { name: "Sao lưu & khôi phục", desc: "Thực hiện sao lưu và khôi phục" }
+                "safety_report:create": { name: "Tạo báo cáo", desc: "Tạo báo cáo sự cố mới" },
+                "safety_report:read": { name: "Xem báo cáo", desc: "Xem thông tin báo cáo" },
+                "safety_report:update": { name: "Sửa báo cáo", desc: "Chỉnh sửa thông tin báo cáo" },
+                "safety_report:delete": { name: "Xóa báo cáo", desc: "Xóa báo cáo khỏi hệ thống" },
+                "safety_report:list": { name: "Danh sách báo cáo", desc: "Xem danh sách tất cả báo cáo" },
+                "safety_report:approve": { name: "Duyệt báo cáo", desc: "Duyệt và phê duyệt báo cáo" }
             }
         }
     };
 
-    const selectRole = (roleId: number) => {
+    // Load roles from API
+    useEffect(() => {
+        const loadRoles = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const response = await RoleService.getRoles({ page: 1, limit: 50 });
+                setRoles(response.data.roles);
+            } catch (err) {
+                console.error('Error loading roles:', err);
+                setError('Không thể tải danh sách vai trò. Vui lòng thử lại.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadRoles();
+    }, []);
+
+    const selectRole = (roleId: string) => {
         setSelectedRoleId(roleId);
         const role = roles.find(r => r.id === roleId);
         if (role) {
@@ -181,33 +93,35 @@ const UserManagementPage: React.FC = () => {
         }
     };
 
-    const togglePermission = (groupKey: string, permissionKey: string) => {
-        setCurrentPermissions(prev => {
-            const newPermissions = { ...prev };
-            if (!newPermissions[groupKey]) {
-                newPermissions[groupKey] = [];
-            }
-
-            const index = newPermissions[groupKey].indexOf(permissionKey);
-            if (index > -1) {
-                newPermissions[groupKey].splice(index, 1);
-            } else {
-                newPermissions[groupKey].push(permissionKey);
-            }
-
-            return newPermissions;
-        });
+    const togglePermission = (permissionKey: string) => {
+        setCurrentPermissions(prev => ({
+            ...prev,
+            [permissionKey]: !prev[permissionKey]
+        }));
     };
 
-    const savePermissions = () => {
+    const savePermissions = async () => {
         if (!selectedRoleId) return;
 
-        setRoles(prev => prev.map(role => 
-            role.id === selectedRoleId 
-                ? { ...role, permissions: JSON.parse(JSON.stringify(currentPermissions)) }
-                : role
-        ));
-        alert('Đã lưu quyền hạn thành công!');
+        try {
+            setSaving(true);
+            await RoleService.updateRolePermissions(selectedRoleId, currentPermissions);
+            
+            // Update local state
+            setRoles(prev => prev.map(role => 
+                role.id === selectedRoleId 
+                    ? { ...role, permissions: { ...currentPermissions } }
+                    : role
+            ));
+            
+            alert('Đã lưu quyền hạn thành công!');
+        } catch (error: any) {
+            console.error('Error saving permissions:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi lưu quyền hạn. Vui lòng thử lại.';
+            alert(`Lỗi: ${errorMessage}`);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const openModal = (modalId: string) => {
@@ -217,68 +131,108 @@ const UserManagementPage: React.FC = () => {
     const closeModal = () => {
         setIsModalOpen(null);
         setEditingRole(null);
-        setFormData({ name: '', description: '' });
+        setFormData({ role_name: '', description: '' });
     };
 
-    const editRole = (roleId: number) => {
+    const editRole = (roleId: string) => {
         const role = roles.find(r => r.id === roleId);
         if (role) {
             setEditingRole(role);
             setFormData({
-                name: role.name,
+                role_name: role.role_name,
                 description: role.description
             });
             openModal('addRoleModal');
         }
     };
 
-    const deleteRole = (roleId: number) => {
+    const deleteRole = async (roleId: string) => {
         const role = roles.find(r => r.id === roleId);
-        if (role && window.confirm(`Bạn có chắc chắn muốn xóa vai trò "${role.name}"?`)) {
-            setRoles(prev => prev.filter(r => r.id !== roleId));
-            if (selectedRoleId === roleId) {
-                setSelectedRoleId(null);
+        if (role && window.confirm(`Bạn có chắc chắn muốn xóa vai trò "${role.role_name}"?`)) {
+            try {
+                await RoleService.deleteRole(roleId);
+                setRoles(prev => prev.filter(r => r.id !== roleId));
+                if (selectedRoleId === roleId) {
+                    setSelectedRoleId(null);
+                }
+                alert('Đã xóa vai trò thành công!');
+            } catch (error: any) {
+                console.error('Error deleting role:', error);
+                const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi xóa vai trò. Vui lòng thử lại.';
+                alert(`Lỗi: ${errorMessage}`);
             }
-            alert('Đã xóa vai trò thành công!');
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (editingRole) {
-            // Update existing role
-            setRoles(prev => prev.map(role => 
-                role.id === editingRole.id 
-                    ? { ...role, name: formData.name, description: formData.description }
-                    : role
-            ));
-            alert('Đã cập nhật vai trò thành công!');
-        } else {
-            // Add new role
-            const newRole: Role = {
-                id: Math.max(...roles.map(r => r.id)) + 1,
-                name: formData.name,
-                description: formData.description,
-                userCount: 0,
-                isActive: true,
-                permissions: {
-                    user_management: [],
-                    project_management: [],
-                    training_management: [],
-                    ppe_management: [],
-                    safety_management: [],
-                    system_management: []
-                }
-            };
-            setRoles(prev => [...prev, newRole]);
-            alert('Đã tạo vai trò mới thành công!');
+        try {
+            setSaving(true);
+            
+            if (editingRole) {
+                // Update existing role
+                await RoleService.updateRole(editingRole.id, {
+                    role_name: formData.role_name,
+                    description: formData.description
+                });
+                
+                setRoles(prev => prev.map(role => 
+                    role.id === editingRole.id 
+                        ? { ...role, role_name: formData.role_name, description: formData.description }
+                        : role
+                ));
+                alert('Đã cập nhật vai trò thành công!');
+            } else {
+                // Add new role
+                const newRoleData = {
+                    role_name: formData.role_name,
+                    description: formData.description,
+                    permissions: {},
+                    is_active: true
+                };
+                
+                const response = await RoleService.createRole(newRoleData);
+                setRoles(prev => [...prev, response.data.role]);
+                alert('Đã tạo vai trò mới thành công!');
+            }
+            
+            closeModal();
+        } catch (error: any) {
+            console.error('Error saving role:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi lưu vai trò. Vui lòng thử lại.';
+            alert(`Lỗi: ${errorMessage}`);
+        } finally {
+            setSaving(false);
         }
-        
-        closeModal();
     };
 
     const selectedRole = roles.find(r => r.id === selectedRoleId);
+
+    if (loading) {
+        return (
+            <div className="role-management-container">
+                <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>Đang tải danh sách vai trò...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="role-management-container">
+                <div className="error-container">
+                    <i className="fas fa-exclamation-triangle"></i>
+                    <p>{error}</p>
+                    <button className="btn btn-primary" onClick={() => window.location.reload()}>
+                        Thử lại
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="role-management-container">
@@ -313,15 +267,15 @@ const UserManagementPage: React.FC = () => {
                                     onClick={() => selectRole(role.id)}
                                 >
                                     <div className="role-header">
-                                        <div className="role-name">{role.name}</div>
-                                        <span className={`role-badge role-${role.name.toLowerCase()}`}>
-                                            {role.name}
+                                        <div className="role-name">{role.role_name}</div>
+                                        <span className={`role-badge role-${role.role_name.toLowerCase()}`}>
+                                            {role.role_name}
                                         </span>
                                     </div>
                                     <div className="role-description">{role.description}</div>
                                     <div className="role-stats">
-                                        <span><i className="fas fa-users"></i> {role.userCount} người dùng</span>
-                                        <span><i className="fas fa-check-circle"></i> {role.isActive ? 'Hoạt động' : 'Không hoạt động'}</span>
+                                        <span><i className="fas fa-users"></i> {role.user_count} người dùng</span>
+                                        <span><i className="fas fa-check-circle"></i> {role.is_active ? 'Hoạt động' : 'Không hoạt động'}</span>
                                     </div>
                                     <div className="role-actions">
                                         <button 
@@ -346,12 +300,16 @@ const UserManagementPage: React.FC = () => {
                     <div className="permission-section">
                         <div className="section-header">
                             <h3 className="section-title">
-                                {selectedRole ? `Quyền hạn của vai trò: ${selectedRole.name}` : 'Chọn vai trò để quản lý quyền hạn'}
+                                {selectedRole ? `Quyền hạn của vai trò: ${selectedRole.role_name}` : 'Chọn vai trò để quản lý quyền hạn'}
                             </h3>
                             <div>
                                 {selectedRoleId && (
-                                    <button className="btn btn-success btn-sm" onClick={savePermissions}>
-                                        <i className="fas fa-save"></i> Lưu thay đổi
+                                    <button 
+                                        className="btn btn-success btn-sm" 
+                                        onClick={savePermissions}
+                                        disabled={saving}
+                                    >
+                                        <i className="fas fa-save"></i> {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
                                     </button>
                                 )}
                             </div>
@@ -381,8 +339,8 @@ const UserManagementPage: React.FC = () => {
                                                             <div className="permission-desc">{perm.desc}</div>
                                                         </div>
                                                         <div 
-                                                            className={`permission-toggle ${currentPermissions[groupKey]?.includes(permKey) ? 'active' : ''}`}
-                                                            onClick={() => togglePermission(groupKey, permKey)}
+                                                            className={`permission-toggle ${currentPermissions[permKey] ? 'active' : ''}`}
+                                                            onClick={() => togglePermission(permKey)}
                                                         ></div>
                                                     </div>
                                                 ))}
@@ -412,8 +370,8 @@ const UserManagementPage: React.FC = () => {
                                     <input 
                                         type="text" 
                                         className="form-input" 
-                                        value={formData.name}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                        value={formData.role_name}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, role_name: e.target.value }))}
                                         required 
                                         placeholder="Nhập tên vai trò"
                                     />
@@ -434,8 +392,8 @@ const UserManagementPage: React.FC = () => {
                                     <button type="button" className="btn btn-secondary" onClick={closeModal}>
                                         Hủy
                                     </button>
-                                    <button type="submit" className="btn btn-primary">
-                                        <i className="fas fa-save"></i> {editingRole ? 'Cập nhật' : 'Tạo vai trò'}
+                                    <button type="submit" className="btn btn-primary" disabled={saving}>
+                                        <i className="fas fa-save"></i> {saving ? 'Đang lưu...' : (editingRole ? 'Cập nhật' : 'Tạo vai trò')}
                                     </button>
                                 </div>
                             </form>
@@ -446,4 +404,4 @@ const UserManagementPage: React.FC = () => {
     );
 };
 
-export default UserManagementPage;
+export default RoleManagementPage;

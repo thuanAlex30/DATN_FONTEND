@@ -26,7 +26,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   }
 
   // Check role-based access
-  if (requiredRole && requiredRole !== "" && user.role !== requiredRole) {
+  if (requiredRole && requiredRole !== "" && user.role?.role_name !== requiredRole) {
     return <Navigate to="/unauthorized" replace />;
   }
 

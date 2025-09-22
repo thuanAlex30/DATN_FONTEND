@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import './UserManagement.css';
 import userService from '../../../services/userService';
 import departmentService from '../../../services/departmentService';
 import positionService from '../../../services/positionService';
-import roleService from '../../../services/roleService';
+import RoleService from '../../../services/roleService';
 import ImportUsers from '../../../components/ImportUsers';
 import type { User } from '../../../types/user';
+import type { RootState } from '../../../store';
 
 const UserManagement: React.FC = () => {
+  // Redux state
+  const { user: currentUser } = useSelector((state: RootState) => state.auth);
+  
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +49,49 @@ const UserManagement: React.FC = () => {
 
   const itemsPerPage = 10;
 
+  // Check if current user has permission to view users
+  const hasUserReadPermission = () => {
+    console.log('Current user:', currentUser);
+    console.log('User role:', currentUser?.role);
+    console.log('User permissions:', currentUser?.role?.permissions);
+    
+    if (!currentUser?.role?.permissions) {
+      console.log('No permissions found');
+      return false;
+    }
+    
+    const hasPermission = currentUser.role.permissions['user:read'] === true;
+    console.log('Has user:read permission:', hasPermission);
+    return hasPermission;
+  };
+
+  // Check if current user has permission to create users
+  const hasUserCreatePermission = () => {
+    if (!currentUser?.role?.permissions) return false;
+    return currentUser.role.permissions['user:create'] === true;
+  };
+
+  // Check if current user has permission to update users
+  const hasUserUpdatePermission = () => {
+    if (!currentUser?.role?.permissions) return false;
+    return currentUser.role.permissions['user:update'] === true;
+  };
+
+  // Check if current user has permission to delete users
+  const hasUserDeletePermission = () => {
+    if (!currentUser?.role?.permissions) return false;
+    return currentUser.role.permissions['user:delete'] === true;
+  };
+
   // Load users from API
   const loadUsers = async () => {
+    // Check permission before loading users
+    if (!hasUserReadPermission()) {
+      setError('Bạn không có quyền xem danh sách người dùng');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -71,8 +117,11 @@ const UserManagement: React.FC = () => {
         // Load departments using /departments/active endpoint
         const departmentsResponse = await departmentService.getActiveDepartments();
         console.log('Departments response:', departmentsResponse);
-        const departmentsData = (departmentsResponse as any).data?.data || (departmentsResponse as any).data;
+        
+        // departmentService.getActiveDepartments() already returns response.data.data
+        const departmentsData = departmentsResponse;
         console.log('Departments data structure:', departmentsData);
+        
         if (Array.isArray(departmentsData)) {
           console.log('First department sample:', departmentsData[0]);
           setDepartments(departmentsData);
@@ -84,8 +133,11 @@ const UserManagement: React.FC = () => {
         // Load positions
         const positionsResponse = await positionService.getOptions();
         console.log('Positions response:', positionsResponse);
-        const positionsData = (positionsResponse as any).data?.data || (positionsResponse as any).data;
+        
+        // positionService.getOptions() returns api.get response, so we need response.data
+        const positionsData = positionsResponse.data?.data || positionsResponse.data;
         console.log('Positions data structure:', positionsData);
+        
         if (Array.isArray(positionsData)) {
           console.log('First position sample:', positionsData[0]);
           // Map API response format to expected format
@@ -103,10 +155,13 @@ const UserManagement: React.FC = () => {
         }
 
         // Load roles
-        const rolesResponse = await roleService.getAllActiveRoles();
+        const rolesResponse = await RoleService.getAllActiveRoles();
         console.log('Roles response:', rolesResponse);
-        const rolesData = (rolesResponse as any).data?.data || (rolesResponse as any).data;
+        
+        // RoleService.getAllActiveRoles() returns { success: boolean; data: Role[] }
+        const rolesData = rolesResponse.data;
         console.log('Roles data structure:', rolesData);
+        
         if (Array.isArray(rolesData)) {
           console.log('First role sample:', rolesData[0]);
           setRoles(rolesData);
@@ -161,9 +216,14 @@ const UserManagement: React.FC = () => {
     
     console.log('Filtering users:', users.length, 'users');
     let filtered = users.filter(user => {
-      const matchesSearch = user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           user.username.toLowerCase().includes(searchTerm.toLowerCase());
+      // Add null/undefined checks before calling toLowerCase
+      const fullName = user.full_name || '';
+      const email = user.email || '';
+      const username = user.username || '';
+      
+      const matchesSearch = fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           username.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = !statusFilter || 
                           (statusFilter === 'active' && user.is_active) ||
@@ -193,7 +253,7 @@ const UserManagement: React.FC = () => {
         <td>
           <div className="user-info">
             <div className="avatar">
-              {user.full_name.charAt(0).toUpperCase()}
+              {(user.full_name || 'U').charAt(0).toUpperCase()}
             </div>
             <div className="user-details">
               <div className="user-name">{user.full_name}</div>
@@ -211,15 +271,21 @@ const UserManagement: React.FC = () => {
         <td>{formatDate(user.created_at)}</td>
         <td>
           <div className="action-buttons">
-            <button className="btn btn-warning btn-sm" onClick={() => editUser(user)}>
-              <i className="fas fa-edit"></i>
-            </button>
-            <button className="btn btn-danger btn-sm" onClick={() => deleteUser(user)}>
-              <i className="fas fa-trash"></i>
-            </button>
-            <button className="btn btn-secondary btn-sm" onClick={() => viewUser(user)}>
-              <i className="fas fa-eye"></i>
-            </button>
+            {hasUserUpdatePermission() && (
+              <button className="btn btn-warning btn-sm" onClick={() => editUser(user)}>
+                <i className="fas fa-edit"></i>
+              </button>
+            )}
+            {hasUserDeletePermission() && (
+              <button className="btn btn-danger btn-sm" onClick={() => deleteUser(user)}>
+                <i className="fas fa-trash"></i>
+              </button>
+            )}
+            {hasUserReadPermission() && (
+              <button className="btn btn-secondary btn-sm" onClick={() => viewUser(user)}>
+                <i className="fas fa-eye"></i>
+              </button>
+            )}
           </div>
         </td>
       </tr>
@@ -335,6 +401,14 @@ const UserManagement: React.FC = () => {
   const confirmDelete = async () => {
     if (!userToDelete) return;
     
+    // Check permission before deleting
+    if (!hasUserDeletePermission()) {
+      alert('Bạn không có quyền xóa người dùng');
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+      return;
+    }
+    
     setIsDeleting(true);
     try {
       await userService.deleteUser(userToDelete.id);
@@ -421,6 +495,19 @@ const UserManagement: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check permission before creating/updating
+    if (editingUser) {
+      if (!hasUserUpdatePermission()) {
+        alert('Bạn không có quyền sửa người dùng');
+        return;
+      }
+    } else {
+      if (!hasUserCreatePermission()) {
+        alert('Bạn không có quyền tạo người dùng');
+        return;
+      }
+    }
     
     // Debug: Log form data before validation
     console.log('Form data before validation:', formData);
@@ -538,9 +625,11 @@ const UserManagement: React.FC = () => {
           <button className="btn btn-success" onClick={() => setShowImportUsers(true)}>
             <i className="fas fa-file-excel"></i> Import Excel
           </button>
-          <button className="btn btn-primary" onClick={openModal}>
-            <i className="fas fa-plus"></i> Thêm người dùng
-          </button>
+          {hasUserCreatePermission() && (
+            <button className="btn btn-primary" onClick={openModal}>
+              <i className="fas fa-plus"></i> Thêm người dùng
+            </button>
+          )}
         </div>
       </div>
 
@@ -803,7 +892,7 @@ const UserManagement: React.FC = () => {
             <div className="delete-modal-body">
               <div className="user-info-delete">
                 <div className="avatar">
-                  {userToDelete.full_name.charAt(0).toUpperCase()}
+                  {(userToDelete.full_name || 'U').charAt(0).toUpperCase()}
                 </div>
                 <div className="user-details">
                   <div className="user-name">{userToDelete.full_name}</div>

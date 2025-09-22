@@ -55,9 +55,89 @@ export interface DepartmentStats {
   totalProjects: number;
 }
 
+export interface HierarchyNode {
+  id: string;
+  name: string;
+  type: 'department' | 'position' | 'employee';
+  level: number;
+  children: HierarchyNode[];
+  data: any;
+  employeeCount?: number;
+  isExpanded?: boolean;
+}
+
+export interface OrganizationChartProps {
+  departments: any[];
+  positions: any[];
+  departmentEmployeeCounts: Record<string, number>;
+}
+
+export interface HierarchyTreeProps {
+  departments: any[];
+  positions: any[];
+  departmentEmployeeCounts: Record<string, number>;
+}
+
+export interface HierarchyListProps {
+  departments: any[];
+  positions: any[];
+  departmentEmployeeCounts: Record<string, number>;
+}
+
 export interface DepartmentEfficiency {
   name: string;
   employees: number;
   projects: number;
   efficiency: string;
+}
+
+// Analytics Types
+export interface AnalyticsData {
+  departmentStats: DepartmentAnalytics[];
+  employeeDistribution: EmployeeDistributionData[];
+  positionStats: PositionAnalytics[];
+  overallStats: OverallStats;
+}
+
+export interface DepartmentAnalytics {
+  id: string;
+  name: string;
+  employeeCount: number;
+  positionCount: number;
+  managerName: string;
+  status: string;
+  level: 'root' | 'managed';
+}
+
+export interface EmployeeDistributionData {
+  departmentId: string;
+  departmentName: string;
+  employeeCount: number;
+  percentage: number;
+}
+
+export interface PositionAnalytics {
+  departmentId: string;
+  departmentName: string;
+  positions: {
+    name: string;
+    count: number;
+    level: string;
+  }[];
+}
+
+export interface OverallStats {
+  totalDepartments: number;
+  totalEmployees: number;
+  totalPositions: number;
+  rootDepartments: number;
+  managedDepartments: number;
+  departmentsWithManagers: number;
+  departmentsWithoutManagers: number;
+}
+
+export interface AnalyticsDashboardProps {
+  departments: any[];
+  positions: any[];
+  departmentEmployeeCounts: Record<string, number>;
 }

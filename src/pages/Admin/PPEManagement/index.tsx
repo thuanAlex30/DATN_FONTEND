@@ -1,238 +1,591 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import './PPEManagement.css';
-
-// Types
-interface PPECategory {
-  category_id: number;
-  category_name: string;
-  description: string;
-  lifespan_months: number;
-}
-
-interface Site {
-  site_id: number;
-  site_name: string;
-  address: string;
-  is_active: boolean;
-}
-
-interface PPEItem {
-  item_id: number;
-  category_id: number;
-  item_code: string;
-  item_name: string;
-  brand?: string;
-  model?: string;
-  reorder_level: number;
-}
-
-interface PPEInventory {
-  inventory_id: number;
-  item_id: number;
-  site_id: number;
-  quantity_available: number;
-  quantity_allocated: number;
-  last_updated: string;
-}
-
-interface User {
-  user_id: number;
-  full_name: string;
-  email: string;
-  department: string;
-}
-
-interface PPEIssuance {
-  issuance_id: number;
-  user_id: number;
-  item_id: number;
-  quantity: number;
-  issued_date: string;
-  expected_return_date: string;
-  issued_by: number;
-  status: 'issued' | 'returned' | 'overdue';
-  actual_return_date?: string;
-}
+import * as ppeService from '../../../services/ppeService';
+import CategoryEditModal from './CategoryEditModal';
+import CategoryDetailModal from './CategoryDetailModal';
+import ImportCategoriesModal from './ImportCategoriesModal';
+import ImportItemsModal from './ImportItemsModal';
+import type { 
+  PPECategory, 
+  PPEItem, 
+  PPEIssuance,
+  CreateIssuanceData,
+  UpdateItemQuantityData
+} from '../../../services/ppeService';
+import type { RootState } from '../../../store';
 
 const PPEManagement: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('items');
+  const { user: currentUser } = useSelector((state: RootState) => state.auth);
+  const [activeTab, setActiveTab] = useState('categories');
   const [showModal, setShowModal] = useState<string | null>(null);
   
-  // Sample data
-  const ppeCategories: PPECategory[] = [
-    { category_id: 1, category_name: "Bảo vệ đầu", description: "Nón bảo hộ, mũ cứng", lifespan_months: 12 },
-    { category_id: 2, category_name: "Bảo vệ mắt", description: "Kính bảo hộ, mặt nạ", lifespan_months: 6 },
-    { category_id: 3, category_name: "Bảo vệ hô hấp", description: "Khẩu trang, mặt nạ phòng độc", lifespan_months: 1 },
-    { category_id: 4, category_name: "Bảo vệ chân tay", description: "Găng tay, giày bảo hộ", lifespan_months: 3 }
-  ];
-
-  const sites: Site[] = [
-    { site_id: 1, site_name: "Công trường A", address: "123 Đường ABC, Quận 1", is_active: true },
-    { site_id: 2, site_name: "Công trường B", address: "456 Đường XYZ, Quận 2", is_active: true },
-    { site_id: 3, site_name: "Kho trung tâm", address: "789 Đường DEF, Quận 3", is_active: true }
-  ];
-
-  const ppeItems: PPEItem[] = [
-    {
-      item_id: 1,
-      category_id: 1,
-      item_code: "HELMET-001",
-      item_name: "Nón bảo hộ trắng",
-      brand: "3M",
-      model: "H-700",
-      reorder_level: 20
+  // Modal states
+  const [selectedCategory, setSelectedCategory] = useState<PPECategory | null>(null);
+  const [selectedItem, setSelectedItem] = useState<PPEItem | null>(null);
+  const [showCategoryDetailModal, setShowCategoryDetailModal] = useState(false);
+  const [showCategoryEditModal, setShowCategoryEditModal] = useState(false);
+  const [showItemEditModal, setShowItemEditModal] = useState(false);
+  const [showViewPPEModal, setShowViewPPEModal] = useState(false);
+  const [showImportCategoriesModal, setShowImportCategoriesModal] = useState(false);
+  const [showImportItemsModal, setShowImportItemsModal] = useState(false);
+  
+  // State for data
+  const [ppeCategories, setPpeCategories] = useState<PPECategory[]>([]);
+  const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
+  const [ppeIssuances, setPpeIssuances] = useState<PPEIssuance[]>([]);
+  
+  // PPE Assignment states
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [userPPE, setUserPPE] = useState<PPEIssuance[]>([]);
+  const [assignmentSearchTerm, setAssignmentSearchTerm] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [forceModalRefresh, setForceModalRefresh] = useState(0);
+  
+  // Loading states
+  const [loading, setLoading] = useState({
+    categories: false,
+    items: false,
+    issuances: false,
+    assignment: false,
+    users: false
+  });
+  
+  // Error states
+  const [error, setError] = useState<string | null>(null);
+  
+  // Form states
+  const [formData, setFormData] = useState({
+    updateQuantity: {
+      quantity_available: 0,
+      quantity_allocated: 0
+    } as UpdateItemQuantityData,
+    issuePPE: {} as CreateIssuanceData,
+    addCategory: {
+      category_name: '',
+      description: '',
+      lifespan_months: 0
     },
-    {
-      item_id: 2,
-      category_id: 1,
-      item_code: "HELMET-002", 
-      item_name: "Nón bảo hộ vàng",
-      brand: "MSA",
-      model: "V-Gard",
-      reorder_level: 15
+    addItem: {
+      category_id: '',
+      item_code: '',
+      item_name: '',
+      brand: '',
+      model: '',
+      reorder_level: 10,
+      quantity_available: 0,
+      quantity_allocated: 0
     },
-    {
-      item_id: 3,
-      category_id: 2,
-      item_code: "GLASS-001",
-      item_name: "Kính bảo hộ trong suốt",
-      brand: "Honeywell",
-      model: "A800",
-      reorder_level: 30
-    },
-    {
-      item_id: 4,
-      category_id: 3,
-      item_code: "MASK-001",
-      item_name: "Khẩu trang N95",
-      brand: "3M",
-      model: "8210",
-      reorder_level: 100
-    },
-    {
-      item_id: 5,
-      category_id: 4,
-      item_code: "GLOVE-001",
-      item_name: "Găng tay da",
-      brand: "Ansell",
-      model: "PowerFlex",
-      reorder_level: 50
-    },
-    {
-      item_id: 6,
-      category_id: 4,
-      item_code: "BOOT-001",
-      item_name: "Giày bảo hộ da",
-      brand: "Red Wing",
-      model: "2412",
-      reorder_level: 25
+    editItem: {
+      category_id: '',
+      item_code: '',
+      item_name: '',
+      brand: '',
+      model: '',
+      reorder_level: 10,
+      quantity_available: 0,
+      quantity_allocated: 0
     }
-  ];
+  });
 
-  const ppeInventory: PPEInventory[] = [
-    { inventory_id: 1, item_id: 1, site_id: 1, quantity_available: 45, quantity_allocated: 15, last_updated: "2024-03-10T14:30:00" },
-    { inventory_id: 2, item_id: 1, site_id: 2, quantity_available: 32, quantity_allocated: 8, last_updated: "2024-03-10T14:30:00" },
-    { inventory_id: 3, item_id: 1, site_id: 3, quantity_available: 120, quantity_allocated: 0, last_updated: "2024-03-10T14:30:00" },
-    { inventory_id: 4, item_id: 2, site_id: 1, quantity_available: 28, quantity_allocated: 12, last_updated: "2024-03-10T14:30:00" },
-    { inventory_id: 5, item_id: 3, site_id: 1, quantity_available: 85, quantity_allocated: 25, last_updated: "2024-03-10T14:30:00" },
-    { inventory_id: 6, item_id: 4, site_id: 1, quantity_available: 250, quantity_allocated: 50, last_updated: "2024-03-10T14:30:00" },
-    { inventory_id: 7, item_id: 5, site_id: 1, quantity_available: 75, quantity_allocated: 25, last_updated: "2024-03-10T14:30:00" },
-    { inventory_id: 8, item_id: 6, site_id: 1, quantity_available: 18, quantity_allocated: 7, last_updated: "2024-03-10T14:30:00" },
-    { inventory_id: 9, item_id: 4, site_id: 2, quantity_available: 8, quantity_allocated: 2, last_updated: "2024-03-10T14:30:00" }
-  ];
+  // Search and filter states
+  const [inventoryFilters, setInventoryFilters] = useState({
+    search: '',
+    statusFilter: '',
+    categoryFilter: ''
+  });
 
-  const users: User[] = [
-    { user_id: 1, full_name: "Nguyễn Văn An", email: "an.nguyen@company.com", department: "Kỹ thuật" },
-    { user_id: 2, full_name: "Trần Thị Bình", email: "binh.tran@company.com", department: "An toàn" },
-    { user_id: 3, full_name: "Lê Văn Cường", email: "cuong.le@company.com", department: "Sản xuất" },
-    { user_id: 4, full_name: "Phạm Thị Dung", email: "dung.pham@company.com", department: "Kỹ thuật" },
-    { user_id: 5, full_name: "Hoàng Văn Em", email: "em.hoang@company.com", department: "Bảo trì" },
-    { user_id: 100, full_name: "Admin User", email: "admin@company.com", department: "Quản lý" }
-  ];
+  // Load data on component mount
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+    loadAllData();
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, []);
 
-  const ppeIssuances: PPEIssuance[] = [
-    {
-      issuance_id: 1,
-      user_id: 1,
-      item_id: 1,
-      quantity: 1,
-      issued_date: "2024-03-01",
-      expected_return_date: "2024-09-01",
-      issued_by: 100,
-      status: "issued"
-    },
-    {
-      issuance_id: 2,
-      user_id: 2,
-      item_id: 3,
-      quantity: 2,
-      issued_date: "2024-03-05",
-      expected_return_date: "2024-09-05",
-      issued_by: 100,
-      status: "issued"
-    },
-    {
-      issuance_id: 3,
-      user_id: 3,
-      item_id: 4,
-      quantity: 10,
-      issued_date: "2024-02-15",
-      expected_return_date: "2024-03-15",
-      issued_by: 100,
-      status: "overdue"
-    },
-    {
-      issuance_id: 4,
-      user_id: 4,
-      item_id: 5,
-      quantity: 2,
-      issued_date: "2024-01-20",
-      expected_return_date: "2024-04-20",
-      issued_by: 100,
-      status: "returned",
-      actual_return_date: "2024-04-18"
-    },
-    {
-      issuance_id: 5,
-      user_id: 5,
-      item_id: 6,
-      quantity: 1,
-      issued_date: "2024-03-08",
-      expected_return_date: "2024-12-08",
-      issued_by: 100,
-      status: "issued"
+  // Load users when switching to PPE management or issuances tab
+  useEffect(() => {
+    if ((activeTab === 'ppe-management' || activeTab === 'issuances') && users.length === 0) {
+      loadUsers();
     }
-  ];
+  }, [activeTab]);
+
+  // Force refresh modal when PPE issuances change
+  useEffect(() => {
+    if (showViewPPEModal && selectedUser && ppeIssuances.length > 0) {
+      console.log('🔄 PPE issuances changed, forcing modal refresh');
+      setForceModalRefresh(prev => prev + 1);
+    }
+  }, [ppeIssuances.length, showViewPPEModal, selectedUser]);
+
+  // Auto-refresh user PPE when modal is open and issuances change
+  useEffect(() => {
+    if (showViewPPEModal && selectedUser) {
+      console.log('🔄 Auto-refreshing user PPE for:', selectedUser.full_name);
+      console.log('📊 Current ppeIssuances length:', ppeIssuances.length);
+      console.log('📊 Current userPPE length:', userPPE.length);
+      console.log('🔄 Refresh trigger:', refreshTrigger);
+      console.log('🔄 Force modal refresh:', forceModalRefresh);
+      
+      // Force reload from server every time
+      loadUserPPE(selectedUser._id.toString());
+    }
+  }, [showViewPPEModal, selectedUser, ppeIssuances.length, refreshTrigger, forceModalRefresh]);
+
+  const loadAllData = async () => {
+    try {
+      // Load all data in parallel for better performance
+      const [categoriesData, itemsData, issuancesData] = await Promise.all([
+        ppeService.getPPECategories(),
+        ppeService.getPPEItems(),
+        ppeService.getPPEIssuances()
+      ]);
+      
+      // Update all states at once
+      setPpeCategories(categoriesData);
+      setPpeItems(itemsData);
+      setPpeIssuances(issuancesData);
+    } catch (err) {
+      console.error('Error loading all data:', err);
+      setError('Có lỗi khi tải dữ liệu');
+    }
+  };
+
+  const forceRefresh = async () => {
+    setError(null);
+    await loadAllData();
+  };
+
+  const loadCategories = async () => {
+    setLoading(prev => ({ ...prev, categories: true }));
+    try {
+      const data = await ppeService.getPPECategories();
+      setPpeCategories(data);
+    } catch (err) {
+      console.error('Error loading categories:', err);
+    } finally {
+      setLoading(prev => ({ ...prev, categories: false }));
+    }
+  };
+
+
+  // PPE Assignment handlers
+  const loadUsers = async () => {
+    setLoading(prev => ({ ...prev, users: true }));
+    try {
+      const data = await ppeService.getAllUsers();
+      setUsers(data);
+    } catch (err) {
+      console.error('Error loading users:', err);
+      setError('Không thể tải danh sách nhân viên');
+    } finally {
+      setLoading(prev => ({ ...prev, users: false }));
+    }
+  };
+
+  const loadUserPPE = async (userId: string) => {
+    setLoading(prev => ({ ...prev, assignment: true }));
+    try {
+      const data = await ppeService.getPPEIssuancesByUser(userId);
+      setUserPPE(data);
+    } catch (err) {
+      console.error('Error loading user PPE:', err);
+      setError('Không thể tải PPE của nhân viên');
+    } finally {
+      setLoading(prev => ({ ...prev, assignment: false }));
+    }
+  };
+
+  const handleUserSelect = (user: any) => {
+    console.log('👤 Selecting user:', user.full_name);
+    setSelectedUser(user);
+    setRefreshTrigger(prev => prev + 1); // Trigger refresh
+    setForceModalRefresh(prev => prev + 1); // Force modal refresh
+    loadUserPPE(user._id.toString());
+    setShowViewPPEModal(true);
+  };
+
+  const handleCloseViewPPEModal = () => {
+    console.log('❌ Closing View PPE modal');
+    setShowViewPPEModal(false);
+    setSelectedUser(null);
+    setUserPPE([]);
+    setRefreshTrigger(0); // Reset refresh trigger
+    setForceModalRefresh(0); // Reset force modal refresh
+  };
+
+  const handleAssignPPE = (user: any) => {
+    console.log('🚀 handleAssignPPE called with user:', user);
+    setFormData(prev => ({ 
+      ...prev, 
+      issuePPE: {
+        user_id: user._id.toString(),
+        item_id: '',
+        quantity: 1,
+        issued_date: new Date().toISOString(),
+        expected_return_date: '',
+        issued_by: currentUser?.id || ''
+      }
+    }));
+    // Close view PPE modal if it's open
+    setShowViewPPEModal(false);
+    openModal('issuePPEModal');
+  };
+
+  // Category handlers
+  const handleAddCategory = async () => {
+    setLoading(prev => ({ ...prev, categories: true }));
+    try {
+      console.log('🚀 Adding new PPE category:', formData.addCategory);
+      
+      const newCategory = await ppeService.createPPECategory(formData.addCategory);
+      console.log('✅ PPE category created:', newCategory);
+      
+      // Update state immediately - no reload needed
+      setPpeCategories(prev => {
+        const updatedCategories = [...prev, newCategory];
+        console.log('📂 Updated categories list:', updatedCategories);
+        return updatedCategories;
+      });
+      
+      closeModal();
+      setFormData(prev => ({ 
+        ...prev, 
+        addCategory: { category_name: '', description: '', lifespan_months: 0 }
+      }));
+      
+      console.log('✅ PPE category added successfully');
+    } catch (err) {
+      console.error('❌ Error adding category:', err);
+      setError('Có lỗi khi tạo danh mục');
+    } finally {
+      setLoading(prev => ({ ...prev, categories: false }));
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return;
+    
+    setLoading(prev => ({ ...prev, categories: true }));
+    try {
+      console.log('🚀 Deleting PPE category:', categoryId);
+      
+      await ppeService.deletePPECategory(categoryId);
+      console.log('✅ PPE category deleted');
+      
+      // Update state immediately - no reload needed
+      setPpeCategories(prev => {
+        const updatedCategories = prev.filter(category => category._id !== categoryId);
+        console.log('📂 Updated categories list after deletion:', updatedCategories);
+        return updatedCategories;
+      });
+      
+      console.log('✅ PPE category deleted successfully');
+      setError(null); // Clear any previous errors
+    } catch (err: any) {
+      console.error('❌ Error deleting category:', err);
+      
+      // Extract error message from response
+      let errorMessage = 'Có lỗi khi xóa danh mục';
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(prev => ({ ...prev, categories: false }));
+    }
+  };
+
+  const handleAddItem = async () => {
+    setLoading(prev => ({ ...prev, items: true }));
+    try {
+      console.log('🚀 Adding new PPE item:', formData.addItem);
+      
+      const newItem = await ppeService.createPPEItem(formData.addItem);
+      console.log('✅ PPE item created:', newItem);
+      
+      // Update state immediately - no reload needed
+      setPpeItems(prev => {
+        const updatedItems = [...prev, newItem];
+        console.log('📦 Updated items list:', updatedItems);
+        return updatedItems;
+      });
+      
+      closeModal();
+      setFormData(prev => ({ 
+        ...prev, 
+        addItem: {
+          category_id: '',
+          item_code: '',
+          item_name: '',
+          brand: '',
+          model: '',
+          reorder_level: 10,
+          quantity_available: 0,
+          quantity_allocated: 0
+        }
+      }));
+      
+      console.log('✅ PPE item added successfully');
+    } catch (err) {
+      console.error('❌ Error adding item:', err);
+      setError('Có lỗi khi tạo thiết bị');
+    } finally {
+      setLoading(prev => ({ ...prev, items: false }));
+    }
+  };
+
+  const handleEditItem = async () => {
+    if (!selectedItem) return;
+    
+    setLoading(prev => ({ ...prev, items: true }));
+    try {
+      console.log('🚀 Editing PPE item:', selectedItem._id, 'with data:', formData.editItem);
+      
+      const updatedItem = await ppeService.updatePPEItem(selectedItem._id, formData.editItem);
+      console.log('✅ PPE item updated:', updatedItem);
+      
+      // Update state immediately - no reload needed
+      setPpeItems(prev => {
+        const updatedItems = prev.map(item => 
+          item._id === selectedItem._id ? updatedItem : item
+        );
+        console.log('📦 Updated items list:', updatedItems);
+        return updatedItems;
+      });
+      
+      setShowItemEditModal(false);
+      setSelectedItem(null);
+      
+      console.log('✅ PPE item edited successfully');
+    } catch (err) {
+      console.error('❌ Error updating item:', err);
+      setError('Có lỗi khi cập nhật thiết bị');
+    } finally {
+      setLoading(prev => ({ ...prev, items: false }));
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa thiết bị này?')) return;
+    
+    setLoading(prev => ({ ...prev, items: true }));
+    try {
+      console.log('🚀 Deleting PPE item:', itemId);
+      
+      await ppeService.deletePPEItem(itemId);
+      console.log('✅ PPE item deleted');
+      
+      // Update state immediately - no reload needed
+      setPpeItems(prev => {
+        const updatedItems = prev.filter(item => item._id !== itemId);
+        console.log('📦 Updated items list after deletion:', updatedItems);
+        return updatedItems;
+      });
+      
+      console.log('✅ PPE item deleted successfully');
+    } catch (err) {
+      console.error('❌ Error deleting item:', err);
+      setError('Có lỗi khi xóa thiết bị');
+    } finally {
+      setLoading(prev => ({ ...prev, items: false }));
+    }
+  };
+
+  const handleUpdateItemQuantity = async (itemId: string, data: UpdateItemQuantityData) => {
+    setLoading(prev => ({ ...prev, items: true }));
+    try {
+      console.log('🚀 Updating item quantity:', itemId, 'with data:', data);
+      
+      const updatedItem = await ppeService.updatePPEItemQuantity(itemId, data);
+      console.log('✅ Item quantity updated:', updatedItem);
+      
+      // Update state immediately - no reload needed
+      setPpeItems(prev => {
+        const updatedItems = prev.map(item => 
+          item._id === itemId ? updatedItem : item
+        );
+        console.log('📦 Updated items list after quantity update:', updatedItems);
+        return updatedItems;
+      });
+      
+      console.log('✅ Item quantity updated successfully');
+    } catch (err) {
+      console.error('❌ Error updating item quantity:', err);
+      setError('Có lỗi khi cập nhật số lượng thiết bị');
+    } finally {
+      setLoading(prev => ({ ...prev, items: false }));
+    }
+  };
+
+  const handleIssuePPE = async () => {
+    setLoading(prev => ({ ...prev, issuances: true }));
+    try {
+      console.log('🚀 Starting PPE issuance with data:', formData.issuePPE);
+      
+      const newIssuance = await ppeService.createPPEIssuance(formData.issuePPE);
+      console.log('✅ PPE issuance created:', newIssuance);
+      
+      // Update PPE item quantities immediately - this is the key fix
+      const issuedItemId = formData.issuePPE.item_id;
+      const issuedQuantity = formData.issuePPE.quantity;
+      
+      console.log('📦 Updating item quantities for:', issuedItemId, 'quantity:', issuedQuantity);
+      
+      // Update PPE items state immediately
+      setPpeItems(prev => {
+        const updatedItems = prev.map(item => {
+          if (item._id === issuedItemId) {
+            const updatedItem = {
+              ...item,
+              quantity_available: Math.max(0, (item.quantity_available || 0) - issuedQuantity),
+              quantity_allocated: (item.quantity_allocated || 0) + issuedQuantity,
+              remaining_quantity: Math.max(0, (item.remaining_quantity || item.quantity_available || 0) - issuedQuantity),
+              actual_allocated_quantity: (item.actual_allocated_quantity || item.quantity_allocated || 0) + issuedQuantity
+            };
+            console.log('🔄 Updated item:', updatedItem);
+            return updatedItem;
+          }
+          return item;
+        });
+        console.log('📊 All items after update:', updatedItems);
+        return updatedItems;
+      });
+      
+      // Update PPE issuances state immediately
+      setPpeIssuances(prev => {
+        const updatedIssuances = [...prev, newIssuance];
+        console.log('📋 Updated issuances:', updatedIssuances);
+        return updatedIssuances;
+      });
+      
+      // If we have a selected user, update their PPE data immediately
+      if (selectedUser) {
+        console.log('🔄 Updating userPPE for selected user:', selectedUser.full_name);
+        console.log('📦 New issuance data:', newIssuance);
+        console.log('📋 Current userPPE before update:', userPPE);
+        
+        setUserPPE(prev => {
+          const updatedUserPPE = [...prev, newIssuance];
+          console.log('👤 Updated user PPE immediately:', updatedUserPPE);
+          return updatedUserPPE;
+        });
+      }
+      
+      closeModal();
+      setFormData(prev => ({ 
+        ...prev, 
+        issuePPE: {} as CreateIssuanceData
+      }));
+      
+      // If we have a selected user, keep modal open and refresh data
+      if (selectedUser) {
+        console.log('🔄 Keeping modal open and refreshing data for user:', selectedUser.full_name);
+        console.log('📊 Current showViewPPEModal state:', showViewPPEModal);
+        
+        // Trigger refresh by updating both triggers
+        setRefreshTrigger(prev => prev + 1);
+        setForceModalRefresh(prev => prev + 1);
+        
+        // Force reload user PPE from server without closing modal
+        setTimeout(async () => {
+          console.log('🔄 Force reloading user PPE from server');
+          await loadUserPPE(selectedUser._id.toString());
+        }, 200); // Small delay to ensure state updates are processed
+      }
+      
+      // Show success message
+      setError(null);
+      console.log('✅ PPE issuance completed successfully');
+      
+    } catch (err) {
+      console.error('❌ Error issuing PPE:', err);
+      setError('Có lỗi khi phát PPE');
+    } finally {
+      setLoading(prev => ({ ...prev, issuances: false }));
+    }
+  };
 
   // Utility functions
-  const getCategoryName = (categoryId: number): string => {
-    const category = ppeCategories.find(c => c.category_id === categoryId);
-    return category ? category.category_name : 'Không xác định';
+  const getFilteredItems = () => {
+    return ppeItems.filter(item => {
+      if (inventoryFilters.search) {
+        const searchTerm = inventoryFilters.search.toLowerCase();
+        if (!item.item_name.toLowerCase().includes(searchTerm)) {
+          return false;
+        }
+      }
+      
+      if (inventoryFilters.categoryFilter) {
+        if (item.category_id._id !== inventoryFilters.categoryFilter) {
+          return false;
+        }
+      }
+      
+      if (inventoryFilters.statusFilter) {
+        const stockStatus = getStockStatus(item);
+        
+        if (inventoryFilters.statusFilter === 'low' && stockStatus !== 'low') return false;
+        if (inventoryFilters.statusFilter === 'out' && stockStatus !== 'out') return false;
+        if (inventoryFilters.statusFilter === 'good' && stockStatus !== 'good') return false;
+      }
+      
+      return true;
+    });
   };
 
-  const getCategoryIcon = (categoryId: number): string => {
-    const icons: { [key: number]: string } = {
-      1: 'fas fa-hard-hat',
-      2: 'fas fa-glasses',
-      3: 'fas fa-head-side-mask',
-      4: 'fas fa-mitten'
+  const getFilteredCategories = () => {
+    return ppeCategories.filter(category => {
+      if (inventoryFilters.search) {
+        const searchTerm = inventoryFilters.search.toLowerCase();
+        if (!category.category_name.toLowerCase().includes(searchTerm) &&
+            !category.description.toLowerCase().includes(searchTerm)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  };
+
+  const getCategoryIcon = (categoryId: string): string => {
+    const icons: { [key: string]: string } = {
+      '68ce529c013e99c5ff884ec1': 'fas fa-hard-hat', // Bảo vệ đầu
+      '68ce529c013e99c5ff884ec2': 'fas fa-glasses', // Bảo vệ mắt
+      '68ce529c013e99c5ff884ec3': 'fas fa-head-side-mask', // Bảo vệ hô hấp
+      '68ce529c013e99c5ff884ec4': 'fas fa-mitten', // Bảo vệ chân tay
+      '68ce529c013e99c5ff884ec5': 'fas fa-shoe-prints', // Bảo vệ chân
+      '68ce529c013e99c5ff884ec6': 'fas fa-tshirt', // Bảo vệ cơ thể
+      '68ce529c013e99c5ff884ec7': 'fas fa-volume-up', // Bảo vệ thính giác
     };
-    return icons[categoryId] || 'fas fa-box';
+    return icons[categoryId] || 'fas fa-shield-alt';
   };
 
-  const getItemName = (itemId: number): string => {
-    const item = ppeItems.find(i => i.item_id === itemId);
-    return item ? item.item_name : 'Không xác định';
+  const getCategoryStats = (categoryId: string) => {
+    const categoryItems = ppeItems.filter(item => item.category_id._id === categoryId);
+    const totalItems = categoryItems.length;
+    const totalQuantity = categoryItems.reduce((sum, item) => sum + (item.total_quantity || (item.quantity_available + item.quantity_allocated)), 0);
+    const totalRemaining = categoryItems.reduce((sum, item) => sum + (item.remaining_quantity || item.quantity_available), 0);
+    const totalAllocated = categoryItems.reduce((sum, item) => sum + (item.actual_allocated_quantity || item.quantity_allocated), 0);
+    const lowStockItems = categoryItems.filter(item => (item.remaining_quantity || item.quantity_available) <= item.reorder_level).length;
+    
+    return {
+      totalItems,
+      totalQuantity,
+      totalRemaining,
+      totalAllocated,
+      lowStockItems
+    };
   };
 
-  const getUserName = (userId: number): string => {
-    const user = users.find(u => u.user_id === userId);
-    return user ? user.full_name : 'Không xác định';
-  };
-
-  const getStockStatus = (available: number, reorderLevel: number): string => {
-    if (available === 0) return 'out';
-    if (available <= reorderLevel) return 'low';
+  const getStockStatus = (item: PPEItem): string => {
+    const remainingQuantity = item.remaining_quantity || item.quantity_available;
+    if (remainingQuantity === 0) return 'out';
+    if (remainingQuantity <= item.reorder_level) return 'low';
     return 'good';
   };
 
@@ -240,34 +593,18 @@ const PPEManagement: React.FC = () => {
     const labels: { [key: string]: string } = {
       'out': 'Hết hàng',
       'low': 'Sắp hết',
-      'good': 'Đầy đủ'
+      'good': 'Còn hàng'
     };
-    return labels[status] || status;
+    return labels[status] || 'Không xác định';
   };
 
-  const getStatusLabel = (status: string): string => {
-    const labels: { [key: string]: string } = {
-      'issued': 'Đã phát',
-      'returned': 'Đã trả',
-      'overdue': 'Quá hạn'
-    };
-    return labels[status] || status;
+  const formatDateTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN') + ' ' + date.toLocaleTimeString('vi-VN');
   };
 
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('vi-VN');
-  };
-
-  const formatDateTime = (dateTimeString: string): string => {
-    return new Date(dateTimeString).toLocaleString('vi-VN');
-  };
-
-  const switchTab = (tabName: string) => {
-    setActiveTab(tabName);
-  };
-
-  const openModal = (modalId: string) => {
-    setShowModal(modalId);
+  const openModal = (modalName: string) => {
+    setShowModal(modalName);
   };
 
   const closeModal = () => {
@@ -277,183 +614,340 @@ const PPEManagement: React.FC = () => {
   return (
     <div className="ppe-management-container">
       <div className="ppe-content">
-        {/* Header */}
+        {/* Enhanced Header */}
         <div className="header">
           <div>
-            <h1><i className="fas fa-hard-hat"></i> Quản lý thiết bị bảo hộ</h1>
+            <h1>
+              <i className="fas fa-hard-hat"></i>
+              Quản lý PPE
+            </h1>
             <div className="breadcrumb">
-              <a href="/admin/dashboard">Dashboard</a> / Thiết bị bảo hộ
+              <a href="/admin">
+                <i className="fas fa-home"></i>
+                Trang chủ
+              </a>
+              <i className="fas fa-chevron-right"></i>
+              <span>Quản lý PPE</span>
             </div>
           </div>
-          <a href="/admin/dashboard" className="btn btn-secondary">
-            <i className="fas fa-arrow-left"></i> Quay lại
-          </a>
+          <div className="action-buttons">
+            <button 
+              className="btn btn-primary"
+              onClick={forceRefresh}
+              disabled={Object.values(loading).some(l => l)}
+            >
+              <i className="fas fa-sync-alt"></i>
+              Làm mới
+            </button>
+          </div>
         </div>
 
-      {/* Tabs */}
+      {error && (
+        <div className="alert alert-error">
+          <i className="fas fa-exclamation-triangle"></i>
+          {error}
+          <button onClick={() => setError(null)} className="alert-close">
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+      )}
+
+        {/* Enhanced Tabs */}
       <div className="tabs">
         <div className="tab-nav">
           <button 
-            className={`tab-button ${activeTab === 'items' ? 'active' : ''}`} 
-            onClick={() => switchTab('items')}
+              className={`tab-button ${activeTab === 'categories' ? 'active' : ''}`}
+              onClick={() => setActiveTab('categories')}
           >
-            <i className="fas fa-box"></i> Danh mục PPE
+              <i className="fas fa-list"></i>
+              Danh mục
           </button>
           <button 
-            className={`tab-button ${activeTab === 'inventory' ? 'active' : ''}`} 
-            onClick={() => switchTab('inventory')}
+              className={`tab-button ${activeTab === 'items' ? 'active' : ''}`}
+              onClick={() => setActiveTab('items')}
           >
-            <i className="fas fa-warehouse"></i> Kho hàng
+              <i className="fas fa-box"></i>
+              Thiết bị
           </button>
           <button 
-            className={`tab-button ${activeTab === 'issuance' ? 'active' : ''}`} 
-            onClick={() => switchTab('issuance')}
+              className={`tab-button ${activeTab === 'ppe-management' ? 'active' : ''}`}
+              onClick={() => setActiveTab('ppe-management')}
           >
-            <i className="fas fa-hand-holding"></i> Phát PPE
+              <i className="fas fa-hand-holding"></i>
+              Phát PPE
           </button>
           <button 
-            className={`tab-button ${activeTab === 'tracking' ? 'active' : ''}`} 
-            onClick={() => switchTab('tracking')}
+              className={`tab-button ${activeTab === 'issuances' ? 'active' : ''}`}
+              onClick={() => setActiveTab('issuances')}
           >
-            <i className="fas fa-history"></i> Theo dõi
+              <i className="fas fa-clipboard-list"></i>
+              Lịch sử phát
           </button>
         </div>
 
-        {/* PPE Items Tab */}
-        {activeTab === 'items' && (
+          {/* Categories Tab */}
+          {activeTab === 'categories' && (
           <div className="tab-content active">
             <div className="controls">
               <div className="search-filters">
                 <div className="search-box">
                   <i className="fas fa-search"></i>
-                  <input type="text" placeholder="Tìm kiếm thiết bị..." />
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm danh mục..."
+                      value={inventoryFilters.search}
+                      onChange={(e) => setInventoryFilters(prev => ({ ...prev, search: e.target.value }))}
+                    />
                 </div>
-                
-                <select className="filter-select">
-                  <option value="">Tất cả danh mục</option>
-                  <option value="1">Bảo vệ đầu</option>
-                  <option value="2">Bảo vệ mắt</option>
-                  <option value="3">Bảo vệ hô hấp</option>
-                  <option value="4">Bảo vệ chân tay</option>
-                </select>
               </div>
-              
-              <button className="btn btn-primary" onClick={() => openModal('addItemModal')}>
-                <i className="fas fa-plus"></i> Thêm thiết bị
-              </button>
+                <div className="action-buttons">
+                  <button 
+                    className="btn btn-success"
+                    onClick={() => openModal('addCategoryModal')}
+                  >
+                    <i className="fas fa-plus"></i>
+                    Thêm danh mục
+                  </button>
+                  <button 
+                    className="btn btn-info"
+                    onClick={() => setShowImportCategoriesModal(true)}
+                  >
+                    <i className="fas fa-file-excel"></i>
+                    Import Excel
+                  </button>
+                </div>
             </div>
 
-            <div className="data-grid">
-              {ppeItems.map(item => {
-                const totalStock = ppeInventory
-                  .filter(inv => inv.item_id === item.item_id)
-                  .reduce((sum, inv) => sum + inv.quantity_available, 0);
-                
-                const stockStatus = getStockStatus(totalStock, item.reorder_level);
-                
-                return (
-                  <div key={item.item_id} className="ppe-card">
+              {loading.categories ? (
+                <div className="loading-container">
+                <i className="fas fa-spinner fa-spin"></i>
+                <span>Đang tải dữ liệu...</span>
+              </div>
+            ) : (
+                <div className="data-grid">
+                  {getFilteredCategories().map((category: PPECategory) => (
+                    <div key={category._id} className="ppe-card">
                     <div className="card-header">
-                      <div className="card-title">{item.item_name}</div>
-                      <div className="card-subtitle">{item.item_code}</div>
+                        <div className="card-title">
+                          <i className="fas fa-tag"></i>
+                          {category.category_name}
+                        </div>
                       <div className="ppe-icon">
-                        <i className={getCategoryIcon(item.category_id)}></i>
+                          <i className={getCategoryIcon(category._id)}></i>
                       </div>
                     </div>
                     
                     <div className="card-body">
                       <div className="ppe-info">
                         <div className="info-item">
-                          <i className="fas fa-layer-group"></i>
-                          <span>{getCategoryName(item.category_id)}</span>
+                            <i className="fas fa-info-circle"></i>
+                            <span>{category.description}</span>
                         </div>
+                          {category.lifespan_months && (
                         <div className="info-item">
-                          <i className="fas fa-copyright"></i>
-                          <span>{item.brand || 'Không xác định'}</span>
+                              <i className="fas fa-clock"></i>
+                              <span>{category.lifespan_months} tháng</span>
                         </div>
-                        <div className="info-item">
-                          <i className="fas fa-tag"></i>
-                          <span>{item.model || 'Không xác định'}</span>
-                        </div>
-                        <div className="info-item">
-                          <i className="fas fa-exclamation-triangle"></i>
-                          <span>Min: {item.reorder_level}</span>
-                        </div>
+                          )}
                       </div>
                       
                       <div className="stock-status">
-                        <div className="stock-title">Tổng tồn kho</div>
+                          <div className="stock-title">
+                            <i className="fas fa-chart-bar"></i>
+                            Thống kê
+                          </div>
+                          {(() => {
+                            const stats = getCategoryStats(category._id);
+                            return (
+                              <>
                         <div className="stock-row">
-                          <span>Có sẵn:</span>
-                          <span>{totalStock}</span>
+                                  <span>Tổng thiết bị:</span>
+                                  <strong>{stats.totalItems}</strong>
                         </div>
-                        <div className={`stock-alert alert-${stockStatus}`}>
-                          {getStockStatusLabel(stockStatus)}
+                                <div className="stock-row">
+                                  <span>Tổng số lượng:</span>
+                                  <strong>{stats.totalQuantity}</strong>
                         </div>
+                        <div className="stock-row">
+                          <span>Còn lại:</span>
+                                  <strong>{stats.totalRemaining}</strong>
+                        </div>
+                                <div className="stock-row">
+                                  <span>Đã phát:</span>
+                                  <strong>{stats.totalAllocated}</strong>
+                        </div>
+                                {stats.lowStockItems > 0 && (
+                                  <div className="stock-row warning">
+                                    <span>Cảnh báo:</span>
+                                    <strong>{stats.lowStockItems} thiết bị</strong>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                       </div>
                       
                       <div className="card-actions">
-                        <button className="btn btn-warning btn-sm">
-                          <i className="fas fa-edit"></i> Sửa
+                          <button 
+                            className="btn btn-info btn-sm"
+                            onClick={() => {
+                              setSelectedCategory(category);
+                              setShowCategoryDetailModal(true);
+                            }}
+                          >
+                            <i className="fas fa-eye"></i>
+                            Chi tiết
                         </button>
-                        <button className="btn btn-success btn-sm">
-                          <i className="fas fa-warehouse"></i> Kho
+                          <button 
+                            className="btn btn-warning btn-sm"
+                            onClick={() => {
+                              setSelectedCategory(category);
+                              setShowCategoryEditModal(true);
+                            }}
+                          >
+                            <i className="fas fa-edit"></i>
+                            Sửa
                         </button>
-                        <button className="btn btn-secondary btn-sm">
-                          <i className="fas fa-history"></i> Lịch sử
+                        <button 
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleDeleteCategory(category._id)}
+                        >
+                          <i className="fas fa-trash"></i>
+                          Xóa
                         </button>
                       </div>
                     </div>
                   </div>
-                );
-              })}
+                  ))}
             </div>
+            )}
           </div>
         )}
 
-        {/* Inventory Tab */}
-        {activeTab === 'inventory' && (
+          {/* Items Tab */}
+          {activeTab === 'items' && (
           <div className="tab-content active">
-            <div className="controls">
-              <div className="search-filters">
-                <div className="search-box">
-                  <i className="fas fa-search"></i>
-                  <input type="text" placeholder="Tìm kiếm kho..." />
+              <div className="section-header">
+                <h2>Thiết bị PPE</h2>
+                <div className="header-actions">
+                  <button 
+                    className="btn btn-success"
+                    onClick={() => openModal('addItemModal')}
+                  >
+                    <i className="fas fa-plus"></i>
+                    Thêm thiết bị
+                  </button>
+                  <button 
+                    className="btn btn-info"
+                    onClick={() => setShowImportItemsModal(true)}
+                  >
+                    <i className="fas fa-file-excel"></i>
+                    Import Excel
+                  </button>
                 </div>
-                
-                <select className="filter-select">
-                  <option value="">Tất cả địa điểm</option>
-                  <option value="1">Công trường A</option>
-                  <option value="2">Công trường B</option>
-                  <option value="3">Kho trung tâm</option>
+                <div className="header-filters">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm thiết bị..."
+                    value={inventoryFilters.search}
+                    onChange={(e) => setInventoryFilters(prev => ({ ...prev, search: e.target.value }))}
+                    className="form-input"
+                  />
+                  <select
+                    value={inventoryFilters.categoryFilter}
+                    onChange={(e) => setInventoryFilters(prev => ({ ...prev, categoryFilter: e.target.value }))}
+                    className="form-select"
+                  >
+                    <option value="">Tất cả danh mục</option>
+                    {ppeCategories.map((category: PPECategory) => (
+                      <option key={category._id} value={category._id}>
+                        {category.category_name}
+                    </option>
+                  ))}
                 </select>
-                
-                <select className="filter-select">
-                  <option value="">Tất cả trạng thái</option>
-                  <option value="low">Sắp hết</option>
-                  <option value="out">Hết hàng</option>
-                  <option value="good">Đầy đủ</option>
+                  <select
+                    value={inventoryFilters.statusFilter}
+                    onChange={(e) => setInventoryFilters(prev => ({ ...prev, statusFilter: e.target.value }))}
+                    className="form-select"
+                  >
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="good">Còn hàng</option>
+                    <option value="low">Sắp hết</option>
+                    <option value="out">Hết hàng</option>
                 </select>
+                </div>
               </div>
               
-              <button className="btn btn-success" onClick={() => openModal('updateStockModal')}>
-                <i className="fas fa-plus-circle"></i> Nhập kho
-              </button>
+              {/* Statistics */}
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-icon">
+                    <i className="fas fa-box"></i>
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-number">{ppeItems.length}</div>
+                    <div className="stat-label">Tổng thiết bị</div>
+                  </div>
             </div>
 
-            <div className="data-grid">
-              {ppeInventory.map(inv => {
-                const item = ppeItems.find(i => i.item_id === inv.item_id);
-                const site = sites.find(s => s.site_id === inv.site_id);
-                const stockStatus = getStockStatus(inv.quantity_available, item?.reorder_level || 0);
+                <div className="stat-card">
+                  <div className="stat-icon">
+                    <i className="fas fa-check-circle"></i>
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-number">
+                      {ppeItems.reduce((sum, item) => sum + (item.remaining_quantity || item.quantity_available), 0)}
+                    </div>
+                    <div className="stat-label">Còn lại</div>
+                  </div>
+                </div>
+                
+                <div className="stat-card">
+                  <div className="stat-icon">
+                    <i className="fas fa-exclamation-triangle"></i>
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-number">
+                      {getFilteredItems().filter(item => {
+                        const remainingQuantity = item.remaining_quantity || item.quantity_available;
+                        return remainingQuantity <= item.reorder_level;
+                      }).length}
+                    </div>
+                    <div className="stat-label">Cảnh báo tồn kho</div>
+                  </div>
+                </div>
+                
+                <div className="stat-card">
+                  <div className="stat-icon">
+                    <i className="fas fa-hand-holding"></i>
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-number">
+                      {ppeItems.reduce((sum, item) => sum + (item.actual_allocated_quantity || item.quantity_allocated), 0)}
+                    </div>
+                    <div className="stat-label">Đã phát</div>
+                  </div>
+                </div>
+              </div>
+
+              {loading.items ? (
+                <div className="loading-container">
+                <i className="fas fa-spinner fa-spin"></i>
+                <span>Đang tải dữ liệu...</span>
+              </div>
+            ) : (
+                <div className="data-grid">
+                  {getFilteredItems().map(item => {
+                    const stockStatus = getStockStatus(item);
                 
                 return (
-                  <div key={inv.inventory_id} className="ppe-card">
+                      <div key={item._id} className="ppe-card">
                     <div className="card-header">
-                      <div className="card-title">{item?.item_name || 'Không xác định'}</div>
-                      <div className="card-subtitle">{site?.site_name || 'Không xác định'}</div>
+                      <div className="card-title">
+                            {item.item_name}
+                      </div>
                       <div className="ppe-icon">
-                        <i className={getCategoryIcon(item?.category_id || 1)}></i>
+                            <i className={getCategoryIcon(item.category_id._id)}></i>
                       </div>
                     </div>
                     
@@ -461,27 +955,47 @@ const PPEManagement: React.FC = () => {
                       <div className="ppe-info">
                         <div className="info-item">
                           <i className="fas fa-code"></i>
-                          <span>{item?.item_code || 'N/A'}</span>
+                              <span>{item.item_code}</span>
                         </div>
+                            <div className="info-item">
+                              <i className="fas fa-tag"></i>
+                              <span>{item.category_id.category_name}</span>
+                            </div>
+                            {item.brand && (
+                              <div className="info-item">
+                                <i className="fas fa-industry"></i>
+                                <span>{item.brand}</span>
+                              </div>
+                            )}
+                            {item.model && (
+                              <div className="info-item">
+                                <i className="fas fa-cog"></i>
+                                <span>{item.model}</span>
+                              </div>
+                            )}
                         <div className="info-item">
                           <i className="fas fa-calendar"></i>
-                          <span>{formatDateTime(inv.last_updated)}</span>
+                              <span>{formatDateTime(item.updatedAt)}</span>
                         </div>
                       </div>
                       
                       <div className="stock-status">
                         <div className="stock-title">Tình trạng kho</div>
                         <div className="stock-row">
-                          <span>Có sẵn:</span>
-                          <span>{inv.quantity_available}</span>
+                          <span>Tổng số:</span>
+                          <span>{item.total_quantity || (item.quantity_available + item.quantity_allocated)}</span>
+                        </div>
+                        <div className="stock-row">
+                          <span>Còn lại:</span>
+                          <span>{item.remaining_quantity || item.quantity_available}</span>
                         </div>
                         <div className="stock-row">
                           <span>Đã phát:</span>
-                          <span>{inv.quantity_allocated}</span>
+                          <span>{item.actual_allocated_quantity || item.quantity_allocated}</span>
                         </div>
                         <div className="stock-row">
                           <span>Tối thiểu:</span>
-                          <span>{item?.reorder_level || 0}</span>
+                          <span>{item.reorder_level}</span>
                         </div>
                         <div className={`stock-alert alert-${stockStatus}`}>
                           {getStockStatusLabel(stockStatus)}
@@ -489,211 +1003,624 @@ const PPEManagement: React.FC = () => {
                       </div>
                       
                       <div className="card-actions">
-                        <button className="btn btn-success btn-sm">
-                          <i className="fas fa-plus"></i> Nhập
+                            <button 
+                              className="btn btn-info btn-sm"
+                              onClick={() => {
+                                setSelectedItem(item);
+                                setFormData(prev => ({ 
+                                  ...prev, 
+                                  editItem: {
+                                    category_id: item.category_id._id,
+                                    item_code: item.item_code,
+                                    item_name: item.item_name,
+                                    brand: item.brand || '',
+                                    model: item.model || '',
+                                    reorder_level: item.reorder_level,
+                                    quantity_available: item.quantity_available,
+                                    quantity_allocated: item.quantity_allocated
+                                  }
+                                }));
+                                setShowItemEditModal(true);
+                              }}
+                            >
+                              <i className="fas fa-edit"></i> Sửa
                         </button>
-                        <button className="btn btn-warning btn-sm">
-                          <i className="fas fa-edit"></i> Điều chỉnh
+                            <button 
+                              className="btn btn-danger btn-sm"
+                              onClick={() => handleDeleteItem(item._id)}
+                            >
+                              <i className="fas fa-trash"></i> Xóa
                         </button>
                       </div>
+                          
                     </div>
                   </div>
                 );
               })}
             </div>
+            )}
           </div>
         )}
 
-        {/* Issuance Tab */}
-        {activeTab === 'issuance' && (
+          {/* PPE Management Tab */}
+          {activeTab === 'ppe-management' && (
           <div className="tab-content active">
-            <div className="controls">
-              <div className="search-filters">
-                <div className="search-box">
-                  <i className="fas fa-search"></i>
-                  <input type="text" placeholder="Tìm kiếm theo tên nhân viên..." />
+              <div className="ppe-assignment-section">
+                <div className="section-header">
+                  <h2>Phát PPE cho nhân viên</h2>
+              </div>
+              
+                <div className="user-selection">
+                  <div className="search-box">
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm nhân viên..."
+                      value={assignmentSearchTerm}
+                      onChange={(e) => setAssignmentSearchTerm(e.target.value)}
+                      className="form-input"
+                    />
+            </div>
+
+                  {loading.users ? (
+                    <div className="loading-container">
+                <i className="fas fa-spinner fa-spin"></i>
+                      <span>Đang tải danh sách nhân viên...</span>
+              </div>
+            ) : (
+                    <div className="user-grid">
+                      {users
+                        .filter(user => 
+                          (user.full_name || '').toLowerCase().includes(assignmentSearchTerm.toLowerCase())
+                        )
+                        .map(user => (
+                          <div key={user._id} className="user-card">
+                            <div className="user-info">
+                              <div className="user-name">{user.full_name}</div>
+                              <div className="user-department">
+                                {user.department_id?.department_name || 
+                                 user.department_id?.name || 
+                                 (typeof user.department_id === 'string' ? user.department_id : 'Không xác định')}
+                              </div>
+              </div>
+                            <div className="user-actions">
+                              <button 
+                                className="btn btn-primary btn-sm"
+                                onClick={() => handleUserSelect(user)}
+                              >
+                                <i className="fas fa-eye"></i> Xem PPE
+                              </button>
+                          <button 
+                            className="btn btn-success btn-sm"
+                                onClick={() => handleAssignPPE(user)}
+                          >
+                                <i className="fas fa-plus"></i> Phát PPE
+                          </button>
+                            </div>
+                          </div>
+                        ))}
+            </div>
+            )}
+          </div>
+
+              </div>
+          </div>
+        )}
+
+          {/* Issuances Tab */}
+          {activeTab === 'issuances' && (
+          <div className="tab-content active">
+              <div className="section-header">
+                <h2>Lịch sử phát PPE</h2>
+                <div className="header-filters">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm nhân viên hoặc thiết bị..."
+                    value={inventoryFilters.search}
+                    onChange={(e) => setInventoryFilters(prev => ({ ...prev, search: e.target.value }))}
+                    className="form-input"
+                  />
+                  <select
+                    value={inventoryFilters.statusFilter}
+                    onChange={(e) => setInventoryFilters(prev => ({ ...prev, statusFilter: e.target.value }))}
+                    className="form-select"
+                  >
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="issued">Đang sử dụng</option>
+                    <option value="returned">Đã trả</option>
+                    <option value="overdue">Quá hạn</option>
+                  </select>
                 </div>
-              </div>
-              
-              <button className="btn btn-primary" onClick={() => openModal('issueModal')}>
-                <i className="fas fa-hand-holding"></i> Phát PPE
-              </button>
-            </div>
-
-            <div className="data-table">
-              <div className="table-header">
-                <h3 className="table-title">Lịch sử phát PPE</h3>
-              </div>
-              
-              <table>
-                <thead>
-                  <tr>
-                    <th>Nhân viên</th>
-                    <th>Thiết bị</th>
-                    <th>Số lượng</th>
-                    <th>Ngày phát</th>
-                    <th>Ngày trả dự kiến</th>
-                    <th>Người phát</th>
-                    <th>Trạng thái</th>
-                    <th>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ppeIssuances.map(issuance => (
-                    <tr key={issuance.issuance_id}>
-                      <td style={{fontWeight: 600, color: '#2c3e50'}}>{getUserName(issuance.user_id)}</td>
-                      <td>{getItemName(issuance.item_id)}</td>
-                      <td style={{textAlign: 'center', fontWeight: 600}}>{issuance.quantity}</td>
-                      <td>{formatDate(issuance.issued_date)}</td>
-                      <td>{formatDate(issuance.expected_return_date)}</td>
-                      <td>{getUserName(issuance.issued_by)}</td>
-                      <td>
-                        <span className={`status-badge status-${issuance.status}`}>
-                          {getStatusLabel(issuance.status)}
-                        </span>
-                      </td>
-                      <td>
-                        {(issuance.status === 'issued' || issuance.status === 'overdue') ? (
-                          <button className="btn btn-success btn-sm">
-                            <i className="fas fa-undo"></i> Trả về
-                          </button>
-                        ) : (
-                          <button className="btn btn-secondary btn-sm">
-                            <i className="fas fa-eye"></i> Xem
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Tracking Tab */}
-        {activeTab === 'tracking' && (
-          <div className="tab-content active">
-            <div className="controls">
-              <div className="search-filters">
-                <div className="search-box">
-                  <i className="fas fa-search"></i>
-                  <input type="text" placeholder="Tìm kiếm..." />
                 </div>
                 
-                <select className="filter-select">
-                  <option value="">Tất cả trạng thái</option>
-                  <option value="issued">Đã phát</option>
-                  <option value="returned">Đã trả</option>
-                  <option value="overdue">Quá hạn</option>
-                </select>
+              {/* Statistics for Issuances */}
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-icon">
+                    <i className="fas fa-hand-holding"></i>
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-number">{ppeIssuances.length}</div>
+                    <div className="stat-label">Tổng lượt phát</div>
+                  </div>
               </div>
               
-              <button className="btn btn-success">
-                <i className="fas fa-download"></i> Xuất báo cáo
-              </button>
+                <div className="stat-card">
+                  <div className="stat-icon">
+                    <i className="fas fa-user-check"></i>
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-number">
+                      {ppeIssuances.filter(issuance => issuance.status === 'issued').length}
+                    </div>
+                    <div className="stat-label">Đang sử dụng</div>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-icon">
+                    <i className="fas fa-check-circle"></i>
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-number">
+                      {ppeIssuances.filter(issuance => issuance.status === 'returned').length}
+                    </div>
+                    <div className="stat-label">Đã trả</div>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-icon">
+                    <i className="fas fa-exclamation-triangle"></i>
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-number">
+                      {ppeIssuances.filter(issuance => issuance.status === 'overdue').length}
+                    </div>
+                    <div className="stat-label">Quá hạn</div>
+                  </div>
+                </div>
             </div>
 
-            <div className="data-table">
-              <div className="table-header">
-                <h3 className="table-title">Theo dõi PPE</h3>
+            {loading.issuances ? (
+                <div className="loading-container">
+                <i className="fas fa-spinner fa-spin"></i>
+                <span>Đang tải dữ liệu...</span>
               </div>
-              
-              <table>
-                <thead>
-                  <tr>
-                    <th>Nhân viên</th>
-                    <th>Thiết bị</th>
-                    <th>Số lượng</th>
-                    <th>Ngày phát</th>
-                    <th>Hạn trả</th>
-                    <th>Ngày trả thực tế</th>
-                    <th>Trạng thái</th>
-                    <th>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ppeIssuances.map(issuance => (
-                    <tr key={issuance.issuance_id}>
-                      <td style={{fontWeight: 600, color: '#2c3e50'}}>{getUserName(issuance.user_id)}</td>
-                      <td>{getItemName(issuance.item_id)}</td>
-                      <td style={{textAlign: 'center', fontWeight: 600}}>{issuance.quantity}</td>
-                      <td>{formatDate(issuance.issued_date)}</td>
-                      <td>{formatDate(issuance.expected_return_date)}</td>
-                      <td>{issuance.status === 'returned' ? formatDate(issuance.actual_return_date || issuance.expected_return_date) : '-'}</td>
-                      <td>
-                        <span className={`status-badge status-${issuance.status}`}>
-                          {getStatusLabel(issuance.status)}
-                        </span>
-                      </td>
-                      <td>
-                        <button className="btn btn-secondary btn-sm">
-                          <i className="fas fa-search"></i> Chi tiết
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            ) : (
+                <div className="issuances-list">
+                  {ppeIssuances
+                    .filter(issuance => {
+                      // Filter by search term
+                      if (inventoryFilters.search) {
+                        const searchTerm = inventoryFilters.search.toLowerCase();
+                        const userName = typeof issuance.user_id === 'object' && issuance.user_id ? 
+                          issuance.user_id.full_name : 
+                          issuance.user_id ? users.find(user => user._id.toString() === issuance.user_id.toString())?.full_name || '' : '';
+                        const itemName = typeof issuance.item_id === 'object' ? 
+                          issuance.item_id.item_name : 
+                          ppeItems.find(item => item._id === issuance.item_id)?.item_name || '';
+                        
+                        if (!userName.toLowerCase().includes(searchTerm) && 
+                            !itemName.toLowerCase().includes(searchTerm)) {
+                          return false;
+                        }
+                      }
+                      
+                      // Filter by status
+                      if (inventoryFilters.statusFilter && issuance.status !== inventoryFilters.statusFilter) {
+                        return false;
+                      }
+                      
+                      return true;
+                    })
+                    .map(issuance => {
+                      const user = typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id : 
+                        issuance.user_id ? users.find(user => user._id.toString() === issuance.user_id.toString()) : null;
+                      const item = typeof issuance.item_id === 'object' && issuance.item_id ? issuance.item_id : 
+                        issuance.item_id ? ppeItems.find(item => item._id === issuance.item_id) : null;
+                      const isOverdue = new Date(issuance.expected_return_date) < new Date() && issuance.status === 'issued';
+                      
+                      return (
+                        <div key={issuance._id} className="issuance-item">
+                          <div className="issuance-info">
+                            <div className="issuance-user">
+                              <i className="fas fa-user"></i>
+                              <strong>{user?.full_name || 'Không xác định'}</strong>
+                            </div>
+                            <div className="issuance-item-name">
+                              <i className="fas fa-box"></i>
+                              {item?.item_name || 'Không xác định'}
+                              <span className="item-code">({item?.item_code || 'N/A'})</span>
+                            </div>
+                            <div className="issuance-details">
+                              <div className="detail-item">
+                                <i className="fas fa-hashtag"></i>
+                                <span>Số lượng: <strong>{issuance.quantity || 0}</strong></span>
+                              </div>
+                              <div className="detail-item">
+                                <i className="fas fa-calendar-plus"></i>
+                                <span>Ngày phát: <strong>{issuance.issued_date ? formatDateTime(issuance.issued_date) : 'N/A'}</strong></span>
+                              </div>
+                              <div className="detail-item">
+                                <i className="fas fa-calendar-check"></i>
+                                <span>Hạn trả: <strong>{issuance.expected_return_date ? formatDateTime(issuance.expected_return_date) : 'N/A'}</strong></span>
+                              </div>
+                              {issuance.issued_by && (
+                                <div className="detail-item">
+                                  <i className="fas fa-user-tie"></i>
+                                  <span>Người phát: <strong>{typeof issuance.issued_by === 'object' ? 
+                                    (issuance.issued_by as any)?.full_name || 
+                                    'Không xác định' : 
+                                    String(issuance.issued_by)}</strong></span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="issuance-status">
+                            <span className={`status-badge status-${issuance.status} ${isOverdue ? 'overdue' : ''}`}>
+                              {issuance.status === 'issued' ? 
+                                (isOverdue ? 'Quá hạn' : 'Đang sử dụng') : 
+                               issuance.status === 'returned' ? 'Đã trả' : 'Quá hạn'}
+                            </span>
+                            {isOverdue && (
+                              <div className="overdue-warning">
+                                <i className="fas fa-exclamation-triangle"></i>
+                                <span>Quá hạn trả</span>
           </div>
         )}
       </div>
-
+                        </div>
+                      );
+                    })}
+                  
+                  {ppeIssuances.length === 0 && (
+                    <div className="empty-state">
+                      <i className="fas fa-clipboard-list"></i>
+                      <p>Chưa có lịch sử phát PPE nào</p>
+                    </div>
+                  )}
+            </div>
+            )}
+          </div>
+        )}
+      </div>
+      </div>
       {/* Modals */}
-      {showModal === 'addItemModal' && (
-        <div className="modal active">
-          <div className="modal-content">
+      {showModal === 'addCategoryModal' && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Thêm thiết bị bảo hộ</h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
+              <h3>Thêm danh mục PPE</h3>
+              <button onClick={closeModal} className="modal-close">
+                <i className="fas fa-times"></i>
+              </button>
             </div>
             
-            <form>
-              <div className="form-grid">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleAddCategory();
+            }}>
                 <div className="form-group">
-                  <label className="form-label">Mã thiết bị *</label>
-                  <input type="text" className="form-input" required />
+                <label className="form-label">Tên danh mục</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                  value={formData.addCategory.category_name}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    addCategory: { ...prev.addCategory, category_name: e.target.value }
+                  }))}
+                    required 
+                  />
                 </div>
                 
                 <div className="form-group">
-                  <label className="form-label">Tên thiết bị *</label>
-                  <input type="text" className="form-input" required />
+                <label className="form-label">Mô tả</label>
+                <textarea 
+                  className="form-textarea" 
+                  value={formData.addCategory.description}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    addCategory: { ...prev.addCategory, description: e.target.value }
+                    }))}
+                  />
                 </div>
                 
                 <div className="form-group">
-                  <label className="form-label">Danh mục *</label>
-                  <select className="form-input" required>
-                    <option value="">Chọn danh mục</option>
-                    <option value="1">Bảo vệ đầu</option>
-                    <option value="2">Bảo vệ mắt</option>
-                    <option value="3">Bảo vệ hô hấp</option>
-                    <option value="4">Bảo vệ chân tay</option>
+                <label className="form-label">Tuổi thọ (tháng)</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                  value={formData.addCategory.lifespan_months}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    addCategory: { ...prev.addCategory, lifespan_months: parseInt(e.target.value) || 0 }
+                    }))}
+                  />
+              </div>
+              
+              <div className="modal-actions">
+                <button type="button" onClick={closeModal} className="btn btn-secondary">
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={loading.categories}>
+                  {loading.categories ? 'Đang tạo...' : 'Tạo danh mục'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showModal === 'updateQuantityModal' && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Cập nhật số lượng</h3>
+              <button onClick={closeModal} className="modal-close">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.target as HTMLFormElement;
+              const itemId = (form.querySelector('input[name="itemId"]') as HTMLInputElement)?.value;
+              if (itemId) {
+                handleUpdateItemQuantity(itemId, formData.updateQuantity);
+              }
+              closeModal();
+            }}>
+              <input type="hidden" name="itemId" value="" />
+                
+                <div className="form-group">
+                <label className="form-label">Số lượng có sẵn</label>
+                <input 
+                  type="number" 
+                    className="form-input" 
+                  value={formData.updateQuantity.quantity_available}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    updateQuantity: { ...prev.updateQuantity, quantity_available: parseInt(e.target.value) || 0 }
+                  }))}
+                  min="0"
+                    required 
+                />
+                </div>
+                
+                <div className="form-group">
+                <label className="form-label">Số lượng đã phân phối</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                  value={formData.updateQuantity.quantity_allocated}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    updateQuantity: { ...prev.updateQuantity, quantity_allocated: parseInt(e.target.value) || 0 }
+                    }))}
+                  min="0"
+                  required
+                  />
+                </div>
+                
+              <div className="modal-actions">
+                <button type="button" onClick={closeModal} className="btn btn-secondary">
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={loading.items}>
+                  {loading.items ? 'Đang cập nhật...' : 'Cập nhật'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showModal === 'issuePPEModal' && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Phát PPE</h3>
+              <button onClick={closeModal} className="modal-close">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleIssuePPE();
+            }}>
+                <div className="form-group">
+                <label className="form-label">Thiết bị</label>
+                  <select 
+                  className="form-select" 
+                  value={formData.issuePPE.item_id}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      issuePPE: { ...prev.issuePPE, item_id: e.target.value }
+                    }))}
+                  required
+                  >
+                  <option value="">Chọn thiết bị</option>
+                  {ppeItems.map(item => {
+                      const availableQuantity = item.remaining_quantity || item.quantity_available || 0;
+                      return (
+                        <option key={item._id} value={item._id}>
+                          {item.item_name} (Còn: {availableQuantity})
+                        </option>
+                      );
+                    })}
                   </select>
+                </div>
+                
+                <div className="form-group">
+                <label className="form-label">Số lượng</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                  value={formData.issuePPE.quantity}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    issuePPE: { ...prev.issuePPE, quantity: parseInt(e.target.value) || 1 }
+                    }))}
+                  min="1"
+                    required
+                  />
+                </div>
+                
+                <div className="form-group">
+                <label className="form-label">Ngày trả dự kiến</label>
+                  <input 
+                    type="date" 
+                    className="form-input" 
+                  value={formData.issuePPE.expected_return_date}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      issuePPE: { ...prev.issuePPE, expected_return_date: e.target.value }
+                    }))}
+                  required
+                  />
+              </div>
+              
+              <div className="modal-actions">
+                <button type="button" onClick={closeModal} className="btn btn-secondary">
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={loading.issuances}>
+                  {loading.issuances ? 'Đang phát...' : 'Phát PPE'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Item Modal */}
+      {showModal === 'addItemModal' && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Thêm thiết bị PPE</h3>
+              <button onClick={closeModal} className="modal-close">
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleAddItem();
+            }}>
+              <div className="form-group">
+                <label className="form-label">Danh mục</label>
+                <select 
+                  className="form-select" 
+                  value={formData.addItem.category_id}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      addItem: { ...prev.addItem, category_id: e.target.value }
+                    }))}
+                  required
+                  >
+                  <option value="">Chọn danh mục</option>
+                  {ppeCategories.map(category => (
+                      <option key={category._id} value={category._id}>
+                        {category.category_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              
+              <div className="form-group">
+                <label className="form-label">Mã thiết bị</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={formData.addItem.item_code}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    addItem: { ...prev.addItem, item_code: e.target.value.toUpperCase() }
+                  }))}
+                  placeholder="VD: HELMET-001"
+                  required 
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Tên thiết bị</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={formData.addItem.item_name}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    addItem: { ...prev.addItem, item_name: e.target.value }
+                  }))}
+                  required 
+                />
                 </div>
                 
                 <div className="form-group">
                   <label className="form-label">Thương hiệu</label>
-                  <input type="text" className="form-input" />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                  value={formData.addItem.brand}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      addItem: { ...prev.addItem, brand: e.target.value }
+                    }))}
+                  />
                 </div>
                 
                 <div className="form-group">
                   <label className="form-label">Model</label>
-                  <input type="text" className="form-input" />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                  value={formData.addItem.model}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      addItem: { ...prev.addItem, model: e.target.value }
+                    }))}
+                  />
                 </div>
                 
                 <div className="form-group">
-                  <label className="form-label">Mức tồn kho tối thiểu</label>
-                  <input type="number" className="form-input" min="0" defaultValue="10" />
-                </div>
+                <label className="form-label">Mức tái đặt hàng</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                  value={formData.addItem.reorder_level}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    addItem: { ...prev.addItem, reorder_level: parseInt(e.target.value) || 10 }
+                  }))}
+                    min="0" 
+                  required
+                />
               </div>
               
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
+              <div className="form-group">
+                <label className="form-label">Số lượng có sẵn</label>
+                <input 
+                  type="number" 
+                  className="form-input" 
+                  value={formData.addItem.quantity_available}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    addItem: { ...prev.addItem, quantity_available: parseInt(e.target.value) || 0 }
+                    }))}
+                  min="0"
+                  required
+                  />
+              </div>
+              
+              <div className="modal-actions">
+                <button type="button" onClick={closeModal} className="btn btn-secondary">
                   Hủy
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-save"></i> Thêm thiết bị
+                <button type="submit" className="btn btn-primary" disabled={loading.items}>
+                  {loading.items ? 'Đang tạo...' : 'Tạo thiết bị'}
                 </button>
               </div>
             </form>
@@ -701,55 +1628,146 @@ const PPEManagement: React.FC = () => {
         </div>
       )}
 
-      {showModal === 'updateStockModal' && (
-        <div className="modal active">
-          <div className="modal-content">
+      {/* Edit Item Modal */}
+      {showItemEditModal && selectedItem && (
+        <div className="modal-overlay" onClick={() => setShowItemEditModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Cập nhật tồn kho</h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
+              <h3>Sửa thiết bị PPE</h3>
+              <button onClick={() => setShowItemEditModal(false)} className="modal-close">
+                <i className="fas fa-times"></i>
+              </button>
             </div>
             
-            <form>
-              <div className="form-grid">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleEditItem();
+            }}>
                 <div className="form-group">
-                  <label className="form-label">Thiết bị *</label>
-                  <select className="form-input" required>
-                    <option value="">Chọn thiết bị</option>
-                    {ppeItems.map(item => (
-                      <option key={item.item_id} value={item.item_id}>
-                        {item.item_name} ({item.item_code})
+                <label className="form-label">Danh mục</label>
+                  <select 
+                  className="form-select" 
+                  value={formData.editItem.category_id}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    editItem: { ...prev.editItem, category_id: e.target.value }
+                  }))}
+                  required
+                >
+                  <option value="">Chọn danh mục</option>
+                  {ppeCategories.map(category => (
+                    <option key={category._id} value={category._id}>
+                      {category.category_name}
                       </option>
                     ))}
                   </select>
                 </div>
                 
                 <div className="form-group">
-                  <label className="form-label">Địa điểm *</label>
-                  <select className="form-input" required>
-                    <option value="">Chọn địa điểm</option>
-                    <option value="1">Công trường A</option>
-                    <option value="2">Công trường B</option>
-                    <option value="3">Kho trung tâm</option>
-                  </select>
+                <label className="form-label">Mã thiết bị</label>
+                <input 
+                  type="text" 
+                    className="form-input" 
+                  value={formData.editItem.item_code}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    editItem: { ...prev.editItem, item_code: e.target.value.toUpperCase() }
+                  }))}
+                  required 
+                />
                 </div>
                 
                 <div className="form-group">
-                  <label className="form-label">Số lượng nhập *</label>
-                  <input type="number" className="form-input" required min="1" />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Ghi chú</label>
-                  <input type="text" className="form-input" placeholder="Lý do nhập kho..." />
-                </div>
+                <label className="form-label">Tên thiết bị</label>
+                  <input 
+                  type="text" 
+                    className="form-input" 
+                  value={formData.editItem.item_name}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    editItem: { ...prev.editItem, item_name: e.target.value }
+                    }))}
+                  required 
+                  />
               </div>
               
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
+              <div className="form-group">
+                <label className="form-label">Thương hiệu</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={formData.editItem.brand}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    editItem: { ...prev.editItem, brand: e.target.value }
+                  }))}
+                />
+              </div>
+              
+                <div className="form-group">
+                <label className="form-label">Model</label>
+                  <input 
+                  type="text" 
+                    className="form-input" 
+                  value={formData.editItem.model}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    editItem: { ...prev.editItem, model: e.target.value }
+                    }))}
+                  />
+                </div>
+                
+                <div className="form-group">
+                <label className="form-label">Mức tái đặt hàng</label>
+                <input 
+                  type="number" 
+                    className="form-input" 
+                  value={formData.editItem.reorder_level}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    editItem: { ...prev.editItem, reorder_level: parseInt(e.target.value) || 10 }
+                  }))}
+                  min="0"
+                  required
+                />
+                </div>
+                
+                <div className="form-group">
+                <label className="form-label">Số lượng có sẵn</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                  value={formData.editItem.quantity_available}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    editItem: { ...prev.editItem, quantity_available: parseInt(e.target.value) || 0 }
+                    }))}
+                  min="0"
+                  required
+                  />
+                </div>
+                
+                <div className="form-group">
+                <label className="form-label">Số lượng đã phân phối</label>
+                  <input 
+                  type="number" 
+                    className="form-input" 
+                  value={formData.editItem.quantity_allocated}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                    editItem: { ...prev.editItem, quantity_allocated: parseInt(e.target.value) || 0 }
+                    }))}
+                  min="0"
+                  required
+                  />
+              </div>
+              
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowItemEditModal(false)} className="btn btn-secondary">
                   Hủy
                 </button>
-                <button type="submit" className="btn btn-success">
-                  <i className="fas fa-plus-circle"></i> Nhập kho
+                <button type="submit" className="btn btn-primary" disabled={loading.items}>
+                  {loading.items ? 'Đang cập nhật...' : 'Cập nhật'}
                 </button>
               </div>
             </form>
@@ -757,64 +1775,184 @@ const PPEManagement: React.FC = () => {
         </div>
       )}
 
-      {showModal === 'issueModal' && (
-        <div className="modal active">
-          <div className="modal-content">
+      {/* Category Modals */}
+      {showCategoryDetailModal && selectedCategory && (
+        <CategoryDetailModal
+          category={selectedCategory}
+          ppeItems={ppeItems}
+          isOpen={showCategoryDetailModal}
+          onClose={() => setShowCategoryDetailModal(false)}
+        />
+      )}
+
+      {showCategoryEditModal && selectedCategory && (
+        <CategoryEditModal
+          category={selectedCategory}
+          isOpen={showCategoryEditModal}
+          onClose={() => setShowCategoryEditModal(false)}
+          onUpdate={async (updatedCategory) => {
+            try {
+              await ppeService.updatePPECategory(selectedCategory!._id, updatedCategory);
+              await loadCategories();
+              setShowCategoryEditModal(false);
+            } catch (err) {
+              setError('Có lỗi khi cập nhật danh mục');
+            }
+          }}
+        />
+      )}
+
+      {/* View PPE Modal */}
+      {showViewPPEModal && selectedUser && (
+        <div className="modal-overlay" onClick={handleCloseViewPPEModal}>
+          <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()} key={`modal-${selectedUser._id}-${forceModalRefresh}`}>
             <div className="modal-header">
-              <h2 className="modal-title">Phát thiết bị bảo hộ</h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
+              <h3>
+                <i className="fas fa-hard-hat"></i>
+                PPE của {selectedUser.full_name}
+              </h3>
+              <div className="modal-header-actions">
+                <button 
+                  onClick={() => {
+                    console.log('🔄 Manual refresh triggered');
+                    setRefreshTrigger(prev => prev + 1);
+                    setForceModalRefresh(prev => prev + 1);
+                    loadUserPPE(selectedUser._id.toString());
+                  }} 
+                  className="btn btn-sm btn-primary"
+                  disabled={loading.assignment}
+                  title="Làm mới dữ liệu"
+                >
+                  <i className={`fas fa-sync-alt ${loading.assignment ? 'fa-spin' : ''}`}></i>
+                </button>
+                <button onClick={handleCloseViewPPEModal} className="modal-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
             </div>
             
-            <form>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Nhân viên *</label>
-                  <select className="form-input" required>
-                    <option value="">Chọn nhân viên</option>
-                    {users.filter(user => user.user_id !== 100).map(user => (
-                      <option key={user.user_id} value={user.user_id}>
-                        {user.full_name} - {user.department}
-                      </option>
-                    ))}
-                  </select>
+            <div className="modal-body">
+              <div className="user-info-header">
+                <div className="user-avatar">
+                  <i className="fas fa-user"></i>
                 </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Thiết bị *</label>
-                  <select className="form-input" required>
-                    <option value="">Chọn thiết bị</option>
-                    {ppeItems.map(item => (
-                      <option key={item.item_id} value={item.item_id}>
-                        {item.item_name} ({item.item_code})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Số lượng *</label>
-                  <input type="number" className="form-input" required min="1" />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Ngày trả dự kiến *</label>
-                  <input type="date" className="form-input" required />
+                <div className="user-details">
+                  <h4>{selectedUser.full_name}</h4>
+                  <p className="user-department">
+                    <i className="fas fa-building"></i>
+                    {selectedUser.department_id?.department_name || 'Không xác định'}
+                  </p>
+                  <p className="user-position">
+                    <i className="fas fa-briefcase"></i>
+                    {selectedUser.position || 'Không xác định'}
+                  </p>
                 </div>
               </div>
-              
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                  Hủy
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-hand-holding"></i> Phát PPE
-                </button>
-              </div>
-            </form>
+
+              {loading.assignment ? (
+                <div className="loading-container">
+                  <i className="fas fa-spinner fa-spin"></i>
+                  <span>Đang tải PPE của nhân viên...</span>
+                </div>
+              ) : (
+                <div className="ppe-list-modal">
+                  {userPPE.length === 0 ? (
+                    <div className="empty-state">
+                      <i className="fas fa-inbox"></i>
+                      <h4>Chưa có PPE</h4>
+                      <p>Nhân viên chưa được phát PPE nào</p>
+                    </div>
+                  ) : (
+                    <div className="ppe-grid">
+                      {userPPE.map(ppe => (
+                        <div key={ppe._id} className="ppe-card-modal">
+                          <div className="ppe-card-header">
+                            <div className="ppe-icon">
+                              <i className="fas fa-shield-alt"></i>
+                            </div>
+                            <div className="ppe-name">
+                              {typeof ppe.item_id === 'object' && ppe.item_id ? ppe.item_id.item_name : 
+                               ppe.item_id ? ppeItems.find(item => item._id === ppe.item_id)?.item_name || 'Không xác định' : 'Không xác định'}
+                            </div>
+                            <div className="ppe-status">
+                              <span className={`status-badge status-${ppe.status}`}>
+                                {ppe.status === 'issued' ? 'Đang sử dụng' : 
+                                 ppe.status === 'returned' ? 'Đã trả' : 'Quá hạn'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="ppe-card-body">
+                            <div className="ppe-details">
+                              <div className="detail-row">
+                                <i className="fas fa-hashtag"></i>
+                                <span>Số lượng: <strong>{ppe.quantity || 0}</strong></span>
+                              </div>
+                              <div className="detail-row">
+                                <i className="fas fa-calendar-plus"></i>
+                                <span>Ngày phát: <strong>{ppe.issued_date ? formatDateTime(ppe.issued_date) : 'N/A'}</strong></span>
+                              </div>
+                              <div className="detail-row">
+                                <i className="fas fa-calendar-check"></i>
+                                <span>Hạn trả: <strong>{ppe.expected_return_date ? formatDateTime(ppe.expected_return_date) : 'N/A'}</strong></span>
+                              </div>
+                              {typeof ppe.item_id === 'object' && ppe.item_id.item_code && (
+                                <div className="detail-row">
+                                  <i className="fas fa-barcode"></i>
+                                  <span>Mã thiết bị: <strong>{ppe.item_id.item_code}</strong></span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="modal-actions">
+              <button 
+                type="button" 
+                onClick={handleCloseViewPPEModal} 
+                className="btn btn-secondary"
+              >
+                <i className="fas fa-times"></i>
+                Đóng
+              </button>
+              <button 
+                type="button" 
+                onClick={() => handleAssignPPE(selectedUser)} 
+                className="btn btn-success"
+              >
+                <i className="fas fa-plus"></i>
+                Phát thêm PPE
+              </button>
+            </div>
           </div>
         </div>
       )}
-      </div>
+
+      {/* Import Categories Modal */}
+      <ImportCategoriesModal
+        isOpen={showImportCategoriesModal}
+        onClose={() => setShowImportCategoriesModal(false)}
+        onImportSuccess={() => {
+          loadCategories();
+          setShowImportCategoriesModal(false);
+        }}
+      />
+
+      {/* Import Items Modal */}
+      <ImportItemsModal
+        isOpen={showImportItemsModal}
+        onClose={() => setShowImportItemsModal(false)}
+        onImportSuccess={() => {
+          loadAllData();
+          setShowImportItemsModal(false);
+        }}
+      />
     </div>
   );
 };

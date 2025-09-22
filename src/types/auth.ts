@@ -29,7 +29,12 @@ export interface UserProfile {
   email: string;
   full_name: string;
   phone: string;
-  role: string;
+  role: {
+    _id: string;
+    role_name: string;
+    permissions: Record<string, boolean>;
+    is_active: boolean;
+  };
   is_active: boolean;
   last_login: string;
 }
