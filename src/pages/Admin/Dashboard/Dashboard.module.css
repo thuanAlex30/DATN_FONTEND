@@ -1,11 +1,30 @@
+/* ======================
+   Dashboard Container
+====================== */
 .dashboardContainer {
   padding: 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(deg, #667eea, #764ba2, #6dd5ed, #2193b0);
+  background-size: 400% 400%;
+  animation: gradientBG 12s ease infinite;
   min-height: 100vh;
   color: #333;
+  animation: fadeIn 0.8s ease-out;
 }
 
-/* Top Bar */
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ======================
+   Top Bar
+====================== */
 .topBar {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
@@ -18,19 +37,15 @@
   align-items: center;
 }
 
-.welcomeMessage {
-  flex: 1;
-}
-
 .welcomeTitle {
   font-size: 1.8rem;
   color: #2c3e50;
   margin-bottom: 0.5rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .welcomeSubtitle {
-  color: #666;
+  color: #555;
   margin: 0;
   font-size: 1rem;
 }
@@ -45,35 +60,41 @@
 .profileBtn {
   padding: 0.8rem;
   border: none;
-  border-radius: 12px;
-  background: rgba(52, 152, 219, 0.1);
+  border-radius: 15px;
+  background: rgba(52, 152, 219, 0.15);
   color: #3498db;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
 }
 
 .notificationBtn:hover,
 .profileBtn:hover {
-  background: rgba(52, 152, 219, 0.2);
-  transform: translateY(-2px);
+  background: rgba(52, 152, 219, 0.25);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
 }
 
-/* Stats Cards */
+/* ======================
+   Stats Cards
+====================== */
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1.5rem;
-  margin-bottom: 2rem;
+  margin-top: 2rem;  
+  padding: 2rem;
+  background: #fff;   
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
-
 .statCard {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(20px);
   padding: 2rem;
   border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
@@ -82,16 +103,14 @@
 .statCard::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   height: 4px;
   background: linear-gradient(90deg, #3498db, #2ecc71, #e74c3c, #f39c12);
 }
 
 .statCard:hover {
   transform: translateY(-5px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
 }
 
 .statHeader {
@@ -108,25 +127,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.7rem;
   color: white;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.statIcon.users {
-  background: linear-gradient(135deg, #3498db, #2980b9);
+.statIcon:hover {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
 }
 
-.statIcon.projects {
-  background: linear-gradient(135deg, #2ecc71, #27ae60);
-}
-
-.statIcon.training {
-  background: linear-gradient(135deg, #e74c3c, #c0392b);
-}
-
-.statIcon.safety {
-  background: linear-gradient(135deg, #f39c12, #e67e22);
-}
+.statIcon.users { background: linear-gradient(135deg, #3498db, #2980b9); }
+.statIcon.projects { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+.statIcon.training { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+.statIcon.safety { background: linear-gradient(135deg, #f39c12, #e67e22); }
 
 .statNumber {
   font-size: 2.5rem;
@@ -137,8 +152,7 @@
 
 .statLabel {
   color: #666;
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
 }
 
 .statTrend {
@@ -146,15 +160,19 @@
   color: #27ae60;
 }
 
-/* Quick Actions */
+/* ======================
+   Quick Actions
+====================== */
 .quickActions {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(20px);
   border-radius: 20px;
   padding: 2rem;
+  margin-top: 2rem;  
   margin-bottom: 2rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
+
 
 .sectionHeader {
   display: flex;
@@ -164,8 +182,8 @@
 }
 
 .sectionTitle {
-  font-size: 1.4rem;
-  font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #2c3e50;
   margin: 0;
 }
@@ -178,23 +196,21 @@
 
 .actionBtn {
   padding: 1.5rem;
-  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(155, 89, 182, 0.1));
-  border: 2px solid rgba(52, 152, 219, 0.2);
+  background: rgba(255,255,255,0.6);
+  border: 2px solid transparent;
   border-radius: 15px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.35s ease;
   text-decoration: none;
   color: #2c3e50;
+  backdrop-filter: blur(10px);
 }
 
 .actionBtn:hover {
-  transform: translateY(-3px);
-  background: linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(155, 89, 182, 0.2));
-  border-color: rgba(52, 152, 219, 0.4);
-  box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
-  text-decoration: none;
-  color: #2c3e50;
+  transform: translateY(-5px) scale(1.05);
+  border-color: rgba(52, 152, 219, 0.6);
+  box-shadow: 0 10px 30px rgba(52, 152, 219, 0.4);
 }
 
 .actionBtn i {
@@ -205,18 +221,19 @@
 
 .actionBtn h4 {
   margin-bottom: 0.5rem;
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 600;
 }
 
 .actionBtn p {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: #666;
-  line-height: 1.4;
   margin: 0;
 }
 
-/* Recent Activities */
+/* ======================
+   Recent Activities (Timeline)
+====================== */
 .recentActivities {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -224,39 +241,48 @@
 }
 
 .activitySection {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(20px);
   border-radius: 20px;
   padding: 2rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
 .activityList {
   max-height: 300px;
   overflow-y: auto;
+  position: relative;
+  padding-left: 20px;
+}
+
+.activityList::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, #3498db, #9b59b6);
+  border-radius: 3px;
 }
 
 .activityItem {
+  position: relative;
   display: flex;
-  align-items: center;
-  padding: 1rem 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  align-items: flex-start;
+  padding: 1rem 0 1rem 1rem;
 }
 
-.activityItem:last-child {
-  border-bottom: none;
-}
-
-.activityIcon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 1rem;
-  font-size: 1rem;
-  color: white;
+.activityItem::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 18px;
+  width: 12px;
+  height: 12px;
+  background: #3498db;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(52, 152, 219, 0.6);
 }
 
 .activityContent {
@@ -267,7 +293,7 @@
   font-weight: 600;
   color: #2c3e50;
   margin-bottom: 0.25rem;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .activityDesc {
@@ -286,74 +312,29 @@
 .activityList::-webkit-scrollbar {
   width: 6px;
 }
-
 .activityList::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.1);
 }
-
 .activityList::-webkit-scrollbar-thumb {
-  background: rgba(52, 152, 219, 0.3);
+  background: rgba(52, 152, 219, 0.4);
   border-radius: 3px;
 }
-
 .activityList::-webkit-scrollbar-thumb:hover {
-  background: rgba(52, 152, 219, 0.5);
+  background: rgba(52, 152, 219, 0.6);
 }
 
-/* Responsive Design */
+/* ======================
+   Responsive Design
+====================== */
 @media (max-width: 768px) {
-  .dashboardContainer {
-    padding: 1rem;
-  }
-  
-  .topBar {
-    padding: 1rem;
-    flex-direction: column;
-    gap: 1rem;
-    text-align: center;
-  }
-  
-  .welcomeTitle {
-    font-size: 1.5rem;
-  }
-  
-  .statsGrid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-  
-  .recentActivities {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-  
-  .actionsGrid {
-    grid-template-columns: 1fr;
-  }
-  
-  .statNumber {
-    font-size: 2rem;
-  }
+  .dashboardContainer { padding: 1rem; }
+  .topBar { flex-direction: column; gap: 1rem; text-align: center; }
+  .statsGrid { grid-template-columns: 1fr; }
+  .recentActivities { grid-template-columns: 1fr; }
+  .actionsGrid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
-  .dashboardContainer {
-    padding: 0.5rem;
-  }
-  
-  .statCard {
-    padding: 1rem;
-  }
-  
-  .activitySection {
-    padding: 1rem;
-  }
-  
-  .quickActions {
-    padding: 1rem;
-  }
-  
-  .actionBtn {
-    padding: 1rem;
-  }
+  .dashboardContainer { padding: 0.5rem; }
+  .statCard, .activitySection, .quickActions, .actionBtn { padding: 1rem; }
 }
