@@ -1,275 +1,135 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './TrainingManagement.css';
-
-// Types
-interface CourseSet {
-  id: number;
-  name: string;
-  description: string;
-}
-
-interface Course {
-  course_id: number;
-  course_name: string;
-  description: string;
-  course_set_id: number;
-  duration_hours: number;
-  is_mandatory: boolean;
-  validity_months: number | null;
-  totalEnrolled?: number;
-  completed?: number;
-  passed?: number;
-}
-
-interface TrainingSession {
-  session_id: number;
-  session_name: string;
-  course_id: number;
-  start_time: string;
-  end_time: string;
-  instructor_id: number | null;
-  instructor_name?: string;
-  max_participants: number;
-  location?: string;
-  status_code: string;
-  enrolled?: number;
-}
-
-interface User {
-  user_id: number;
-  full_name: string;
-  department: string;
-}
-
-interface TrainingEnrollment {
-  enrollment_id: number;
-  session_id: number;
-  user_id: number;
-  enrolled_at: string;
-  status: string;
-  score: number | null;
-  passed: boolean | null;
-  completion_date: string | null;
-}
-
-interface QuestionBank {
-  bank_id: number;
-  course_id: number;
-  name: string;
-  description: string;
-  questionCount?: number;
-}
+import { downloadQuestionTemplate } from '../../../utils/questionTemplate';
+import {
+  useCourses,
+  useTrainingSessions,
+  useTrainingEnrollments,
+  useQuestionBanks,
+  useQuestions,
+  useCourseSets,
+} from '../../../hooks/useTraining';
+import ViewCourseModal from './components/ViewCourseModal';
+import QuestionBankModal from './components/QuestionBankModal';
+import ViewSessionModal from './components/ViewSessionModal';
+import EnrollmentModal from './components/EnrollmentModal';
 
 const TrainingManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'courses' | 'sessions' | 'enrollments' | 'question-banks'>('courses');
   const [showModal, setShowModal] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [filters, setFilters] = useState({
+    courseSetId: '',
+    courseId: '',
+    statusCode: '',
+    search: '',
+    isMandatory: '',
+  });
+
+  // Form states
+  const [courseForm, setCourseForm] = useState({
+    course_name: '',
+    description: '',
+    duration_hours: '',
+    validity_months: '',
+    course_set_id: '',
+    is_mandatory: false,
+  });
+
+  const [sessionForm, setSessionForm] = useState({
+    session_name: '',
+    course_id: '',
+    start_time: '',
+    end_time: '',
+    max_participants: '',
+    location: '',
+    status_code: 'SCHEDULED',
+  });
+
+  const [questionBankForm, setQuestionBankForm] = useState({
+    name: '',
+    description: '',
+    course_id: '',
+  });
+
+  const [questionForm, setQuestionForm] = useState({
+    content: '',
+    options: ['', '', '', ''],
+    correct_answer: '',
+  });
+
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+
+  // API hooks
+  const { courseSets } = useCourseSets();
+  const { courses, loading: coursesLoading, createCourse, updateCourse, deleteCourse } = useCourses({
+    courseSetId: filters.courseSetId || undefined,
+    isMandatory: filters.isMandatory ? filters.isMandatory === 'true' : undefined,
+  });
   
-  // Sample data
-  const courseSets: CourseSet[] = [
-    { id: 1, name: "An toàn cơ bản", description: "Các khóa học an toàn lao động cơ bản" },
-    { id: 2, name: "An toàn nâng cao", description: "Các khóa học an toàn lao động nâng cao" },
-    { id: 3, name: "Chuyên môn kỹ thuật", description: "Các khóa học chuyên môn kỹ thuật" }
-  ];
-
-  const [courses] = useState<Course[]>([
-    {
-      course_id: 1,
-      course_name: "An toàn lao động cơ bản",
-      description: "Khóa học cơ bản về an toàn lao động cho tất cả nhân viên",
-      course_set_id: 1,
-      duration_hours: 8,
-      is_mandatory: true,
-      validity_months: 12,
-      totalEnrolled: 45,
-      completed: 38,
-      passed: 35
-    },
-    {
-      course_id: 2,
-      course_name: "Sử dụng thiết bị bảo hộ",
-      description: "Hướng dẫn sử dụng các loại thiết bị bảo hộ cá nhân",
-      course_set_id: 1,
-      duration_hours: 4,
-      is_mandatory: true,
-      validity_months: 6,
-      totalEnrolled: 52,
-      completed: 49,
-      passed: 47
-    },
-    {
-      course_id: 3,
-      course_name: "An toàn điện nâng cao",
-      description: "Khóa học chuyên sâu về an toàn điện cho kỹ thuật viên",
-      course_set_id: 2,
-      duration_hours: 16,
-      is_mandatory: false,
-      validity_months: 24,
-      totalEnrolled: 18,
-      completed: 15,
-      passed: 14
-    },
-    {
-      course_id: 4,
-      course_name: "Quản lý rủi ro",
-      description: "Phương pháp đánh giá và quản lý rủi ro trong công việc",
-      course_set_id: 2,
-      duration_hours: 12,
-      is_mandatory: false,
-      validity_months: 18,
-      totalEnrolled: 25,
-      completed: 20,
-      passed: 18
+  // Load all courses for session form (without filters)
+  const { courses: allCourses } = useCourses({});
+  
+  // Debug courses
+  console.log('Available courses (filtered):', courses);
+  console.log('All courses (for session form):', allCourses);
+  console.log('Current sessionForm.course_id:', sessionForm.course_id);
+  
+  // Clear invalid course_id when all courses change
+  useEffect(() => {
+    if (allCourses && sessionForm.course_id) {
+      // If no courses exist, clear course_id
+      if (allCourses.length === 0) {
+        console.log('No courses available, clearing course_id:', sessionForm.course_id);
+        setSessionForm(prev => ({ ...prev, course_id: '' }));
+      } else {
+        // If courses exist, check if current course_id is valid
+        const courseExists = allCourses.some(course => course._id === sessionForm.course_id);
+        if (!courseExists) {
+          console.log('Clearing invalid course_id:', sessionForm.course_id);
+          setSessionForm(prev => ({ ...prev, course_id: '' }));
+        }
+      }
     }
-  ]);
+  }, [allCourses, sessionForm.course_id]);
 
-  const [trainingSessions] = useState<TrainingSession[]>([
-    {
-      session_id: 1,
-      session_name: "Đào tạo an toàn - Lớp A1",
-      course_id: 1,
-      start_time: "2024-03-15T08:00",
-      end_time: "2024-03-15T16:00",
-      instructor_id: 1,
-      instructor_name: "Nguyễn Văn Trainer",
-      max_participants: 30,
-      location: "Phòng đào tạo A",
-      status_code: "SCHEDULED",
-      enrolled: 25
-    },
-    {
-      session_id: 2,
-      session_name: "PPE Training Session",
-      course_id: 2,
-      start_time: "2024-03-20T09:00",
-      end_time: "2024-03-20T13:00",
-      instructor_id: 2,
-      instructor_name: "Trần Thị Giảng viên",
-      max_participants: 25,
-      location: "Khu vực thực hành",
-      status_code: "ONGOING",
-      enrolled: 22
-    },
-    {
-      session_id: 3,
-      session_name: "Advanced Electrical Safety",
-      course_id: 3,
-      start_time: "2024-02-28T08:00",
-      end_time: "2024-03-01T17:00",
-      instructor_id: 3,
-      instructor_name: "Lê Văn Chuyên gia",
-      max_participants: 15,
-      location: "Phòng thí nghiệm",
-      status_code: "COMPLETED",
-      enrolled: 12
+  // Clear course_id immediately if no courses are available
+  useEffect(() => {
+    if (allCourses && allCourses.length === 0 && sessionForm.course_id) {
+      console.log('Immediately clearing course_id because no courses available:', sessionForm.course_id);
+      setSessionForm(prev => ({ ...prev, course_id: '' }));
     }
-  ]);
+  }, [allCourses, sessionForm.course_id]);
 
-  const [users] = useState<User[]>([
-    { user_id: 1, full_name: "Nguyễn Văn A", department: "Kỹ thuật" },
-    { user_id: 2, full_name: "Trần Thị B", department: "An toàn" },
-    { user_id: 3, full_name: "Lê Văn C", department: "Sản xuất" },
-    { user_id: 4, full_name: "Phạm Thị D", department: "Kỹ thuật" },
-    { user_id: 5, full_name: "Hoàng Văn E", department: "Bảo trì" }
-  ]);
+      // Force clear course_id on component mount if no courses
+      useEffect(() => {
+        if (allCourses && allCourses.length === 0) {
+          console.log('Component mount: No courses available, forcing course_id to empty');
+          setSessionForm(prev => ({ ...prev, course_id: '' }));
+        }
+      }, []); // Run only on mount
 
-  const [trainingEnrollments] = useState<TrainingEnrollment[]>([
-    {
-      enrollment_id: 1,
-      session_id: 1,
-      user_id: 1,
-      enrolled_at: "2024-02-15T10:00:00",
-      status: "enrolled",
-      score: null,
-      passed: null,
-      completion_date: null
-    },
-    {
-      enrollment_id: 2,
-      session_id: 3,
-      user_id: 2,
-      enrolled_at: "2024-02-20T14:30:00",
-      status: "completed",
-      score: 85,
-      passed: true,
-      completion_date: "2024-03-01T17:00:00"
-    },
-    {
-      enrollment_id: 3,
-      session_id: 2,
-      user_id: 3,
-      enrolled_at: "2024-03-01T09:15:00",
-      status: "completed",
-      score: 65,
-      passed: false,
-      completion_date: "2024-03-20T13:00:00"
-    },
-    {
-      enrollment_id: 4,
-      session_id: 1,
-      user_id: 4,
-      enrolled_at: "2024-02-18T11:20:00",
-      status: "enrolled",
-      score: null,
-      passed: null,
-      completion_date: null
-    },
-    {
-      enrollment_id: 5,
-      session_id: 2,
-      user_id: 5,
-      enrolled_at: "2024-03-05T16:45:00",
-      status: "completed",
-      score: 78,
-      passed: true,
-      completion_date: "2024-03-20T13:00:00"
-    }
-  ]);
-
-  const [questionBanks] = useState<QuestionBank[]>([
-    {
-      bank_id: 1,
-      course_id: 1,
-      name: "Ngân hàng câu hỏi An toàn cơ bản",
-      description: "Các câu hỏi về kiến thức an toàn lao động cơ bản",
-      questionCount: 25
-    },
-    {
-      bank_id: 2,
-      course_id: 2,
-      name: "Ngân hàng câu hỏi PPE",
-      description: "Câu hỏi về thiết bị bảo hộ cá nhân",
-      questionCount: 15
-    },
-    {
-      bank_id: 3,
-      course_id: 3,
-      name: "Ngân hàng câu hỏi An toàn điện",
-      description: "Câu hỏi chuyên sâu về an toàn điện",
-      questionCount: 40
-    }
-  ]);
+      // Debug: Log courses when they change
+      useEffect(() => {
+        console.log('Courses updated:', allCourses);
+        if (allCourses && allCourses.length > 0) {
+          console.log('Available courses:');
+          allCourses.forEach(course => {
+            console.log(`- ID: ${course._id}, Name: ${course.course_name}`);
+          });
+        }
+      }, [allCourses]);
+  const { sessions, loading: sessionsLoading, createSession, updateSession, deleteSession } = useTrainingSessions({
+    courseId: filters.courseId || undefined,
+    statusCode: filters.statusCode || undefined,
+  });
+  const { enrollments } = useTrainingEnrollments();
+  const { questionBanks, loading: questionBanksLoading, createQuestionBank, updateQuestionBank, deleteQuestionBank } = useQuestionBanks({
+    courseId: filters.courseId || undefined,
+  });
+  const { questions, createQuestion, updateQuestion, deleteQuestion, importQuestionsFromExcel } = useQuestions();
 
   // Utility functions
-  const getCourseSetName = (courseSetId: number): string => {
-    const courseSet = courseSets.find(cs => cs.id === courseSetId);
-    return courseSet ? courseSet.name : 'Không xác định';
-  };
-
-  const getCourseName = (courseId: number): string => {
-    const course = courses.find(c => c.course_id === courseId);
-    return course ? course.course_name : 'Không xác định';
-  };
-
-  const getUserName = (userId: number): string => {
-    const user = users.find(u => u.user_id === userId);
-    return user ? user.full_name : 'Không xác định';
-  };
-
-  const getUserDepartment = (userId: number): string => {
-    const user = users.find(u => u.user_id === userId);
-    return user ? user.department : 'Không xác định';
-  };
-
   const getStatusLabel = (statusCode: string): string => {
     const statusMap: { [key: string]: string } = {
       'SCHEDULED': 'Đã lên lịch',
@@ -278,6 +138,337 @@ const TrainingManagement: React.FC = () => {
       'CANCELLED': 'Đã hủy'
     };
     return statusMap[statusCode] || statusCode;
+  };
+
+  // Form handlers
+  const resetForms = () => {
+    setCourseForm({
+      course_name: '',
+      description: '',
+      duration_hours: '',
+      validity_months: '',
+      course_set_id: '',
+      is_mandatory: false,
+    });
+    setSessionForm({
+      session_name: '',
+      course_id: '',
+      start_time: '',
+      end_time: '',
+      max_participants: '',
+      location: '',
+      status_code: 'SCHEDULED',
+    });
+    setQuestionBankForm({
+      name: '',
+      description: '',
+      course_id: '',
+    });
+    setQuestionForm({
+      content: '',
+      options: ['', '', '', ''],
+      correct_answer: '',
+    });
+    setEditingItem(null);
+  };
+
+  const handleCourseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const courseData = {
+        ...courseForm,
+        duration_hours: parseInt(courseForm.duration_hours),
+        validity_months: courseForm.validity_months ? parseInt(courseForm.validity_months) : null,
+      };
+      
+      if (editingItem) {
+        await updateCourse(editingItem._id, courseData);
+      } else {
+        await createCourse(courseData);
+      }
+      closeModal();
+      resetForms();
+    } catch (error) {
+      console.error('Error saving course:', error);
+    }
+  };
+
+  const handleSessionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Validate required fields
+      if (!sessionForm.session_name || !sessionForm.course_id || !sessionForm.start_time || !sessionForm.end_time) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      // Check if courses are available
+      if (!allCourses || allCourses.length === 0) {
+        alert('Không có khóa học nào. Vui lòng tạo khóa học trước khi tạo buổi đào tạo.');
+        return;
+      }
+      
+      // Check if selected course exists
+      const selectedCourseCheck = allCourses.find(course => course._id === sessionForm.course_id);
+      if (!selectedCourseCheck) {
+        alert('Khóa học được chọn không tồn tại. Vui lòng chọn khóa học hợp lệ.');
+        return;
+      }
+
+      const maxParticipants = parseInt(sessionForm.max_participants);
+      if (isNaN(maxParticipants) || maxParticipants < 1) {
+        alert('Please enter a valid number of participants (minimum 1)');
+        return;
+      }
+
+      // Debug: Log current state before validation
+      console.log('=== FINAL VALIDATION DEBUG ===');
+      console.log('Current sessionForm.course_id:', sessionForm.course_id);
+      console.log('All courses available:', allCourses);
+      console.log('All courses length:', allCourses?.length);
+      
+      // Final validation: ensure course_id is valid before sending
+      if (!sessionForm.course_id || sessionForm.course_id.trim() === '') {
+        console.log('❌ Course ID is empty or null');
+        alert('Vui lòng chọn khóa học.');
+        return;
+      }
+
+      // Double-check that the course exists
+      const selectedCourseFinal = allCourses?.find(course => course._id === sessionForm.course_id);
+      if (!selectedCourseFinal) {
+        console.log('❌ Selected course not found in available courses');
+        console.log('Looking for course_id:', sessionForm.course_id);
+        console.log('Available course IDs:', allCourses?.map(c => c._id));
+        alert('Khóa học được chọn không tồn tại. Vui lòng chọn khóa học hợp lệ.');
+        return;
+      }
+      
+      console.log('✅ Course validation passed');
+      console.log('Selected course:', selectedCourseFinal);
+
+      const sessionData = {
+        ...sessionForm,
+        start_time: new Date(sessionForm.start_time).toISOString(),
+        end_time: new Date(sessionForm.end_time).toISOString(),
+        max_participants: maxParticipants,
+        status_code: 'SCHEDULED' as const,
+      };
+      
+      console.log('Sending session data:', sessionData);
+      console.log('Course ID:', sessionData.course_id, 'Type:', typeof sessionData.course_id);
+      console.log('Start time type:', typeof sessionData.start_time, 'Value:', sessionData.start_time);
+      console.log('End time type:', typeof sessionData.end_time, 'Value:', sessionData.end_time);
+      console.log('Start time Date object:', new Date(sessionData.start_time));
+      console.log('End time Date object:', new Date(sessionData.end_time));
+      console.log('Start time timestamp:', new Date(sessionData.start_time).getTime());
+      console.log('End time timestamp:', new Date(sessionData.end_time).getTime());
+      console.log('Is end time after start time?', new Date(sessionData.end_time) > new Date(sessionData.start_time));
+      
+      if (editingItem) {
+        await updateSession(editingItem._id, sessionData);
+      } else {
+        await createSession(sessionData);
+      }
+      closeModal();
+      resetForms();
+    } catch (error: any) {
+      console.error('Error saving session:', error);
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+        console.error('Response headers:', error.response.headers);
+        
+        // Log detailed validation errors
+        if (error.response.data.errors) {
+          console.error('Validation errors:', error.response.data.errors);
+          error.response.data.errors.forEach((err: any, index: number) => {
+            console.error(`Error ${index + 1}:`, err);
+            console.error(`Error ${index + 1} field:`, err.field);
+            console.error(`Error ${index + 1} message:`, err.message);
+          });
+        }
+        
+        // Show user-friendly error message
+        const errorMessage = error.response.data.errors && error.response.data.errors.length > 0 
+          ? error.response.data.errors[0].message 
+          : error.response.data.message || 'Unknown error occurred';
+        alert(`Error: ${errorMessage}`);
+      }
+    }
+  };
+
+  const handleQuestionBankSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingItem) {
+        await updateQuestionBank(editingItem._id, questionBankForm);
+      } else {
+        await createQuestionBank(questionBankForm);
+      }
+      closeModal();
+      resetForms();
+    } catch (error) {
+      console.error('Error saving question bank:', error);
+    }
+  };
+
+  const handleQuestionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Filter out empty options
+      const validOptions = questionForm.options.filter(option => option.trim() !== '');
+      
+      if (validOptions.length < 2) {
+        alert('Cần ít nhất 2 lựa chọn');
+        return;
+      }
+
+      if (!validOptions.includes(questionForm.correct_answer)) {
+        alert('Đáp án đúng phải là một trong các lựa chọn');
+        return;
+      }
+
+      const questionData = {
+        bank_id: editingItem._id,
+        content: questionForm.content,
+        options: validOptions,
+        correct_answer: questionForm.correct_answer,
+      };
+
+      // Create or update question using API
+      if (editingItem && editingItem._id && editingItem.content) {
+        // Editing existing question
+        await updateQuestion(editingItem._id, questionData);
+      } else {
+        // Creating new question
+        await createQuestion(questionData);
+      }
+      
+      closeModal();
+      resetForms();
+    } catch (error) {
+      console.error('Error saving question:', error);
+    }
+  };
+
+  const handleEditCourse = (course: any) => {
+    setEditingItem(course);
+    setCourseForm({
+      course_name: course.course_name,
+      description: course.description || '',
+      duration_hours: course.duration_hours.toString(),
+      validity_months: course.validity_months ? course.validity_months.toString() : '',
+      course_set_id: course.course_set_id._id,
+      is_mandatory: course.is_mandatory,
+    });
+    openModal('addCourseModal');
+  };
+
+  const handleEditSession = (session: any) => {
+    setEditingItem(session);
+    setSessionForm({
+      session_name: session.session_name,
+      course_id: session.course_id._id,
+      start_time: new Date(session.start_time).toISOString().slice(0, 16),
+      end_time: new Date(session.end_time).toISOString().slice(0, 16),
+      max_participants: session.max_participants?.toString() || '',
+      location: session.location || '',
+      status_code: session.status_code || 'SCHEDULED',
+    });
+    openModal('addSessionModal');
+  };
+
+  const handleEditQuestionBank = (bank: any) => {
+    setEditingItem(bank);
+    setQuestionBankForm({
+      name: bank.name,
+      description: bank.description || '',
+      course_id: bank.course_id._id,
+    });
+    openModal('addBankModal');
+  };
+
+  // Delete handlers
+  const handleDeleteCourse = async (id: string) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa khóa học này?')) {
+      try {
+        await deleteCourse(id);
+      } catch (error) {
+        console.error('Error deleting course:', error);
+      }
+    }
+  };
+
+  const handleDeleteSession = async (id: string) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa buổi đào tạo này?')) {
+      try {
+        await deleteSession(id);
+      } catch (error) {
+        console.error('Error deleting session:', error);
+      }
+    }
+  };
+
+  const handleDeleteQuestionBank = async (id: string) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa ngân hàng câu hỏi này?')) {
+      try {
+        await deleteQuestionBank(id);
+      } catch (error) {
+        console.error('Error deleting question bank:', error);
+      }
+    }
+  };
+
+  const handleDeleteQuestion = async (id: string) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa câu hỏi này?')) {
+      try {
+        await deleteQuestion(id);
+      } catch (error) {
+        console.error('Error deleting question:', error);
+      }
+    }
+  };
+
+  const handleEditQuestion = (question: any) => {
+    setEditingItem(question);
+    setQuestionForm({
+      content: question.content,
+      options: question.options,
+      correct_answer: question.correct_answer,
+    });
+    openModal('addQuestionModal');
+  };
+
+  const handleExcelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setExcelFile(file);
+    }
+  };
+
+  const handleImportExcel = async () => {
+    if (!excelFile || !editingItem) {
+      alert('Vui lòng chọn file Excel và ngân hàng câu hỏi');
+      return;
+    }
+
+    try {
+      await importQuestionsFromExcel(editingItem._id, excelFile);
+      setExcelFile(null);
+      closeModal();
+    } catch (error) {
+      console.error('Error importing Excel:', error);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    try {
+      downloadQuestionTemplate();
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      alert('Có lỗi xảy ra khi tải template. Vui lòng thử lại.');
+    }
   };
 
 
@@ -290,12 +481,30 @@ const TrainingManagement: React.FC = () => {
   };
 
   const openModal = (modalId: string) => {
+    console.log('Opening modal:', modalId, 'Current editingItem:', editingItem);
     setShowModal(modalId);
+    resetForms();
+  };
+
+  const openModalWithData = (modalId: string, data: any) => {
+    console.log('Opening modal with data:', modalId, 'Data:', data);
+    setEditingItem(data);
+    setShowModal(modalId);
+    // Không gọi resetForms() để không reset editingItem
   };
 
   const closeModal = () => {
     setShowModal(null);
+    resetForms();
   };
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Debug state values
+  console.log('Current state - showModal:', showModal, 'editingItem:', editingItem);
+  console.log('Courses data:', courses);
 
   return (
     <div className="training-management">
@@ -349,17 +558,32 @@ const TrainingManagement: React.FC = () => {
                 <div className="search-filters">
                   <div className="search-box">
                     <i className="fas fa-search"></i>
-                    <input type="text" placeholder="Tìm kiếm khóa học..." />
+                    <input 
+                      type="text" 
+                      placeholder="Tìm kiếm khóa học..." 
+                      value={filters.search}
+                      onChange={(e) => handleFilterChange('search', e.target.value)}
+                    />
                   </div>
                   
-                  <select className="filter-select">
+                  <select 
+                    className="filter-select"
+                    value={filters.courseSetId}
+                    onChange={(e) => handleFilterChange('courseSetId', e.target.value)}
+                  >
                     <option value="">Tất cả bộ khóa học</option>
-                    <option value="1">An toàn cơ bản</option>
-                    <option value="2">An toàn nâng cao</option>
-                    <option value="3">Chuyên môn kỹ thuật</option>
+                    {courseSets.map(courseSet => (
+                      <option key={courseSet._id} value={courseSet._id}>
+                        {courseSet.name}
+                      </option>
+                    ))}
                   </select>
                   
-                  <select className="filter-select">
+                  <select 
+                    className="filter-select"
+                    value={filters.isMandatory}
+                    onChange={(e) => handleFilterChange('isMandatory', e.target.value)}
+                  >
                     <option value="">Tất cả</option>
                     <option value="true">Bắt buộc</option>
                     <option value="false">Tự chọn</option>
@@ -372,8 +596,23 @@ const TrainingManagement: React.FC = () => {
               </div>
 
               <div className="data-grid">
-                {courses.map(course => (
-                  <div key={course.course_id} className="course-card">
+                {coursesLoading ? (
+                  <div className="loading-spinner">
+                    <i className="fas fa-spinner fa-spin"></i>
+                    <span>Đang tải dữ liệu...</span>
+                  </div>
+                ) : courses.length === 0 ? (
+                  <div className="empty-state">
+                    <i className="fas fa-graduation-cap"></i>
+                    <h3>Chưa có khóa học nào</h3>
+                    <p>Hãy tạo khóa học đầu tiên để bắt đầu quản lý đào tạo</p>
+                    <button className="btn btn-primary" onClick={() => openModal('addCourseModal')}>
+                      <i className="fas fa-plus"></i> Tạo khóa học
+                    </button>
+                  </div>
+                ) : (
+                  courses.map(course => (
+                    <div key={course._id} className="course-card">
                     <div className="card-header">
                       <div className="card-title">{course.course_name}</div>
                       <div className="card-description">{course.description}</div>
@@ -392,46 +631,40 @@ const TrainingManagement: React.FC = () => {
                         </div>
                         <div className="info-item">
                           <i className="fas fa-layer-group"></i>
-                          <span>{getCourseSetName(course.course_set_id)}</span>
-                        </div>
-                        <div className="info-item">
-                          <i className="fas fa-users"></i>
-                          <span>{course.totalEnrolled || 0} đăng ký</span>
-                        </div>
-                      </div>
-                      
-                      <div className="enrollment-stats">
-                        <div className="stats-title">Thống kê đào tạo</div>
-                        <div className="stats-row">
-                          <span>Đã hoàn thành:</span>
-                          <span>{course.completed || 0}/{course.totalEnrolled || 0}</span>
-                        </div>
-                        <div className="stats-row">
-                          <span>Đã đạt:</span>
-                          <span>{course.passed || 0}/{course.completed || 0}</span>
-                        </div>
-                        <div className="progress-bar">
-                          <div 
-                            className="progress-fill" 
-                            style={{width: `${course.totalEnrolled ? (course.completed! / course.totalEnrolled) * 100 : 0}%`}}
-                          ></div>
+                            <span>{course.course_set_id?.name || 'N/A'}</span>
                         </div>
                       </div>
                       
                       <div className="card-actions">
-                        <button className="btn btn-warning btn-sm">
+                          <button 
+                            className="btn btn-warning btn-sm"
+                            onClick={() => handleEditCourse(course)}
+                          >
                           <i className="fas fa-edit"></i> Sửa
                         </button>
-                        <button className="btn btn-success btn-sm">
+                          <button 
+                            className="btn btn-success btn-sm"
+                            onClick={() => openModalWithData('viewCourseModal', course)}
+                          >
                           <i className="fas fa-eye"></i> Xem
                         </button>
-                        <button className="btn btn-secondary btn-sm">
+                          <button 
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => openModalWithData('questionBankModal', course)}
+                          >
                           <i className="fas fa-question-circle"></i> Câu hỏi
+                        </button>
+                          <button 
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleDeleteCourse(course._id)}
+                          >
+                            <i className="fas fa-trash"></i> Xóa
                         </button>
                       </div>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -443,15 +676,37 @@ const TrainingManagement: React.FC = () => {
                 <div className="search-filters">
                   <div className="search-box">
                     <i className="fas fa-search"></i>
-                    <input type="text" placeholder="Tìm kiếm buổi đào tạo..." />
+                    <input 
+                      type="text" 
+                      placeholder="Tìm kiếm buổi đào tạo..." 
+                      value={filters.search}
+                      onChange={(e) => handleFilterChange('search', e.target.value)}
+                    />
                   </div>
                   
-                  <select className="filter-select">
+                  <select 
+                    className="filter-select"
+                    value={filters.statusCode}
+                    onChange={(e) => handleFilterChange('statusCode', e.target.value)}
+                  >
                     <option value="">Tất cả trạng thái</option>
                     <option value="SCHEDULED">Đã lên lịch</option>
                     <option value="ONGOING">Đang diễn ra</option>
                     <option value="COMPLETED">Hoàn thành</option>
                     <option value="CANCELLED">Đã hủy</option>
+                  </select>
+
+                  <select 
+                    className="filter-select"
+                    value={filters.courseId}
+                    onChange={(e) => handleFilterChange('courseId', e.target.value)}
+                  >
+                    <option value="">Tất cả khóa học</option>
+                    {courses.map(course => (
+                      <option key={course._id} value={course._id}>
+                        {course.course_name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 
@@ -461,11 +716,26 @@ const TrainingManagement: React.FC = () => {
               </div>
 
               <div className="data-grid">
-                {trainingSessions.map(session => (
-                  <div key={session.session_id} className="session-card">
+                {sessionsLoading ? (
+                  <div className="loading-spinner">
+                    <i className="fas fa-spinner fa-spin"></i>
+                    <span>Đang tải dữ liệu...</span>
+                  </div>
+                ) : sessions.length === 0 ? (
+                  <div className="empty-state">
+                    <i className="fas fa-calendar-alt"></i>
+                    <h3>Chưa có buổi đào tạo nào</h3>
+                    <p>Hãy lên lịch buổi đào tạo đầu tiên</p>
+                    <button className="btn btn-primary" onClick={() => openModal('addSessionModal')}>
+                      <i className="fas fa-plus"></i> Lên lịch đào tạo
+                    </button>
+                  </div>
+                ) : (
+                  sessions.map(session => (
+                    <div key={session._id} className="session-card">
                     <div className="card-header">
                       <div className="card-title">{session.session_name}</div>
-                      <div className="card-description">{getCourseName(session.course_id)}</div>
+                        <div className="card-description">{session.course_id.course_name}</div>
                       <div className={`status-badge status-${session.status_code.toLowerCase()}`}>
                         {getStatusLabel(session.status_code)}
                       </div>
@@ -482,43 +752,41 @@ const TrainingManagement: React.FC = () => {
                           <span>{formatDateTime(session.end_time)}</span>
                         </div>
                         <div className="info-item">
-                          <i className="fas fa-chalkboard-teacher"></i>
-                          <span>{session.instructor_name || 'Chưa phân công'}</span>
-                        </div>
-                        <div className="info-item">
                           <i className="fas fa-map-marker-alt"></i>
                           <span>{session.location || 'Chưa xác định'}</span>
                         </div>
                       </div>
                       
-                      <div className="enrollment-stats">
-                        <div className="stats-title">Đăng ký tham gia</div>
-                        <div className="stats-row">
-                          <span>Đã đăng ký:</span>
-                          <span>{session.enrolled || 0}/{session.max_participants}</span>
-                        </div>
-                        <div className="progress-bar">
-                          <div 
-                            className="progress-fill" 
-                            style={{width: `${session.max_participants ? (session.enrolled! / session.max_participants) * 100 : 0}%`}}
-                          ></div>
-                        </div>
-                      </div>
-                      
                       <div className="card-actions">
-                        <button className="btn btn-warning btn-sm">
+                          <button 
+                            className="btn btn-warning btn-sm"
+                            onClick={() => handleEditSession(session)}
+                          >
                           <i className="fas fa-edit"></i> Sửa
                         </button>
-                        <button className="btn btn-success btn-sm">
+                          <button 
+                            className="btn btn-success btn-sm"
+                            onClick={() => openModalWithData('viewSessionModal', session)}
+                          >
                           <i className="fas fa-eye"></i> Chi tiết
                         </button>
-                        <button className="btn btn-secondary btn-sm">
-                          <i className="fas fa-user-check"></i> Điểm danh
+                          <button 
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => openModalWithData('enrollmentModal', session)}
+                          >
+                            <i className="fas fa-user-check"></i> Đăng ký
+                          </button>
+                          <button 
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleDeleteSession(session._id)}
+                          >
+                            <i className="fas fa-trash"></i> Xóa
                         </button>
                       </div>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -541,7 +809,7 @@ const TrainingManagement: React.FC = () => {
                   </select>
                 </div>
                 
-                <button className="btn btn-success">
+                <button className="btn btn-success" onClick={() => openModal('exportReportModal')}>
                   <i className="fas fa-download"></i> Xuất báo cáo
                 </button>
               </div>
@@ -561,15 +829,15 @@ const TrainingManagement: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {trainingEnrollments.map(enrollment => {
-                      const session = trainingSessions.find(s => s.session_id === enrollment.session_id);
-                      const courseName = session ? getCourseName(session.course_id) : 'Không xác định';
+                    {enrollments.map(enrollment => {
+                      const session = sessions.find(s => s._id === enrollment.session_id._id);
+                      const courseName = session ? session.course_id.course_name : 'Không xác định';
                       const sessionName = session ? session.session_name : 'Không xác định';
                       
                       return (
-                        <tr key={enrollment.enrollment_id}>
-                          <td style={{fontWeight: 600, color: '#2c3e50'}}>{getUserName(enrollment.user_id)}</td>
-                          <td>{getUserDepartment(enrollment.user_id)}</td>
+                        <tr key={enrollment._id}>
+                          <td style={{fontWeight: 600, color: '#2c3e50'}}>{enrollment.user_id.full_name}</td>
+                          <td>{enrollment.user_id.email}</td>
                           <td>{courseName}</td>
                           <td>{sessionName}</td>
                           <td>{formatDateTime(enrollment.enrolled_at)}</td>
@@ -587,7 +855,13 @@ const TrainingManagement: React.FC = () => {
                             {enrollment.score ? `${enrollment.score}/100` : '-'}
                           </td>
                           <td>
-                            <button className="btn btn-warning btn-sm">
+                            <button 
+                              className="btn btn-warning btn-sm"
+                              onClick={() => {
+                                setEditingItem(enrollment);
+                                openModal('editEnrollmentModal');
+                              }}
+                            >
                               <i className="fas fa-edit"></i>
                             </button>
                           </td>
@@ -613,7 +887,7 @@ const TrainingManagement: React.FC = () => {
                   <select className="filter-select">
                     <option value="">Tất cả khóa học</option>
                     {courses.map(course => (
-                      <option key={course.course_id} value={course.course_id}>
+                      <option key={course._id} value={course._id}>
                         {course.course_name}
                       </option>
                     ))}
@@ -626,8 +900,23 @@ const TrainingManagement: React.FC = () => {
               </div>
 
               <div className="data-grid">
-                {questionBanks.map(bank => (
-                  <div key={bank.bank_id} className="course-card">
+                {questionBanksLoading ? (
+                  <div className="loading-spinner">
+                    <i className="fas fa-spinner fa-spin"></i>
+                    <span>Đang tải dữ liệu...</span>
+                  </div>
+                ) : questionBanks.length === 0 ? (
+                  <div className="empty-state">
+                    <i className="fas fa-question-circle"></i>
+                    <h3>Chưa có ngân hàng câu hỏi nào</h3>
+                    <p>Hãy tạo ngân hàng câu hỏi đầu tiên</p>
+                    <button className="btn btn-primary" onClick={() => openModal('addBankModal')}>
+                      <i className="fas fa-plus"></i> Tạo ngân hàng câu hỏi
+                    </button>
+                  </div>
+                ) : (
+                  questionBanks.map(bank => (
+                    <div key={bank._id} className="course-card">
                     <div className="card-header">
                       <div className="card-title">{bank.name}</div>
                       <div className="card-description">{bank.description}</div>
@@ -637,28 +926,44 @@ const TrainingManagement: React.FC = () => {
                       <div className="course-info">
                         <div className="info-item">
                           <i className="fas fa-book"></i>
-                          <span>{getCourseName(bank.course_id)}</span>
+                            <span>{bank.course_id.course_name}</span>
                         </div>
                         <div className="info-item">
                           <i className="fas fa-question-circle"></i>
-                          <span>{bank.questionCount || 0} câu hỏi</span>
+                            <span>{questions.filter(q => q.bank_id === bank._id).length} câu hỏi</span>
                         </div>
                       </div>
                       
                       <div className="card-actions">
-                        <button className="btn btn-warning btn-sm">
+                          <button 
+                            className="btn btn-warning btn-sm"
+                            onClick={() => handleEditQuestionBank(bank)}
+                          >
                           <i className="fas fa-edit"></i> Sửa
                         </button>
-                        <button className="btn btn-success btn-sm">
+                          <button 
+                            className="btn btn-success btn-sm"
+                            onClick={() => openModalWithData('manageQuestionsModal', bank)}
+                          >
                           <i className="fas fa-list"></i> Quản lý câu hỏi
                         </button>
-                        <button className="btn btn-secondary btn-sm">
+                          <button 
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => openModalWithData('previewBankModal', bank)}
+                          >
                           <i className="fas fa-eye"></i> Xem trước
+                        </button>
+                          <button 
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleDeleteQuestionBank(bank._id)}
+                          >
+                            <i className="fas fa-trash"></i> Xóa
                         </button>
                       </div>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -670,44 +975,80 @@ const TrainingManagement: React.FC = () => {
         <div className="modal active">
           <div className="modal-content">
             <div className="modal-header">
-              <h2 className="modal-title">Tạo khóa học mới</h2>
+              <h2 className="modal-title">{editingItem ? 'Chỉnh sửa khóa học' : 'Tạo khóa học mới'}</h2>
               <span className="close-modal" onClick={closeModal}>&times;</span>
             </div>
             
-            <form>
+            <form onSubmit={handleCourseSubmit}>
               <div className="form-grid">
                 <div className="form-group">
                   <label className="form-label">Tên khóa học *</label>
-                  <input type="text" className="form-input" required />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    required 
+                    value={courseForm.course_name}
+                    onChange={(e) => setCourseForm(prev => ({ ...prev, course_name: e.target.value }))}
+                  />
                 </div>
                 
                 <div className="form-group">
-                  <label className="form-label">Bộ khóa học</label>
-                  <select className="form-input">
-                    <option value="1">An toàn cơ bản</option>
-                    <option value="2">An toàn nâng cao</option>
-                    <option value="3">Chuyên môn kỹ thuật</option>
+                  <label className="form-label">Bộ khóa học *</label>
+                  <select 
+                    className="form-input"
+                    required
+                    value={courseForm.course_set_id}
+                    onChange={(e) => setCourseForm(prev => ({ ...prev, course_set_id: e.target.value }))}
+                  >
+                    <option value="">Chọn bộ khóa học</option>
+                    {courseSets.map(courseSet => (
+                      <option key={courseSet._id} value={courseSet._id}>
+                        {courseSet.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 
                 <div className="form-group">
                   <label className="form-label">Thời lượng (giờ) *</label>
-                  <input type="number" className="form-input" required min="1" />
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    required 
+                    min="1" 
+                    value={courseForm.duration_hours}
+                    onChange={(e) => setCourseForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                  />
                 </div>
                 
                 <div className="form-group">
                   <label className="form-label">Hiệu lực (tháng)</label>
-                  <input type="number" className="form-input" min="1" />
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    min="1" 
+                    value={courseForm.validity_months}
+                    onChange={(e) => setCourseForm(prev => ({ ...prev, validity_months: e.target.value }))}
+                  />
                 </div>
                 
                 <div className="form-group full-width">
                   <label className="form-label">Mô tả khóa học</label>
-                  <textarea className="form-input" rows={4}></textarea>
+                  <textarea 
+                    className="form-input" 
+                    rows={4}
+                    value={courseForm.description}
+                    onChange={(e) => setCourseForm(prev => ({ ...prev, description: e.target.value }))}
+                  ></textarea>
                 </div>
                 
                 <div className="form-group full-width">
                   <div className="form-checkbox">
-                    <input type="checkbox" />
+                    <input 
+                      type="checkbox" 
+                      checked={courseForm.is_mandatory}
+                      onChange={(e) => setCourseForm(prev => ({ ...prev, is_mandatory: e.target.checked }))}
+                    />
                     <label>Khóa học bắt buộc</label>
                   </div>
                 </div>
@@ -718,7 +1059,7 @@ const TrainingManagement: React.FC = () => {
                   Hủy
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-save"></i> Tạo khóa học
+                  <i className="fas fa-save"></i> {editingItem ? 'Cập nhật' : 'Tạo'} khóa học
                 </button>
               </div>
             </form>
@@ -731,57 +1072,155 @@ const TrainingManagement: React.FC = () => {
         <div className="modal active">
           <div className="modal-content">
             <div className="modal-header">
-              <h2 className="modal-title">Lên lịch đào tạo</h2>
+              <h2 className="modal-title">{editingItem ? 'Chỉnh sửa buổi đào tạo' : 'Lên lịch đào tạo'}</h2>
               <span className="close-modal" onClick={closeModal}>&times;</span>
             </div>
             
-            <form>
+            <form onSubmit={handleSessionSubmit}>
               <div className="form-grid">
                 <div className="form-group">
                   <label className="form-label">Tên buổi đào tạo *</label>
-                  <input type="text" className="form-input" required />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    required 
+                    value={sessionForm.session_name}
+                    onChange={(e) => setSessionForm(prev => ({ ...prev, session_name: e.target.value }))}
+                  />
                 </div>
                 
                 <div className="form-group">
                   <label className="form-label">Khóa học *</label>
-                  <select className="form-input" required>
+                  {sessionForm.course_id && (
+                    <div className="mb-2 p-2 bg-blue-100 border border-blue-300 rounded text-sm">
+                      <strong>Debug:</strong> Current course_id: <code>{sessionForm.course_id}</code>
+                      <button 
+                        type="button" 
+                        className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs"
+                        onClick={() => setSessionForm(prev => ({ ...prev, course_id: '' }))}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
+                  {!allCourses || allCourses.length === 0 ? (
+                    <div className="alert alert-warning">
+                      <strong>Không có khóa học nào!</strong><br />
+                      Vui lòng tạo khóa học trước khi tạo buổi đào tạo.
+                      <br />
+                      <div className="mt-2 space-x-2">
+                        <button 
+                          type="button" 
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => {
+                            console.log('Force clearing course_id:', sessionForm.course_id);
+                            setSessionForm(prev => ({ ...prev, course_id: '' }));
+                          }}
+                        >
+                          Xóa Course ID (Debug)
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn btn-sm btn-outline-success"
+                          onClick={() => {
+                            console.log('Setting test course ID');
+                            setSessionForm(prev => ({ ...prev, course_id: '68d4036ff00023bc69569527' }));
+                          }}
+                        >
+                          Set Test Course ID
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <select 
+                      className="form-input" 
+                      required
+                      value={sessionForm.course_id}
+                      onChange={(e) => setSessionForm(prev => ({ ...prev, course_id: e.target.value }))}
+                    >
                     <option value="">Chọn khóa học</option>
-                    {courses.map(course => (
-                      <option key={course.course_id} value={course.course_id}>
+                      {allCourses.map(course => (
+                        <option key={course._id} value={course._id}>
                         {course.course_name}
                       </option>
                     ))}
                   </select>
+                  )}
+                  {sessionForm.course_id && (
+                    <div className="mt-2">
+                      <small className="text-muted">
+                        Current course_id: <code>{sessionForm.course_id}</code>
+                      </small>
+                      <button 
+                        type="button" 
+                        className="btn btn-sm btn-outline-danger ml-2"
+                        onClick={() => {
+                          console.log('Manual clear course_id:', sessionForm.course_id);
+                          setSessionForm(prev => ({ ...prev, course_id: '' }));
+                        }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="form-group">
                   <label className="form-label">Ngày bắt đầu *</label>
-                  <input type="datetime-local" className="form-input" required />
+                  <input 
+                    type="datetime-local" 
+                    className="form-input" 
+                    required 
+                    value={sessionForm.start_time}
+                    onChange={(e) => setSessionForm(prev => ({ ...prev, start_time: e.target.value }))}
+                  />
                 </div>
                 
                 <div className="form-group">
                   <label className="form-label">Ngày kết thúc *</label>
-                  <input type="datetime-local" className="form-input" required />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Giảng viên</label>
-                  <select className="form-input">
-                    <option value="">Chọn giảng viên</option>
-                    <option value="1">Nguyễn Văn Trainer</option>
-                    <option value="2">Trần Thị Giảng viên</option>
-                    <option value="3">Lê Văn Chuyên gia</option>
-                  </select>
+                  <input 
+                    type="datetime-local" 
+                    className="form-input" 
+                    required 
+                    value={sessionForm.end_time}
+                    onChange={(e) => setSessionForm(prev => ({ ...prev, end_time: e.target.value }))}
+                  />
                 </div>
                 
                 <div className="form-group">
                   <label className="form-label">Số lượng tối đa</label>
-                  <input type="number" className="form-input" min="1" defaultValue="20" />
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    min="1" 
+                    defaultValue="20"
+                    value={sessionForm.max_participants}
+                    onChange={(e) => setSessionForm(prev => ({ ...prev, max_participants: e.target.value }))}
+                  />
                 </div>
                 
-                <div className="form-group full-width">
+                <div className="form-group">
+                  <label className="form-label">Trạng thái</label>
+                  <select 
+                    className="form-input"
+                    value={sessionForm.status_code}
+                    onChange={(e) => setSessionForm(prev => ({ ...prev, status_code: e.target.value }))}
+                  >
+                    <option value="SCHEDULED">Đã lên lịch</option>
+                    <option value="ONGOING">Đang diễn ra</option>
+                    <option value="COMPLETED">Hoàn thành</option>
+                    <option value="CANCELLED">Đã hủy</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
                   <label className="form-label">Địa điểm</label>
-                  <input type="text" className="form-input" />
+                  <input 
+                    type="text" 
+                    className="form-input"
+                    value={sessionForm.location}
+                    onChange={(e) => setSessionForm(prev => ({ ...prev, location: e.target.value }))}
+                  />
                 </div>
               </div>
               
@@ -790,7 +1229,7 @@ const TrainingManagement: React.FC = () => {
                   Hủy
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-calendar-plus"></i> Tạo lịch đào tạo
+                  <i className="fas fa-calendar-plus"></i> {editingItem ? 'Cập nhật' : 'Tạo'} lịch đào tạo
                 </button>
               </div>
             </form>
@@ -803,32 +1242,55 @@ const TrainingManagement: React.FC = () => {
         <div className="modal active">
           <div className="modal-content">
             <div className="modal-header">
-              <h2 className="modal-title">Tạo ngân hàng câu hỏi</h2>
+              <h2 className="modal-title">{editingItem ? 'Chỉnh sửa ngân hàng câu hỏi' : 'Tạo ngân hàng câu hỏi'}</h2>
               <span className="close-modal" onClick={closeModal}>&times;</span>
             </div>
             
-            <form>
+            <form onSubmit={handleQuestionBankSubmit}>
               <div className="form-grid">
                 <div className="form-group">
                   <label className="form-label">Tên ngân hàng câu hỏi *</label>
-                  <input type="text" className="form-input" required />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    required 
+                    value={questionBankForm.name}
+                    onChange={(e) => setQuestionBankForm(prev => ({ ...prev, name: e.target.value }))}
+                  />
                 </div>
                 
                 <div className="form-group">
                   <label className="form-label">Khóa học *</label>
-                  <select className="form-input" required>
+                  {!allCourses || allCourses.length === 0 ? (
+                    <div className="alert alert-warning">
+                      <strong>Không có khóa học nào!</strong><br />
+                      Vui lòng tạo khóa học trước khi tạo ngân hàng câu hỏi.
+                    </div>
+                  ) : (
+                    <select 
+                      className="form-input" 
+                      required
+                      value={questionBankForm.course_id}
+                      onChange={(e) => setQuestionBankForm(prev => ({ ...prev, course_id: e.target.value }))}
+                    >
                     <option value="">Chọn khóa học</option>
-                    {courses.map(course => (
-                      <option key={course.course_id} value={course.course_id}>
+                      {allCourses.map(course => (
+                        <option key={course._id} value={course._id}>
                         {course.course_name}
                       </option>
                     ))}
                   </select>
+                  )}
                 </div>
                 
                 <div className="form-group full-width">
                   <label className="form-label">Mô tả</label>
-                  <textarea className="form-input" rows={3}></textarea>
+                  <textarea 
+                    className="form-input" 
+                    rows={3}
+                    value={questionBankForm.description}
+                    onChange={(e) => setQuestionBankForm(prev => ({ ...prev, description: e.target.value }))}
+                  ></textarea>
                 </div>
               </div>
               
@@ -837,10 +1299,383 @@ const TrainingManagement: React.FC = () => {
                   Hủy
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-save"></i> Tạo ngân hàng câu hỏi
+                  <i className="fas fa-save"></i> {editingItem ? 'Cập nhật' : 'Tạo'} ngân hàng câu hỏi
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Course Modal */}
+      {showModal === 'viewCourseModal' && (
+        <ViewCourseModal 
+          course={editingItem} 
+          onClose={closeModal} 
+        />
+      )}
+
+      {/* View Session Modal */}
+      {showModal === 'viewSessionModal' && (
+        <ViewSessionModal 
+          session={editingItem} 
+          onClose={closeModal} 
+        />
+      )}
+
+      {/* Manage Questions Modal */}
+      {showModal === 'manageQuestionsModal' && editingItem && (
+        <div className="modal active">
+          <div className="modal-content large">
+            <div className="modal-header">
+              <h2 className="modal-title">Quản lý câu hỏi - {editingItem.name}</h2>
+              <span className="close-modal" onClick={closeModal}>&times;</span>
+            </div>
+            
+            <div className="questions-management">
+              <div className="questions-header">
+                <div className="questions-info">
+                  <p>Tổng số câu hỏi: {questions.filter(q => q.bank_id === editingItem._id).length}</p>
+                </div>
+                <div className="questions-actions">
+                  <button 
+                    className="btn btn-success"
+                    onClick={handleDownloadTemplate}
+                  >
+                    <i className="fas fa-download"></i> Tải template
+                  </button>
+                  <button 
+                    className="btn btn-info"
+                    onClick={() => openModalWithData('importExcelModal', editingItem)}
+                  >
+                    <i className="fas fa-file-excel"></i> Import Excel
+                  </button>
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => openModal('addQuestionModal')}
+                  >
+                    <i className="fas fa-plus"></i> Thêm câu hỏi
+                  </button>
+                </div>
+              </div>
+              
+              <div className="questions-list">
+                {questions.filter(q => q.bank_id === editingItem._id).length === 0 ? (
+                  <div className="empty-state">
+                    <i className="fas fa-question-circle"></i>
+                    <h3>Chưa có câu hỏi nào</h3>
+                    <p>Hãy thêm câu hỏi đầu tiên cho ngân hàng này</p>
+                    <button 
+                      className="btn btn-primary"
+                      onClick={() => openModal('addQuestionModal')}
+                    >
+                      <i className="fas fa-plus"></i> Thêm câu hỏi
+                    </button>
+                  </div>
+                ) : (
+                  questions.filter(q => q.bank_id === editingItem._id).map((question, index) => (
+                    <div key={question._id} className="question-item">
+                      <div className="question-header">
+                        <span className="question-number">Câu {index + 1}</span>
+                        <span className="question-type">{(question as any).type || 'Multiple Choice'}</span>
+                        <div className="question-actions">
+                          <button 
+                            className="btn btn-warning btn-sm"
+                            onClick={() => handleEditQuestion(question)}
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button 
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleDeleteQuestion(question._id)}
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="question-content">
+                        <p>{(question as any).content || (question as any).question_text || (question as any).question || 'Nội dung câu hỏi'}</p>
+                        {question.options && (
+                          <div className="question-options">
+                            {(question as any).options?.map((option: string, optIndex: number) => (
+                              <div key={optIndex} className={`option ${option === (question as any).correct_answer ? 'correct' : ''}`}>
+                                {String.fromCharCode(65 + optIndex)}. {option}
+                              </div>
+                            )) || []}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            
+            <div className="form-actions">
+              <button type="button" className="btn btn-secondary" onClick={closeModal}>
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Question Bank Modal */}
+      {showModal === 'previewBankModal' && editingItem && (
+        <div className="modal active">
+          <div className="modal-content large">
+            <div className="modal-header">
+              <h2 className="modal-title">Xem trước ngân hàng câu hỏi - {editingItem.name}</h2>
+              <span className="close-modal" onClick={closeModal}>&times;</span>
+            </div>
+            
+            <div className="question-preview">
+              <div className="preview-header">
+                <h3>{editingItem.name}</h3>
+                <p>{editingItem.description}</p>
+                <div className="preview-stats">
+                  <span>Tổng số câu hỏi: {questions.filter(q => q.bank_id === editingItem._id).length}</span>
+                  <span>Khóa học: {editingItem.course_id?.course_name || 'N/A'}</span>
+                </div>
+              </div>
+              
+              <div className="preview-questions">
+                {questions.filter(q => q.bank_id === editingItem._id).map((question, index) => (
+                  <div key={question._id} className="preview-question">
+                    <div className="preview-question-header">
+                      <span className="question-number">Câu {index + 1}</span>
+                      <span className="question-type">{(question as any).type || 'Multiple Choice'}</span>
+                    </div>
+                    <div className="preview-question-content">
+                      <p>{(question as any).content || (question as any).question_text || (question as any).question || 'Nội dung câu hỏi'}</p>
+                      {question.options && (
+                        <div className="preview-options">
+                          {(question as any).options?.map((option: string, optIndex: number) => (
+                            <div key={optIndex} className={`preview-option ${option === (question as any).correct_answer ? 'correct' : ''}`}>
+                              {String.fromCharCode(65 + optIndex)}. {option}
+                            </div>
+                          )) || []}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="form-actions">
+              <button type="button" className="btn btn-secondary" onClick={closeModal}>
+                Đóng
+              </button>
+              <button type="button" className="btn btn-primary">
+                <i className="fas fa-edit"></i> Chỉnh sửa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Report Modal */}
+      {showModal === 'exportReportModal' && (
+        <div className="modal active">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2 className="modal-title">Xuất báo cáo đào tạo</h2>
+              <span className="close-modal" onClick={closeModal}>&times;</span>
+            </div>
+            
+            <div className="export-options">
+              <div className="form-group">
+                <label className="form-label">Loại báo cáo</label>
+                <select className="form-input">
+                  <option value="enrollments">Báo cáo đăng ký tham gia</option>
+                  <option value="completion">Báo cáo hoàn thành khóa học</option>
+                  <option value="scores">Báo cáo điểm số</option>
+                  <option value="summary">Báo cáo tổng hợp</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Khóa học</label>
+                <select className="form-input">
+                  <option value="">Tất cả khóa học</option>
+                  {courses.map(course => (
+                    <option key={course._id} value={course._id}>
+                      {course.course_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Từ ngày</label>
+                <input type="date" className="form-input" />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Đến ngày</label>
+                <input type="date" className="form-input" />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Định dạng xuất</label>
+                <select className="form-input">
+                  <option value="excel">Excel (.xlsx)</option>
+                  <option value="pdf">PDF (.pdf)</option>
+                  <option value="csv">CSV (.csv)</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="form-actions">
+              <button type="button" className="btn btn-secondary" onClick={closeModal}>
+                Hủy
+              </button>
+              <button type="button" className="btn btn-success">
+                <i className="fas fa-download"></i> Xuất báo cáo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enrollment Management Modal */}
+      {showModal === 'enrollmentModal' && (
+        <EnrollmentModal 
+          session={editingItem} 
+          onClose={closeModal} 
+        />
+      )}
+
+      {/* Question Bank Modal */}
+      {showModal === 'questionBankModal' && (
+        <QuestionBankModal 
+          course={editingItem} 
+          onClose={closeModal} 
+        />
+      )}
+
+      {/* Add Question Modal */}
+      {showModal === 'addQuestionModal' && (
+        <div className="modal active">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2 className="modal-title">{editingItem && editingItem.content ? 'Chỉnh sửa câu hỏi' : 'Thêm câu hỏi mới'}</h2>
+              <span className="close-modal" onClick={closeModal}>&times;</span>
+            </div>
+            
+            <form onSubmit={handleQuestionSubmit}>
+              <div className="form-group">
+                <label className="form-label">Nội dung câu hỏi</label>
+                <textarea 
+                  className="form-input" 
+                  rows={3}
+                  placeholder="Nhập nội dung câu hỏi..."
+                  value={questionForm.content}
+                  onChange={(e) => setQuestionForm(prev => ({ ...prev, content: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Các lựa chọn</label>
+                <div className="options-container">
+                  {questionForm.options.map((option, index) => (
+                    <input 
+                      key={index}
+                      type="text" 
+                      className="form-input" 
+                      placeholder={`Lựa chọn ${String.fromCharCode(65 + index)}`}
+                      value={option}
+                      onChange={(e) => {
+                        const newOptions = [...questionForm.options];
+                        newOptions[index] = e.target.value;
+                        setQuestionForm(prev => ({ ...prev, options: newOptions }));
+                      }}
+                      required={index < 2}
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Đáp án đúng</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Nhập đáp án đúng..."
+                  value={questionForm.correct_answer}
+                  onChange={(e) => setQuestionForm(prev => ({ ...prev, correct_answer: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div className="form-actions">
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  <i className="fas fa-plus"></i> Thêm câu hỏi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Import Excel Modal */}
+      {showModal === 'importExcelModal' && (
+        <div className="modal active">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2 className="modal-title">Import câu hỏi từ Excel</h2>
+              <span className="close-modal" onClick={closeModal}>&times;</span>
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Ngân hàng câu hỏi</label>
+              <div className="form-input-static">
+                <i className="fas fa-database"></i>
+                {editingItem ? editingItem.name : 'Chưa chọn ngân hàng câu hỏi'}
+              </div>
+              <small className="form-text">
+                Câu hỏi sẽ được import vào ngân hàng này
+              </small>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Chọn file Excel</label>
+              <input 
+                type="file" 
+                className="form-input" 
+                accept=".xlsx,.xls"
+                onChange={handleExcelFileChange}
+              />
+              <small className="form-text">
+                Chỉ chấp nhận file Excel (.xlsx, .xls). Tải template mẫu để xem định dạng.
+              </small>
+            </div>
+
+            {excelFile && (
+              <div className="alert alert-info">
+                <i className="fas fa-info-circle"></i>
+                File đã chọn: {excelFile.name}
+              </div>
+            )}
+            
+            <div className="form-actions">
+              <button type="button" className="btn btn-secondary" onClick={closeModal}>
+                Hủy
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-success"
+                onClick={handleImportExcel}
+                disabled={!excelFile || !editingItem}
+              >
+                <i className="fas fa-upload"></i> Import câu hỏi
+              </button>
+            </div>
           </div>
         </div>
       )}

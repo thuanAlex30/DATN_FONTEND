@@ -11,7 +11,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Tạo instance axios
 const api: AxiosInstance = axios.create({
-  baseURL: 'http://localhost:3000/api/v1',
+  baseURL: 'http://localhost:3000/api',
   timeout: 60000, // Increased to 60 seconds
   headers: {
     'Content-Type': 'application/json',
@@ -97,7 +97,7 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
           const response = await axios.post(
-            'http://localhost:3000/api/v1/auth/refresh-token',
+            'http://localhost:3000/api/auth/refresh-token',
             { refreshToken },
             { withCredentials: true }
           );
@@ -132,4 +132,5 @@ api.interceptors.response.use(
   }
 );
 
+export { api };
 export default api; 

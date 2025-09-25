@@ -9,11 +9,13 @@ const Header = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { user } = useSelector((state: RootState) => state.auth);
+    const { unreadCount } = useSelector((state: RootState) => state.websocket);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
 
     const handleNotificationClick = () => {
-        alert('Bạn có 3 thông báo mới:\n\n1. 15 nhân viên cần gia hạn chứng chỉ\n2. Lịch kiểm tra định kỳ tuần tới\n3. Cập nhật hệ thống vào Chủ nhật');
+        // Toggle notification panel - this will be handled by RealtimeNotifications component
+        console.log('Notification clicked, unread count:', unreadCount);
     };
 
     const handleProfileClick = () => {
@@ -47,6 +49,9 @@ const Header = () => {
                 </div>
                 <button className="notification-btn" onClick={handleNotificationClick}>
                     <i className="fas fa-bell"></i>
+                    {unreadCount > 0 && (
+                        <span className="notification-badge">{unreadCount}</span>
+                    )}
                 </button>
                 <div className="profile-container">
                     <button className="profile-btn" onClick={handleProfileClick}>

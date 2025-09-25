@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
+import { api } from '../../services/api';
 import styles from './ProfileModal.module.css';
 
 interface ProfileData {
@@ -63,27 +64,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
         
         try {
             console.log('Fetching profile with token:', accessToken);
-            const response = await fetch('http://localhost:3000/api/v1/auth/profile', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                },
-            });
+            const response = await api.get('/auth/profile');
 
             console.log('Response status:', response.status);
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: Failed to fetch profile`);
-            }
-
-            const result = await response.json();
-            console.log('Profile data received:', result);
-            
-            if (result.success) {
-                setProfileData(result.data);
+            if (response.data) {
+                setProfileData(response.data);
+                console.log('Profile data:', response.data);
             } else {
-                throw new Error(result.message || 'Failed to fetch profile');
+                throw new Error('No profile data received');
             }
         } catch (err) {
             console.error('Profile fetch error:', err);

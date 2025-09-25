@@ -13,6 +13,18 @@ import TrainingManagementPage from '../pages/Admin/TrainingManagement';
 import CertificateManagementPage from '../pages/Admin/CertificateManagement';
 import PPEManagementPage from '../pages/Admin/PPEManagement';
 import RoleManagementPage from '../pages/Admin/RoleManagement';
+import IncidentManagementPage from '../pages/Admin/IncidentManagement';
+import ClassifyIncident from '../pages/Admin/IncidentManagement/ClassifyIncident';
+import AssignIncident from '../pages/Admin/IncidentManagement/AssignIncident';
+import InvestigateIncident from '../pages/Admin/IncidentManagement/InvestigateIncident';
+import UpdateProgress from '../pages/Admin/IncidentManagement/UpdateProgress';
+import CloseIncident from '../pages/Admin/IncidentManagement/CloseIncident';
+import ProgressHistory from '../pages/Admin/IncidentManagement/ProgressHistory';
+import ReportIncident from '../pages/Employee/ReportIncident';
+import EmployeeTraining from '../pages/Employee/Training';
+import TrainingSession from '../pages/Employee/TrainingSession';
+import EmployeePPE from '../pages/Employee/PPE';
+import WebSocketTest from '../pages/WebSocketTest';
 
 const AppRoutes = () => {
     return (
@@ -29,6 +41,45 @@ const AppRoutes = () => {
                         <HomePage />
                     </AuthGuard>
                 } 
+            />
+
+            {/* Employee routes */}
+            <Route 
+                path="/employee/incidents/report" 
+                element={
+                    <AuthGuard requiredRole="employee">
+                        <ReportIncident />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/employee/training" 
+                element={
+                    <AuthGuard requiredRole="employee">
+                        <EmployeeTraining />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/training/session" 
+                element={
+                    <AuthGuard requiredRole="employee">
+                        <TrainingSession />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/employee/ppe" 
+                element={
+                    <AuthGuard requiredRole="employee">
+                        <EmployeePPE />
+                    </AuthGuard>
+                } 
+            />
+            
+            <Route 
+                path="/websocket-test" 
+                element={<WebSocketTest />} 
             />
             
             {/* Redirect root to login */}
@@ -125,7 +176,78 @@ const AppRoutes = () => {
                     </AuthGuard>
                 } 
             />
-
+            <Route 
+                path="/admin/incident-management" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <IncidentManagementPage />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            {/* Admin incident action routes */}
+            <Route 
+                path="/admin/incidents/:id/classify" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <ClassifyIncident />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/incidents/:id/assign" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <AssignIncident />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/incidents/:id/investigate" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <InvestigateIncident />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/incidents/:id/progress" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <UpdateProgress />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/incidents/:id/progress-history" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <ProgressHistory />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/incidents/:id/close" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <CloseIncident />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            
             {/* Fallback for non-existent routes */}
             <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

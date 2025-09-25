@@ -34,10 +34,10 @@ const UnauthorizedPage: React.FC = () => {
           </svg>
         </div>
         
-        <h1 className="unauthorized-title">访问被拒绝</h1>
+        <h1 className="unauthorized-title">Truy cập bị từ chối!</h1>
         
         <p className="unauthorized-message">
-          抱歉，您没有权限访问此页面。请联系系统管理员获取相应权限。
+          Rất tiếc, bạn không có quyền truy cập trang này, vui lòng liên hệ quản trị viên để cấp quyền。
         </p>
         
         <div className="unauthorized-actions">
@@ -45,14 +45,14 @@ const UnauthorizedPage: React.FC = () => {
             variant="outline"
             onClick={handleGoBack}
           >
-            返回上一页
+           Back
           </Button>
           
           <Button
             variant="primary"
             onClick={handleGoHome}
           >
-            返回登录页
+            Login
           </Button>
         </div>
       </div>

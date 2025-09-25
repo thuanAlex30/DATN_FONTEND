@@ -144,6 +144,14 @@ const PPEManagement: React.FC = () => {
       ]);
       
       // Update all states at once
+      console.log('📦 Loaded PPE data:', {
+        categories: categoriesData.length,
+        items: itemsData.length,
+        issuances: issuancesData.length,
+        sampleItem: itemsData[0],
+        sampleCategory: categoriesData[0]
+      });
+      
       setPpeCategories(categoriesData);
       setPpeItems(itemsData);
       setPpeIssuances(issuancesData);
@@ -522,7 +530,7 @@ const PPEManagement: React.FC = () => {
       }
       
       if (inventoryFilters.categoryFilter) {
-        if (item.category_id._id !== inventoryFilters.categoryFilter) {
+        if ((typeof item.category_id === 'string' ? item.category_id : item.category_id?._id) !== inventoryFilters.categoryFilter) {
           return false;
         }
       }
@@ -566,12 +574,31 @@ const PPEManagement: React.FC = () => {
   };
 
   const getCategoryStats = (categoryId: string) => {
-    const categoryItems = ppeItems.filter(item => item.category_id._id === categoryId);
+    const categoryItems = ppeItems.filter(item => {
+      // Handle both string and object category_id
+      const itemCategoryId = typeof item.category_id === 'string' 
+        ? item.category_id 
+        : item.category_id?._id;
+      return itemCategoryId === categoryId;
+    });
+    
+    console.log(`📊 Category ${categoryId} stats:`, {
+      categoryId,
+      totalItems: categoryItems.length,
+      items: categoryItems.map(item => ({
+        id: item._id,
+        name: item.item_name,
+        category_id: item.category_id,
+        quantity_available: item.quantity_available,
+        quantity_allocated: item.quantity_allocated
+      }))
+    });
+    
     const totalItems = categoryItems.length;
     const totalQuantity = categoryItems.reduce((sum, item) => sum + (item.total_quantity || (item.quantity_available + item.quantity_allocated)), 0);
     const totalRemaining = categoryItems.reduce((sum, item) => sum + (item.remaining_quantity || item.quantity_available), 0);
     const totalAllocated = categoryItems.reduce((sum, item) => sum + (item.actual_allocated_quantity || item.quantity_allocated), 0);
-    const lowStockItems = categoryItems.filter(item => (item.remaining_quantity || item.quantity_available) <= item.reorder_level).length;
+    const lowStockItems = categoryItems.filter(item => (item.remaining_quantity || item.quantity_available) <= (item.reorder_level || 0)).length;
     
     return {
       totalItems,
@@ -947,7 +974,7 @@ const PPEManagement: React.FC = () => {
                             {item.item_name}
                       </div>
                       <div className="ppe-icon">
-                            <i className={getCategoryIcon(item.category_id._id)}></i>
+                            <i className={getCategoryIcon(typeof item.category_id === 'string' ? item.category_id : item.category_id?._id)}></i>
                       </div>
                     </div>
                     
@@ -959,7 +986,9 @@ const PPEManagement: React.FC = () => {
                         </div>
                             <div className="info-item">
                               <i className="fas fa-tag"></i>
-                              <span>{item.category_id.category_name}</span>
+                              <span>{typeof item.category_id === 'string' 
+                                ? ppeCategories.find(cat => cat._id === item.category_id)?.category_name || 'Không xác định'
+                                : item.category_id?.category_name || 'Không xác định'}</span>
                             </div>
                             {item.brand && (
                               <div className="info-item">
@@ -1010,7 +1039,7 @@ const PPEManagement: React.FC = () => {
                                 setFormData(prev => ({ 
                                   ...prev, 
                                   editItem: {
-                                    category_id: item.category_id._id,
+                                    category_id: typeof item.category_id === 'string' ? item.category_id : item.category_id?._id,
                                     item_code: item.item_code,
                                     item_name: item.item_name,
                                     brand: item.brand || '',

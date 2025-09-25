@@ -7,6 +7,7 @@ import userReducer from './slices/userSlice';
 import roleReducer from './slices/roleSlice';
 import departmentReducer from './slices/departmentSlice';
 import positionReducer from './slices/positionSlice';
+import websocketReducer from './slices/websocketSlice';
 
 // Gộp tất cả reducers
 const rootReducer = combineReducers({
@@ -15,6 +16,7 @@ const rootReducer = combineReducers({
   roles: roleReducer,
   departments: departmentReducer,
   positions: positionReducer,
+  websocket: websocketReducer,
 });
 
 // Cấu hình redux-persist

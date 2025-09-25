@@ -13,7 +13,7 @@ export interface PPECategory {
 
 export interface PPEItem {
   _id: string;
-  category_id: PPECategory;
+  category_id: string | PPECategory;
   item_code: string;
   item_name: string;
   brand?: string;
@@ -24,6 +24,7 @@ export interface PPEItem {
   total_quantity?: number;
   remaining_quantity?: number;
   actual_allocated_quantity?: number;
+  category?: PPECategory; // Additional category info from API
   createdAt: string;
   updatedAt: string;
 }
@@ -51,8 +52,14 @@ export interface PPEIssuance {
     _id: string;
     full_name: string;
   };
-  status: 'issued' | 'returned' | 'overdue';
+  status: 'issued' | 'returned' | 'overdue' | 'damaged' | 'replacement_needed';
   actual_return_date?: string;
+  return_condition?: 'good' | 'damaged' | 'worn';
+  return_notes?: string;
+  report_type?: 'damage' | 'replacement' | 'lost';
+  report_description?: string;
+  report_severity?: 'low' | 'medium' | 'high';
+  reported_date?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -121,8 +128,27 @@ export interface QuantityStatsResponse {
 }
 
 export interface UpdateIssuanceData {
-  status?: 'issued' | 'returned' | 'overdue';
+  status?: 'issued' | 'returned' | 'overdue' | 'damaged' | 'replacement_needed';
   actual_return_date?: string;
+  return_condition?: 'good' | 'damaged' | 'worn';
+  return_notes?: string;
+  report_type?: 'damage' | 'replacement' | 'lost';
+  report_description?: string;
+  report_severity?: 'low' | 'medium' | 'high';
+  reported_date?: string;
+}
+
+export interface ReturnPPEData {
+  return_date: string;
+  return_condition: 'good' | 'damaged' | 'worn';
+  notes: string;
+}
+
+export interface ReportPPEData {
+  report_type: 'damage' | 'replacement' | 'lost';
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+  reported_date: string;
 }
 
 // PPE Categories API
@@ -197,18 +223,36 @@ export const createPPEIssuance = async (data: CreateIssuanceData): Promise<PPEIs
   return response.data.data;
 };
 
-export const updatePPEIssuance = async (id: number, data: UpdateIssuanceData): Promise<PPEIssuance> => {
+export const updatePPEIssuance = async (id: string, data: UpdateIssuanceData): Promise<PPEIssuance> => {
   const response = await api.put(`/ppe/issuances/${id}`, data);
   return response.data.data;
 };
 
-export const returnPPEIssuance = async (id: number, actualReturnDate?: string): Promise<PPEIssuance> => {
-  const response = await api.post(`/ppe/issuances/${id}/return`, { actual_return_date: actualReturnDate });
+export const returnPPEIssuance = async (id: string, data: ReturnPPEData): Promise<PPEIssuance> => {
+  const response = await api.post(`/ppe/issuances/${id}/return`, data);
+  return response.data.data;
+};
+
+// Employee-specific PPE return method
+export const returnPPEIssuanceEmployee = async (id: string, data: ReturnPPEData): Promise<PPEIssuance> => {
+  const response = await api.post(`/ppe/issuances/${id}/return-employee`, data);
+  return response.data.data;
+};
+
+// Employee-specific PPE report method
+export const reportPPEIssuanceEmployee = async (id: string, data: ReportPPEData): Promise<PPEIssuance> => {
+  const response = await api.post(`/ppe/issuances/${id}/report-employee`, data);
   return response.data.data;
 };
 
 export const deletePPEIssuance = async (id: number): Promise<void> => {
   await api.delete(`/ppe/issuances/${id}`);
+};
+
+// Get PPE issuances for current user (employee)
+export const getMyPPEIssuances = async (): Promise<PPEIssuance[]> => {
+  const response = await api.get('/ppe/issuances/my');
+  return response.data.data;
 };
 
 // Get PPE issuances for a specific user

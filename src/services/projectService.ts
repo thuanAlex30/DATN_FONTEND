@@ -16,7 +16,7 @@ import type {
 } from '../types/project';
 import type { User } from '../types/user';
 
-const API_BASE_URL = 'http://localhost:3000/api/v1';
+const API_BASE_URL = 'http://localhost:3000/api';
 
 // Create axios instance with default config
 const api = axios.create({

@@ -195,6 +195,40 @@ body {
   box-shadow: 0 8px 25px rgba(108, 92, 231, 0.3);
 }
 
+/* Notification Badge */
+.notification-btn {
+  position: relative;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #e74c3c;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 /* Profile Menu */
 .profile-container {
   position: relative;
@@ -689,4 +723,73 @@ body {
 
 ::-webkit-scrollbar-thumb:hover { 
   background: rgba(108, 92, 231, 0.5); 
+}
+
+/* Sidebar Footer & Logout Button */
+.sidebar-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+}
+
+.logout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.logout-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.logout-btn i {
+  font-size: 1rem;
+  width: 16px;
+  text-align: center;
+}
+
+/* Adjust sidebar nav height to accommodate footer */
+.sidebar-nav {
+  height: calc(100vh - 200px); /* Increased from 140px to 200px */
+  padding-bottom: 80px; /* Add padding for footer */
+}
+
+/* Mobile responsive for logout button */
+@media (max-width: 768px) {
+  .sidebar-footer {
+    padding: 0.8rem;
+  }
+  
+  .logout-btn {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+  }
+  
+  .sidebar-nav {
+    height: calc(100vh - 180px);
+    padding-bottom: 70px;
+  }
 }

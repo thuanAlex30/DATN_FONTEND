@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test WebSocket Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .notification {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #f39c12;
+        }
+        .notification h4 {
+            margin: 0 0 10px 0;
+            color: #856404;
+        }
+        .notification p {
+            margin: 0;
+            color: #856404;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 WebSocket Integration Test</h1>
+        
+        <div id="status" class="status disconnected">
+            ❌ Chưa kết nối WebSocket
+        </div>
+
+        <div class="test-section">
+            <h3>Kết nối WebSocket</h3>
+            <button onclick="connectWebSocket()">Kết nối</button>
+            <button onclick="disconnectWebSocket()">Ngắt kết nối</button>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Thông báo</h3>
+            <button onclick="testIncidentNotification()">Test Sự cố</button>
+            <button onclick="testPPENotification()">Test PPE</button>
+            <button onclick="testTrainingNotification()">Test Đào tạo</button>
+            <button onclick="testSystemNotification()">Test Hệ thống</button>
+        </div>
+
+        <div class="test-section">
+            <h3>Thông báo nhận được</h3>
+            <div id="notifications"></div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let notificationCount = 0;
+
+        function updateStatus(connected, message) {
+            const statusEl = document.getElementById('status');
+            if (connected) {
+                statusEl.className = 'status connected';
+                statusEl.innerHTML = '✅ ' + message;
+            } else {
+                statusEl.className = 'status disconnected';
+                statusEl.innerHTML = '❌ ' + message;
+            }
+        }
+
+        function addNotification(title, message, type = 'info') {
+            notificationCount++;
+            const notificationsEl = document.getElementById('notifications');
+            const notificationEl = document.createElement('div');
+            notificationEl.className = 'notification';
+            notificationEl.innerHTML = `
+                <h4>${title}</h4>
+                <p>${message}</p>
+                <small>Thời gian: ${new Date().toLocaleString('vi-VN')}</small>
+            `;
+            notificationsEl.insertBefore(notificationEl, notificationsEl.firstChild);
+            
+            // Giới hạn số thông báo hiển thị
+            const notifications = notificationsEl.children;
+            if (notifications.length > 10) {
+                notificationsEl.removeChild(notifications[notifications.length - 1]);
+            }
+        }
+
+        function connectWebSocket() {
+            if (socket && socket.connected) {
+                updateStatus(true, 'Đã kết nối WebSocket');
+                return;
+            }
+
+            socket = io('http://localhost:3000', {
+                auth: {
+                    token: 'test-token' // Token test
+                }
+            });
+
+            socket.on('connect', () => {
+                console.log('🔌 WebSocket connected:', socket.id);
+                updateStatus(true, `Đã kết nối WebSocket (ID: ${socket.id})`);
+            });
+
+            socket.on('disconnect', (reason) => {
+                console.log('🔌 WebSocket disconnected:', reason);
+                updateStatus(false, `Mất kết nối WebSocket: ${reason}`);
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('🔌 WebSocket connection error:', error);
+                updateStatus(false, `Lỗi kết nối: ${error.message}`);
+            });
+
+            // Incident events
+            socket.on('incident_reported', (data) => {
+                console.log('🚨 Incident reported:', data);
+                addNotification(
+                    '🚨 Sự cố mới được báo cáo',
+                    `Nhân viên đã báo cáo sự cố: ${data.title || 'Không có tiêu đề'}`
+                );
+            });
+
+            socket.on('incident_classified', (data) => {
+                console.log('📋 Incident classified:', data);
+                addNotification(
+                    '📋 Sự cố đã được phân loại',
+                    `Sự cố "${data.title}" đã được phân loại là ${data.severity}`
+                );
+            });
+
+            socket.on('incident_assigned', (data) => {
+                console.log('👤 Incident assigned:', data);
+                addNotification(
+                    '👤 Sự cố đã được phân công',
+                    `Sự cố "${data.title}" đã được phân công cho người xử lý`
+                );
+            });
+
+            socket.on('incident_closed', (data) => {
+                console.log('✅ Incident closed:', data);
+                addNotification(
+                    '✅ Sự cố đã được đóng',
+                    `Sự cố "${data.title}" đã được đóng`
+                );
+            });
+
+            // PPE events
+            socket.on('ppe_issued', (data) => {
+                console.log('🛡️ PPE issued:', data);
+                addNotification(
+                    '🛡️ PPE đã được cấp phát',
+                    `PPE "${data.ppeItem?.name || 'Không xác định'}" đã được cấp phát`
+                );
+            });
+
+            socket.on('ppe_returned', (data) => {
+                console.log('🔄 PPE returned:', data);
+                addNotification(
+                    '🔄 PPE đã được trả về',
+                    `PPE "${data.ppeItem?.name || 'Không xác định'}" đã được trả về`
+                );
+            });
+
+            socket.on('ppe_low_stock', (data) => {
+                console.log('📉 PPE low stock:', data);
+                addNotification(
+                    '⚠️ PPE sắp hết hàng',
+                    `PPE "${data.ppeItem?.name || 'Không xác định'}" chỉ còn ${data.currentStock} sản phẩm`
+                );
+            });
+
+            socket.on('ppe_expiring', (data) => {
+                console.log('⚠️ PPE expiring:', data);
+                addNotification(
+                    '⚠️ PPE sắp hết hạn',
+                    `PPE "${data.ppeItem?.name || 'Không xác định'}" sẽ hết hạn sớm`
+                );
+            });
+
+            // Training events
+            socket.on('training_session_created', (data) => {
+                console.log('🎓 Training session created:', data);
+                addNotification(
+                    '🎓 Phiên đào tạo mới',
+                    `Phiên đào tạo "${data.course?.title || 'Không có tiêu đề'}" đã được tạo`
+                );
+            });
+
+            socket.on('training_enrolled', (data) => {
+                console.log('📝 Training enrolled:', data);
+                addNotification(
+                    '📝 Đăng ký đào tạo',
+                    `Nhân viên đã đăng ký khóa đào tạo "${data.course?.title || 'Không có tiêu đề'}"`
+                );
+            });
+
+            socket.on('training_completed', (data) => {
+                console.log('🎉 Training completed:', data);
+                addNotification(
+                    '🎉 Hoàn thành đào tạo',
+                    `Nhân viên đã hoàn thành khóa đào tạo "${data.course?.title || 'Không có tiêu đề'}"`
+                );
+            });
+
+            // System notifications
+            socket.on('notification_created', (data) => {
+                console.log('🔔 System notification:', data);
+                addNotification(
+                    data.title || '🔔 Thông báo hệ thống',
+                    data.message || 'Có thông báo mới từ hệ thống'
+                );
+            });
+        }
+
+        function disconnectWebSocket() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                updateStatus(false, 'Đã ngắt kết nối WebSocket');
+            }
+        }
+
+        function testIncidentNotification() {
+            if (socket && socket.connected) {
+                // Simulate incident report
+                const testData = {
+                    _id: 'test-incident-' + Date.now(),
+                    title: 'Sự cố test từ frontend',
+                    severity: 'medium',
+                    reportedBy: { full_name: 'Test User' }
+                };
+                socket.emit('test_incident', testData);
+                addNotification('🧪 Test', 'Đã gửi test sự cố');
+            } else {
+                addNotification('❌ Lỗi', 'Chưa kết nối WebSocket');
+            }
+        }
+
+        function testPPENotification() {
+            if (socket && socket.connected) {
+                const testData = {
+                    _id: 'test-ppe-' + Date.now(),
+                    ppeItem: { name: 'Mũ bảo hiểm test' },
+                    employee: { full_name: 'Test Employee' },
+                    currentStock: 5
+                };
+                socket.emit('test_ppe', testData);
+                addNotification('🧪 Test', 'Đã gửi test PPE');
+            } else {
+                addNotification('❌ Lỗi', 'Chưa kết nối WebSocket');
+            }
+        }
+
+        function testTrainingNotification() {
+            if (socket && socket.connected) {
+                const testData = {
+                    _id: 'test-training-' + Date.now(),
+                    course: { title: 'Khóa đào tạo test' },
+                    employee: { full_name: 'Test Employee' }
+                };
+                socket.emit('test_training', testData);
+                addNotification('🧪 Test', 'Đã gửi test đào tạo');
+            } else {
+                addNotification('❌ Lỗi', 'Chưa kết nối WebSocket');
+            }
+        }
+
+        function testSystemNotification() {
+            if (socket && socket.connected) {
+                const testData = {
+                    title: 'Thông báo hệ thống test',
+                    message: 'Đây là thông báo test từ frontend',
+                    type: 'info',
+                    priority: 'medium'
+                };
+                socket.emit('test_system', testData);
+                addNotification('🧪 Test', 'Đã gửi test hệ thống');
+            } else {
+                addNotification('❌ Lỗi', 'Chưa kết nối WebSocket');
+            }
+        }
+
+        // Auto connect on page load
+        window.addEventListener('load', () => {
+            console.log('🚀 WebSocket Test Page loaded');
+        });
+    </script>
+    
+    <!-- Include Socket.IO client -->
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+</body>
+</html>
+
+
+
+

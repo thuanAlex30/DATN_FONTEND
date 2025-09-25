@@ -1,6 +1,16 @@
-import { NavLink } from 'react-router-dom'; 
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { logout } from '../../../store/slices/authSlice'; 
 
 const Sidebar = () => {
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        dispatch(logout());
+        navigate('/login');
+    };
+
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
@@ -43,7 +53,7 @@ const Sidebar = () => {
                 </div>
 
                 <div className="nav-section">
-                    <div className="nav-section-title">Đào tạo</div>
+                    <div className="nav-section-title">Đào tạo & Sự cố</div>
                     <NavLink to="/admin/training-management" className="nav-item">
                         <i className="fas fa-graduation-cap"></i>
                         <span>Quản lý đào tạo</span>
@@ -51,6 +61,10 @@ const Sidebar = () => {
                     <NavLink to="/admin/certificate-management" className="nav-item">
                         <i className="fas fa-certificate"></i>
                         <span>Gói chứng chỉ</span>
+                    </NavLink>
+                    <NavLink to="/admin/incident-management" className="nav-item">
+                        <i className="fas fa-exclamation-triangle"></i>
+                        <span>Quản lý sự cố</span>
                     </NavLink>
                 </div>
 
@@ -62,6 +76,14 @@ const Sidebar = () => {
                     </NavLink>
                 </div>
             </nav>
+
+            {/* Logout Section */}
+            <div className="sidebar-footer">
+                <button onClick={handleLogout} className="logout-btn">
+                    <i className="fas fa-sign-out-alt"></i>
+                    <span>Đăng xuất</span>
+                </button>
+            </div>
         </aside>
     );
 };
