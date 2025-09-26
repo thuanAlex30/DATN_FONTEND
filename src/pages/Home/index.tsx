@@ -50,7 +50,7 @@ const Home: React.FC = () => {
             <Link to="/home" className={styles.homeNavItem}>
               <i className="fas fa-home"></i> Trang chủ
             </Link>
-            <Link to="#" className={styles.homeNavItem}>
+            <Link to="/profile" className={styles.homeNavItem}>
               <i className="fas fa-id-card"></i> Thông tin cá nhân
             </Link>
             {user?.role?.role_name === 'employee' && (

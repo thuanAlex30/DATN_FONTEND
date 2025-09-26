@@ -4,6 +4,10 @@ import AdminLayout from '../pages/Admin/layout/AdminLayout';
 import LoginPage from '../pages/Login';
 import UnauthorizedPage from '../pages/Unauthorized';
 import HomePage from '../pages/Home';
+import ProfilePage from '../pages/Profile';
+import EditProfilePage from '../pages/Profile/EditProfile';
+import ChangePasswordPage from '../pages/Profile/ChangePassword';
+import ChangeAvatarPage from '../pages/Profile/ChangeAvatar';
 import DashboardPage from '../pages/Admin/Dashboard';
 import UserManagementPage from '../pages/Admin/UserManagement';
 import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
@@ -39,6 +43,38 @@ const AppRoutes = () => {
                 element={
                     <AuthGuard requiredRole="">
                         <HomePage />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/profile" 
+                element={
+                    <AuthGuard requiredRole="">
+                        <ProfilePage />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/profile/edit" 
+                element={
+                    <AuthGuard requiredRole="">
+                        <EditProfilePage />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/profile/change-password" 
+                element={
+                    <AuthGuard requiredRole="">
+                        <ChangePasswordPage />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/profile/change-avatar" 
+                element={
+                    <AuthGuard requiredRole="">
+                        <ChangeAvatarPage />
                     </AuthGuard>
                 } 
             />
