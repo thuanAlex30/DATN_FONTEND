@@ -120,6 +120,73 @@ const userService = {
       console.error('Error fetching user stats:', error);
       throw error;
     }
+  },
+
+  // Profile methods
+  // Get current user profile
+  async getCurrentUserProfile(): Promise<User> {
+    try {
+      const response = await api.get('/users/profile/me');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching current user profile:', error);
+      throw error;
+    }
+  },
+
+  // Update current user profile
+  async updateCurrentUserProfile(userData: UserUpdate): Promise<User> {
+    try {
+      console.log('🔍 userService.updateCurrentUserProfile - userData:', userData);
+      const response = await api.put('/users/profile/me', userData);
+      console.log('🔍 userService.updateCurrentUserProfile - response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ userService.updateCurrentUserProfile - error:', error);
+      throw error;
+    }
+  },
+
+  // Change password
+  async changePassword(oldPassword: string, newPassword: string): Promise<{ message: string }> {
+    try {
+      const response = await api.post('/users/profile/change-password', {
+        oldPassword,
+        newPassword
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error changing password:', error);
+      throw error;
+    }
+  },
+
+  // Upload avatar
+  async uploadAvatar(file: File): Promise<{ avatar: string; message: string }> {
+    try {
+      console.log('🔍 Frontend upload avatar - file:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
+      
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      console.log('🔍 Frontend upload avatar - formData created');
+      
+      const response = await api.post('/users/profile/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('🔍 Frontend upload avatar - response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Frontend upload avatar error:', error);
+      throw error;
+    }
   }
 };
 

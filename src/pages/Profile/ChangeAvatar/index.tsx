@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import type { AppDispatch, RootState } from '../../../store';
-import { updateProfile } from '../../../store/slices/authSlice';
+import { updateAvatar, refreshUserProfile } from '../../../store/slices/authSlice';
+import userService from '../../../services/userService';
 import Toast from '../../../components/Toast';
 import styles from './ChangeAvatar.module.css';
 
@@ -47,11 +48,19 @@ const ChangeAvatarPage: React.FC = () => {
       return;
     }
 
+    console.log('🔍 File selected:', file);
+    console.log('🔍 File details:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified
+    });
     setSelectedFile(file);
     
     // Create preview URL
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
+    console.log('🔍 Preview URL created:', url);
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,45 +111,44 @@ const ChangeAvatarPage: React.FC = () => {
     }
 
     try {
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('avatar', selectedFile);
+      console.log('🔍 ChangeAvatarPage - selectedFile:', selectedFile);
+      console.log('🔍 ChangeAvatarPage - file details:', {
+        name: selectedFile.name,
+        size: selectedFile.size,
+        type: selectedFile.type
+      });
       
-      // For now, we'll simulate the upload by converting to base64
-      // In real implementation, you would upload to server
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64 = e.target?.result as string;
-        
-        try {
-          await dispatch(updateProfile({
-            avatar: base64
-          })).unwrap();
-          
-          setToast({
-            message: 'Cập nhật ảnh đại diện thành công!',
-            type: 'success',
-            isVisible: true,
-          });
-          
-          // Navigate back to profile after a short delay
-          setTimeout(() => {
-            navigate('/profile');
-          }, 1500);
-          
-        } catch (error: any) {
-          setToast({
-            message: error || 'Có lỗi xảy ra khi cập nhật ảnh đại diện',
-            type: 'error',
-            isVisible: true,
-          });
-        }
-      };
-      reader.readAsDataURL(selectedFile);
+      // Upload avatar using userService
+      const result = await userService.uploadAvatar(selectedFile);
+      
+      console.log('🔍 ChangeAvatarPage - upload result:', result);
+      console.log('🔍 ChangeAvatarPage - result.avatar:', result.avatar);
+      
+      // Always refresh user profile from server to get latest data including avatar
+      console.log('🔍 ChangeAvatarPage - Refreshing profile from server...');
+      await dispatch(refreshUserProfile()).unwrap();
+      
+      // Also update Redux state directly if avatar was returned
+      if (result.avatar) {
+        dispatch(updateAvatar(result.avatar));
+        console.log('🔍 ChangeAvatarPage - Redux updated with avatar:', result.avatar);
+      }
+      
+      setToast({
+        message: 'Cập nhật ảnh đại diện thành công!',
+        type: 'success',
+        isVisible: true,
+      });
+      
+      // Navigate back to profile after a short delay
+      setTimeout(() => {
+        navigate('/profile');
+      }, 1500);
       
     } catch (error: any) {
+      console.error('❌ ChangeAvatarPage - upload error:', error);
       setToast({
-        message: 'Có lỗi xảy ra khi xử lý ảnh',
+        message: error?.response?.data?.message || error?.message || 'Có lỗi xảy ra khi cập nhật ảnh đại diện',
         type: 'error',
         isVisible: true,
       });

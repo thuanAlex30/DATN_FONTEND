@@ -9,6 +9,14 @@ const ProfilePage: React.FC = () => {
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
 
   console.log('ProfilePage - user:', user);
+  console.log('ProfilePage - user.avatar:', user?.avatar);
+  console.log('ProfilePage - user.avatar type:', typeof user?.avatar);
+  console.log('ProfilePage - user.avatar length:', user?.avatar ? user.avatar.length : 0);
+  console.log('ProfilePage - user.full_name:', user?.full_name);
+  console.log('ProfilePage - user.email:', user?.email);
+  console.log('ProfilePage - user.phone:', user?.phone);
+  console.log('ProfilePage - user.username:', user?.username);
+  console.log('ProfilePage - user.id:', user?.id);
 
   if (!user) {
     return <div>Loading...</div>;
@@ -49,10 +57,12 @@ const ProfilePage: React.FC = () => {
           <div className={styles.avatarSection}>
             <Link to="/profile/change-avatar" className={styles.avatarContainer}>
               <img 
-                src={'https://via.placeholder.com/150/4F46E5/FFFFFF?text=' + user.full_name?.charAt(0)} 
+                src={user.avatar || 'https://via.placeholder.com/150/4F46E5/FFFFFF?text=' + user.full_name?.charAt(0)} 
                 alt="Avatar" 
                 className={styles.avatar}
+                onLoad={() => console.log('🔍 Avatar loaded successfully:', user.avatar)}
                 onError={(e) => {
+                  console.log('🔍 Avatar load error, falling back to placeholder');
                   const target = e.target as HTMLImageElement;
                   target.src = 'https://via.placeholder.com/150/4F46E5/FFFFFF?text=' + user.full_name?.charAt(0);
                 }}
@@ -76,11 +86,11 @@ const ProfilePage: React.FC = () => {
               <div className={styles.infoGrid}>
                 <div className={styles.infoItem}>
                   <label className={styles.infoLabel}>Họ và tên</label>
-                  <span className={styles.infoValue}>{user.full_name}</span>
+                  <span className={styles.infoValue}>{user.full_name || 'Chưa cập nhật'}</span>
                 </div>
                 <div className={styles.infoItem}>
                   <label className={styles.infoLabel}>Email</label>
-                  <span className={styles.infoValue}>{user.email}</span>
+                  <span className={styles.infoValue}>{user.email || 'Chưa cập nhật'}</span>
                 </div>
                 <div className={styles.infoItem}>
                   <label className={styles.infoLabel}>Số điện thoại</label>
@@ -88,11 +98,11 @@ const ProfilePage: React.FC = () => {
                 </div>
                 <div className={styles.infoItem}>
                   <label className={styles.infoLabel}>Username</label>
-                  <span className={styles.infoValue}>{user.username}</span>
+                  <span className={styles.infoValue}>{user.username || 'Chưa cập nhật'}</span>
                 </div>
                 <div className={styles.infoItem}>
                   <label className={styles.infoLabel}>ID</label>
-                  <span className={styles.infoValue}>{user.id}</span>
+                  <span className={styles.infoValue}>{user.id || 'Chưa cập nhật'}</span>
                 </div>
                 <div className={styles.infoItem}>
                   <label className={styles.infoLabel}>Lần đăng nhập cuối</label>

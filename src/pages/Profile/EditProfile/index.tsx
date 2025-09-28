@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import type { AppDispatch, RootState } from '../../../store';
-import { updateProfile } from '../../../store/slices/authSlice';
+import { updateProfile, refreshUserProfile } from '../../../store/slices/authSlice';
 import Toast from '../../../components/Toast';
 import styles from './EditProfile.module.css';
 
@@ -90,8 +90,13 @@ const EditProfilePage: React.FC = () => {
     }
 
     try {
+      console.log('🔍 EditProfilePage - formData:', formData);
       await dispatch(updateProfile(formData)).unwrap();
       
+      // Refresh user profile from server to get latest data
+      await dispatch(refreshUserProfile()).unwrap();
+      
+      console.log('🔍 EditProfilePage - update successful');
       setToast({
         message: 'Cập nhật thông tin thành công!',
         type: 'success',
@@ -104,6 +109,7 @@ const EditProfilePage: React.FC = () => {
       }, 1500);
       
     } catch (error: any) {
+      console.error('❌ EditProfilePage - update error:', error);
       setToast({
         message: error || 'Có lỗi xảy ra khi cập nhật thông tin',
         type: 'error',

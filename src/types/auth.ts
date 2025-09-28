@@ -29,6 +29,7 @@ export interface UserProfile {
   email: string;
   full_name: string;
   phone: string;
+  avatar?: string;
   role: {
     _id: string;
     role_name: string;
