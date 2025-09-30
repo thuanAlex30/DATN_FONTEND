@@ -102,7 +102,9 @@ api.interceptors.response.use(
             { withCredentials: true }
           );
           
-          const { accessToken } = response.data.data.tokens;
+          const { data } = response.data;
+          const { data: innerData } = data;
+          const { accessToken } = innerData.tokens;
           localStorage.setItem('accessToken', accessToken);
           
           // Retry request với token mới

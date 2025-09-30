@@ -27,7 +27,8 @@ export const login = createAsyncThunk<
     try {
       const response: AxiosResponse<LoginResponse> = await authService.login(credentials);
       const { data } = response.data;
-      const { tokens, user } = data;
+      const { data: innerData } = data;
+      const { tokens, user } = innerData;
       
       localStorage.setItem('accessToken', tokens.accessToken);
       localStorage.setItem('refreshToken', tokens.refreshToken);

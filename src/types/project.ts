@@ -7,7 +7,7 @@ export interface ProjectLeader {
 }
 
 export interface ProjectSite {
-  id: string;
+  _id: string;
   site_name: string;
   address: string;
   coordinates?: {
@@ -35,12 +35,12 @@ export interface Project {
   id: string;
   project_name: string;
   description: string;
-  status: 'pending' | 'active' | 'completed' | 'cancelled';
+  status: 'PLANNING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'ON_HOLD';
   start_date: string;
   end_date: string;
   progress: number;
   budget?: number;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   leader_id: ProjectLeader;
   site_id: ProjectSite;
   assignments?: TeamMember[];
@@ -58,9 +58,14 @@ export interface ProjectStats {
 
 export interface ProjectFilters {
   status?: string;
+  priority?: string;
   site_id?: string;
   leader_id?: string;
   search?: string;
+  start_date_from?: string;
+  start_date_to?: string;
+  end_date_from?: string;
+  end_date_to?: string;
 }
 
 export interface ProjectAssignment {
@@ -109,10 +114,10 @@ export interface CreateProjectData {
   description: string;
   start_date: string;
   end_date: string;
-  status?: 'pending' | 'active' | 'completed' | 'cancelled';
+  status?: 'PLANNING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'ON_HOLD';
   leader_id: string;
   site_name: string;
-  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 }
 
 export interface UpdateProjectData {

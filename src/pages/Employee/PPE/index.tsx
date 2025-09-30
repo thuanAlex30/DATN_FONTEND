@@ -19,7 +19,7 @@ const EmployeePPE: React.FC = () => {
   
   // Form states
   const [returnForm, setReturnForm] = useState({
-    return_date: new Date().toISOString().split('T')[0],
+    actual_return_date: new Date().toISOString().split('T')[0],
     return_condition: 'good' as 'good' | 'damaged' | 'worn',
     notes: ''
   });
@@ -53,12 +53,12 @@ const EmployeePPE: React.FC = () => {
     
     setLoading(true);
     try {
-      await ppeService.returnPPEIssuanceEmployee(selectedIssuance._id, returnForm);
+      await ppeService.returnPPEIssuanceEmployee(selectedIssuance.id, returnForm);
       await loadUserPPE(); // Reload data
       setShowReturnModal(false);
       setSelectedIssuance(null);
       setReturnForm({
-        return_date: new Date().toISOString().split('T')[0],
+        actual_return_date: new Date().toISOString().split('T')[0],
         return_condition: 'good' as 'good' | 'damaged' | 'worn',
         notes: ''
       });
@@ -84,7 +84,7 @@ const EmployeePPE: React.FC = () => {
         reported_date: reportForm.reported_date
       };
       
-      await ppeService.reportPPEIssuanceEmployee(selectedIssuance._id, reportData);
+      await ppeService.reportPPEIssuanceEmployee(selectedIssuance.id, reportData);
       await loadUserPPE(); // Reload data
       setShowReportModal(false);
       setSelectedIssuance(null);
@@ -272,7 +272,7 @@ const EmployeePPE: React.FC = () => {
                     const isOverdueItem = isOverdue(issuance.expected_return_date);
                     
                     return (
-                      <div key={issuance._id} className="ppe-card">
+                      <div key={issuance.id} className="ppe-card">
                         <div className="card-header">
                           <div className="card-title">
                             {item?.item_name || 'Không xác định'}
@@ -366,7 +366,7 @@ const EmployeePPE: React.FC = () => {
                       issuance.item_id : null;
                     
                     return (
-                      <div key={issuance._id} className="ppe-card return-card">
+                      <div key={issuance.id} className="ppe-card return-card">
                         <div className="card-header">
                           <div className="card-title">
                             {item?.item_name || 'Không xác định'}
@@ -440,7 +440,7 @@ const EmployeePPE: React.FC = () => {
                       issuance.item_id : null;
                     
                     return (
-                      <div key={issuance._id} className="ppe-card report-card">
+                      <div key={issuance.id} className="ppe-card report-card">
                         <div className="card-header">
                           <div className="card-title">
                             {item?.item_name || 'Không xác định'}
@@ -527,8 +527,8 @@ const EmployeePPE: React.FC = () => {
                 <input 
                   type="date" 
                   className="form-input" 
-                  value={returnForm.return_date}
-                  onChange={(e) => setReturnForm(prev => ({ ...prev, return_date: e.target.value }))}
+                  value={returnForm.actual_return_date}
+                  onChange={(e) => setReturnForm(prev => ({ ...prev, actual_return_date: e.target.value }))}
                   required
                 />
               </div>

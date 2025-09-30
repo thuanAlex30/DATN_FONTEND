@@ -21,7 +21,7 @@ export const fetchDepartments = createAsyncThunk(
   'departments/fetchDepartments',
   async (query: DepartmentQuery, { rejectWithValue }) => {
     try {
-      const res = await departmentService.getAll(query);
+      const res = await departmentService.getDepartments(query);
       return res.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || 'Failed to fetch departments');
@@ -33,8 +33,8 @@ export const fetchDepartmentById = createAsyncThunk(
   'departments/fetchDepartmentById',
   async (id: string, { rejectWithValue }) => {
     try {
-      const res = await departmentService.getById(id);
-      return res.data;
+      const res = await departmentService.getDepartmentById(id);
+      return res;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || 'Failed to fetch department');
     }
@@ -45,8 +45,8 @@ export const createDepartment = createAsyncThunk(
   'departments/createDepartment',
   async (data: DepartmentCreate, { rejectWithValue }) => {
     try {
-      const res = await departmentService.create(data);
-      return res.data;
+      const res = await departmentService.createDepartment(data);
+      return res;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || 'Failed to create department');
     }
@@ -57,8 +57,8 @@ export const updateDepartment = createAsyncThunk(
   'departments/updateDepartment',
   async ({ id, data }: { id: string; data: DepartmentUpdate }, { rejectWithValue }) => {
     try {
-      const res = await departmentService.update(id, data);
-      return res.data;
+      const res = await departmentService.updateDepartment(id, data);
+      return res;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || 'Failed to update department');
     }
@@ -69,7 +69,7 @@ export const deleteDepartment = createAsyncThunk(
   'departments/deleteDepartment',
   async (id: string, { rejectWithValue }) => {
     try {
-      await departmentService.delete(id);
+      await departmentService.deleteDepartment(id);
       return id;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || 'Failed to delete department');
@@ -93,7 +93,7 @@ const departmentSlice = createSlice({
       })
       .addCase(fetchDepartments.fulfilled, (state, action) => {
         state.loading = false;
-        state.departments = action.payload;
+        state.departments = action.payload.departments;
       })
       .addCase(fetchDepartments.rejected, (state, action) => {
         state.loading = false;

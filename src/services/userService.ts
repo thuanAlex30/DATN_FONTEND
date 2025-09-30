@@ -16,6 +16,16 @@ const userService = {
       if (response.data && typeof response.data === 'object') {
         if (response.data.success !== undefined) {
           // Response has success field (API response format)
+          // Check if there's nested data structure
+          if (response.data.data && response.data.data.data) {
+            // Double nested data structure
+            return {
+              success: response.data.success,
+              message: response.data.message,
+              data: response.data.data.data,
+              timestamp: response.data.timestamp
+            };
+          }
           return response.data;
         } else if (Array.isArray(response.data)) {
           // Response is directly an array
@@ -45,7 +55,7 @@ const userService = {
   async getUserById(id: string): Promise<User> {
     try {
       const response = await api.get(`/users/${id}`);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching user:', error);
       throw error;
@@ -56,7 +66,7 @@ const userService = {
   async createUser(userData: UserCreate): Promise<User> {
     try {
       const response = await api.post('/users', userData);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error creating user:', error);
       throw error;
@@ -67,7 +77,7 @@ const userService = {
   async updateUser(id: string, userData: UserUpdate): Promise<User> {
     try {
       const response = await api.put(`/users/${id}`, userData);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error updating user:', error);
       throw error;

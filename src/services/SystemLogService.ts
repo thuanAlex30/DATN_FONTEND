@@ -72,6 +72,16 @@ class SystemLogService {
         }
     }
 
+    static async getRecentActivities(limit: number = 10) {
+        try {
+            const response = await api.get(`/system-logs/recent?limit=${limit}`);
+            return response.data;
+        } catch (error) {
+            console.error('SystemLogService.getRecentActivities error:', error);
+            throw error;
+        }
+    }
+
     static async getDetailedStats() {
         try {
             console.log('Making request to:', '/system-logs/detailed-stats');

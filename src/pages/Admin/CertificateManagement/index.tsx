@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import './CertificateManagement.css';
+import React, { useState, useEffect } from 'react';
+import { Card, Typography, Button, Space, Table, Tag, Avatar, Row, Col, Statistic, Input, Select, Modal, Form, message, Popconfirm, Upload, Spin, Alert } from 'antd';
+import { TrophyOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, FilterOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
+// import * as certificateService from '../../../services/certificateService';
 
 // Types
 interface CompanyCertPackage {
@@ -37,6 +39,8 @@ const CertificateManagement: React.FC = () => {
   const [showModal, setShowModal] = useState<string | null>(null);
   const [currentEditingPackage, setCurrentEditingPackage] = useState<CompanyCertPackage | null>(null);
   const [currentEditingEnrollment, setCurrentEditingEnrollment] = useState<CompanyCertEnrollment | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Form states
   const [packageForm, setPackageForm] = useState({
@@ -60,128 +64,35 @@ const CertificateManagement: React.FC = () => {
   const [yearFilter, setYearFilter] = useState('2024');
   const [monthFilter, setMonthFilter] = useState('');
 
-  // Sample data
-  const [companyCertPackages, setCompanyCertPackages] = useState<CompanyCertPackage[]>([
-    {
-      package_id: 1,
-      package_name: "Gói Cơ bản",
-      description: "Chứng chỉ an toàn lao động cơ bản cho doanh nghiệp nhỏ. Bao gồm các khóa học cơ bản về ATVSLĐ, cấp chứng chỉ cho 20 nhân viên.",
-      price: 5000000,
-      duration_months: 12
-    },
-    {
-      package_id: 2,
-      package_name: "Gói Tiêu chuẩn",
-      description: "Chứng chỉ an toàn lao động đầy đủ cho doanh nghiệp vừa và nhỏ. Bao gồm đào tạo chuyên sâu, cấp chứng chỉ cho 50 nhân viên.",
-      price: 8000000,
-      duration_months: 24
-    },
-    {
-      package_id: 3,
-      package_name: "Gói Chuyên nghiệp",
-      description: "Chứng chỉ an toàn lao động toàn diện cho doanh nghiệp lớn. Bao gồm đào tạo chuyên gia, tư vấn on-site, cấp chứng chỉ không giới hạn.",
-      price: 12000000,
-      duration_months: 24
-    },
-    {
-      package_id: 4,
-      package_name: "Gói Doanh nghiệp",
-      description: "Giải pháp chứng chỉ tích hợp cho tập đoàn và doanh nghiệp lớn. Đào tạo tùy chỉnh, quản lý tập trung, hỗ trợ 24/7.",
-      price: 20000000,
-      duration_months: 36
-    }
-  ]);
+  // Data state
+  const [companyCertPackages, setCompanyCertPackages] = useState<CompanyCertPackage[]>([]);
+  const [companyCertEnrollments, setCompanyCertEnrollments] = useState<CompanyCertEnrollment[]>([]);
 
-  const [companyCertEnrollments, setCompanyCertEnrollments] = useState<CompanyCertEnrollment[]>([
-    {
-      enrollment_id: 1,
-      package_id: 2,
-      company_name: "Công ty TNHH Xây dựng An Phát",
-      tax_code: "0123456789",
-      contact_person: "Nguyễn Văn An",
-      phone: "0901234567",
-      email: "contact@anphat.vn",
-      enrolled_at: "2024-01-15T09:00:00",
-      status: "active"
-    },
-    {
-      enrollment_id: 2,
-      package_id: 1,
-      company_name: "Công ty CP Sản xuất Bình Minh",
-      tax_code: "0987654321",
-      contact_person: "Trần Thị Bình",
-      phone: "0912345678",
-      email: "info@binhminh.com",
-      enrolled_at: "2024-02-20T14:30:00",
-      status: "active"
-    },
-    {
-      enrollment_id: 3,
-      package_id: 3,
-      company_name: "Tập đoàn Công nghiệp Cường Thịnh",
-      tax_code: "0555666777",
-      contact_person: "Lê Văn Cường",
-      phone: "0923456789",
-      email: "admin@cuongthinh.vn",
-      enrolled_at: "2023-12-10T11:15:00",
-      status: "expired"
-    },
-    {
-      enrollment_id: 4,
-      package_id: 4,
-      company_name: "Công ty TNHH Đầu tư Phát Triển",
-      tax_code: "0111222333",
-      contact_person: "Phạm Thị Dung",
-      phone: "0934567890",
-      email: "contact@phattriendt.com",
-      enrolled_at: "2024-03-05T16:45:00",
-      status: "pending"
-    },
-    {
-      enrollment_id: 5,
-      package_id: 2,
-      company_name: "Công ty CP Thương mại Em Việt",
-      tax_code: "0444555666",
-      contact_person: "Hoàng Văn Em",
-      phone: "0945678901",
-      email: "sales@emviet.vn",
-      enrolled_at: "2024-02-28T10:20:00",
-      status: "active"
-    },
-    {
-      enrollment_id: 6,
-      package_id: 1,
-      company_name: "Công ty TNHH Sản xuất Hòa Bình",
-      tax_code: "0777888999",
-      contact_person: "Nguyễn Thị Hòa",
-      phone: "0956789012",
-      email: "info@hoabinh.com",
-      enrolled_at: "2024-01-08T08:30:00",
-      status: "active"
-    },
-    {
-      enrollment_id: 7,
-      package_id: 3,
-      company_name: "Tổng Công ty Xây dựng Miền Nam",
-      tax_code: "0333444555",
-      contact_person: "Võ Văn Nam",
-      phone: "0967890123",
-      email: "contact@miennam.vn",
-      enrolled_at: "2024-02-12T15:20:00",
-      status: "active"
-    },
-    {
-      enrollment_id: 8,
-      package_id: 2,
-      company_name: "Công ty CP Công nghiệp Thành Đạt",
-      tax_code: "0666777888",
-      contact_person: "Lý Thị Đạt",
-      phone: "0978901234",
-      email: "admin@thanhdat.com",
-      enrolled_at: "2023-11-25T13:45:00",
-      status: "expired"
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Load packages and enrollments
+      const [packagesData, enrollmentsData] = await Promise.all([
+        certificateService.getCertPackages(),
+        certificateService.getCertEnrollments()
+      ]);
+      
+      setCompanyCertPackages(packagesData || []);
+      setCompanyCertEnrollments(enrollmentsData || []);
+    } catch (err: any) {
+      setError(err.message || 'Không thể tải dữ liệu');
+      console.error('Error loading certificate data:', err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   // Utility functions
   const formatCurrency = (amount: number): string => {

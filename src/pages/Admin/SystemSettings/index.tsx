@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import './SystemLogs.css';
+import { Card, Typography, Button, Space, Table, Tag, Avatar, Row, Col, Statistic, Input, Select, Modal, Form, message, Popconfirm, Tabs, Timeline, Alert } from 'antd';
+import { SettingOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, FilterOutlined, FileTextOutlined, DatabaseOutlined, MonitorOutlined } from '@ant-design/icons';
 import SystemLogService from '../../../services/SystemLogService';
 import NotificationService from '../../../services/notificationService';
 import FrontendLoggingService from '../../../services/frontendLoggingService';

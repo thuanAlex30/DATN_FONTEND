@@ -2,7 +2,7 @@ import api from './api';
 
 // Types
 export interface PPECategory {
-  _id: string;
+  id: string;
   category_name: string;
   description: string;
   lifespan_months?: number;
@@ -12,7 +12,7 @@ export interface PPECategory {
 
 
 export interface PPEItem {
-  _id: string;
+  id: string;
   category_id: string | PPECategory;
   item_code: string;
   item_name: string;
@@ -30,9 +30,9 @@ export interface PPEItem {
 }
 
 export interface PPEIssuance {
-  _id: string;
+  id: string;
   user_id: string | {
-    _id: string;
+    id: string;
     full_name: string;
     email: string;
     department_id?: {
@@ -40,7 +40,7 @@ export interface PPEIssuance {
     };
   };
   item_id: string | {
-    _id: string;
+    id: string;
     item_name: string;
     item_code: string;
     category_id: PPECategory;
@@ -49,7 +49,7 @@ export interface PPEIssuance {
   issued_date: string;
   expected_return_date: string;
   issued_by: string | {
-    _id: string;
+    id: string;
     full_name: string;
   };
   status: 'issued' | 'returned' | 'overdue' | 'damaged' | 'replacement_needed';
@@ -139,7 +139,7 @@ export interface UpdateIssuanceData {
 }
 
 export interface ReturnPPEData {
-  return_date: string;
+  actual_return_date: string;
   return_condition: 'good' | 'damaged' | 'worn';
   notes: string;
 }
@@ -213,7 +213,7 @@ export const getPPEIssuances = async (): Promise<PPEIssuance[]> => {
   return response.data.data;
 };
 
-export const getPPEIssuanceById = async (id: number): Promise<PPEIssuance> => {
+export const getPPEIssuanceById = async (id: string): Promise<PPEIssuance> => {
   const response = await api.get(`/ppe/issuances/${id}`);
   return response.data.data;
 };
@@ -245,7 +245,7 @@ export const reportPPEIssuanceEmployee = async (id: string, data: ReportPPEData)
   return response.data.data;
 };
 
-export const deletePPEIssuance = async (id: number): Promise<void> => {
+export const deletePPEIssuance = async (id: string): Promise<void> => {
   await api.delete(`/ppe/issuances/${id}`);
 };
 
@@ -339,4 +339,127 @@ export const importPPEItems = async (file: File): Promise<any> => {
   });
   
   return response.data;
+};
+
+// PPE Items Statistics API
+export const getPPEItemStats = async (id: string): Promise<any> => {
+  const response = await api.get(`/ppe/items/${id}/stats`);
+  return response.data.data;
+};
+
+// PPE Inventory API
+export const getAllInventory = async (): Promise<any[]> => {
+  const response = await api.get('/ppe/inventory');
+  return response.data.data;
+};
+
+export const getInventoryById = async (id: string): Promise<any> => {
+  const response = await api.get(`/ppe/inventory/${id}`);
+  return response.data.data;
+};
+
+export const createInventory = async (data: any): Promise<any> => {
+  const response = await api.post('/ppe/inventory', data);
+  return response.data.data;
+};
+
+export const updateInventory = async (id: string, data: any): Promise<any> => {
+  const response = await api.put(`/ppe/inventory/${id}`, data);
+  return response.data.data;
+};
+
+export const deleteInventory = async (id: string): Promise<void> => {
+  await api.delete(`/ppe/inventory/${id}`);
+};
+
+export const getInventoryStats = async (): Promise<any> => {
+  const response = await api.get('/ppe/inventory/stats');
+  return response.data.data;
+};
+
+// PPE Assignments API
+export const getAllAssignments = async (): Promise<any[]> => {
+  const response = await api.get('/ppe/assignments');
+  return response.data.data;
+};
+
+export const getAssignmentById = async (id: string): Promise<any> => {
+  const response = await api.get(`/ppe/assignments/${id}`);
+  return response.data.data;
+};
+
+export const createAssignment = async (data: any): Promise<any> => {
+  const response = await api.post('/ppe/assignments', data);
+  return response.data.data;
+};
+
+export const updateAssignment = async (id: string, data: any): Promise<any> => {
+  const response = await api.put(`/ppe/assignments/${id}`, data);
+  return response.data.data;
+};
+
+export const deleteAssignment = async (id: string): Promise<void> => {
+  await api.delete(`/ppe/assignments/${id}`);
+};
+
+export const getUserAssignments = async (userId: string): Promise<any[]> => {
+  const response = await api.get(`/ppe/assignments/user/${userId}`);
+  return response.data.data;
+};
+
+export const returnAssignment = async (id: string, data: any): Promise<any> => {
+  const response = await api.post(`/ppe/assignments/${id}/return`, data);
+  return response.data.data;
+};
+
+// PPE Maintenance API
+export const getAllMaintenance = async (): Promise<any[]> => {
+  const response = await api.get('/ppe/maintenance');
+  return response.data.data;
+};
+
+export const getMaintenanceById = async (id: string): Promise<any> => {
+  const response = await api.get(`/ppe/maintenance/${id}`);
+  return response.data.data;
+};
+
+export const createMaintenance = async (data: any): Promise<any> => {
+  const response = await api.post('/ppe/maintenance', data);
+  return response.data.data;
+};
+
+export const updateMaintenance = async (id: string, data: any): Promise<any> => {
+  const response = await api.put(`/ppe/maintenance/${id}`, data);
+  return response.data.data;
+};
+
+export const deleteMaintenance = async (id: string): Promise<void> => {
+  await api.delete(`/ppe/maintenance/${id}`);
+};
+
+export const getMaintenanceStats = async (): Promise<any> => {
+  const response = await api.get('/ppe/maintenance/stats');
+  return response.data.data;
+};
+
+// PPE Reports API
+export const getInventoryReport = async (): Promise<any> => {
+  const response = await api.get('/ppe/reports/inventory');
+  return response.data.data;
+};
+
+export const getAssignmentReport = async (): Promise<any> => {
+  const response = await api.get('/ppe/reports/assignments');
+  return response.data.data;
+};
+
+export const getMaintenanceReport = async (): Promise<any> => {
+  const response = await api.get('/ppe/reports/maintenance');
+  return response.data.data;
+};
+
+// Dashboard Statistics API
+export const getDashboardStats = async (): Promise<any> => {
+  const response = await api.get('/ppe/dashboard-stats');
+  return response.data.data;
 };

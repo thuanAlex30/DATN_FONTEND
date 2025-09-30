@@ -22,7 +22,7 @@ export const fetchUsers = createAsyncThunk(
   async (query: UserQuery, { rejectWithValue }) => {
     try {
       const res = await userService.getUsers(query);
-      return res.data;
+      return res.data || [];
     } catch (err: any) {
       return rejectWithValue(err.response?.data || 'Failed to fetch users');
     }
@@ -34,7 +34,7 @@ export const fetchUserById = createAsyncThunk(
   async (id: string, { rejectWithValue }) => {
     try {
       const res = await userService.getUserById(id);
-      return res.data;
+      return res;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || 'Failed to fetch user');
     }
@@ -46,7 +46,7 @@ export const createUser = createAsyncThunk(
   async (data: UserCreate, { rejectWithValue }) => {
     try {
       const res = await userService.createUser(data);
-      return res.data;
+      return res;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || 'Failed to create user');
     }
@@ -58,7 +58,7 @@ export const updateUser = createAsyncThunk(
   async ({ id, data }: { id: string; data: UserUpdate }, { rejectWithValue }) => {
     try {
       const res = await userService.updateUser(id, data);
-      return res.data;
+      return res;
     } catch (err: any) {
       return rejectWithValue(err.response?.data || 'Failed to update user');
     }
@@ -118,7 +118,7 @@ const userSlice = createSlice({
       })
       // delete user
       .addCase(deleteUser.fulfilled, (state, action) => {
-        const deletedId = parseInt(action.payload);
+        const deletedId = action.payload;
         state.users = state.users.filter((u) => u.id !== deletedId);
         if (state.selectedUser?.id === deletedId) {
           state.selectedUser = null;

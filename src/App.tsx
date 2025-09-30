@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import './App.css'
 import { BrowserRouter } from 'react-router-dom'
 import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
+import { Layout, Spin, Typography } from 'antd'
 import { store, persistor } from './store'
 import type { RootState } from './store'
 import AppRoutes from './routes'
@@ -26,22 +26,39 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải...</p>
-        </div>
-      </div>
+      <Layout style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+        <Layout.Content style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          flexDirection: 'column'
+        }}>
+          <Spin size="large" />
+          <Typography.Text style={{ marginTop: '16px', color: '#666' }}>
+            Đang tải...
+          </Typography.Text>
+        </Layout.Content>
+      </Layout>
     );
   }
 
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <AppRoutes />
+        <Layout style={{ minHeight: '100vh' }}>
+          <Layout.Content>
+            <AppRoutes />
+          </Layout.Content>
+        </Layout>
         {/* WebSocket Realtime Notifications */}
         {authToken && (
-          <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, maxWidth: 400 }}>
+          <div style={{ 
+            position: 'fixed', 
+            top: 20, 
+            right: 20, 
+            zIndex: 9999, 
+            maxWidth: 400 
+          }}>
             <RealtimeNotifications authToken={authToken} />
           </div>
         )}

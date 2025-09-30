@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Suspense, type ComponentType } from 'react';
 import AuthGuard from '../components/AuthGuard';
 import AdminLayout from '../pages/Admin/layout/AdminLayout';
 import LoginPage from '../pages/Login';
@@ -8,7 +9,7 @@ import DashboardPage from '../pages/Admin/Dashboard';
 import UserManagementPage from '../pages/Admin/UserManagement';
 import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
-import ProjectManagementPage from '../pages/Admin/ProjectManagement';
+import ProjectManagement from '../pages/Admin/ProjectManagement';
 import TrainingManagementPage from '../pages/Admin/TrainingManagement';
 import CertificateManagementPage from '../pages/Admin/CertificateManagement';
 import PPEManagementPage from '../pages/Admin/PPEManagement';
@@ -25,6 +26,13 @@ import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
 import EmployeePPE from '../pages/Employee/PPE';
 import WebSocketTest from '../pages/WebSocketTest';
+
+interface ProjectManagementRoute {
+    path: string;
+    component: ComponentType;
+}
+
+const projectManagementRoutes: ProjectManagementRoute[] = [];
 
 const AppRoutes = () => {
     return (
@@ -141,7 +149,17 @@ const AppRoutes = () => {
                 element={
                     <AuthGuard requiredRole="admin">
                         <AdminLayout>
-                            <ProjectManagementPage />
+                            <ProjectManagement />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/project-management/:projectId/*" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <ProjectManagement />
                         </AdminLayout>
                     </AuthGuard>
                 } 
@@ -247,6 +265,23 @@ const AppRoutes = () => {
                     </AuthGuard>
                 } 
             />
+            
+            {/* Project Management Routes */}
+            {projectManagementRoutes.map((route: ProjectManagementRoute) => (
+                <Route
+                    key={route.path}
+                    path={route.path}
+                    element={
+                        <AuthGuard requiredRole="admin">
+                            <AdminLayout>
+                                <Suspense fallback={<div className="loading">Đang tải...</div>}>
+                                    <route.component />
+                                </Suspense>
+                            </AdminLayout>
+                        </AuthGuard>
+                    }
+                />
+            ))}
             
             {/* Fallback for non-existent routes */}
             <Route path="*" element={<Navigate to="/login" replace />} />

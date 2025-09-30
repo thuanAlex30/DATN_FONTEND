@@ -7,12 +7,18 @@ export interface LoginResponse {
   success: boolean;
   message: string;
   data: {
-    user: UserProfile;
-    tokens: {
-      accessToken: string;
-      refreshToken: string;
-      expiresIn: string;
+    success: boolean;
+    statusCode: number;
+    message: string;
+    data: {
+      user: UserProfile;
+      tokens: {
+        accessToken: string;
+        refreshToken: string;
+        expiresIn: string;
+      };
     };
+    timestamp: string;
   };
   timestamp: string;
 }

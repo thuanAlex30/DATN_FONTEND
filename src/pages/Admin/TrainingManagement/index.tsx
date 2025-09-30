@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import './TrainingManagement.css';
+import { Card, Typography, Button, Space, Tabs, Table, Tag, Avatar, Row, Col, Statistic, Input, Select, Modal, Form, message, Popconfirm, Upload } from 'antd';
+import { BookOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, FilterOutlined, UploadOutlined, DownloadOutlined, UserOutlined, CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { downloadQuestionTemplate } from '../../../utils/questionTemplate';
 import {
   useCourses,

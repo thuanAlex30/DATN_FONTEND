@@ -1,5 +1,32 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { 
+  Card, 
+  Typography, 
+  Button, 
+  Space,
+  Table,
+  Tag,
+  Row,
+  Col,
+  Statistic,
+  Input,
+  Select,
+  Modal,
+  message,
+  Image,
+  Spin,
+  Alert,
+  Tooltip
+} from 'antd';
+import { 
+  ExclamationCircleOutlined, 
+  SearchOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  WarningOutlined,
+  InfoCircleOutlined
+} from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 
 interface IncidentItem {
@@ -14,10 +41,15 @@ interface IncidentItem {
   images?: string[];
 }
 
+const { Title } = Typography;
+
 const IncidentList: React.FC = () => {
   const [incidents, setIncidents] = useState<IncidentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [severityFilter, setSeverityFilter] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalImage, setModalImage] = useState<string | null>(null);
@@ -33,16 +65,6 @@ const IncidentList: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeModal();
-    };
-    if (isModalOpen) {
-      window.addEventListener('keydown', onEsc);
-    }
-    return () => window.removeEventListener('keydown', onEsc);
-  }, [isModalOpen, closeModal]);
-
-  useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -50,6 +72,7 @@ const IncidentList: React.FC = () => {
         setIncidents(res.data);
       } catch (err: any) {
         setError('Không thể tải danh sách sự cố');
+        message.error('Không thể tải danh sách sự cố');
       } finally {
         setLoading(false);
       }
@@ -57,85 +80,342 @@ const IncidentList: React.FC = () => {
     fetchData();
   }, []);
 
-  if (loading) return <div style={{ padding: 24 }}>Đang tải...</div>;
-  if (error) return <div style={{ padding: 24, color: '#dc2626' }}>{error}</div>;
+  // Filter incidents
+  const filteredIncidents = incidents.filter(incident => {
+    const matchesSearch = !searchTerm || 
+      incident.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      incident.incidentId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      incident.location?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = !statusFilter || incident.status === statusFilter;
+    const matchesSeverity = !severityFilter || incident.severity === severityFilter;
+    
+    return matchesSearch && matchesStatus && matchesSeverity;
+  });
 
-  return (
-    <div style={{ padding: 24 }}>
-      <h2>Danh sách sự cố</h2>
-      <table className="incident-table" style={{ width: '100%', background: '#fff' }}>
-        <thead>
-          <tr>
-            <th>Mã</th>
-            <th>Tiêu đề</th>
-            <th>Vị trí</th>
-            <th>Mức độ</th>
-            <th>Trạng thái</th>
-            <th>Ngày tạo</th>
-            <th>Hình ảnh</th>
-            <th>Thao tác</th>
-          </tr>
-        </thead>
-        <tbody>
-          {incidents.map((i) => (
-            <tr key={i._id}>
-              <td>{i.incidentId || '-'}</td>
-              <td>{i.title}</td>
-              <td>{i.location || '-'}</td>
-              <td>{i.severity || '-'}</td>
-              <td>{i.status || '-'}</td>
-              <td>{i.createdAt ? new Date(i.createdAt).toLocaleString() : '-'}</td>
-              <td>
-                {Array.isArray(i.images) && i.images.length > 0 ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 48px)', gap: 6 }}>
-                    {i.images.slice(0, 6).map((src, idx) => (
-                      <img
-                        key={idx}
-                        src={src}
-                        alt={`img-${idx}`}
-                        style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid #eee', cursor: 'pointer' }}
-                        onClick={() => openModal(src)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <span style={{ color: '#94a3b8' }}>—</span>
-                )}
-              </td>
-              <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Link to={`/admin/incidents/${i._id}/classify`} className="btn btn-sm btn-warning">Phân loại</Link>
-                <Link to={`/admin/incidents/${i._id}/assign`} className="btn btn-sm btn-primary">Phân công</Link>
-                <Link to={`/admin/incidents/${i._id}/investigate`} className="btn btn-sm btn-secondary">Điều tra</Link>
-                <Link to={`/admin/incidents/${i._id}/progress-history`} className="btn btn-sm btn-success">Tiến độ</Link>
-                <Link to={`/admin/incidents/${i._id}/close`} className="btn btn-sm btn-danger">Đóng</Link>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+  // Get severity color
+  const getSeverityColor = (severity: string) => {
+    switch (severity?.toLowerCase()) {
+      case 'critical': return 'red';
+      case 'high': return 'orange';
+      case 'medium': return 'yellow';
+      case 'low': return 'green';
+      default: return 'default';
+    }
+  };
 
-      {isModalOpen && modalImage && (
-        <div
-          onClick={closeModal}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 99999,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}
-          >
-            <img src={modalImage} alt="preview" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, display: 'block' }} />
-            <button
-              onClick={closeModal}
-              style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer' }}
+  // Get status color
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'open': return 'red';
+      case 'in_progress': return 'blue';
+      case 'resolved': return 'green';
+      case 'closed': return 'gray';
+      default: return 'default';
+    }
+  };
+
+  // Table columns
+  const columns = [
+    {
+      title: 'Mã sự cố',
+      dataIndex: 'incidentId',
+      key: 'incidentId',
+      render: (text: string) => text || '-',
+    },
+    {
+      title: 'Tiêu đề',
+      dataIndex: 'title',
+      key: 'title',
+      render: (text: string, record: IncidentItem) => (
+        <div>
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{text}</div>
+          {record.description && (
+            <div style={{ fontSize: '12px', color: '#666', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {record.description}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Vị trí',
+      dataIndex: 'location',
+      key: 'location',
+      render: (text: string) => text || '-',
+    },
+    {
+      title: 'Mức độ',
+      dataIndex: 'severity',
+      key: 'severity',
+      render: (severity: string) => (
+        <Tag color={getSeverityColor(severity)}>
+          {severity || 'Chưa xác định'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => (
+        <Tag color={getStatusColor(status)}>
+          {status || 'Chưa xác định'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Ngày tạo',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (date: string) => date ? new Date(date).toLocaleString('vi-VN') : '-',
+    },
+    {
+      title: 'Hình ảnh',
+      dataIndex: 'images',
+      key: 'images',
+      render: (images: string[]) => (
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {Array.isArray(images) && images.length > 0 ? (
+            images.slice(0, 3).map((src, idx) => (
+              <Image
+                key={idx}
+                src={src}
+                alt={`img-${idx}`}
+                width={40}
+                height={40}
+                style={{ borderRadius: '4px', cursor: 'pointer' }}
+                preview={{
+                  src: src,
+                  onVisibleChange: (visible) => {
+                    if (visible) openModal(src);
+                  }
+                }}
+              />
+            ))
+          ) : (
+            <span style={{ color: '#94a3b8' }}>—</span>
+          )}
+          {images && images.length > 3 && (
+            <Tooltip title={`+${images.length - 3} hình khác`}>
+              <div style={{ 
+                width: 40, 
+                height: 40, 
+                background: '#f5f5f5', 
+                borderRadius: '4px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '12px',
+                color: '#666'
+              }}>
+                +{images.length - 3}
+              </div>
+            </Tooltip>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Thao tác',
+      key: 'action',
+      render: (_: unknown, record: IncidentItem) => (
+        <Space wrap>
+          <Tooltip title="Phân loại sự cố">
+            <Button 
+              type="link" 
+              size="small" 
+              icon={<WarningOutlined />}
+              href={`/admin/incidents/${record._id}/classify`}
+            >
+              Phân loại
+            </Button>
+          </Tooltip>
+          <Tooltip title="Phân công xử lý">
+            <Button 
+              type="link" 
+              size="small" 
+              icon={<InfoCircleOutlined />}
+              href={`/admin/incidents/${record._id}/assign`}
+            >
+              Phân công
+            </Button>
+          </Tooltip>
+          <Tooltip title="Điều tra sự cố">
+            <Button 
+              type="link" 
+              size="small" 
+              icon={<SearchOutlined />}
+              href={`/admin/incidents/${record._id}/investigate`}
+            >
+              Điều tra
+            </Button>
+          </Tooltip>
+          <Tooltip title="Xem tiến độ">
+            <Button 
+              type="link" 
+              size="small" 
+              icon={<ClockCircleOutlined />}
+              href={`/admin/incidents/${record._id}/progress-history`}
+            >
+              Tiến độ
+            </Button>
+          </Tooltip>
+          <Tooltip title="Đóng sự cố">
+            <Button 
+              type="link" 
+              size="small" 
+              danger
+              icon={<CloseCircleOutlined />}
+              href={`/admin/incidents/${record._id}/close`}
             >
               Đóng
-            </button>
-          </div>
-        </div>
-      )}
+            </Button>
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: '24px' }}>
+        <Alert
+          message="Lỗi tải dữ liệu"
+          description={error}
+          type="error"
+          showIcon
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '24px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '24px' }}>
+        <Title level={2}>
+          <ExclamationCircleOutlined /> Danh sách sự cố
+        </Title>
+      </div>
+
+      {/* Stats Cards */}
+      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic
+              title="Tổng sự cố"
+              value={incidents.length}
+              prefix={<ExclamationCircleOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic
+              title="Đang xử lý"
+              value={incidents.filter(i => i.status === 'in_progress').length}
+              valueStyle={{ color: '#1890ff' }}
+              prefix={<ClockCircleOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic
+              title="Đã đóng"
+              value={incidents.filter(i => i.status === 'closed').length}
+              valueStyle={{ color: '#52c41a' }}
+              prefix={<CheckCircleOutlined />}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Filters */}
+      <Card style={{ marginBottom: '24px' }}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col xs={24} sm={8}>
+            <Input
+              placeholder="Tìm kiếm sự cố..."
+              prefix={<SearchOutlined />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </Col>
+          <Col xs={24} sm={8}>
+            <Select
+              placeholder="Lọc theo trạng thái"
+              style={{ width: '100%' }}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              allowClear
+            >
+              <Select.Option value="open">Mở</Select.Option>
+              <Select.Option value="in_progress">Đang xử lý</Select.Option>
+              <Select.Option value="resolved">Đã giải quyết</Select.Option>
+              <Select.Option value="closed">Đã đóng</Select.Option>
+            </Select>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Select
+              placeholder="Lọc theo mức độ"
+              style={{ width: '100%' }}
+              value={severityFilter}
+              onChange={setSeverityFilter}
+              allowClear
+            >
+              <Select.Option value="critical">Nghiêm trọng</Select.Option>
+              <Select.Option value="high">Cao</Select.Option>
+              <Select.Option value="medium">Trung bình</Select.Option>
+              <Select.Option value="low">Thấp</Select.Option>
+            </Select>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Incidents Table */}
+      <Card>
+        <Table
+          columns={columns}
+          dataSource={filteredIncidents}
+          rowKey="_id"
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => 
+              `${range[0]}-${range[1]} của ${total} sự cố`,
+          }}
+        />
+      </Card>
+
+      {/* Image Preview Modal */}
+      <Modal
+        title="Xem hình ảnh"
+        open={isModalOpen}
+        onCancel={closeModal}
+        footer={null}
+        width="auto"
+        centered
+      >
+        {modalImage && (
+          <Image
+            src={modalImage}
+            alt="preview"
+            style={{ maxWidth: '100%', maxHeight: '80vh' }}
+          />
+        )}
+      </Modal>
     </div>
   );
 };

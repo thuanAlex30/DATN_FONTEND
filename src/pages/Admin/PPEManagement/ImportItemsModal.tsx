@@ -1,338 +1,190 @@
-import React, { useState, useRef } from 'react';
-import { parsePPEItemExcel, generatePPEItemTemplate, validatePPEItemData } from '../../../utils/excelUtils';
-import type { ImportResult } from '../../../utils/excelUtils';
-import { importPPEItems } from '../../../services/ppeService';
+import React, { useState } from 'react';
+import { Modal, Upload, Button, message, Space, Alert, Typography, Steps, Select } from 'antd';
+import { UploadOutlined, DownloadOutlined, FileExcelOutlined } from '@ant-design/icons';
+import * as ppeService from '../../../services/ppeService';
+import type { PPECategory } from '../../../services/ppeService';
 
 interface ImportItemsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImportSuccess: () => void;
+  categories?: PPECategory[];
 }
+
+const { Title, Text } = Typography;
+const { Step } = Steps;
 
 const ImportItemsModal: React.FC<ImportItemsModalProps> = ({
   isOpen,
   onClose,
-  onImportSuccess
+  onImportSuccess,
+  categories = []
 }) => {
-  const [file, setFile] = useState<File | null>(null);
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const [importing, setImporting] = useState(false);
-  const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'complete'>('upload');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileList, setFileList] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (!selectedFile) return;
-
-    // Validate file type
-    if (!selectedFile.name.toLowerCase().endsWith('.xlsx') && 
-        !selectedFile.name.toLowerCase().endsWith('.xls')) {
-      alert('Vui lòng chọn file Excel (.xlsx hoặc .xls)');
+  const handleUpload = async () => {
+    if (fileList.length === 0) {
+      message.warning('Vui lòng chọn file để upload');
       return;
     }
 
-    setFile(selectedFile);
-    setStep('preview');
-
+    setUploading(true);
     try {
-      const result = await parsePPEItemExcel(selectedFile);
-      setImportResult(result);
-      
-      if (!result.success) {
-        setStep('upload');
+      const formData = new FormData();
+      formData.append('file', fileList[0].originFileObj);
+      if (selectedCategory) {
+        formData.append('category_id', selectedCategory);
       }
-    } catch (error) {
-      console.error('Error parsing Excel file:', error);
-      alert('Có lỗi khi đọc file Excel');
-      setStep('upload');
+      
+      await ppeService.importItems(formData);
+      message.success('Import thiết bị thành công');
+      onImportSuccess();
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || 'Import thất bại');
     } finally {
-      // Loading completed
+      setUploading(false);
     }
   };
 
   const handleDownloadTemplate = () => {
-    generatePPEItemTemplate();
+    // Create and download template file
+    const templateData = [
+      ['item_code', 'item_name', 'brand', 'model', 'reorder_level', 'quantity_available', 'quantity_allocated'],
+      ['HELMET001', 'Mũ bảo hiểm', '3M', 'H-700', '10', '100', '0'],
+      ['GLOVE001', 'Găng tay', 'Ansell', 'G-100', '20', '200', '0'],
+      ['BOOT001', 'Giày bảo hộ', 'Honeywell', 'B-500', '15', '50', '0']
+    ];
+
+    const csvContent = templateData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'template_items.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const handleImport = async () => {
-    if (!importResult || !importResult.success) return;
-
-    setImporting(true);
-    setStep('importing');
-
-    try {
-      // Validate data before import
-      const validationErrors = validatePPEItemData(importResult.data as any);
-      if (validationErrors.length > 0) {
-        setImportResult(prev => prev ? {
-          ...prev,
-          errors: [...prev.errors, ...validationErrors]
-        } : null);
-        setStep('preview');
-        setImporting(false);
-        return;
+  const uploadProps = {
+    beforeUpload: (file: any) => {
+      const isCSV = file.type === 'text/csv' || file.name.endsWith('.csv');
+      const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+                     file.name.endsWith('.xlsx');
+      
+      if (!isCSV && !isExcel) {
+        message.error('Chỉ chấp nhận file CSV hoặc Excel!');
+        return false;
       }
-
-      // Use the new import function from ppeService
-      const response = await importPPEItems(file!);
-
-      if (response.success) {
-        setImportResult(prev => prev ? {
-          ...prev,
-          success: response.data.success,
-          errors: response.data.errors,
-          validRows: response.data.success.length
-        } : null);
-        setStep('complete');
-        onImportSuccess();
-      } else {
-        throw new Error(response.message || 'Import failed');
+      
+      const isLt10M = file.size / 1024 / 1024 < 10;
+      if (!isLt10M) {
+        message.error('File phải nhỏ hơn 10MB!');
+        return false;
       }
-
-    } catch (error: any) {
-      console.error('Error importing items:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi khi import dữ liệu';
-      alert(`Lỗi: ${errorMessage}`);
-      setStep('preview');
-    } finally {
-      setImporting(false);
+      
+      setFileList([file]);
+      setCurrentStep(1);
+      return false;
+    },
+    fileList,
+    onRemove: () => {
+      setFileList([]);
+      setCurrentStep(0);
     }
   };
-
-  const handleReset = () => {
-    setFile(null);
-    setImportResult(null);
-    setStep('upload');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleClose = () => {
-    handleReset();
-    onClose();
-  };
-
-  if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>
-            <i className="fas fa-file-excel"></i>
-            Import Thiết bị PPE từ Excel
-          </h3>
-          <button onClick={handleClose} className="modal-close">
-            <i className="fas fa-times"></i>
-          </button>
-        </div>
-
-        <div className="modal-body">
-          {/* Step 1: Upload */}
-          {step === 'upload' && (
-            <div className="import-step">
-              <div className="step-header">
-                <div className="step-number">1</div>
-                <h4>Chọn file Excel</h4>
-              </div>
-              
-              <div className="template-section">
-                <div className="template-info">
-                  <i className="fas fa-info-circle"></i>
-                  <span>Tải template mẫu để biết định dạng file Excel</span>
-                </div>
-                <button 
-                  type="button" 
+    <Modal
+      title="Import thiết bị PPE"
+      open={isOpen}
+      onCancel={onClose}
+      footer={[
+        <Button key="cancel" onClick={onClose}>
+          Hủy
+        </Button>,
+        <Button 
+          key="download" 
+          icon={<DownloadOutlined />}
                   onClick={handleDownloadTemplate}
-                  className="btn btn-info"
-                >
-                  <i className="fas fa-download"></i>
-                  Tải Template
-                </button>
+        >
+          Tải template
+        </Button>,
+        <Button 
+          key="upload" 
+          type="primary" 
+          loading={uploading}
+          onClick={handleUpload}
+          disabled={fileList.length === 0}
+        >
+          Import
+        </Button>
+      ]}
+      width={700}
+    >
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <div>
+          <Title level={4}>Hướng dẫn import</Title>
+          <Text type="secondary">
+            Tải file template và điền thông tin thiết bị theo đúng format. 
+            File phải có các cột: item_code, item_name, brand, model, reorder_level, quantity_available, quantity_allocated
+          </Text>
               </div>
 
-              <div className="file-upload-area">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileSelect}
-                  className="file-input"
-                  id="excel-file"
-                />
-                <label htmlFor="excel-file" className="file-upload-label">
-                  <i className="fas fa-cloud-upload-alt"></i>
-                  <span>Chọn file Excel</span>
-                  <small>Hỗ trợ định dạng .xlsx và .xls</small>
-                </label>
+        <Steps current={currentStep} size="small">
+          <Step title="Chọn file" />
+          <Step title="Xác nhận" />
+          <Step title="Hoàn thành" />
+        </Steps>
+
+        <div>
+          <Upload {...uploadProps}>
+            <Button icon={<UploadOutlined />} size="large" style={{ width: '100%' }}>
+              Chọn file CSV/Excel
+            </Button>
+          </Upload>
               </div>
 
-              {file && (
-                <div className="selected-file">
-                  <i className="fas fa-file-excel"></i>
-                  <span>{file.name}</span>
-                  <span className="file-size">({(file.size / 1024).toFixed(1)} KB)</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 2: Preview */}
-          {step === 'preview' && importResult && (
-            <div className="import-step">
-              <div className="step-header">
-                <div className="step-number">2</div>
-                <h4>Xem trước dữ liệu</h4>
-              </div>
-
-              <div className="import-summary">
-                <div className="summary-item">
-                  <i className="fas fa-list"></i>
-                  <span>Tổng dòng: <strong>{importResult.totalRows}</strong></span>
-                </div>
-                <div className="summary-item">
-                  <i className="fas fa-check-circle"></i>
-                  <span>Dòng hợp lệ: <strong>{importResult.validRows}</strong></span>
-                </div>
-                <div className="summary-item">
-                  <i className="fas fa-exclamation-triangle"></i>
-                  <span>Lỗi: <strong>{importResult.errors.length}</strong></span>
-                </div>
-              </div>
-
-              {importResult.errors.length > 0 && (
-                <div className="error-list">
-                  <h5>Danh sách lỗi:</h5>
-                  <ul>
-                    {importResult.errors.map((error, index) => (
-                      <li key={index} className="error-item">
-                        <i className="fas fa-times-circle"></i>
-                        {error}
-                      </li>
-                    ))}
-                  </ul>
+        {categories.length > 0 && (
+          <div>
+            <Text strong>Danh mục mặc định (tùy chọn):</Text>
+            <Select
+              placeholder="Chọn danh mục mặc định"
+              style={{ width: '100%', marginTop: '8px' }}
+              value={selectedCategory}
+              onChange={setSelectedCategory}
+              allowClear
+            >
+              {categories.map(category => (
+                <Select.Option key={category._id || (category as any).id} value={category._id || (category as any).id}>
+                  {category.category_name}
+                </Select.Option>
+              ))}
+            </Select>
                 </div>
               )}
 
-              {importResult.success && importResult.data.length > 0 && (
-                <div className="preview-table">
-                  <h5>Dữ liệu sẽ được import:</h5>
-                  <div className="table-container">
-                    <table className="preview-table-content">
-                      <thead>
-                        <tr>
-                          <th>Tên thiết bị</th>
-                          <th>Mã thiết bị</th>
-                          <th>Danh mục</th>
-                          <th>Thương hiệu</th>
-                          <th>Model</th>
-                          <th>Mức tái đặt hàng</th>
-                          <th>Số lượng có sẵn</th>
-                          <th>Số lượng đã phân phối</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {importResult.data.slice(0, 10).map((item: any, index) => (
-                          <tr key={index}>
-                            <td>{item.item_name}</td>
-                            <td>{item.item_code}</td>
-                            <td>{item.category_id}</td>
-                            <td>{item.brand}</td>
-                            <td>{item.model}</td>
-                            <td>{item.reorder_level}</td>
-                            <td>{item.quantity_available}</td>
-                            <td>{item.quantity_allocated}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {importResult.data.length > 10 && (
-                      <div className="table-note">
-                        <i className="fas fa-info-circle"></i>
-                        Chỉ hiển thị 10 dòng đầu tiên. Tổng cộng {importResult.data.length} dòng.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+        {fileList.length > 0 && (
+          <Alert
+            message="File đã chọn"
+            description={`${fileList[0].name} (${(fileList[0].size / 1024).toFixed(1)} KB)`}
+            type="success"
+            showIcon
+          />
+        )}
 
-          {/* Step 3: Importing */}
-          {step === 'importing' && (
-            <div className="import-step">
-              <div className="step-header">
-                <div className="step-number">3</div>
-                <h4>Đang import dữ liệu...</h4>
-              </div>
-              
-              <div className="loading-container">
-                <i className="fas fa-spinner fa-spin"></i>
-                <span>Đang tạo thiết bị PPE...</span>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Complete */}
-          {step === 'complete' && (
-            <div className="import-step">
-              <div className="step-header">
-                <div className="step-number success">
-                  <i className="fas fa-check"></i>
-                </div>
-                <h4>Import thành công!</h4>
-              </div>
-              
-              <div className="success-message">
-                <i className="fas fa-check-circle"></i>
-                <p>Đã import thành công {importResult?.validRows} thiết bị PPE</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="modal-actions">
-          {step === 'upload' && (
-            <>
-              <button type="button" onClick={handleClose} className="btn btn-secondary">
-                <i className="fas fa-times"></i>
-                Hủy
-              </button>
-            </>
-          )}
-
-          {step === 'preview' && (
-            <>
-              <button type="button" onClick={handleReset} className="btn btn-secondary">
-                <i className="fas fa-arrow-left"></i>
-                Quay lại
-              </button>
-              {importResult?.success && (
-                <button 
-                  type="button" 
-                  onClick={handleImport}
-                  className="btn btn-success"
-                  disabled={importing}
-                >
-                  <i className="fas fa-upload"></i>
-                  Import Dữ liệu
-                </button>
-              )}
-            </>
-          )}
-
-          {step === 'complete' && (
-            <>
-              <button type="button" onClick={handleClose} className="btn btn-primary">
-                <i className="fas fa-check"></i>
-                Hoàn thành
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+        <Alert
+          message="Lưu ý"
+          description="Đảm bảo file có đúng format và không có dữ liệu trùng lặp. Nếu chọn danh mục mặc định, tất cả thiết bị sẽ được gán vào danh mục đó."
+          type="info"
+          showIcon
+        />
+      </Space>
+    </Modal>
   );
 };
 
