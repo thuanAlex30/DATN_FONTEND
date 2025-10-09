@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../../../store';
 import { createProject, updateProject } from '../../../../store/slices/projectSlice';
 import type { Project, CreateProjectData, UpdateProjectData } from '../../../../types/project';
+import { message } from 'antd';
 
 interface ProjectFormModalProps {
   project?: Project | null;
@@ -24,11 +25,49 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     start_date: '',
     end_date: '',
     leader_id: '',
-    site_name: '',
-    priority: 'medium',
+    site_id: '',
+    project_type: 'CONSTRUCTION',
+    priority: 'MEDIUM',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [sites, setSites] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingData, setLoadingData] = useState(false);
+
+  // Load sites and users data
+  useEffect(() => {
+    const loadData = async () => {
+      setLoadingData(true);
+      try {
+        // Load sites
+        const { default: projectService } = await import('../../../../services/projectService');
+        const sitesResponse = await projectService.getAllSites({ is_active: true });
+        
+        if (sitesResponse.success && sitesResponse.data) {
+          setSites(sitesResponse.data);
+        }
+
+        // Load users (managers)
+        const { default: userService } = await import('../../../../services/userService');
+        const usersResponse = await userService.getUsers({ 
+          role: 'manager',
+          is_active: true 
+        });
+        
+        if (usersResponse.success && usersResponse.data) {
+          setUsers(usersResponse.data);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        message.error('Lỗi khi tải dữ liệu');
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   useEffect(() => {
     if (project) {
@@ -38,7 +77,8 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
         start_date: project.start_date.split('T')[0],
         end_date: project.end_date.split('T')[0],
         leader_id: project.leader_id?.id || '',
-        site_name: project.site_id?.site_name || '',
+        site_id: project.site_id?.id || '',
+        project_type: project.project_type || 'CONSTRUCTION',
         priority: project.priority,
       });
     }
@@ -83,9 +123,14 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       newErrors.leader_id = 'Trưởng dự án là bắt buộc';
     }
 
-    if (!formData.site_name.trim()) {
-      newErrors.site_name = 'Tên địa điểm là bắt buộc';
+    if (!formData.site_id) {
+      newErrors.site_id = 'Địa điểm dự án là bắt buộc';
     }
+
+    if (!formData.project_type) {
+      newErrors.project_type = 'Loại dự án là bắt buộc';
+    }
+
 
     if (formData.start_date && formData.end_date) {
       const startDate = new Date(formData.start_date);
@@ -114,7 +159,8 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
           start_date: formData.start_date,
           end_date: formData.end_date,
           leader_id: formData.leader_id,
-          site_name: formData.site_name,
+          site_id: formData.site_id,
+          project_type: formData.project_type,
           priority: formData.priority,
         };
         await dispatch(updateProject({ id: project.id, data: updateData }));
@@ -137,6 +183,12 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
           </button>
         </div>
 
+        {loadingData && (
+          <div className="loading-indicator">
+            <i className="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-group">
             <label htmlFor="project_name">Tên dự án *</label>
@@ -197,45 +249,79 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="leader_id">Trưởng dự án *</label>
-              <input
-                type="text"
+              <select
                 id="leader_id"
                 name="leader_id"
                 value={formData.leader_id}
                 onChange={handleInputChange}
                 className={errors.leader_id ? 'error' : ''}
-                placeholder="Nhập ID trưởng dự án"
-              />
+                disabled={loadingData}
+              >
+                <option value="">Chọn trưởng dự án</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.full_name} ({user.email})
+                  </option>
+                ))}
+              </select>
               {errors.leader_id && <span className="error-message">{errors.leader_id}</span>}
             </div>
 
             <div className="form-group">
-              <label htmlFor="site_name">Tên địa điểm *</label>
-              <input
-                type="text"
-                id="site_name"
-                name="site_name"
-                value={formData.site_name}
+              <label htmlFor="site_id">Địa điểm dự án *</label>
+              <select
+                id="site_id"
+                name="site_id"
+                value={formData.site_id}
                 onChange={handleInputChange}
-                className={errors.site_name ? 'error' : ''}
-                placeholder="Nhập tên địa điểm"
-              />
-              {errors.site_name && <span className="error-message">{errors.site_name}</span>}
+                className={errors.site_id ? 'error' : ''}
+                disabled={loadingData}
+              >
+                <option value="">Chọn địa điểm dự án</option>
+                {sites.map(site => (
+                  <option key={site.id} value={site.id}>
+                    {site.site_name} - {site.address}
+                  </option>
+                ))}
+              </select>
+              {errors.site_id && <span className="error-message">{errors.site_id}</span>}
             </div>
           </div>
 
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="project_type">Loại dự án *</label>
+              <select
+                id="project_type"
+                name="project_type"
+                value={formData.project_type}
+                onChange={handleInputChange}
+                className={errors.project_type ? 'error' : ''}
+              >
+                <option value="CONSTRUCTION">Xây dựng</option>
+                <option value="MAINTENANCE">Bảo trì</option>
+                <option value="RENOVATION">Cải tạo</option>
+                <option value="INSPECTION">Kiểm tra</option>
+                <option value="SAFETY">An toàn</option>
+                <option value="TRAINING">Đào tạo</option>
+              </select>
+              {errors.project_type && <span className="error-message">{errors.project_type}</span>}
+            </div>
+
+          </div>
+
           <div className="form-group">
-            <label htmlFor="priority">Ưu tiên</label>
+            <label htmlFor="priority">Mức độ ưu tiên</label>
             <select
               id="priority"
               name="priority"
               value={formData.priority}
               onChange={handleInputChange}
             >
-              <option value="low">Thấp</option>
-              <option value="medium">Trung bình</option>
-              <option value="high">Cao</option>
-              <option value="urgent">Khẩn cấp</option>
+              <option value="LOW">Thấp</option>
+              <option value="MEDIUM">Trung bình</option>
+              <option value="HIGH">Cao</option>
+              <option value="URGENT">Khẩn cấp</option>
             </select>
           </div>
         </form>

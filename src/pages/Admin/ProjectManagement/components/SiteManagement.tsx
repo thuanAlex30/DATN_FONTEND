@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../../../store';
-import siteAreaService, { type SiteArea, type CreateSiteAreaData } from '../../../../services/siteAreaService';
+import type { AppDispatch } from '../../../../store';
+import { type SiteArea } from '../../../../services/siteAreaService';
+import { type CreateAreaData, type UpdateAreaData } from '../../../../types/siteArea';
+import { 
+  fetchAreasByProject,
+  createAreaForProject,
+  updateAreaForProject,
+  deleteAreaForProject,
+  setCurrentProjectId
+} from '../../../../store/slices/siteAreaSlice';
 import projectService from '../../../../services/projectService';
 import styles from './SiteManagement.module.css';
 
@@ -11,17 +20,17 @@ interface SiteManagementProps {
 }
 
 const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }) => {
+  const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
+  const { areas: siteAreas, loading, error } = useSelector((state: RootState) => state.siteArea);
   const [sites, setSites] = useState<any[]>([]);
   const [selectedSite, setSelectedSite] = useState<string>('');
-  const [siteAreas, setSiteAreas] = useState<SiteArea[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [showCreateArea, setShowCreateArea] = useState(false);
   const [editingArea, setEditingArea] = useState<SiteArea | null>(null);
 
   // Form states
-  const [areaForm, setAreaForm] = useState<CreateSiteAreaData>({
+  const [areaForm, setAreaForm] = useState<CreateAreaData>({
     site_id: '',
     area_code: '',
     area_name: '',
@@ -36,57 +45,47 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
 
   useEffect(() => {
     loadSites();
-  }, []);
+    // Set current project ID for Redux
+    dispatch(setCurrentProjectId(projectId));
+    // Load areas for the project
+    dispatch(fetchAreasByProject(projectId));
+  }, [projectId, dispatch]);
 
   useEffect(() => {
     if (selectedSite) {
-      loadSiteAreas(selectedSite);
+      // Filter areas by selected site
+      // Areas are already loaded from Redux
     }
   }, [selectedSite]);
 
   const loadSites = async () => {
     try {
-      setLoading(true);
       const response = await projectService.getAllSites();
       const data = response.data || [];
       setSites(data);
       if (data.length > 0 && !selectedSite) {
-        setSelectedSite(data[0]._id);
-        setAreaForm(prev => ({ ...prev, site_id: data[0]._id }));
+        setSelectedSite(data[0].id);
+        setAreaForm(prev => ({ ...prev, site_id: data[0].id }));
       }
     } catch (err) {
       console.error('Error loading sites:', err);
-      setError('Không thể tải danh sách site');
-    } finally {
-      setLoading(false);
+      setLocalError('Không thể tải danh sách site');
     }
   };
 
-  const loadSiteAreas = async (siteId: string) => {
-    try {
-      setLoading(true);
-      const data = await siteAreaService.getSiteAreas(siteId);
-      setSiteAreas(data);
-    } catch (err) {
-      console.error('Error loading site areas:', err);
-      setError('Không thể tải danh sách khu vực');
-    } finally {
-      setLoading(false);
-    }
+  // Areas are now loaded from Redux, no need for separate loadSiteAreas method
+  const getFilteredAreas = () => {
+    return selectedSite ? siteAreas.filter(area => area.site_id === selectedSite) : siteAreas;
   };
 
   const handleCreateArea = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      setLoading(true);
-      await siteAreaService.createArea(areaForm);
-      await loadSiteAreas(selectedSite);
+      await dispatch(createAreaForProject({ projectId, data: areaForm })).unwrap();
       setShowCreateArea(false);
       resetForm();
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể tạo khu vực');
-    } finally {
-      setLoading(false);
+      setLocalError(err?.message || 'Không thể tạo khu vực');
     }
   };
 
@@ -95,15 +94,11 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
     if (!editingArea) return;
 
     try {
-      setLoading(true);
-      await siteAreaService.updateArea(editingArea._id, areaForm);
-      await loadSiteAreas(selectedSite);
+      await dispatch(updateAreaForProject({ id: editingArea._id, data: areaForm as UpdateAreaData })).unwrap();
       setEditingArea(null);
       resetForm();
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể cập nhật khu vực');
-    } finally {
-      setLoading(false);
+      setLocalError(err?.message || 'Không thể cập nhật khu vực');
     }
   };
 
@@ -111,13 +106,9 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
     if (!window.confirm('Bạn có chắc chắn muốn xóa khu vực này?')) return;
 
     try {
-      setLoading(true);
-      await siteAreaService.deleteArea(areaId);
-      await loadSiteAreas(selectedSite);
+      await dispatch(deleteAreaForProject(areaId)).unwrap();
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể xóa khu vực');
-    } finally {
-      setLoading(false);
+      setLocalError(err?.message || 'Không thể xóa khu vực');
     }
   };
 
@@ -146,7 +137,7 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
       description: area.description || '',
       area_size_sqm: area.area_size_sqm,
       safety_level: area.safety_level,
-      supervisor_id: area.supervisor_id,
+      supervisor_id: area.supervisor_id || '',
       capacity: area.capacity,
       special_requirements: area.special_requirements || ''
     });
@@ -183,11 +174,11 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
         <p>Quản lý các khu vực trong site của dự án</p>
       </div>
 
-      {error && (
+      {(error || localError) && (
         <div className={styles.alert}>
           <i className="fas fa-exclamation-triangle"></i>
-          {error}
-          <button onClick={() => setError(null)} className={styles.alertClose}>
+          {error || localError}
+          <button onClick={() => setLocalError(null)} className={styles.alertClose}>
             <i className="fas fa-times"></i>
           </button>
         </div>
@@ -207,7 +198,7 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
           >
             <option value="">Chọn site...</option>
             {sites.map(site => (
-              <option key={site._id} value={site._id}>
+              <option key={site.id} value={site.id}>
                 {site.site_name} - {site.address}
               </option>
             ))}
@@ -239,7 +230,7 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
             </div>
           ) : (
             <div className={styles.areasGrid}>
-              {siteAreas.map(area => (
+              {getFilteredAreas().map((area: any) => (
                 <div key={area._id} className={styles.areaCard}>
                   <div className={styles.areaHeader}>
                     <h4>{area.area_name}</h4>
@@ -332,7 +323,7 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
                   <label>Loại khu vực *</label>
                   <select
                     value={areaForm.area_type}
-                    onChange={(e) => setAreaForm(prev => ({ ...prev, area_type: e.target.value }))}
+                    onChange={(e) => setAreaForm(prev => ({ ...prev, area_type: e.target.value as CreateAreaData['area_type'] }))}
                     required
                     className={styles.select}
                   >
@@ -350,7 +341,7 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
                   <label>Mức độ an toàn *</label>
                   <select
                     value={areaForm.safety_level}
-                    onChange={(e) => setAreaForm(prev => ({ ...prev, safety_level: e.target.value }))}
+                    onChange={(e) => setAreaForm(prev => ({ ...prev, safety_level: e.target.value as CreateAreaData['safety_level'] }))}
                     required
                     className={styles.select}
                   >

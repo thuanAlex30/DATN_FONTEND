@@ -109,6 +109,75 @@ export interface EnrollmentStats {
   count: number;
 }
 
+// Form Data Types
+export interface CourseFormData {
+  course_set_id: string;
+  course_name: string;
+  description: string;
+  duration_hours: number;
+  is_mandatory: boolean;
+  validity_months?: number;
+}
+
+export interface SessionFormData {
+  course_id: string;
+  session_name: string;
+  start_time: string;
+  end_time: string;
+  max_participants: number;
+  location?: string;
+  status_code?: 'SCHEDULED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
+}
+
+export interface QuestionBankFormData {
+  course_id: string;
+  name: string;
+  description?: string;
+}
+
+export interface QuestionFormData {
+  bank_id: string;
+  content: string;
+  options: string[];
+  correct_answer: string;
+}
+
+export interface EnrollmentFormData {
+  session_id: string;
+  user_id: string;
+}
+
+// Filter Types
+export interface CourseFilters {
+  courseSetId?: string;
+  isMandatory?: boolean;
+  search?: string;
+}
+
+export interface SessionFilters {
+  courseId?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface EnrollmentFilters {
+  sessionId?: string;
+  employeeId?: string;
+  status?: string;
+}
+
+export interface QuestionBankFilters {
+  courseId?: string;
+  search?: string;
+}
+
+export interface QuestionFilters {
+  bankId?: string;
+  questionType?: string;
+  search?: string;
+}
+
 // Course Set API
 export const courseSetApi = {
   getAll: async (): Promise<CourseSet[]> => {

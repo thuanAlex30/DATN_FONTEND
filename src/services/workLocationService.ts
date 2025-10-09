@@ -64,6 +64,12 @@ class WorkLocationService {
     return response.data.data;
   }
 
+  // Get all locations for a project
+  async getProjectLocations(projectId: string): Promise<WorkLocation[]> {
+    const response = await api.get(`/work-locations/project/${projectId}/locations`);
+    return response.data.data;
+  }
+
   // Get location by ID
   async getLocationById(id: string): Promise<WorkLocation> {
     const response = await api.get(`/work-locations/locations/${id}`);

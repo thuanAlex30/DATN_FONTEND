@@ -29,7 +29,9 @@ import {
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectTasks } from '../../../../store/slices/projectTaskSlice';
 import { fetchProjectMilestones } from '../../../../store/slices/projectMilestoneSlice';
-import { fetchProjectPhases } from '../../../../store/slices/projectPhaseSlice';
+import { fetchProjectRisks } from '../../../../store/slices/projectRiskSlice';
+import { fetchProjectResources, setCurrentProjectId } from '../../../../store/slices/projectResourceSlice';
+import { clearProjectResourceCache } from '../../../../utils/apiCache';
 
 interface ProgressTrackingDashboardProps {
   projectId: string;
@@ -39,7 +41,12 @@ const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps> = ({ p
   const dispatch = useDispatch<AppDispatch>();
   const { tasks } = useSelector((state: RootState) => state.projectTask);
   const { milestones } = useSelector((state: RootState) => state.projectMilestone);
-  const { phases } = useSelector((state: RootState) => state.projectPhase);
+  const { risks } = useSelector((state: RootState) => state.projectRisk);
+  const { resources } = useSelector((state: RootState) => state.projectResource);
+  
+  // Use risks and resources for additional dashboard metrics
+  const totalRisks = risks?.length || 0;
+  const totalResources = resources?.length || 0;
   
   const [selectedTimeframe, setSelectedTimeframe] = useState<'week' | 'month' | 'quarter'>('week');
   const [progressData, setProgressData] = useState({
@@ -55,9 +62,16 @@ const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps> = ({ p
 
   useEffect(() => {
     if (projectId) {
+      // Clear resources when switching projects
+      dispatch(setCurrentProjectId(projectId));
+      // Clear API cache to ensure fresh data
+      clearProjectResourceCache();
+      
+      // Fetch all project-specific data for comprehensive dashboard
       dispatch(fetchProjectTasks(projectId));
       dispatch(fetchProjectMilestones(projectId));
-      dispatch(fetchProjectPhases(projectId));
+      dispatch(fetchProjectRisks(projectId));
+      dispatch(fetchProjectResources(projectId));
     }
   }, [dispatch, projectId]);
 
@@ -212,13 +226,53 @@ const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps> = ({ p
         </Col>
       </Row>
 
+      {/* Additional Metrics Row */}
+      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Tổng Milestone"
+              value={progressData.totalMilestones}
+              prefix={<FlagOutlined style={{ color: '#52c41a' }} />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Milestone Hoàn thành"
+              value={progressData.completedMilestones}
+              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Rủi ro"
+              value={totalRisks}
+              prefix={<ExclamationCircleOutlined style={{ color: '#fa8c16' }} />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Tài nguyên"
+              value={totalResources}
+              prefix={<FileTextOutlined style={{ color: '#1890ff' }} />}
+            />
+          </Card>
+        </Col>
+      </Row>
+
       {/* Overall Progress */}
       <Card style={{ marginBottom: '24px' }}>
         <Title level={3}>Tiến độ Tổng thể</Title>
         <Progress
           percent={progressData.overallProgress}
           strokeColor={getProgressColor(progressData.overallProgress)}
-          strokeWidth={8}
+          size="default"
         />
       </Card>
 
@@ -272,7 +326,7 @@ const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps> = ({ p
             style={{ marginBottom: '24px' }}
           >
             <List
-              dataSource={tasks?.slice(0, 5) || []}
+              dataSource={Array.isArray(tasks) ? tasks.slice(0, 5) : []}
               renderItem={(task) => (
                 <List.Item>
                   <List.Item.Meta
@@ -306,40 +360,14 @@ const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps> = ({ p
       <Card
         title="Tiến độ Giai đoạn"
         extra={
-          <Link to={`/admin/project-management/${projectId}/phases`}>
+          <Link to={`/admin/project-management/${projectId}/overview`}>
             Xem tất cả <RightOutlined />
           </Link>
         }
         style={{ marginBottom: '24px' }}
       >
         <Timeline
-          items={phases?.map((phase, index) => ({
-            dot: <Avatar size="small">{index + 1}</Avatar>,
-            children: (
-              <Card size="small">
-                <Row justify="space-between" align="middle">
-                  <Col>
-                    <Title level={5} style={{ margin: 0 }}>{phase.phase_name}</Title>
-                    <Space>
-                      {getStatusTag(phase.status)}
-                      <Space>
-                        <CalendarOutlined />
-                        {new Date(phase.planned_start_date).toLocaleDateString('vi-VN')} - 
-                        {new Date(phase.planned_end_date).toLocaleDateString('vi-VN')}
-                      </Space>
-                    </Space>
-                  </Col>
-                  <Col>
-                    <Progress
-                      percent={phase.progress_percentage || 0}
-                      size="small"
-                      style={{ width: 100 }}
-                    />
-                  </Col>
-                </Row>
-              </Card>
-            )
-          }))}
+          items={[]}
         />
       </Card>
 

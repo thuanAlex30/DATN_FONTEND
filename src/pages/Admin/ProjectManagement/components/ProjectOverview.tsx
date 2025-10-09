@@ -1,13 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
+import { Card, Row, Col, Progress, Statistic, Timeline, Tag, Avatar, Space, Divider, Typography, Badge } from 'antd';
+import { 
+  CalendarOutlined, 
+  UserOutlined, 
+  EnvironmentOutlined, 
+  DollarOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  TeamOutlined,
+  BarChartOutlined,
+  TrophyOutlined,
+  AlertOutlined,
+  SettingOutlined,
+  FileTextOutlined,
+  PlayCircleOutlined,
+  LineChartOutlined
+} from '@ant-design/icons';
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectStats } from '../../../../store/slices/projectSlice';
-import { fetchProjectPhases } from '../../../../store/slices/projectPhaseSlice';
 import { fetchProjectTasks } from '../../../../store/slices/projectTaskSlice';
 import { fetchProjectMilestones } from '../../../../store/slices/projectMilestoneSlice';
 import { fetchProjectRisks } from '../../../../store/slices/projectRiskSlice';
-import { fetchProjectResources } from '../../../../store/slices/projectResourceSlice';
+import { fetchProjectResources, setCurrentProjectId } from '../../../../store/slices/projectResourceSlice';
+import { clearProjectResourceCache } from '../../../../utils/apiCache';
 
 interface ProjectOverviewProps {
   projectId: string;
@@ -16,7 +33,6 @@ interface ProjectOverviewProps {
 const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { selectedProject, assignments, projects } = useSelector((state: RootState) => state.project);
-  const { phases } = useSelector((state: RootState) => state.projectPhase);
   const { tasks } = useSelector((state: RootState) => state.projectTask);
   const { milestones } = useSelector((state: RootState) => state.projectMilestone);
   const { risks } = useSelector((state: RootState) => state.projectRisk);
@@ -28,14 +44,24 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
     nextSteps: [] as string[]
   });
 
+  const { Title, Text, Paragraph } = Typography;
+
   useEffect(() => {
     dispatch(fetchProjectStats());
     if (projectId) {
-      dispatch(fetchProjectPhases(projectId));
+      // Clear resources when switching projects
+      dispatch(setCurrentProjectId(projectId));
+      // Clear API cache to ensure fresh data
+      clearProjectResourceCache();
+      
+      // Fetch all project-specific data
       dispatch(fetchProjectTasks(projectId));
       dispatch(fetchProjectMilestones(projectId));
       dispatch(fetchProjectRisks(projectId));
       dispatch(fetchProjectResources(projectId));
+      
+      // Note: fetchProjectAssignments and fetchProjectTimeline are not available yet
+      // They will be implemented when backend adds these endpoints
     }
   }, [dispatch, projectId]);
 
@@ -76,327 +102,405 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
   // const daysRemaining = getDaysRemaining();
 
   return (
-    <div className="project-overview">
-      {/* Project Flow Status */}
-      <div className="project-flow-status">
-        <h2>Trạng thái Luồng Dự án</h2>
-        <div className="flow-timeline">
-          <div className={`flow-step ${projectFlow.currentPhase === 'PLANNING' ? 'active' : ''} ${projectFlow.completedSteps.includes('PLANNING') ? 'completed' : ''}`}>
-            <div className="step-icon">
-              <i className="fas fa-clipboard-list"></i>
-            </div>
-            <div className="step-content">
-              <h4>Khởi tạo Dự án</h4>
-              <p>Project Registration → Site Setup → Phase Planning</p>
-            </div>
-          </div>
-          
-          <div className={`flow-step ${projectFlow.currentPhase === 'EXECUTION' ? 'active' : ''} ${projectFlow.completedSteps.includes('EXECUTION') ? 'completed' : ''}`}>
-            <div className="step-icon">
-              <i className="fas fa-play-circle"></i>
-            </div>
-            <div className="step-content">
-              <h4>Quản lý Tiến độ</h4>
-              <p>Task Assignment → Progress Tracking → Milestone Management</p>
-            </div>
-          </div>
-          
-          <div className={`flow-step ${projectFlow.currentPhase === 'MONITORING' ? 'active' : ''} ${projectFlow.completedSteps.includes('MONITORING') ? 'completed' : ''}`}>
-            <div className="step-icon">
-              <i className="fas fa-chart-line"></i>
-            </div>
-            <div className="step-content">
-              <h4>Giám sát & Báo cáo</h4>
-              <p>Status Reporting → Change Management → Quality Control</p>
-            </div>
-          </div>
-        </div>
+    <div className="project-overview" style={{ padding: '24px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      {/* Header Section */}
+      <div style={{ marginBottom: '24px' }}>
+        <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
+          Tổng quan dự án
+        </Title>
+        <Text type="secondary">
+          Quản lý và theo dõi tiến độ dự án một cách hiệu quả
+        </Text>
       </div>
 
-      {/* Quick Stats */}
-      <div className="overview-stats">
-        <div className="stat-card">
-          <div className="stat-icon">
-            <i className="fas fa-percent"></i>
-          </div>
-          <div className="stat-content">
-            <div className="stat-number">{project.progress}%</div>
-            <div className="stat-label">Tiến độ</div>
-          </div>
-        </div>
+      {/* Key Metrics Row */}
+      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Tiến độ dự án"
+              value={project.progress}
+              suffix="%"
+              valueStyle={{ color: '#3f8600' }}
+              prefix={<BarChartOutlined />}
+            />
+            <Progress 
+              percent={project.progress} 
+              size="small" 
+              status={project.progress >= 80 ? 'success' : project.progress >= 50 ? 'active' : 'normal'}
+            />
+          </Card>
+        </Col>
         
-        <div className="stat-card">
-          <div className="stat-icon">
-            <i className="fas fa-layer-group"></i>
-          </div>
-          <div className="stat-content">
-            <div className="stat-number">{phases?.length || 0}</div>
-            <div className="stat-label">Giai đoạn</div>
-          </div>
-        </div>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Giai đoạn"
+              value={0}
+              prefix={<SettingOutlined />}
+              valueStyle={{ color: '#1890ff' }}
+            />
+            <Text type="secondary">Đang thực hiện</Text>
+          </Card>
+        </Col>
         
-        <div className="stat-card">
-          <div className="stat-icon">
-            <i className="fas fa-tasks"></i>
-          </div>
-          <div className="stat-content">
-            <div className="stat-number">{tasks?.length || 0}</div>
-            <div className="stat-label">Nhiệm vụ</div>
-          </div>
-        </div>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Nhiệm vụ"
+              value={tasks?.length || 0}
+              prefix={<CheckCircleOutlined />}
+              valueStyle={{ color: '#722ed1' }}
+            />
+            <Text type="secondary">Tổng số nhiệm vụ</Text>
+          </Card>
+        </Col>
         
-        <div className="stat-card">
-          <div className="stat-icon">
-            <i className="fas fa-exclamation-triangle"></i>
-          </div>
-          <div className="stat-content">
-            <div className="stat-number">{risks?.length || 0}</div>
-            <div className="stat-label">Rủi ro</div>
-          </div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-icon">
-            <i className="fas fa-cubes"></i>
-          </div>
-          <div className="stat-content">
-            <div className="stat-number">{resources?.length || 0}</div>
-            <div className="stat-label">Tài nguyên</div>
-          </div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-icon">
-            <i className="fas fa-calendar-check"></i>
-          </div>
-          <div className="stat-content">
-            <div className="stat-number">{milestones?.length || 0}</div>
-            <div className="stat-label">Milestone</div>
-          </div>
-        </div>
-      </div>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Rủi ro"
+              value={risks?.length || 0}
+              prefix={<AlertOutlined />}
+              valueStyle={{ color: risks?.length > 0 ? '#cf1322' : '#52c41a' }}
+            />
+            <Text type="secondary">Cần xử lý</Text>
+          </Card>
+        </Col>
+      </Row>
 
-      {/* Project Details */}
-      <div className="overview-details">
-        <div className="details-section">
-          <h3>Thông tin dự án</h3>
-          <div className="details-grid">
-            <div className="detail-item">
-              <label>Tên dự án:</label>
-              <span>{project.project_name}</span>
-            </div>
-            <div className="detail-item">
-              <label>Trạng thái:</label>
-              <span className={`status-badge status-${project.status}`}>
-                {project.status}
-              </span>
-            </div>
-            <div className="detail-item">
-              <label>Ưu tiên:</label>
-              <span className={`priority-badge priority-${project.priority}`}>
-                {project.priority}
-              </span>
-            </div>
-            <div className="detail-item">
-              <label>Trưởng dự án:</label>
-              <span>{typeof project.leader_id === 'object' ? project.leader_id?.full_name : project.leader_id || 'N/A'}</span>
-            </div>
-            <div className="detail-item">
-              <label>Địa điểm:</label>
-              <span>{typeof project.site_id === 'object' ? project.site_id?.site_name : project.site_id || 'N/A'}</span>
-            </div>
-            <div className="detail-item">
-              <label>Ngày bắt đầu:</label>
-              <span>{formatDate(project.start_date)}</span>
-            </div>
-            <div className="detail-item">
-              <label>Ngày kết thúc:</label>
-              <span>{formatDate(project.end_date)}</span>
-            </div>
-            <div className="detail-item">
-              <label>Ngân sách:</label>
-              <span>{formatCurrency(project.budget)}</span>
-            </div>
-          </div>
-        </div>
+      {/* Main Content Row */}
+      <Row gutter={[16, 16]}>
+        {/* Left Column - Project Flow & Details */}
+        <Col xs={24} lg={16}>
+          {/* Project Flow Timeline */}
+          <Card 
+            title={
+              <Space>
+                <LineChartOutlined />
+                Trạng thái Luồng Dự án
+              </Space>
+            }
+            style={{ marginBottom: '16px' }}
+          >
+            <Timeline 
+              mode="left"
+              items={[
+                {
+                  dot: <FileTextOutlined style={{ fontSize: '16px' }} />,
+                  color: projectFlow.currentPhase === 'PLANNING' ? 'blue' : 'gray',
+                  children: (
+                    <div>
+                      <Title level={5} style={{ margin: 0 }}>Khởi tạo Dự án</Title>
+                      <Text type="secondary">Project Registration → Site Setup → Phase Planning</Text>
+                    </div>
+                  )
+                },
+                {
+                  dot: <PlayCircleOutlined style={{ fontSize: '16px' }} />,
+                  color: projectFlow.currentPhase === 'EXECUTION' ? 'blue' : 'gray',
+                  children: (
+                    <div>
+                      <Title level={5} style={{ margin: 0 }}>Quản lý Tiến độ</Title>
+                      <Text type="secondary">Task Assignment → Progress Tracking → Milestone Management</Text>
+                    </div>
+                  )
+                },
+                {
+                  dot: <LineChartOutlined style={{ fontSize: '16px' }} />,
+                  color: projectFlow.currentPhase === 'MONITORING' ? 'blue' : 'gray',
+                  children: (
+                    <div>
+                      <Title level={5} style={{ margin: 0 }}>Giám sát & Báo cáo</Title>
+                      <Text type="secondary">Status Reporting → Change Management → Quality Control</Text>
+                    </div>
+                  )
+                }
+              ]}
+            />
+          </Card>
 
-        <div className="details-section">
-          <h3>Mô tả dự án</h3>
-          <p>{project.description || 'Không có mô tả'}</p>
-        </div>
-      </div>
-
-      {/* Progress Section */}
-      <div className="overview-progress">
-        <h3>Tiến độ dự án</h3>
-        <div className="progress-container">
-          <div className="progress-bar">
-            <div 
-              className="progress-fill" 
-              style={{ width: `${project.progress}%` }}
-            ></div>
-          </div>
-          <div className="progress-text">{project.progress}% hoàn thành</div>
-        </div>
-      </div>
-
-      {/* Team Members */}
-      {assignments?.length > 0 && (
-        <div className="overview-team">
-          <h3>Thành viên dự án</h3>
-          <div className="team-grid">
-            {assignments?.map((assignment) => (
-              <div key={assignment.id} className="team-member">
-                <div className="member-avatar">
-                  <i className="fas fa-user"></i>
-                </div>
-                <div className="member-info">
-                  <div className="member-name">{typeof assignment.user_id === 'object' ? assignment.user_id?.full_name : assignment.user_id || 'N/A'}</div>
-                  <div className="member-role">{assignment.role_in_project || 'Thành viên'}</div>
-                  <div className={`member-status status-${assignment.status}`}>
-                    {assignment.status}
+          {/* Project Details */}
+          <Card 
+            title={
+              <Space>
+                <FileTextOutlined />
+                Thông tin dự án
+              </Space>
+            }
+            style={{ marginBottom: '16px' }}
+          >
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12}>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div>
+                    <Text strong>Tên dự án:</Text>
+                    <br />
+                    <Text>{project.project_name}</Text>
                   </div>
+                  <div>
+                    <Text strong>Trạng thái:</Text>
+                    <br />
+                    <Tag color={project.status === 'ACTIVE' ? 'green' : project.status === 'COMPLETED' ? 'blue' : 'orange'}>
+                      {project.status}
+                    </Tag>
+                  </div>
+                  <div>
+                    <Text strong>Ưu tiên:</Text>
+                    <br />
+                    <Tag color={project.priority === 'HIGH' ? 'red' : project.priority === 'MEDIUM' ? 'orange' : 'green'}>
+                      {project.priority}
+                    </Tag>
+                  </div>
+                </Space>
+              </Col>
+              
+              <Col xs={24} sm={12}>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div>
+                    <Text strong>Trưởng dự án:</Text>
+                    <br />
+                    <Space>
+                      <Avatar icon={<UserOutlined />} size="small" />
+                      <Text>{project.leader_id && typeof project.leader_id === 'object' ? 
+                        project.leader_id.full_name || 'N/A' : 
+                        project.leader_id || 'N/A'}</Text>
+                    </Space>
+                  </div>
+                  <div>
+                    <Text strong>Địa điểm:</Text>
+                    <br />
+                    <Space>
+                      <EnvironmentOutlined />
+                      <Text>{project.site_id && typeof project.site_id === 'object' ? 
+                        project.site_id.site_name || 'N/A' : 
+                        project.site_id || 'N/A'}</Text>
+                    </Space>
+                  </div>
+                  <div>
+                    <Text strong>Ngân sách:</Text>
+                    <br />
+                    <Space>
+                      <DollarOutlined />
+                      <Text>{formatCurrency(project.budget)}</Text>
+                    </Space>
+                  </div>
+                </Space>
+              </Col>
+            </Row>
+            
+            <Divider />
+            
+            <div>
+              <Text strong>Thời gian thực hiện:</Text>
+              <br />
+              <Space>
+                <CalendarOutlined />
+                <Text>{formatDate(project.start_date)} - {formatDate(project.end_date)}</Text>
+              </Space>
+            </div>
+            
+            {project.description && project.description.trim() !== '' && 
+             !project.description.toLowerCase().includes('ádasdasd') && 
+             !project.description.toLowerCase().includes('test') && (
+              <>
+                <Divider />
+                <div>
+                  <Text strong>Mô tả dự án:</Text>
+                  <br />
+                  <Paragraph>{project.description}</Paragraph>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              </>
+            )}
+          </Card>
 
-      {/* Project Management Workflow */}
-      <div className="project-workflow">
-        <h3>Luồng Quản lý Dự án</h3>
-        <div className="workflow-sections">
-          {/* 1. Project Initialization */}
-          <div className="workflow-section">
-            <h4><i className="fas fa-clipboard-list"></i> 1. Khởi tạo Dự án</h4>
-            <div className="workflow-actions">
-              <Link 
-                to={`/admin/project-management/${projectId}/phases`}
-                className="workflow-btn"
-              >
-                <i className="fas fa-layer-group"></i>
-                <span>Quản lý Giai đoạn</span>
-                <small>Phase Planning & Setup</small>
-              </Link>
-              <Link 
-                to={`/admin/project-management/${projectId}/resources`}
-                className="workflow-btn"
-              >
-                <i className="fas fa-cubes"></i>
-                <span>Quản lý Tài nguyên</span>
-                <small>Resource Planning</small>
-              </Link>
-              <Link 
-                to={`/admin/project-management/${projectId}/risks`}
-                className="workflow-btn"
-              >
-                <i className="fas fa-exclamation-triangle"></i>
-                <span>Đánh giá Rủi ro</span>
-                <small>Risk Assessment</small>
-              </Link>
-            </div>
-          </div>
+          {/* Team Members */}
+          {assignments?.length > 0 && (
+            <Card 
+              title={
+                <Space>
+                  <TeamOutlined />
+                  Thành viên dự án ({assignments.length})
+                </Space>
+              }
+            >
+              <Row gutter={[16, 16]}>
+                {assignments?.map((assignment) => (
+                  <Col xs={24} sm={12} md={8} key={assignment.id}>
+                    <Card size="small" hoverable>
+                      <Space direction="vertical" align="center" style={{ width: '100%' }}>
+                        <Avatar size={48} icon={<UserOutlined />} />
+                        <div style={{ textAlign: 'center' }}>
+                          <Text strong>
+                            {typeof assignment.user_id === 'object' ? assignment.user_id?.full_name : assignment.user_id || 'N/A'}
+                          </Text>
+                          <br />
+                          <Text type="secondary">{assignment.role_in_project || 'Thành viên'}</Text>
+                          <br />
+                          <Tag color={assignment.status === 'active' ? 'green' : 'orange'}>
+                            {assignment.status}
+                          </Tag>
+                        </div>
+                      </Space>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            </Card>
+          )}
+        </Col>
 
-          {/* 2. Progress Management */}
-          <div className="workflow-section">
-            <h4><i className="fas fa-play-circle"></i> 2. Quản lý Tiến độ</h4>
-            <div className="workflow-actions">
-              <Link 
-                to={`/admin/project-management/${projectId}/tasks`}
-                className="workflow-btn"
-              >
-                <i className="fas fa-tasks"></i>
-                <span>Quản lý Nhiệm vụ</span>
-                <small>Task Assignment & Tracking</small>
+        {/* Right Column - Quick Actions & Stats */}
+        <Col xs={24} lg={8}>
+          {/* Quick Actions */}
+          <Card 
+            title={
+              <Space>
+                <SettingOutlined />
+                Thao tác nhanh
+              </Space>
+            }
+            style={{ marginBottom: '16px' }}
+          >
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Link to={`/admin/project-management/${projectId}/tasks`} style={{ width: '100%' }}>
+                <Card size="small" hoverable>
+                  <Space>
+                    <CheckCircleOutlined style={{ color: '#1890ff' }} />
+                    <div>
+                      <Text strong>Quản lý Nhiệm vụ</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: '12px' }}>Task Assignment & Tracking</Text>
+                    </div>
+                  </Space>
+                </Card>
               </Link>
-              <Link 
-                to={`/admin/project-management/${projectId}/milestones`}
-                className="workflow-btn"
-              >
-                <i className="fas fa-flag-checkered"></i>
-                <span>Quản lý Milestone</span>
-                <small>Milestone Tracking</small>
+              
+              <Link to={`/admin/project-management/${projectId}/milestones`} style={{ width: '100%' }}>
+                <Card size="small" hoverable>
+                  <Space>
+                    <TrophyOutlined style={{ color: '#52c41a' }} />
+                    <div>
+                      <Text strong>Quản lý Milestone</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: '12px' }}>Milestone Tracking</Text>
+                    </div>
+                  </Space>
+                </Card>
               </Link>
-              <Link 
-                to={`/admin/project-management/${projectId}/progress`}
-                className="workflow-btn"
-              >
-                <i className="fas fa-chart-line"></i>
-                <span>Theo dõi Tiến độ</span>
-                <small>Progress Monitoring</small>
+              
+              <Link to={`/admin/project-management/${projectId}/resources`} style={{ width: '100%' }}>
+                <Card size="small" hoverable>
+                  <Space>
+                    <TeamOutlined style={{ color: '#722ed1' }} />
+                    <div>
+                      <Text strong>Quản lý Tài nguyên</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: '12px' }}>Resource Planning</Text>
+                    </div>
+                  </Space>
+                </Card>
               </Link>
-            </div>
-          </div>
+            </Space>
+          </Card>
 
-          {/* 3. Monitoring & Control */}
-          <div className="workflow-section">
-            <h4><i className="fas fa-chart-line"></i> 3. Giám sát & Kiểm soát</h4>
-            <div className="workflow-actions">
-              <Link 
-                to={`/admin/project-management/${projectId}/status-reports`}
-                className="workflow-btn"
-              >
-                <i className="fas fa-file-alt"></i>
-                <span>Báo cáo Tình trạng</span>
-                <small>Status Reporting</small>
-              </Link>
-              <Link 
-                to={`/admin/project-management/${projectId}/change-requests`}
-                className="workflow-btn"
-              >
-                <i className="fas fa-exchange-alt"></i>
-                <span>Yêu cầu Thay đổi</span>
-                <small>Change Management</small>
-              </Link>
-              <Link 
-                to={`/admin/project-management/${projectId}/quality`}
-                className="workflow-btn"
-              >
-                <i className="fas fa-check-circle"></i>
-                <span>Kiểm soát Chất lượng</span>
-                <small>Quality Control</small>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+          {/* Risk Assessment - Separate Card */}
+          <Card 
+            title={
+              <Space>
+                <AlertOutlined style={{ color: '#f5222d' }} />
+                Đánh giá Rủi ro
+              </Space>
+            }
+            style={{ marginBottom: '16px' }}
+            styles={{ header: { backgroundColor: '#fff2f0', borderBottom: '1px solid #ffccc7' } }}
+          >
+            <Link to={`/admin/project-management/${projectId}/risks`} style={{ width: '100%' }}>
+              <Card size="small" hoverable style={{ border: '1px solid #ffccc7' }}>
+                <Space>
+                  <AlertOutlined style={{ color: '#f5222d', fontSize: '20px' }} />
+                  <div>
+                    <Text strong style={{ color: '#f5222d' }}>Quản lý Rủi ro</Text>
+                    <br />
+                    <Text type="secondary" style={{ fontSize: '12px' }}>Risk Assessment & Management</Text>
+                    <br />
+                    <Badge count={risks?.length || 0} showZero color="#f5222d" style={{ marginTop: '4px' }} />
+                  </div>
+                </Space>
+              </Card>
+            </Link>
+          </Card>
 
-      {/* Recent Activity */}
-      <div className="overview-activity">
-        <h3>Hoạt động gần đây</h3>
-        <div className="activity-list">
-          <div className="activity-item">
-            <div className="activity-icon">
-              <i className="fas fa-info-circle"></i>
-            </div>
-            <div className="activity-content">
-              <div className="activity-title">Dự án được tạo</div>
-              <div className="activity-description">
-                Dự án "{project.project_name}" đã được tạo bởi {typeof project.leader_id === 'object' ? project.leader_id?.full_name : project.leader_id || 'N/A'}
+          {/* Additional Stats */}
+          <Card 
+            title={
+              <Space>
+                <BarChartOutlined />
+                Thống kê bổ sung
+              </Space>
+            }
+            style={{ marginBottom: '16px' }}
+          >
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text>Tài nguyên:</Text>
+                <Badge count={resources?.length || 0} showZero color="#1890ff" />
+              </div>  
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text>Milestone:</Text>
+                <Badge count={milestones?.length || 0} showZero color="#52c41a" />
               </div>
-              <div className="activity-date">
-                {formatDate(project.created_at)}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text>Rủi ro:</Text>
+                <Badge count={risks?.length || 0} showZero color="#f5222d" />
               </div>
-            </div>
-          </div>
-          
-          <div className="activity-item">
-            <div className="activity-icon">
-              <i className="fas fa-edit"></i>
-            </div>
-            <div className="activity-content">
-              <div className="activity-title">Cập nhật tiến độ</div>
-              <div className="activity-description">
-                Tiến độ dự án đã được cập nhật lên {project.progress}%
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text>Nhiệm vụ:</Text>
+                <Badge count={tasks?.length || 0} showZero color="#722ed1" />
               </div>
-              <div className="activity-date">
-                {formatDate(project.updated_at)}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+            </Space>
+          </Card>
+
+          {/* Recent Activity */}
+          <Card 
+            title={
+              <Space>
+                <ClockCircleOutlined />
+                Hoạt động gần đây
+              </Space>
+            }
+          >
+            <Timeline
+              items={[
+                {
+                  color: "green",
+                  children: (
+                    <div>
+                      <Text strong>Dự án được tạo</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        {formatDate(project.created_at)}
+                      </Text>
+                    </div>
+                  )
+                },
+                {
+                  color: "blue",
+                  children: (
+                    <div>
+                      <Text strong>Cập nhật tiến độ</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        Tiến độ: {project.progress}% - {formatDate(project.updated_at)}
+                      </Text>
+                    </div>
+                  )
+                }
+              ]}
+            />
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 };

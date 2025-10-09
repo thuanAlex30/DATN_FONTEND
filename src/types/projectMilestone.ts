@@ -8,7 +8,7 @@ export interface ProjectMilestone {
   actual_date?: string;
   milestone_type: 'PHASE_COMPLETION' | 'DELIVERY' | 'APPROVAL' | 'REVIEW' | 'TESTING';
   completion_criteria?: string;
-  responsible_user_id?: string;
+  responsible_user_id?: string | { _id: string; full_name: string; email: string; id: string };
   is_critical: boolean;
   status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED';
   deliverables?: MilestoneDeliverable[];

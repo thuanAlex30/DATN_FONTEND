@@ -6,6 +6,7 @@ import type { LoginRequest, LoginResponse, UserProfile } from '../../types/auth'
 interface AuthState {
   user: UserProfile | null;
   accessToken: string | null;
+  isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -13,6 +14,7 @@ interface AuthState {
 const initialState: AuthState = {
   user: null,
   accessToken: localStorage.getItem('accessToken'),
+  isAuthenticated: !!localStorage.getItem('accessToken'),
   loading: false,
   error: null,
 };
@@ -48,6 +50,7 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.accessToken = null;
+      state.isAuthenticated = false;
       localStorage.clear();
     },
   },
@@ -61,6 +64,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
+        state.isAuthenticated = true;
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;

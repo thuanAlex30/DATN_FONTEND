@@ -62,6 +62,43 @@ const userService = {
     }
   },
 
+  // Get potential managers
+  async getPotentialManagers(): Promise<{ success: boolean; message: string; data: User[]; timestamp: string }> {
+    try {
+      console.log('userService.getPotentialManagers called');
+      const response = await api.get('/users/managers');
+      console.log('userService.getPotentialManagers response:', response);
+      
+      if (response.data && typeof response.data === 'object') {
+        if (response.data.success !== undefined) {
+          return {
+            success: response.data.success,
+            message: response.data.message,
+            data: response.data.data?.managers || [],
+            timestamp: response.data.timestamp
+          };
+        } else if (Array.isArray(response.data)) {
+          return {
+            success: true,
+            message: 'Managers retrieved successfully',
+            data: response.data,
+            timestamp: new Date().toISOString()
+          };
+        }
+      }
+      
+      return {
+        success: true,
+        message: 'Managers retrieved successfully',
+        data: response.data?.managers || [],
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error fetching potential managers:', error);
+      throw error;
+    }
+  },
+
   // Create new user
   async createUser(userData: UserCreate): Promise<User> {
     try {

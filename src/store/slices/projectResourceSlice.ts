@@ -4,32 +4,28 @@ import projectResourceService from '../../services/projectResourceService';
 import type { 
   ProjectResource, 
   ResourceAllocation,
-  CreateResourceData, 
-  UpdateResourceData,
-  CreateAllocationData,
-  UpdateAllocationData,
-  ResourceStats,
-  ResourceAvailability 
-} from '../../types/projectResource';
+  CreateProjectResourceData, 
+  UpdateProjectResourceData
+} from '../../services/projectResourceService';
 
 interface ProjectResourceState {
   resources: ProjectResource[];
   allocations: ResourceAllocation[];
-  availability: ResourceAvailability[];
-  stats: ResourceStats | null;
+  stats: any | null;
   loading: boolean;
   error: string | null;
   selectedResource: ProjectResource | null;
+  currentProjectId: string | null;
 }
 
 const initialState: ProjectResourceState = {
   resources: [],
   allocations: [],
-  availability: [],
   stats: null,
   loading: false,
   error: null,
   selectedResource: null,
+  currentProjectId: null,
 };
 
 // Async thunks
@@ -37,7 +33,7 @@ export const fetchProjectResources = createAsyncThunk(
   'projectResource/fetchProjectResources',
   async (projectId: string) => {
     const response = await projectResourceService.getProjectResources(projectId);
-    return response.data;
+    return response;
   }
 );
 
@@ -45,23 +41,23 @@ export const fetchResourceById = createAsyncThunk(
   'projectResource/fetchResourceById',
   async (id: string) => {
     const response = await projectResourceService.getResourceById(id);
-    return response.data;
+    return response;
   }
 );
 
 export const createResource = createAsyncThunk(
   'projectResource/createResource',
-  async (data: CreateResourceData) => {
+  async (data: CreateProjectResourceData) => {
     const response = await projectResourceService.createResource(data);
-    return response.data;
+    return response;
   }
 );
 
 export const updateResource = createAsyncThunk(
   'projectResource/updateResource',
-  async ({ id, data }: { id: string; data: UpdateResourceData }) => {
+  async ({ id, data }: { id: string; data: UpdateProjectResourceData }) => {
     const response = await projectResourceService.updateResource(id, data);
-    return response.data;
+    return response;
   }
 );
 
@@ -75,49 +71,25 @@ export const deleteResource = createAsyncThunk(
 
 export const fetchResourceAllocations = createAsyncThunk(
   'projectResource/fetchResourceAllocations',
-  async (resourceId: string) => {
-    const response = await projectResourceService.getResourceAllocations(resourceId);
-    return response.data;
-  }
-);
-
-export const addResourceAllocation = createAsyncThunk(
-  'projectResource/addResourceAllocation',
-  async ({ resourceId, data }: { resourceId: string; data: CreateAllocationData }) => {
-    const response = await projectResourceService.addResourceAllocation(resourceId, data);
-    return response.data;
+  async (projectId: string) => {
+    const response = await projectResourceService.getResourceAllocation(projectId);
+    return response;
   }
 );
 
 export const updateResourceAllocation = createAsyncThunk(
   'projectResource/updateResourceAllocation',
-  async ({ allocationId, data }: { allocationId: string; data: UpdateAllocationData }) => {
+  async ({ allocationId, data }: { allocationId: string; data: Partial<ResourceAllocation> }) => {
     const response = await projectResourceService.updateResourceAllocation(allocationId, data);
-    return response.data;
-  }
-);
-
-export const removeResourceAllocation = createAsyncThunk(
-  'projectResource/removeResourceAllocation',
-  async (allocationId: string) => {
-    await projectResourceService.removeResourceAllocation(allocationId);
-    return allocationId;
-  }
-);
-
-export const fetchResourceAvailability = createAsyncThunk(
-  'projectResource/fetchResourceAvailability',
-  async (filters?: { start_date?: string; end_date?: string; resource_type?: string }) => {
-    const response = await projectResourceService.getResourceAvailability(filters);
-    return response.data;
+    return response;
   }
 );
 
 export const fetchResourceStats = createAsyncThunk(
   'projectResource/fetchResourceStats',
-  async (resourceId: string) => {
-    const response = await projectResourceService.getResourceStats(resourceId);
-    return response.data;
+  async (projectId: string) => {
+    const response = await projectResourceService.getResourceStats(projectId);
+    return response;
   }
 );
 
@@ -127,6 +99,22 @@ const projectResourceSlice = createSlice({
   reducers: {
     setSelectedResource: (state, action: PayloadAction<ProjectResource | null>) => {
       state.selectedResource = action.payload;
+    },
+    setCurrentProjectId: (state, action: PayloadAction<string | null>) => {
+      // Clear resources when switching projects
+      if (state.currentProjectId !== action.payload) {
+        state.resources = [];
+        state.allocations = [];
+        state.stats = null;
+        state.selectedResource = null;
+      }
+      state.currentProjectId = action.payload;
+    },
+    clearResources: (state) => {
+      state.resources = [];
+      state.allocations = [];
+      state.stats = null;
+      state.selectedResource = null;
     },
     clearError: (state) => {
       state.error = null;
@@ -183,11 +171,11 @@ const projectResourceSlice = createSlice({
       })
       .addCase(updateResource.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.resources.findIndex(resource => resource.id === action.payload.id);
+        const index = state.resources.findIndex(resource => resource._id === action.payload._id);
         if (index !== -1) {
           state.resources[index] = action.payload;
         }
-        if (state.selectedResource?.id === action.payload.id) {
+        if (state.selectedResource?._id === action.payload._id) {
           state.selectedResource = action.payload;
         }
       })
@@ -203,8 +191,8 @@ const projectResourceSlice = createSlice({
       })
       .addCase(deleteResource.fulfilled, (state, action) => {
         state.loading = false;
-        state.resources = state.resources.filter(resource => resource.id !== action.payload);
-        if (state.selectedResource?.id === action.payload) {
+        state.resources = state.resources.filter(resource => resource._id !== action.payload);
+        if (state.selectedResource?._id === action.payload) {
           state.selectedResource = null;
         }
       })
@@ -218,27 +206,12 @@ const projectResourceSlice = createSlice({
         state.allocations = action.payload;
       })
       
-      // Add resource allocation
-      .addCase(addResourceAllocation.fulfilled, (state, action) => {
-        state.allocations.push(action.payload);
-      })
-      
       // Update resource allocation
       .addCase(updateResourceAllocation.fulfilled, (state, action) => {
-        const index = state.allocations.findIndex(allocation => allocation.id === action.payload.id);
+        const index = state.allocations.findIndex(allocation => allocation.resource_id === action.payload.resource_id);
         if (index !== -1) {
           state.allocations[index] = action.payload;
         }
-      })
-      
-      // Remove resource allocation
-      .addCase(removeResourceAllocation.fulfilled, (state, action) => {
-        state.allocations = state.allocations.filter(allocation => allocation.id !== action.payload);
-      })
-      
-      // Fetch resource availability
-      .addCase(fetchResourceAvailability.fulfilled, (state, action) => {
-        state.availability = action.payload;
       })
       
       // Fetch resource stats
@@ -248,5 +221,5 @@ const projectResourceSlice = createSlice({
   },
 });
 
-export const { setSelectedResource, clearError } = projectResourceSlice.actions;
+export const { setSelectedResource, setCurrentProjectId, clearResources, clearError } = projectResourceSlice.actions;
 export default projectResourceSlice.reducer;

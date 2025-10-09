@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, Space, Table, Tag, Avatar, Row, Col, Statistic, Input, Select, Modal, Form, message, Popconfirm, Upload, Spin, Alert } from 'antd';
-import { TrophyOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, FilterOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 // import * as certificateService from '../../../services/certificateService';
 
 // Types
@@ -39,8 +37,8 @@ const CertificateManagement: React.FC = () => {
   const [showModal, setShowModal] = useState<string | null>(null);
   const [currentEditingPackage, setCurrentEditingPackage] = useState<CompanyCertPackage | null>(null);
   const [currentEditingEnrollment, setCurrentEditingEnrollment] = useState<CompanyCertEnrollment | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setLoading] = useState(false);
+  const [, setError] = useState<string | null>(null);
   
   // Form states
   const [packageForm, setPackageForm] = useState({
@@ -79,19 +77,18 @@ const CertificateManagement: React.FC = () => {
       setError(null);
       
       // Load packages and enrollments
-      const [packagesData, enrollmentsData] = await Promise.all([
-        certificateService.getCertPackages(),
-        certificateService.getCertEnrollments()
-      ]);
+      // TODO: Implement certificate service
+      const packagesData: CompanyCertPackage[] = [];
+      const enrollmentsData: CompanyCertEnrollment[] = [];
       
-      setCompanyCertPackages(packagesData || []);
-      setCompanyCertEnrollments(enrollmentsData || []);
+      setCompanyCertPackages(packagesData);
+      setCompanyCertEnrollments(enrollmentsData);
     } catch (err: any) {
       setError(err.message || 'Không thể tải dữ liệu');
       console.error('Error loading certificate data:', err);
     } finally {
       setLoading(false);
-    }
+    } 
   };
 
   // Utility functions
@@ -110,15 +107,15 @@ const CertificateManagement: React.FC = () => {
     return new Date(dateTimeString).toLocaleString('vi-VN');
   };
 
-  const getPackageName = (packageId: number): string => {
+  const getPackageName = useCallback((packageId: number): string => {
     const pkg = companyCertPackages.find(p => p.package_id === packageId);
     return pkg ? pkg.package_name : 'Không xác định';
-  };
+  }, [companyCertPackages]);
 
-  const getPackagePrice = (packageId: number): number => {
+  const getPackagePrice = useCallback((packageId: number): number => {
     const pkg = companyCertPackages.find(p => p.package_id === packageId);
     return pkg ? pkg.price : 0;
-  };
+  }, [companyCertPackages]);
 
   const getStatusLabel = (status: string): string => {
     const labels: Record<string, string> = {
@@ -136,16 +133,16 @@ const CertificateManagement: React.FC = () => {
     return expiryDate;
   };
 
-  const getEnrollmentCountByPackage = (packageId: number): number => {
+  const getEnrollmentCountByPackage = useCallback((packageId: number): number => {
     return companyCertEnrollments.filter(e => e.package_id === packageId).length;
-  };
+  }, [companyCertEnrollments]);
 
-  const getActiveEnrollmentCountByPackage = (packageId: number): number => {
+  const getActiveEnrollmentCountByPackage = useCallback((packageId: number): number => {
     return companyCertEnrollments.filter(e => e.package_id === packageId && e.status === 'active').length;
-  };
+  }, [companyCertEnrollments]);
 
-  // Filter functions
-  const getFilteredPackages = (): CompanyCertPackage[] => {
+  // Filter functions - memoized to prevent infinite loops
+  const getFilteredPackages = useCallback((): CompanyCertPackage[] => {
     return companyCertPackages.filter(pkg => {
       const matchesSearch = pkg.package_name.toLowerCase().includes(packageSearch.toLowerCase()) ||
                           pkg.description.toLowerCase().includes(packageSearch.toLowerCase());
@@ -153,9 +150,9 @@ const CertificateManagement: React.FC = () => {
       
       return matchesSearch && matchesDuration;
     });
-  };
+  }, [companyCertPackages, packageSearch, durationFilter]);
 
-  const getFilteredEnrollments = (): CompanyCertEnrollment[] => {
+  const getFilteredEnrollments = useCallback((): CompanyCertEnrollment[] => {
     return companyCertEnrollments.filter(enrollment => {
       const matchesSearch = enrollment.company_name.toLowerCase().includes(enrollmentSearch.toLowerCase()) ||
                           enrollment.tax_code.includes(enrollmentSearch) ||
@@ -165,10 +162,10 @@ const CertificateManagement: React.FC = () => {
       
       return matchesSearch && matchesStatus && matchesPackage;
     });
-  };
+  }, [companyCertEnrollments, enrollmentSearch, statusFilter, packageFilter]);
 
-  // Revenue calculation
-  const calculateRevenue = (year: string, month: string): RevenueData => {
+  // Revenue calculation - memoized to prevent infinite loops
+  const calculateRevenue = useCallback((year: string, month: string): RevenueData => {
     let filteredData = companyCertEnrollments.filter(enrollment => {
       const enrollDate = new Date(enrollment.enrolled_at);
       const enrollYear = enrollDate.getFullYear();
@@ -228,14 +225,14 @@ const CertificateManagement: React.FC = () => {
       packageRevenue,
       monthlyRevenue
     };
-  };
+  }, [companyCertEnrollments, companyCertPackages]);
 
-  // Modal handlers
-  const openModal = (modalId: string) => {
+  // Modal handlers - memoized to prevent infinite loops
+  const openModal = useCallback((modalId: string) => {
     setShowModal(modalId);
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setShowModal(null);
     setCurrentEditingPackage(null);
     setCurrentEditingEnrollment(null);
@@ -249,10 +246,10 @@ const CertificateManagement: React.FC = () => {
       newStatus: 'active',
       statusNote: ''
     });
-  };
+  }, []);
 
-  // Package management
-  const editPackage = (packageId: number) => {
+  // Package management - memoized to prevent infinite loops
+  const editPackage = useCallback((packageId: number) => {
     const pkg = companyCertPackages.find(p => p.package_id === packageId);
     if (pkg) {
       setCurrentEditingPackage(pkg);
@@ -264,9 +261,9 @@ const CertificateManagement: React.FC = () => {
       });
       openModal('addPackageModal');
     }
-  };
+  }, [companyCertPackages, openModal]);
 
-  const deletePackage = (packageId: number) => {
+  const deletePackage = useCallback((packageId: number) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa gói chứng chỉ này?')) {
       const enrollmentCount = getEnrollmentCountByPackage(packageId);
       if (enrollmentCount > 0) {
@@ -276,9 +273,9 @@ const CertificateManagement: React.FC = () => {
       
       setCompanyCertPackages(prev => prev.filter(p => p.package_id !== packageId));
     }
-  };
+  }, [getEnrollmentCountByPackage]);
 
-  const handlePackageSubmit = (e: React.FormEvent) => {
+  const handlePackageSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     
     if (currentEditingPackage) {
@@ -298,18 +295,18 @@ const CertificateManagement: React.FC = () => {
     }
     
     closeModal();
-  };
+  }, [currentEditingPackage, packageForm, companyCertPackages, closeModal]);
 
-  // Enrollment management
-  const viewEnrollmentDetails = (enrollmentId: number) => {
+  // Enrollment management - memoized to prevent infinite loops
+  const viewEnrollmentDetails = useCallback((enrollmentId: number) => {
     const enrollment = companyCertEnrollments.find(e => e.enrollment_id === enrollmentId);
     if (enrollment) {
       setCurrentEditingEnrollment(enrollment);
       openModal('enrollmentModal');
     }
-  };
+  }, [companyCertEnrollments, openModal]);
 
-  const updateEnrollmentStatus = (enrollmentId: number) => {
+  const updateEnrollmentStatus = useCallback((enrollmentId: number) => {
     const enrollment = companyCertEnrollments.find(e => e.enrollment_id === enrollmentId);
     if (enrollment) {
       setCurrentEditingEnrollment(enrollment);
@@ -319,9 +316,9 @@ const CertificateManagement: React.FC = () => {
       });
       openModal('updateStatusModal');
     }
-  };
+  }, [companyCertEnrollments, openModal]);
 
-  const handleStatusSubmit = (e: React.FormEvent) => {
+  const handleStatusSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     
     if (currentEditingEnrollment) {
@@ -332,9 +329,9 @@ const CertificateManagement: React.FC = () => {
       ));
       closeModal();
     }
-  };
+  }, [currentEditingEnrollment, statusForm.newStatus, closeModal]);
 
-  const exportEnrollmentReport = () => {
+  const exportEnrollmentReport = useCallback(() => {
     const filteredEnrollments = getFilteredEnrollments();
     const data = filteredEnrollments.map(enrollment => {
       const pkg = companyCertPackages.find(p => p.package_id === enrollment.package_id);
@@ -382,16 +379,17 @@ const CertificateManagement: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, [getFilteredEnrollments, companyCertPackages]);
 
-  // Tab switching
-  const switchTab = (tabName: 'packages' | 'enrollments' | 'revenue') => {
+  // Tab switching - memoized to prevent infinite loops
+  const switchTab = useCallback((tabName: 'packages' | 'enrollments' | 'revenue') => {
     setActiveTab(tabName);
-  };
+  }, []);
 
-  const filteredPackages = getFilteredPackages();
-  const filteredEnrollments = getFilteredEnrollments();
-  const revenueData = calculateRevenue(yearFilter, monthFilter);
+  // Memoize computed values to prevent infinite loops
+  const filteredPackages = useMemo(() => getFilteredPackages(), [companyCertPackages, packageSearch, durationFilter]);
+  const filteredEnrollments = useMemo(() => getFilteredEnrollments(), [companyCertEnrollments, enrollmentSearch, statusFilter, packageFilter]);
+  const revenueData = useMemo(() => calculateRevenue(yearFilter, monthFilter), [companyCertEnrollments, companyCertPackages, yearFilter, monthFilter]);
 
   return (
     <div className="certificate-management-container">

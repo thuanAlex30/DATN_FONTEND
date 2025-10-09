@@ -77,8 +77,9 @@ class SiteAreaService {
     await api.delete(`/site-areas/areas/${id}`);
   }
 
-  // Get all areas with filters
-  async getAllAreas(filters?: {
+  // Get all areas with filters (requires project_id)
+  async getAllAreas(filters: {
+    project_id: string;
     site_id?: string;
     search?: string;
     is_active?: boolean;

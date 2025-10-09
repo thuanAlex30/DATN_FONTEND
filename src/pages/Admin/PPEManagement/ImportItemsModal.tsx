@@ -39,7 +39,7 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({
         formData.append('category_id', selectedCategory);
       }
       
-      await ppeService.importItems(formData);
+      await ppeService.importPPEItems(formData);
       message.success('Import thiết bị thành công');
       onImportSuccess();
     } catch (err: any) {
@@ -160,7 +160,7 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({
               allowClear
             >
               {categories.map(category => (
-                <Select.Option key={category._id || (category as any).id} value={category._id || (category as any).id}>
+                <Select.Option key={category.id} value={category.id}>
                   {category.category_name}
                 </Select.Option>
               ))}

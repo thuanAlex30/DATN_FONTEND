@@ -126,8 +126,8 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
                 <div className="risk-title">
                   <h3>{risk.risk_name}</h3>
                   <div className="risk-badges">
-                    <span className={`risk-level ${getRiskLevelClass(risk.risk_level)}`}>
-                      {risk.risk_level}
+                    <span className={`risk-level ${getRiskLevelClass(risk.probability)}`}>
+                      {risk.probability}
                     </span>
                     <span className={`status-badge ${getStatusBadgeClass(risk.status)}`}>
                       {risk.status}
@@ -155,17 +155,17 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
               
               <div className="risk-content">
                 <p className="risk-description">
-                  {risk.description || 'Không có mô tả'}
+                  {risk.risk_description || 'Không có mô tả'}
                 </p>
                 
                 <div className="risk-details">
                   <div className="detail-item">
                     <i className="fas fa-exclamation-circle"></i>
-                    <span>Xác suất: {risk.probability}%</span>
+                    <span>Xác suất: {risk.probability}</span>
                   </div>
                   <div className="detail-item">
                     <i className="fas fa-bomb"></i>
-                    <span>Tác động: {risk.impact}</span>
+                    <span>Tác động: {risk.impact_score}</span>
                   </div>
                   <div className="detail-item">
                     <i className="fas fa-calculator"></i>
@@ -173,7 +173,7 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
                   </div>
                   <div className="detail-item">
                     <i className="fas fa-user"></i>
-                    <span>Người phụ trách: {risk.assigned_to || 'N/A'}</span>
+                    <span>Người phụ trách: {risk.owner_id || 'N/A'}</span>
                   </div>
                 </div>
                 

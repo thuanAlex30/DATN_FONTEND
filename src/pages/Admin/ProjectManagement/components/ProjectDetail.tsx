@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Card, 
@@ -19,15 +19,16 @@ import {
   EnvironmentOutlined,
   UserOutlined,
   BarChartOutlined,
-  TeamOutlined
+  TeamOutlined,
+  AimOutlined
 } from '@ant-design/icons';
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectById, fetchProjectTimeline, fetchProjectAssignments } from '../../../../store/slices/projectSlice';
 import ProjectOverview from './ProjectOverview';
-import ProjectPhases from './ProjectPhases';
 import ProjectMilestones from './ProjectMilestones';
 import ProjectTasks from './ProjectTasks';
 import ProjectResources from './ProjectResources';
+import ProjectWorkLocations from './ProjectWorkLocations';
 import ProgressTrackingDashboard from './ProgressTrackingDashboard';
 
 interface ProjectDetailProps {
@@ -37,6 +38,7 @@ interface ProjectDetailProps {
 const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
+  const navigate = useNavigate();
   
   const { selectedProject, loading, error, projects } = useSelector((state: RootState) => state.project);
 
@@ -51,7 +53,19 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
       project: project ? 'exists' : 'null',
       loading,
       error,
-      projectsCount: projects.length
+      projectsCount: projects.length,
+      projectData: project ? {
+        id: project.id,
+        project_name: project.project_name,
+        status: project.status,
+        priority: project.priority,
+        leader_id: project.leader_id,
+        site_id: project.site_id,
+        start_date: project.start_date,
+        end_date: project.end_date,
+        progress: project.progress,
+        budget: project.budget
+      } : null
     });
   }, [projectId, selectedProject, project, loading, error, projects.length]);
 
@@ -183,18 +197,27 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                     <Tag 
                       color={project.status === 'ACTIVE' ? 'processing' : 
                              project.status === 'COMPLETED' ? 'success' : 
-                             project.status === 'CANCELLED' ? 'error' : 'warning'}
+                             project.status === 'CANCELLED' ? 'error' : 
+                             project.status === 'ON_HOLD' ? 'warning' : 'default'}
                       className="px-3 py-1 rounded-full font-medium"
                     >
-                      {project.status}
+                      {project.status === 'PLANNING' ? 'LẬP KẾ HOẠCH' :
+                       project.status === 'ACTIVE' ? 'ĐANG HOẠT ĐỘNG' :
+                       project.status === 'COMPLETED' ? 'HOÀN THÀNH' :
+                       project.status === 'CANCELLED' ? 'ĐÃ HỦY' :
+                       project.status === 'ON_HOLD' ? 'TẠM DỪNG' : project.status}
                     </Tag>
                     <Tag 
-                      color={project.priority === 'HIGH' ? 'red' : 
-                             project.priority === 'MEDIUM' ? 'orange' : 
-                             project.priority === 'LOW' ? 'green' : 'blue'}
+                      color={project.priority === 'URGENT' ? 'red' :
+                             project.priority === 'HIGH' ? 'orange' : 
+                             project.priority === 'MEDIUM' ? 'blue' : 
+                             project.priority === 'LOW' ? 'green' : 'default'}
                       className="px-3 py-1 rounded-full font-medium"
                     >
-                      {project.priority}
+                      {project.priority === 'URGENT' ? 'KHẨN CẤP' :
+                       project.priority === 'HIGH' ? 'CAO' :
+                       project.priority === 'MEDIUM' ? 'TRUNG BÌNH' :
+                       project.priority === 'LOW' ? 'THẤP' : project.priority}
                     </Tag>
                   </div>
                 </div>
@@ -221,8 +244,27 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
               </div>
               
               <Typography.Text className="text-gray-600 text-base leading-relaxed block mb-6">
-                {project.description || 'Không có mô tả'}
+                {project.description && project.description.trim() !== '' && 
+                 !project.description.toLowerCase().includes('ádasdasd') && 
+                 !project.description.toLowerCase().includes('test') 
+                 ? project.description 
+                 : 'Không có mô tả'}
               </Typography.Text>
+              
+              {/* Debug Info - Hidden for better UX */}
+              {false && import.meta.env.DEV && (
+                <div className="mb-4 p-4 bg-gray-100 rounded-lg text-xs">
+                  <strong>Debug Info:</strong>
+                  <pre>{JSON.stringify({
+                    leader_id_type: typeof project?.leader_id,
+                    leader_id_value: project?.leader_id,
+                    site_id_type: typeof project?.site_id,
+                    site_id_value: project?.site_id,
+                    status: project?.status,
+                    priority: project?.priority
+                  }, null, 2)}</pre>
+                </div>
+              )}
               
               <Row gutter={[24, 16]}>
                 <Col xs={24} sm={12} md={6}>
@@ -243,7 +285,9 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                     <div>
                       <div className="text-xs text-gray-500">Trưởng dự án</div>
                       <div className="font-medium">
-                        {typeof project.leader_id === 'object' ? project.leader_id?.full_name : project.leader_id || 'N/A'}
+                        {project.leader_id && typeof project.leader_id === 'object' ? 
+                          project.leader_id.full_name || 'N/A' : 
+                          project.leader_id || 'N/A'}
                       </div>
                     </div>
                   </div>
@@ -254,7 +298,9 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                     <div>
                       <div className="text-xs text-gray-500">Địa điểm</div>
                       <div className="font-medium">
-                        {typeof project.site_id === 'object' ? project.site_id?.site_name : project.site_id || 'N/A'}
+                        {project.site_id && typeof project.site_id === 'object' ? 
+                          project.site_id.site_name || 'N/A' : 
+                          project.site_id || 'N/A'}
                       </div>
                     </div>
                   </div>
@@ -285,8 +331,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
             activeKey={getCurrentPath() || 'overview'}
             onChange={(key) => {
               const path = key === 'overview' ? '' : `/${key}`;
-              window.history.pushState(null, '', `/admin/project-management/${projectId}${path}`);
-              window.dispatchEvent(new PopStateEvent('popstate'));
+              navigate(`/admin/project-management/${projectId}${path}`);
             }}
             items={[
               {
@@ -310,16 +355,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                 children: <ProgressTrackingDashboard projectId={projectId} />
               },
               {
-                key: 'phases',
-                label: (
-                  <span className="flex items-center space-x-2">
-                    <TeamOutlined />
-                    <span>Giai đoạn</span>
-                  </span>
-                ),
-                children: <ProjectPhases projectId={projectId} />
-              },
-              {
                 key: 'milestones',
                 label: (
                   <span className="flex items-center space-x-2">
@@ -338,6 +373,16 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                   </span>
                 ),
                 children: <ProjectTasks projectId={projectId} />
+              },
+              {
+                key: 'work-locations',
+                label: (
+                  <span className="flex items-center space-x-2">
+                    <AimOutlined />
+                    <span>Vị trí Làm việc</span>
+                  </span>
+                ),
+                children: <ProjectWorkLocations projectId={projectId} />
               },
               {
                 key: 'resources',

@@ -7,10 +7,10 @@ import websocketClient from '../services/websocketClient';
  * @param {string} serverUrl - WebSocket server URL
  * @returns {Object} WebSocket hook data and methods
  */
-export const useWebSocket = (authToken, serverUrl = 'http://localhost:3000') => {
+export const useWebSocket = (authToken: string | null, serverUrl = 'http://localhost:3000') => {
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionError, setConnectionError] = useState(null);
-  const [socketId, setSocketId] = useState(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [socketId, setSocketId] = useState<string | null>(null);
   const eventListenersRef = useRef(new Map());
 
   useEffect(() => {
@@ -23,22 +23,22 @@ export const useWebSocket = (authToken, serverUrl = 'http://localhost:3000') => 
     websocketClient.connect(serverUrl, authToken);
 
     // Setup connection status listeners
-    const handleConnectionStatus = (data) => {
+    const handleConnectionStatus = (data: any) => {
       setIsConnected(data.connected);
       if (data.connected) {
         setConnectionError(null);
-        setSocketId(websocketClient.getSocketId());
+        setSocketId(websocketClient.getSocketId() || null);
       } else {
         setSocketId(null);
       }
     };
 
-    const handleConnectionError = (error) => {
+    const handleConnectionError = (error: any) => {
       setConnectionError(error);
       setIsConnected(false);
     };
 
-    const handleAuthError = (error) => {
+    const handleAuthError = (error: any) => {
       setConnectionError(error);
       setIsConnected(false);
     };
@@ -64,7 +64,7 @@ export const useWebSocket = (authToken, serverUrl = 'http://localhost:3000') => 
 
   // Update auth token when it changes
   useEffect(() => {
-    if (authToken && websocketClient.authToken !== authToken) {
+    if (authToken) {
       websocketClient.updateAuthToken(authToken);
     }
   }, [authToken]);
@@ -93,6 +93,13 @@ export const useIncidentEvents = ({
   onIncidentProgressUpdated,
   onIncidentClosed,
   onIncidentReportedConfirmation
+}: {
+  onIncidentReported?: (data: any) => void;
+  onIncidentClassified?: (data: any) => void;
+  onIncidentAssigned?: (data: any) => void;
+  onIncidentProgressUpdated?: (data: any) => void;
+  onIncidentClosed?: (data: any) => void;
+  onIncidentReportedConfirmation?: (data: any) => void;
 }) => {
   const eventListenersRef = useRef(new Map());
 
@@ -145,6 +152,12 @@ export const useTrainingEvents = ({
   onTrainingStarted,
   onTrainingSubmitted,
   onTrainingCompleted
+}: {
+  onTrainingSessionCreated?: (data: any) => void;
+  onTrainingEnrolled?: (data: any) => void;
+  onTrainingStarted?: (data: any) => void;
+  onTrainingSubmitted?: (data: any) => void;
+  onTrainingCompleted?: (data: any) => void;
 }) => {
   const eventListenersRef = useRef(new Map());
 
@@ -195,6 +208,12 @@ export const usePPEEvents = ({
   onPPEExpiring,
   onPPEExpiringBulk,
   onPPELowStock
+}: {
+  onPPEIssued?: (data: any) => void;
+  onPPEReturned?: (data: any) => void;
+  onPPEExpiring?: (data: any) => void;
+  onPPEExpiringBulk?: (data: any) => void;
+  onPPELowStock?: (data: any) => void;
 }) => {
   const eventListenersRef = useRef(new Map());
 
@@ -239,6 +258,9 @@ export const usePPEEvents = ({
 export const useNotificationEvents = ({
   onNotificationCreated,
   onNotificationRead
+}: {
+  onNotificationCreated?: (data: any) => void;
+  onNotificationRead?: (data: any) => void;
 }) => {
   const eventListenersRef = useRef(new Map());
 
@@ -276,6 +298,10 @@ export const useProjectEvents = ({
   onProjectCreated,
   onProjectProgressUpdated,
   onProjectAssigned
+}: {
+  onProjectCreated?: (data: any) => void;
+  onProjectProgressUpdated?: (data: any) => void;
+  onProjectAssigned?: (data: any) => void;
 }) => {
   const eventListenersRef = useRef(new Map());
 
@@ -308,7 +334,7 @@ export const useProjectEvents = ({
  * Hook for typing indicators
  * @param {Function} onUserTyping - Callback for user typing
  */
-export const useTypingEvents = ({ onUserTyping }) => {
+export const useTypingEvents = ({ onUserTyping }: { onUserTyping?: (data: any) => void }) => {
   const eventListenersRef = useRef(new Map());
 
   useEffect(() => {

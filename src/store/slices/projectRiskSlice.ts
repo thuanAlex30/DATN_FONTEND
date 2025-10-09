@@ -1,10 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import projectRiskService from '../../services/projectRiskService';
+import projectRiskService, { type CreateProjectRiskData, type UpdateProjectRiskData } from '../../services/projectRiskService';
 import type { 
   ProjectRisk, 
-  CreateRiskData, 
-  UpdateRiskData,
   RiskStats 
 } from '../../types/projectRisk';
 
@@ -29,7 +27,7 @@ export const fetchProjectRisks = createAsyncThunk(
   'projectRisk/fetchProjectRisks',
   async (projectId: string) => {
     const response = await projectRiskService.getProjectRisks(projectId);
-    return response.data;
+    return response;
   }
 );
 
@@ -37,23 +35,23 @@ export const fetchRiskById = createAsyncThunk(
   'projectRisk/fetchRiskById',
   async (id: string) => {
     const response = await projectRiskService.getRiskById(id);
-    return response.data;
+    return response;
   }
 );
 
 export const createRisk = createAsyncThunk(
   'projectRisk/createRisk',
-  async (data: CreateRiskData) => {
+  async (data: CreateProjectRiskData) => {
     const response = await projectRiskService.createRisk(data);
-    return response.data;
+    return response;
   }
 );
 
 export const updateRisk = createAsyncThunk(
   'projectRisk/updateRisk',
-  async ({ id, data }: { id: string; data: UpdateRiskData }) => {
+  async ({ id, data }: { id: string; data: UpdateProjectRiskData }) => {
     const response = await projectRiskService.updateRisk(id, data);
-    return response.data;
+    return response;
   }
 );
 
@@ -69,7 +67,7 @@ export const updateRiskStatus = createAsyncThunk(
   'projectRisk/updateRiskStatus',
   async ({ id, status, notes }: { id: string; status: string; notes?: string }) => {
     const response = await projectRiskService.updateRiskStatus(id, status, notes);
-    return response.data;
+    return response;
   }
 );
 
@@ -77,7 +75,7 @@ export const fetchRiskStats = createAsyncThunk(
   'projectRisk/fetchRiskStats',
   async () => {
     const response = await projectRiskService.getRiskStats();
-    return response.data;
+    return response;
   }
 );
 

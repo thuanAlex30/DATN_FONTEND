@@ -4,11 +4,18 @@ export interface ProjectStatusReport {
   report_date: string;
   reporting_period_start: string;
   reporting_period_end: string;
+  week_number?: number; // Add this property
   overall_progress: number;
+  overall_status?: string; // Add this property
+  progress_percentage?: number; // Add this property
   budget_utilization: number;
   tasks_completed: number;
   tasks_in_progress: number;
   tasks_overdue: number;
+  completed_work?: string; // Add this property
+  planned_work?: string; // Add this property
+  issues_risks?: string; // Add this property
+  notes?: string; // Add this property
   status_summary: string;
   key_achievements: string[];
   challenges_faced: string[];

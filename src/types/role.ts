@@ -31,6 +31,11 @@ export interface UpdateRoleData {
   is_active?: boolean;
 }
 
+// Aliases for compatibility
+export type RoleCreate = CreateRoleData;
+export type RoleUpdate = UpdateRoleData;
+export type RoleQuery = RoleFilters;
+
 export interface RoleResponse {
   success: boolean;
   message: string;

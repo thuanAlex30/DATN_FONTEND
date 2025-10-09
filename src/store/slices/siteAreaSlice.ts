@@ -3,71 +3,75 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import siteAreaService from '../../services/siteAreaService';
 import type { 
   SiteArea, 
-  AreaAccessControl,
-  AreaSafetyChecklist,
-  AreaInspection,
   CreateAreaData, 
   UpdateAreaData,
-  CreateAccessControlData,
-  UpdateAccessControlData,
-  CreateSafetyChecklistData,
-  CreateInspectionData,
-  UpdateInspectionData,
   AreaStats 
 } from '../../types/siteArea';
 
 interface SiteAreaState {
   areas: SiteArea[];
-  accessControls: AreaAccessControl[];
-  safetyChecklists: AreaSafetyChecklist[];
-  inspections: AreaInspection[];
   stats: AreaStats | null;
   loading: boolean;
   error: string | null;
   selectedArea: SiteArea | null;
+  currentProjectId: string | null;
 }
 
 const initialState: SiteAreaState = {
   areas: [],
-  accessControls: [],
-  safetyChecklists: [],
-  inspections: [],
   stats: null,
   loading: false,
   error: null,
   selectedArea: null,
+  currentProjectId: null,
 };
 
 // Async thunks
 export const fetchSiteAreas = createAsyncThunk(
   'siteArea/fetchSiteAreas',
   async (siteId: string) => {
-    const response = await siteAreaService.getSiteAreas(siteId);
-    return response.data;
+    const areas = await siteAreaService.getSiteAreas(siteId);
+    return areas;
+  }
+);
+
+export const fetchAreasByProject = createAsyncThunk(
+  'siteArea/fetchAreasByProject',
+  async (projectId: string, { rejectWithValue }) => {
+    try {
+      const areas = await siteAreaService.getAllAreas({ project_id: projectId });
+      return { areas, projectId };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch areas');
+    }
   }
 );
 
 export const fetchAreaById = createAsyncThunk(
   'siteArea/fetchAreaById',
   async (id: string) => {
-    const response = await siteAreaService.getAreaById(id);
-    return response.data;
+    const area = await siteAreaService.getAreaById(id);
+    return area;
   }
 );
 
 export const createArea = createAsyncThunk(
   'siteArea/createArea',
   async (data: CreateAreaData) => {
-    const response = await siteAreaService.createArea(data);
-    return response.data;
+    // Ensure supervisor_id is provided
+    if (!data.supervisor_id) {
+      throw new Error('Supervisor ID is required');
+    }
+    const area = await siteAreaService.createArea(data as any);
+    return area;
   }
 );
 
 export const updateArea = createAsyncThunk(
   'siteArea/updateArea',
   async ({ id, data }: { id: string; data: UpdateAreaData }) => {
-    const response = await siteAreaService.updateArea(id, data);
-    return response.data;
+    const area = await siteAreaService.updateArea(id, data);
+    return area;
   }
 );
 
@@ -79,83 +83,54 @@ export const deleteArea = createAsyncThunk(
   }
 );
 
-export const fetchAreaAccessControls = createAsyncThunk(
-  'siteArea/fetchAreaAccessControls',
-  async (areaId: string) => {
-    const response = await siteAreaService.getAreaAccessControls(areaId);
-    return response.data;
-  }
-);
-
-export const addAreaAccessControl = createAsyncThunk(
-  'siteArea/addAreaAccessControl',
-  async ({ areaId, data }: { areaId: string; data: CreateAccessControlData }) => {
-    const response = await siteAreaService.addAreaAccessControl(areaId, data);
-    return response.data;
-  }
-);
-
-export const updateAreaAccessControl = createAsyncThunk(
-  'siteArea/updateAreaAccessControl',
-  async ({ accessControlId, data }: { accessControlId: string; data: UpdateAccessControlData }) => {
-    const response = await siteAreaService.updateAreaAccessControl(accessControlId, data);
-    return response.data;
-  }
-);
-
-export const removeAreaAccessControl = createAsyncThunk(
-  'siteArea/removeAreaAccessControl',
-  async (accessControlId: string) => {
-    await siteAreaService.removeAreaAccessControl(accessControlId);
-    return accessControlId;
-  }
-);
-
-export const fetchAreaSafetyChecklists = createAsyncThunk(
-  'siteArea/fetchAreaSafetyChecklists',
-  async (areaId: string) => {
-    const response = await siteAreaService.getAreaSafetyChecklists(areaId);
-    return response.data;
-  }
-);
-
-export const createAreaSafetyChecklist = createAsyncThunk(
-  'siteArea/createAreaSafetyChecklist',
-  async ({ areaId, data }: { areaId: string; data: CreateSafetyChecklistData }) => {
-    const response = await siteAreaService.createAreaSafetyChecklist(areaId, data);
-    return response.data;
-  }
-);
-
-export const fetchAreaInspections = createAsyncThunk(
-  'siteArea/fetchAreaInspections',
-  async (areaId: string) => {
-    const response = await siteAreaService.getAreaInspections(areaId);
-    return response.data;
-  }
-);
-
-export const createAreaInspection = createAsyncThunk(
-  'siteArea/createAreaInspection',
-  async ({ areaId, data }: { areaId: string; data: CreateInspectionData }) => {
-    const response = await siteAreaService.createAreaInspection(areaId, data);
-    return response.data;
-  }
-);
-
-export const updateAreaInspection = createAsyncThunk(
-  'siteArea/updateAreaInspection',
-  async ({ inspectionId, data }: { inspectionId: string; data: UpdateInspectionData }) => {
-    const response = await siteAreaService.updateAreaInspection(inspectionId, data);
-    return response.data;
-  }
-);
+// These methods are not implemented in the service yet
+// Will be implemented when needed
 
 export const fetchAreaStats = createAsyncThunk(
   'siteArea/fetchAreaStats',
-  async (areaId: string) => {
-    const response = await siteAreaService.getAreaStats(areaId);
-    return response.data;
+  async (siteId: string) => {
+    const response = await siteAreaService.getAreaStats(siteId);
+    return response;
+  }
+);
+
+export const createAreaForProject = createAsyncThunk(
+  'siteArea/createAreaForProject',
+  async ({ data }: { projectId: string; data: CreateAreaData }, { rejectWithValue }) => {
+    try {
+      // Ensure supervisor_id is provided
+      if (!data.supervisor_id) {
+        return rejectWithValue('Supervisor ID is required');
+      }
+      const area = await siteAreaService.createArea(data as any);
+      return area;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to create area');
+    }
+  }
+);
+
+export const updateAreaForProject = createAsyncThunk(
+  'siteArea/updateAreaForProject',
+  async ({ id, data }: { id: string; data: UpdateAreaData }, { rejectWithValue }) => {
+    try {
+      const area = await siteAreaService.updateArea(id, data);
+      return area;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to update area');
+    }
+  }
+);
+
+export const deleteAreaForProject = createAsyncThunk(
+  'siteArea/deleteAreaForProject',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await siteAreaService.deleteArea(id);
+      return id;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to delete area');
+    }
   }
 );
 
@@ -165,6 +140,18 @@ const siteAreaSlice = createSlice({
   reducers: {
     setSelectedArea: (state, action: PayloadAction<SiteArea | null>) => {
       state.selectedArea = action.payload;
+    },
+    setCurrentProjectId: (state, action: PayloadAction<string | null>) => {
+      state.currentProjectId = action.payload;
+      // Clear areas when switching projects
+      if (state.currentProjectId !== action.payload) {
+        state.areas = [];
+        state.selectedArea = null;
+      }
+    },
+    clearAreas: (state) => {
+      state.areas = [];
+      state.selectedArea = null;
     },
     clearError: (state) => {
       state.error = null;
@@ -221,11 +208,11 @@ const siteAreaSlice = createSlice({
       })
       .addCase(updateArea.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.areas.findIndex(area => area.id === action.payload.id);
+        const index = state.areas.findIndex(area => area._id === action.payload._id);
         if (index !== -1) {
           state.areas[index] = action.payload;
         }
-        if (state.selectedArea?.id === action.payload.id) {
+        if (state.selectedArea?._id === action.payload._id) {
           state.selectedArea = action.payload;
         }
       })
@@ -241,8 +228,8 @@ const siteAreaSlice = createSlice({
       })
       .addCase(deleteArea.fulfilled, (state, action) => {
         state.loading = false;
-        state.areas = state.areas.filter(area => area.id !== action.payload);
-        if (state.selectedArea?.id === action.payload) {
+        state.areas = state.areas.filter(area => area._id !== action.payload);
+        if (state.selectedArea?._id === action.payload) {
           state.selectedArea = null;
         }
       })
@@ -251,63 +238,83 @@ const siteAreaSlice = createSlice({
         state.error = action.error.message || 'Failed to delete area';
       })
       
-      // Fetch area access controls
-      .addCase(fetchAreaAccessControls.fulfilled, (state, action) => {
-        state.accessControls = action.payload;
-      })
-      
-      // Add area access control
-      .addCase(addAreaAccessControl.fulfilled, (state, action) => {
-        state.accessControls.push(action.payload);
-      })
-      
-      // Update area access control
-      .addCase(updateAreaAccessControl.fulfilled, (state, action) => {
-        const index = state.accessControls.findIndex(control => control.id === action.payload.id);
-        if (index !== -1) {
-          state.accessControls[index] = action.payload;
-        }
-      })
-      
-      // Remove area access control
-      .addCase(removeAreaAccessControl.fulfilled, (state, action) => {
-        state.accessControls = state.accessControls.filter(control => control.id !== action.payload);
-      })
-      
-      // Fetch area safety checklists
-      .addCase(fetchAreaSafetyChecklists.fulfilled, (state, action) => {
-        state.safetyChecklists = action.payload;
-      })
-      
-      // Create area safety checklist
-      .addCase(createAreaSafetyChecklist.fulfilled, (state, action) => {
-        state.safetyChecklists.push(action.payload);
-      })
-      
-      // Fetch area inspections
-      .addCase(fetchAreaInspections.fulfilled, (state, action) => {
-        state.inspections = action.payload;
-      })
-      
-      // Create area inspection
-      .addCase(createAreaInspection.fulfilled, (state, action) => {
-        state.inspections.push(action.payload);
-      })
-      
-      // Update area inspection
-      .addCase(updateAreaInspection.fulfilled, (state, action) => {
-        const index = state.inspections.findIndex(inspection => inspection.id === action.payload.id);
-        if (index !== -1) {
-          state.inspections[index] = action.payload;
-        }
-      })
-      
       // Fetch area stats
       .addCase(fetchAreaStats.fulfilled, (state, action) => {
         state.stats = action.payload;
+      })
+      
+      // Fetch areas by project
+      .addCase(fetchAreasByProject.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAreasByProject.fulfilled, (state, action) => {
+        state.loading = false;
+        state.areas = action.payload.areas;
+        state.currentProjectId = action.payload.projectId;
+      })
+      .addCase(fetchAreasByProject.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      
+      // Create area for project
+      .addCase(createAreaForProject.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createAreaForProject.fulfilled, (state, action) => {
+        state.loading = false;
+        state.areas.push(action.payload);
+      })
+      .addCase(createAreaForProject.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      
+      // Update area for project
+      .addCase(updateAreaForProject.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateAreaForProject.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.areas.findIndex(area => area._id === action.payload._id);
+        if (index !== -1) {
+          state.areas[index] = action.payload;
+        }
+        if (state.selectedArea?._id === action.payload._id) {
+          state.selectedArea = action.payload;
+        }
+      })
+      .addCase(updateAreaForProject.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      
+      // Delete area for project
+      .addCase(deleteAreaForProject.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteAreaForProject.fulfilled, (state, action) => {
+        state.loading = false;
+        state.areas = state.areas.filter(area => area._id !== action.payload);
+        if (state.selectedArea?._id === action.payload) {
+          state.selectedArea = null;
+        }
+      })
+      .addCase(deleteAreaForProject.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { setSelectedArea, clearError } = siteAreaSlice.actions;
+export const { 
+  setSelectedArea, 
+  setCurrentProjectId, 
+  clearAreas, 
+  clearError 
+} = siteAreaSlice.actions;
 export default siteAreaSlice.reducer;

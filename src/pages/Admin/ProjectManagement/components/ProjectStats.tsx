@@ -186,7 +186,7 @@ const ProjectStatsComponent: React.FC<ProjectStatsProps> = ({ stats }) => {
                 '100%': '#ec4899',
               }}
               trailColor="#e5e7eb"
-              strokeWidth={8}
+              size="default"
               className="mb-2"
             />
             <div className="text-sm text-gray-500">

@@ -214,7 +214,11 @@ export const useTrainingSessions = (filters?: SessionFilters) => {
   const createSession = useCallback(async (data: SessionFormData) => {
     try {
       setLoading(true);
-      const newSession = await trainingSessionApi.create(data);
+      const sessionData = {
+        ...data,
+        status_code: data.status_code || 'SCHEDULED'
+      };
+      const newSession = await trainingSessionApi.create(sessionData);
       setSessions(prev => [...prev, newSession]);
       toast.success('Training session created successfully');
       return newSession;
@@ -230,7 +234,11 @@ export const useTrainingSessions = (filters?: SessionFilters) => {
   const updateSession = useCallback(async (id: string, data: SessionFormData) => {
     try {
       setLoading(true);
-      const updatedSession = await trainingSessionApi.update(id, data);
+      const sessionData = {
+        ...data,
+        status_code: data.status_code || 'SCHEDULED'
+      };
+      const updatedSession = await trainingSessionApi.update(id, sessionData);
       setSessions(prev => prev.map(s => s._id === id ? updatedSession : s));
       toast.success('Training session updated successfully');
       return updatedSession;

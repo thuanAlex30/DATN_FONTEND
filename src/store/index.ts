@@ -10,12 +10,14 @@ import positionReducer from './slices/positionSlice';
 import websocketReducer from './slices/websocketSlice';
 import projectReducer from './slices/projectSlice';
 import projectChangeRequestReducer from './slices/projectChangeRequestSlice';
-import projectPhaseReducer from './slices/projectPhaseSlice';
 import projectTaskReducer from './slices/projectTaskSlice';
 import projectRiskReducer from './slices/projectRiskSlice';
 import projectStatusReportReducer from './slices/projectStatusReportSlice';
 import projectResourceReducer from './slices/projectResourceSlice';
 import projectMilestoneReducer from './slices/projectMilestoneSlice';
+import siteReducer from './slices/siteSlice';
+import siteAreaReducer from './slices/siteAreaSlice';
+import workLocationReducer from './slices/workLocationSlice';
 
 // Gộp tất cả reducers
 const rootReducer = combineReducers({
@@ -27,12 +29,14 @@ const rootReducer = combineReducers({
   websocket: websocketReducer,
   project: projectReducer,
   projectChangeRequest: projectChangeRequestReducer,
-  projectPhase: projectPhaseReducer,
   projectTask: projectTaskReducer,
   projectRisk: projectRiskReducer,
   projectStatusReport: projectStatusReportReducer,
   projectResource: projectResourceReducer,
   projectMilestone: projectMilestoneReducer,
+  site: siteReducer,
+  siteArea: siteAreaReducer,
+  workLocation: workLocationReducer,
 });
 
 // Cấu hình redux-persist

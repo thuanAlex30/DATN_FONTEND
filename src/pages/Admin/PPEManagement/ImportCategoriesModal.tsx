@@ -32,7 +32,7 @@ const ImportCategoriesModal: React.FC<ImportCategoriesModalProps> = ({
       const formData = new FormData();
       formData.append('file', fileList[0].originFileObj);
       
-      await ppeService.importCategories(formData);
+      await ppeService.importPPECategories(formData);
       message.success('Import danh mục thành công');
       onImportSuccess();
     } catch (err: any) {

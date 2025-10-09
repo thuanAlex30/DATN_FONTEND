@@ -9,7 +9,6 @@ import websocketReducer from './slices/websocketSlice';
 // Project Management Reducers
 import projectChangeRequestReducer from './slices/projectChangeRequestSlice';
 import projectMilestoneReducer from './slices/projectMilestoneSlice';
-import projectPhaseReducer from './slices/projectPhaseSlice';
 import projectTaskReducer from './slices/projectTaskSlice';
 import projectResourceReducer from './slices/projectResourceSlice';
 import projectRiskReducer from './slices/projectRiskSlice';
@@ -30,7 +29,6 @@ export const store = configureStore({
     // Project Management
     projectChangeRequest: projectChangeRequestReducer,
     projectMilestone: projectMilestoneReducer,
-    projectPhase: projectPhaseReducer,
     projectTask: projectTaskReducer,
     projectResource: projectResourceReducer,
     projectRisk: projectRiskReducer,

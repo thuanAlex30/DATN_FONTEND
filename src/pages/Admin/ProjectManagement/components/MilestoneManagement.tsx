@@ -144,7 +144,9 @@ const MilestoneManagement: React.FC<MilestoneManagementProps> = ({ projectId, on
       planned_date: milestone.planned_date.split('T')[0],
       milestone_type: milestone.milestone_type,
       completion_criteria: milestone.completion_criteria,
-      responsible_user_id: milestone.responsible_user_id,
+      responsible_user_id: typeof milestone.responsible_user_id === 'object' 
+        ? milestone.responsible_user_id._id || milestone.responsible_user_id.id 
+        : milestone.responsible_user_id,
       is_critical: milestone.is_critical
     });
     setShowCreateMilestone(true);
@@ -631,4 +633,6 @@ const MilestoneManagement: React.FC<MilestoneManagementProps> = ({ projectId, on
 };
 
 export default MilestoneManagement;
+
+
 

@@ -122,7 +122,7 @@ const TrainingManagement: React.FC = () => {
       }, [allCourses]);
   const { sessions, loading: sessionsLoading, createSession, updateSession, deleteSession } = useTrainingSessions({
     courseId: filters.courseId || undefined,
-    statusCode: filters.statusCode || undefined,
+    status: filters.statusCode || undefined,
   });
   const { enrollments } = useTrainingEnrollments();
   const { questionBanks, loading: questionBanksLoading, createQuestionBank, updateQuestionBank, deleteQuestionBank } = useQuestionBanks({
@@ -179,7 +179,7 @@ const TrainingManagement: React.FC = () => {
       const courseData = {
         ...courseForm,
         duration_hours: parseInt(courseForm.duration_hours),
-        validity_months: courseForm.validity_months ? parseInt(courseForm.validity_months) : null,
+        validity_months: courseForm.validity_months ? parseInt(courseForm.validity_months) : undefined,
       };
       
       if (editingItem) {

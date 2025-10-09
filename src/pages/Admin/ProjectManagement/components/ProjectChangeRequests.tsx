@@ -157,13 +157,13 @@ const ProjectChangeRequests: React.FC<ProjectChangeRequestsProps> = ({ projectId
               
               <div className="change-request-content">
                 <p className="change-request-description">
-                  {request.change_description || 'Không có mô tả'}
+                  {request.description || 'Không có mô tả'}
                 </p>
                 
                 <div className="change-request-details">
                   <div className="detail-item">
                     <i className="fas fa-calendar-alt"></i>
-                    <span>Ngày tạo: {formatDate(request.request_date)}</span>
+                    <span>Ngày tạo: {formatDate(request.submitted_at || request.created_at)}</span>
                   </div>
                   <div className="detail-item">
                     <i className="fas fa-user"></i>
@@ -175,19 +175,19 @@ const ProjectChangeRequests: React.FC<ProjectChangeRequestsProps> = ({ projectId
                   </div>
                   <div className="detail-item">
                     <i className="fas fa-dollar-sign"></i>
-                    <span>Tác động chi phí: {request.cost_impact || 'N/A'}</span>
+                    <span>Tác động chi phí: {request.estimated_cost || 'N/A'}</span>
                   </div>
                 </div>
                 
                 <div className="change-request-sections">
                   <div className="section">
                     <h4>Lý do thay đổi</h4>
-                    <p>{request.reason || 'Không có thông tin'}</p>
+                    <p>{request.description || 'Không có thông tin'}</p>
                   </div>
                   
                   <div className="section">
                     <h4>Tác động</h4>
-                    <p>{request.impact_analysis || 'Không có thông tin'}</p>
+                    <p>{request.impact_assessment || 'Không có thông tin'}</p>
                   </div>
                   
                   <div className="section">

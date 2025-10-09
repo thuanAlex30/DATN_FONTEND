@@ -17,6 +17,7 @@ export interface ProjectChangeRequest {
   reviewed_at?: string;
   approved_at?: string;
   implemented_at?: string;
+  approval_notes?: string; // Add this property
   created_at: string;
   updated_at: string;
 }

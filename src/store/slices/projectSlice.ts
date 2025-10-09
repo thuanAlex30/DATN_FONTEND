@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import projectService from '../../services/projectService';
+import siteService from '../../services/siteService';
 import type { 
   Project, 
   ProjectStats, 
@@ -161,13 +162,13 @@ export const fetchProjectStats = createAsyncThunk(
   }
 );
 
-export const fetchSites = createAsyncThunk(
-  'project/fetchSites',
-  async (_, { rejectWithValue }) => {
+export const fetchSitesByProject = createAsyncThunk(
+  'project/fetchSitesByProject',
+  async (projectId: string, { rejectWithValue }) => {
     try {
-      const response = await projectService.getAllSites();
+      const response = await siteService.getSitesByProject(projectId);
       if (response.success) {
-        return response.data;
+        return { sites: response.data, projectId };
       } else {
         return rejectWithValue(response.message || 'Failed to fetch sites');
       }
@@ -241,10 +242,12 @@ const projectSlice = createSlice({
       })
       .addCase(fetchProjects.fulfilled, (state, action) => {
         state.loading = false;
-        state.projects = action.payload;
-        state.filteredProjects = action.payload;
-        state.pagination.total = action.payload.length;
-        state.pagination.totalPages = Math.ceil(action.payload.length / state.pagination.limit);
+        if (action.payload) {
+          state.projects = action.payload;
+          state.filteredProjects = action.payload;
+          state.pagination.total = action.payload.length;
+          state.pagination.totalPages = Math.ceil(action.payload.length / state.pagination.limit);
+        }
       })
       .addCase(fetchProjects.rejected, (state, action) => {
         state.loading = false;
@@ -257,7 +260,9 @@ const projectSlice = createSlice({
       })
       .addCase(fetchProjectById.fulfilled, (state, action) => {
         state.loading = false;
-        state.selectedProject = action.payload;
+        if (action.payload) {
+          state.selectedProject = action.payload;
+        }
       })
       .addCase(fetchProjectById.rejected, (state, action) => {
         state.loading = false;
@@ -270,9 +275,11 @@ const projectSlice = createSlice({
       })
       .addCase(createProject.fulfilled, (state, action) => {
         state.loading = false;
-        state.projects.unshift(action.payload);
-        state.filteredProjects.unshift(action.payload);
-        state.pagination.total += 1;
+        if (action.payload) {
+          state.projects.unshift(action.payload);
+          state.filteredProjects.unshift(action.payload);
+          state.pagination.total += 1;
+        }
       })
       .addCase(createProject.rejected, (state, action) => {
         state.loading = false;
@@ -285,13 +292,16 @@ const projectSlice = createSlice({
       })
       .addCase(updateProject.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.projects.findIndex(p => p.id === action.payload.id);
-        if (index !== -1) {
-          state.projects[index] = action.payload;
-          state.filteredProjects[index] = action.payload;
-        }
-        if (state.selectedProject?.id === action.payload.id) {
-          state.selectedProject = action.payload;
+        if (action.payload) {
+          const project = action.payload;
+          const index = state.projects.findIndex(p => p.id === project.id);
+          if (index !== -1) {
+            state.projects[index] = project;
+            state.filteredProjects[index] = project;
+          }
+          if (state.selectedProject?.id === project.id) {
+            state.selectedProject = project;
+          }
         }
       })
       .addCase(updateProject.rejected, (state, action) => {
@@ -318,19 +328,27 @@ const projectSlice = createSlice({
       })
       // Fetch project stats
       .addCase(fetchProjectStats.fulfilled, (state, action) => {
-        state.stats = action.payload;
+        if (action.payload) {
+          state.stats = action.payload;
+        }
       })
-      // Fetch sites
-      .addCase(fetchSites.fulfilled, (state, action) => {
-        state.sites = action.payload;
+      // Fetch sites by project
+      .addCase(fetchSitesByProject.fulfilled, (state, action) => {
+        if (action.payload?.sites) {
+          state.sites = action.payload.sites;
+        }
       })
       // Fetch project timeline
       .addCase(fetchProjectTimeline.fulfilled, (state, action) => {
-        state.timeline = action.payload;
+        if (action.payload) {
+          state.timeline = action.payload;
+        }
       })
       // Fetch project assignments
       .addCase(fetchProjectAssignments.fulfilled, (state, action) => {
-        state.assignments = action.payload;
+        if (action.payload) {
+          state.assignments = action.payload;
+        }
       });
   },
 });

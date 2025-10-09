@@ -83,5 +83,6 @@ export const clearUserCache = () => apiCache.clearPattern('/users');
 export const clearPPECache = () => apiCache.clearPattern('/ppe');
 export const clearDepartmentCache = () => apiCache.clearPattern('/departments');
 export const clearPositionCache = () => apiCache.clearPattern('/positions');
+export const clearProjectResourceCache = () => apiCache.clearPattern('/project-resources');
 
 export default apiCache;

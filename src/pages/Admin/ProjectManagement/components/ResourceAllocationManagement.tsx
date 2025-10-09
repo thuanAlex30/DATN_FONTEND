@@ -571,3 +571,5 @@ const getResourceTypeIcon = (type: string): string => {
 
 export default ResourceAllocationManagement;
 
+
+

@@ -8,7 +8,7 @@ import type {
 const API_BASE = '/project-status-reports';
 
 // Mapping helpers (Admin two-way)
-const mapOverallStatusFromBackend = (status?: string): ProjectStatusReport['overall_status'] => {
+const mapOverallStatusFromBackend = (status?: string): string => {
   const s = (status || '').toUpperCase();
   if (s === 'AT_RISK') return 'at_risk';
   if (s === 'BEHIND_SCHEDULE') return 'behind_schedule';
@@ -16,7 +16,7 @@ const mapOverallStatusFromBackend = (status?: string): ProjectStatusReport['over
   return 'on_track';
 };
 
-const mapOverallStatusToBackend = (status?: ProjectStatusReport['overall_status']): string => {
+const mapOverallStatusToBackend = (status?: string): string => {
   switch (status) {
     case 'at_risk': return 'AT_RISK';
     case 'behind_schedule': return 'BEHIND_SCHEDULE';

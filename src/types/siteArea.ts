@@ -86,21 +86,25 @@ export interface CreateAreaData {
   site_id: string;
   area_code: string;
   area_name: string;
-  area_type: 'CONSTRUCTION' | 'STORAGE' | 'OFFICE' | 'SAFETY' | 'EQUIPMENT' | 'PARKING';
+  area_type: 'CONSTRUCTION' | 'STORAGE' | 'OFFICE' | 'SAFETY' | 'EQUIPMENT' | 'MEETING' | 'REST';
   area_size_sqm: number;
   safety_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   description?: string;
   supervisor_id?: string;
+  capacity?: number;
+  special_requirements?: string;
 }
 
 export interface UpdateAreaData {
   area_code?: string;
   area_name?: string;
-  area_type?: 'CONSTRUCTION' | 'STORAGE' | 'OFFICE' | 'SAFETY' | 'EQUIPMENT' | 'PARKING';
+  area_type?: 'CONSTRUCTION' | 'STORAGE' | 'OFFICE' | 'SAFETY' | 'EQUIPMENT' | 'MEETING' | 'REST';
   area_size_sqm?: number;
   safety_level?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   description?: string;
   supervisor_id?: string;
+  capacity?: number;
+  special_requirements?: string;
   is_active?: boolean;
 }
 

@@ -36,7 +36,6 @@ export interface ProjectBasicInfo {
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   leader_id: string;
   site_id: string;
-  budget?: number;
 }
 
 const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
@@ -49,23 +48,48 @@ const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
   const [managers, setManagers] = useState<any[]>([]);
   const [sites, setSites] = useState<any[]>([]);
 
-  // Mock data - trong thực tế sẽ fetch từ API
+  // Load data from API
   useEffect(() => {
-    if (visible) {
-      // Mock managers data
-      setManagers([
-        { id: '68d043e69a5eaf99e6a763af', full_name: 'Test Employee', email: 'employee@safety.com' },
-        { id: 'manager2', full_name: 'Nguyễn Văn A', email: 'nguyenvana@company.com' },
-        { id: 'manager3', full_name: 'Trần Thị B', email: 'tranthib@company.com' }
-      ]);
+    const loadData = async () => {
+      if (visible) {
+        setLoading(true);
+        try {
+          // Load managers (users with management roles)
+          const { default: userService } = await import('../../../../services/userService');
+          const managersResponse = await userService.getUsers({ 
+            role: 'manager',
+            is_active: true 
+          });
+          
+          if (managersResponse.success) {
+            setManagers(managersResponse.data.map((user: any) => ({
+              id: user.id,
+              full_name: user.full_name,
+              email: user.email
+            })));
+          }
 
-      // Mock sites data
-      setSites([
-        { id: '68d982cb51f96af95c4b425b', site_name: 'Đà Nẵng', address: 'Đà Nẵng' },
-        { id: 'site2', site_name: 'Hồ Chí Minh', address: 'TP. Hồ Chí Minh' },
-        { id: 'site3', site_name: 'Hà Nội', address: 'Hà Nội' }
-      ]);
-    }
+          // Load sites
+          const { default: projectService } = await import('../../../../services/projectService');
+          const sitesResponse = await projectService.getAllSites({ is_active: true });
+          
+          if (sitesResponse.success && sitesResponse.data) {
+            setSites(sitesResponse.data.map((site: any) => ({
+              id: site.id,
+              site_name: site.site_name,
+              address: site.address
+            })));
+          }
+        } catch (error) {
+          console.error('Error loading data:', error);
+          message.error('Lỗi khi tải dữ liệu');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadData();
   }, [visible]);
 
   const handleSubmit = async () => {
@@ -81,8 +105,7 @@ const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
         project_type: values.project_type,
         priority: values.priority,
         leader_id: values.leader_id,
-        site_id: values.site_id,
-        budget: values.budget || 0
+        site_id: values.site_id
       };
 
       console.log('Project basic info:', projectData);
@@ -104,10 +127,13 @@ const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
     { value: 'CONSTRUCTION', label: 'Xây dựng', icon: '🏗️' },
     { value: 'MAINTENANCE', label: 'Bảo trì', icon: '🔧' },
     { value: 'RENOVATION', label: 'Cải tạo', icon: '🏠' },
-    { value: 'INSPECTION', label: 'Kiểm tra', icon: '🔍' }
+    { value: 'INSPECTION', label: 'Kiểm tra', icon: '🔍' },
+    { value: 'SAFETY', label: 'An toàn', icon: '🛡️' },
+    { value: 'TRAINING', label: 'Đào tạo', icon: '🎓' }
   ];
 
   const priorityOptions = [
+    { value: 'URGENT', label: 'Khẩn cấp', color: '#ff1744' },
     { value: 'HIGH', label: 'Cao', color: '#ff4d4f' },
     { value: 'MEDIUM', label: 'Trung bình', color: '#faad14' },
     { value: 'LOW', label: 'Thấp', color: '#52c41a' }
@@ -366,32 +392,6 @@ const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
             </Row>
           </Card>
 
-          <Card 
-            title={
-              <Space>
-                <FlagOutlined />
-                Ngân sách (Tùy chọn)
-              </Space>
-            }
-            size="small"
-          >
-            <Row gutter={16}>
-              <Col span={24}>
-                <Form.Item
-                  name="budget"
-                  label="Ngân sách dự án"
-                >
-                  <Input 
-                    type="number"
-                    placeholder="Nhập ngân sách dự án (VNĐ)"
-                    size="large"
-                    addonAfter="VNĐ"
-                    min={0}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Card>
         </Form>
       </div>
 

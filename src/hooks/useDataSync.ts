@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { useDispatch } from 'react-redux';
+// import { useDispatch } from 'react-redux'; // Reserved for future use
 import websocketClient from '../services/websocketClient';
 
 interface UseDataSyncOptions {
@@ -20,7 +20,7 @@ interface UseDataSyncOptions {
  * Giúp đảm bảo UI luôn hiển thị dữ liệu mới nhất
  */
 export const useDataSync = (options: UseDataSyncOptions = {}) => {
-  const dispatch = useDispatch();
+  // const dispatch = useDispatch(); // Reserved for future use
 
   const refreshData = useCallback((callback?: () => void) => {
     if (callback) {

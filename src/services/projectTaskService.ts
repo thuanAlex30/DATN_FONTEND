@@ -14,23 +14,26 @@ export const projectTaskService = {
   // Get all tasks for a project
   getProjectTasks: async (projectId: string) => {
     try {
-      // Since project-tasks endpoint doesn't exist, return empty array for now
-      // This will be implemented when backend adds project-tasks API
-      return { data: [], success: true };
+      const response = await api.get(`${API_BASE}/tasks/project`, {
+        params: { project_id: projectId }
+      });
+      return { data: response.data.data || [], success: true };
     } catch (error) {
       console.error('Error fetching project tasks:', error);
-      return { data: [], success: true };
+      return { data: [], success: false, message: 'Failed to fetch project tasks' };
     }
   },
 
   // Get all tasks for a phase
   getPhaseTasks: async (phaseId: string) => {
     try {
-      // Placeholder - will be implemented when backend adds project-tasks API
-      return { data: [], success: true };
+      const response = await api.get(`${API_BASE}/tasks`, {
+        params: { phase_id: phaseId }
+      });
+      return { data: response.data.data || [], success: true };
     } catch (error) {
       console.error('Error fetching phase tasks:', error);
-      return { data: [], success: true };
+      return { data: [], success: false, message: 'Failed to fetch phase tasks' };
     }
   },
 

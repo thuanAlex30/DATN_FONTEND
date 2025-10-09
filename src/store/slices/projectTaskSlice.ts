@@ -41,7 +41,7 @@ export const fetchProjectTasks = createAsyncThunk(
   'projectTask/fetchProjectTasks',
   async (projectId: string) => {
     const response = await projectTaskService.getProjectTasks(projectId);
-    return response.data;
+    return response;
   }
 );
 
@@ -193,7 +193,14 @@ const projectTaskSlice = createSlice({
       })
       .addCase(fetchProjectTasks.fulfilled, (state, action) => {
         state.loading = false;
-        state.tasks = action.payload;
+        // Handle both array and object response formats
+        if (Array.isArray(action.payload)) {
+          state.tasks = action.payload;
+        } else if (action.payload && typeof action.payload === 'object' && 'data' in action.payload && Array.isArray((action.payload as any).data)) {
+          state.tasks = (action.payload as any).data;
+        } else {
+          state.tasks = [];
+        }
       })
       .addCase(fetchProjectTasks.rejected, (state, action) => {
         state.loading = false;
@@ -207,7 +214,14 @@ const projectTaskSlice = createSlice({
       })
       .addCase(fetchPhaseTasks.fulfilled, (state, action) => {
         state.loading = false;
-        state.tasks = action.payload;
+        // Handle both array and object response formats
+        if (Array.isArray(action.payload)) {
+          state.tasks = action.payload;
+        } else if (action.payload && typeof action.payload === 'object' && 'data' in action.payload && Array.isArray((action.payload as any).data)) {
+          state.tasks = (action.payload as any).data;
+        } else {
+          state.tasks = [];
+        }
       })
       .addCase(fetchPhaseTasks.rejected, (state, action) => {
         state.loading = false;
@@ -221,7 +235,7 @@ const projectTaskSlice = createSlice({
       })
       .addCase(fetchTaskById.fulfilled, (state, action) => {
         state.loading = false;
-        state.selectedTask = action.payload;
+        state.selectedTask = action.payload || null;
       })
       .addCase(fetchTaskById.rejected, (state, action) => {
         state.loading = false;

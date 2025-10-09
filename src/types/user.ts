@@ -30,6 +30,10 @@ export interface UserQuery {
   limit?: number;
   search?: string;
   is_active?: boolean;
+  role?: string;
+  role_id?: string;
+  department_id?: string;
+  position_id?: string;
 }
 
 export interface UserCreate {

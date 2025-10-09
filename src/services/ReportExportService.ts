@@ -69,14 +69,15 @@ class ReportExportService {
             );
             
             // Summary section
+            let yPos = 80;
             if (data.summary) {
                 doc.setFontSize(14);
                 doc.setFont('helvetica', 'bold');
-                doc.text('Tổng Quan', 20, 80);
+                doc.text('Tổng Quan', 20, yPos);
+                yPos += 10;
                 
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
-                let yPos = 90;
                 
                 Object.entries(data.summary).forEach(([key, value]) => {
                     doc.text(`${key}: ${value}`, 20, yPos);

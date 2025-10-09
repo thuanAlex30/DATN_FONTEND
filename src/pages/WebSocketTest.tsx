@@ -2,10 +2,17 @@ import React, { useState } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import RealtimeNotifications from '../components/RealtimeNotifications';
 
+interface TestMessage {
+  id: number;
+  type: string;
+  message: string;
+  timestamp: Date;
+}
+
 const WebSocketTest = () => {
   const [authToken, setAuthToken] = useState('');
   const [testMessage, setTestMessage] = useState('');
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<TestMessage[]>([]);
   
   const { isConnected, connectionError, socketId, websocketClient } = useWebSocket(authToken, 'http://localhost:3000');
 
@@ -20,7 +27,7 @@ const WebSocketTest = () => {
   };
 
   const handleSendTestMessage = () => {
-    if (testMessage && websocketClient.isConnected()) {
+    if (testMessage && isConnected) {
       websocketClient.emit('test_message', { message: testMessage });
       setMessages(prev => [...prev, { 
         id: Date.now(), 
@@ -33,7 +40,7 @@ const WebSocketTest = () => {
   };
 
   const handleJoinRoom = () => {
-    if (websocketClient.isConnected()) {
+    if (isConnected) {
       websocketClient.emit('join_room', { room: 'test_room' });
       setMessages(prev => [...prev, { 
         id: Date.now(), 
@@ -45,7 +52,7 @@ const WebSocketTest = () => {
   };
 
   const handleLeaveRoom = () => {
-    if (websocketClient.isConnected()) {
+    if (isConnected) {
       websocketClient.emit('leave_room', { room: 'test_room' });
       setMessages(prev => [...prev, { 
         id: Date.now(), 
@@ -58,7 +65,7 @@ const WebSocketTest = () => {
 
   // Listen for test messages
   React.useEffect(() => {
-    const handleTestMessage = (data) => {
+    const handleTestMessage = (data: any) => {
       setMessages(prev => [...prev, { 
         id: Date.now(), 
         type: 'received', 
@@ -67,7 +74,7 @@ const WebSocketTest = () => {
       }]);
     };
 
-    const handleRoomMessage = (data) => {
+    const handleRoomMessage = (data: any) => {
       setMessages(prev => [...prev, { 
         id: Date.now(), 
         type: 'room', 

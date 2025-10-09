@@ -93,23 +93,32 @@ const roleSlice = createSlice({
       })
       .addCase(fetchRoles.fulfilled, (state, action) => {
         state.loading = false;
-        state.roles = action.payload;
+        if (action.payload?.roles) {
+          state.roles = action.payload.roles;
+        }
       })
       .addCase(fetchRoles.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
       .addCase(fetchRoleById.fulfilled, (state, action) => {
-        state.selectedRole = action.payload;
+        if (action.payload?.role) {
+          state.selectedRole = action.payload.role;
+        }
       })
       .addCase(createRole.fulfilled, (state, action) => {
-        state.roles.push(action.payload);
+        if (action.payload?.role) {
+          state.roles.push(action.payload.role);
+        }
       })
       .addCase(updateRole.fulfilled, (state, action) => {
-        const idx = state.roles.findIndex((r) => r.id === action.payload.id);
-        if (idx !== -1) state.roles[idx] = action.payload;
-        if (state.selectedRole?.id === action.payload.id) {
-          state.selectedRole = action.payload;
+        if (action.payload?.role) {
+          const role = action.payload.role;
+          const idx = state.roles.findIndex((r) => r.id === role.id);
+          if (idx !== -1) state.roles[idx] = role;
+          if (state.selectedRole?.id === role.id) {
+            state.selectedRole = role;
+          }
         }
       })
       .addCase(deleteRole.fulfilled, (state, action) => {

@@ -3,17 +3,14 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import projectMilestoneService from '../../services/projectMilestoneService';
 import type { 
   ProjectMilestone, 
-  MilestoneDeliverable,
-  CreateMilestoneData, 
-  UpdateMilestoneData,
-  CreateDeliverableData,
-  MilestoneStats 
-} from '../../types/projectMilestone';
+  CreateProjectMilestoneData, 
+  UpdateProjectMilestoneData
+} from '../../services/projectMilestoneService';
 
 interface ProjectMilestoneState {
   milestones: ProjectMilestone[];
-  deliverables: MilestoneDeliverable[];
-  stats: MilestoneStats | null;
+  deliverables: any[];
+  stats: any | null;
   loading: boolean;
   error: string | null;
   selectedMilestone: ProjectMilestone | null;
@@ -33,7 +30,7 @@ export const fetchProjectMilestones = createAsyncThunk(
   'projectMilestone/fetchProjectMilestones',
   async (projectId: string) => {
     const response = await projectMilestoneService.getProjectMilestones(projectId);
-    return response.data;
+    return response || [];
   }
 );
 
@@ -41,23 +38,23 @@ export const fetchMilestoneById = createAsyncThunk(
   'projectMilestone/fetchMilestoneById',
   async (id: string) => {
     const response = await projectMilestoneService.getMilestoneById(id);
-    return response.data;
+    return response;
   }
 );
 
 export const createMilestone = createAsyncThunk(
   'projectMilestone/createMilestone',
-  async (data: CreateMilestoneData) => {
+  async (data: CreateProjectMilestoneData) => {
     const response = await projectMilestoneService.createMilestone(data);
-    return response.data;
+    return response;
   }
 );
 
 export const updateMilestone = createAsyncThunk(
   'projectMilestone/updateMilestone',
-  async ({ id, data }: { id: string; data: UpdateMilestoneData }) => {
+  async ({ id, data }: { id: string; data: UpdateProjectMilestoneData }) => {
     const response = await projectMilestoneService.updateMilestone(id, data);
-    return response.data;
+    return response;
   }
 );
 
@@ -73,7 +70,7 @@ export const completeMilestone = createAsyncThunk(
   'projectMilestone/completeMilestone',
   async (id: string) => {
     const response = await projectMilestoneService.completeMilestone(id);
-    return response.data;
+    return response;
   }
 );
 
@@ -81,23 +78,23 @@ export const fetchMilestoneDeliverables = createAsyncThunk(
   'projectMilestone/fetchMilestoneDeliverables',
   async (milestoneId: string) => {
     const response = await projectMilestoneService.getMilestoneDeliverables(milestoneId);
-    return response.data;
+    return response;
   }
 );
 
 export const addMilestoneDeliverable = createAsyncThunk(
   'projectMilestone/addMilestoneDeliverable',
-  async ({ milestoneId, data }: { milestoneId: string; data: CreateDeliverableData }) => {
+  async ({ milestoneId, data }: { milestoneId: string; data: any }) => {
     const response = await projectMilestoneService.addMilestoneDeliverable(milestoneId, data);
-    return response.data;
+    return response;
   }
 );
 
 export const updateMilestoneDeliverable = createAsyncThunk(
   'projectMilestone/updateMilestoneDeliverable',
-  async ({ deliverableId, data }: { deliverableId: string; data: Partial<MilestoneDeliverable> }) => {
+  async ({ deliverableId, data }: { deliverableId: string; data: any }) => {
     const response = await projectMilestoneService.updateMilestoneDeliverable(deliverableId, data);
-    return response.data;
+    return response;
   }
 );
 
@@ -105,15 +102,15 @@ export const submitDeliverable = createAsyncThunk(
   'projectMilestone/submitDeliverable',
   async (deliverableId: string) => {
     const response = await projectMilestoneService.submitDeliverable(deliverableId);
-    return response.data;
+    return response;
   }
 );
 
 export const reviewDeliverable = createAsyncThunk(
   'projectMilestone/reviewDeliverable',
-  async ({ deliverableId, approved, feedback }: { deliverableId: string; approved: boolean; feedback?: string }) => {
-    const response = await projectMilestoneService.reviewDeliverable(deliverableId, approved, feedback);
-    return response.data;
+  async ({ deliverableId, decision, comments }: { deliverableId: string; decision: 'APPROVED' | 'REJECTED'; comments?: string }) => {
+    const response = await projectMilestoneService.reviewDeliverable(deliverableId, decision, comments);
+    return response;
   }
 );
 
@@ -121,7 +118,7 @@ export const fetchMilestoneStats = createAsyncThunk(
   'projectMilestone/fetchMilestoneStats',
   async (milestoneId: string) => {
     const response = await projectMilestoneService.getMilestoneStats(milestoneId);
-    return response.data;
+    return response;
   }
 );
 
@@ -187,11 +184,11 @@ const projectMilestoneSlice = createSlice({
       })
       .addCase(updateMilestone.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.milestones.findIndex(m => m.id === action.payload.id);
+        const index = state.milestones.findIndex(m => m._id === action.payload._id);
         if (index !== -1) {
           state.milestones[index] = action.payload;
         }
-        if (state.selectedMilestone?.id === action.payload.id) {
+        if (state.selectedMilestone?._id === action.payload._id) {
           state.selectedMilestone = action.payload;
         }
       })
@@ -207,8 +204,8 @@ const projectMilestoneSlice = createSlice({
       })
       .addCase(deleteMilestone.fulfilled, (state, action) => {
         state.loading = false;
-        state.milestones = state.milestones.filter(m => m.id !== action.payload);
-        if (state.selectedMilestone?.id === action.payload) {
+        state.milestones = state.milestones.filter(m => m._id !== action.payload);
+        if (state.selectedMilestone?._id === action.payload) {
           state.selectedMilestone = null;
         }
       })
@@ -219,11 +216,11 @@ const projectMilestoneSlice = createSlice({
       
       // Complete milestone
       .addCase(completeMilestone.fulfilled, (state, action) => {
-        const index = state.milestones.findIndex(m => m.id === action.payload.id);
+        const index = state.milestones.findIndex(m => m._id === action.payload._id);
         if (index !== -1) {
           state.milestones[index] = action.payload;
         }
-        if (state.selectedMilestone?.id === action.payload.id) {
+        if (state.selectedMilestone?._id === action.payload._id) {
           state.selectedMilestone = action.payload;
         }
       })

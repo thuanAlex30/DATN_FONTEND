@@ -114,9 +114,11 @@ export interface CreateProjectData {
   description: string;
   start_date: string;
   end_date: string;
+  project_type: 'CONSTRUCTION' | 'MAINTENANCE' | 'RENOVATION' | 'INSPECTION' | 'SAFETY' | 'TRAINING';
   status?: 'PLANNING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'ON_HOLD';
   leader_id: string;
-  site_name: string;
+  site_id?: string | null; // ID của địa điểm dự án (tùy chọn, có thể null)
+  project_location?: string; // Tên địa điểm dự án (tùy chọn)
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 }
 
@@ -125,10 +127,12 @@ export interface UpdateProjectData {
   description?: string;
   start_date?: string;
   end_date?: string;
-  status?: 'pending' | 'active' | 'completed' | 'cancelled';
+  project_type?: 'CONSTRUCTION' | 'MAINTENANCE' | 'RENOVATION' | 'INSPECTION' | 'SAFETY' | 'TRAINING';
+  status?: 'PLANNING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'ON_HOLD';
   leader_id?: string;
-  site_name?: string;
-  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  site_id?: string;
+  project_location?: string;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   progress?: number;
 }
 

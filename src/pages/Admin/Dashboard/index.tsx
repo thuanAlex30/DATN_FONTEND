@@ -60,9 +60,9 @@ interface DashboardStats {
 }
 
 const DashboardPage: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
@@ -178,10 +178,10 @@ const DashboardPage: React.FC = () => {
     const { Title } = Typography;
 
     if (loading) {
-        return (
+    return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
                 <Spin size="large" />
-            </div>
+                        </div>
         );
     }
 
@@ -198,7 +198,7 @@ const DashboardPage: React.FC = () => {
                             suffix={
                                 <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                                     {stats?.active || 0} đang hoạt động
-                                </div>
+                        </div>
                             }
                         />
                     </Card>
@@ -212,7 +212,7 @@ const DashboardPage: React.FC = () => {
                             suffix={
                                 <div style={{ fontSize: '12px', color: '#52c41a', marginTop: '4px' }}>
                                     {stats?.projects.total || 0} tổng dự án
-                                </div>
+                    </div>
                             }
                         />
                     </Card>
@@ -226,7 +226,7 @@ const DashboardPage: React.FC = () => {
                             suffix={
                                 <div style={{ fontSize: '12px', color: '#52c41a', marginTop: '4px' }}>
                                     ↗ {stats?.training.completionRate || 0}% tỷ lệ hoàn thành
-                                </div>
+                </div>
                             }
                         />
                     </Card>
@@ -244,7 +244,7 @@ const DashboardPage: React.FC = () => {
                                         ' ' + Math.round(((stats.incidents.thisMonth - stats.incidents.lastMonth) / stats.incidents.lastMonth) * 100) + '% so với tháng trước' :
                                         'So với tháng trước'
                                     }
-                                </div>
+                        </div>
                             }
                         />
                     </Card>
@@ -261,13 +261,13 @@ const DashboardPage: React.FC = () => {
                             size="large"
                             block
                             icon={<UserAddOutlined />}
-                            onClick={() => setIsQuickAddModalOpen(true)}
+                        onClick={() => setIsQuickAddModalOpen(true)}
                             style={{ height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                         >
                             <div style={{ marginTop: '8px' }}>
                                 <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Thêm nhân viên</div>
                                 <div style={{ fontSize: '12px', color: '#666' }}>Tạo tài khoản cho nhân viên mới</div>
-                            </div>
+                </div>
                         </Button>
                     </Col>
                     <Col xs={24} sm={12} md={8} lg={6}>
@@ -282,7 +282,7 @@ const DashboardPage: React.FC = () => {
                             <div style={{ marginTop: '8px' }}>
                                 <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Tạo dự án mới</div>
                                 <div style={{ fontSize: '12px', color: '#666' }}>Khởi tạo dự án và phân công nhân viên</div>
-                            </div>
+            </div>
                         </Button>
                     </Col>
                     <Col xs={24} sm={12} md={8} lg={6}>
@@ -297,7 +297,7 @@ const DashboardPage: React.FC = () => {
                             <div style={{ marginTop: '8px' }}>
                                 <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Lên lịch đào tạo</div>
                                 <div style={{ fontSize: '12px', color: '#666' }}>Tạo buổi đào tạo an toàn lao động</div>
-                            </div>
+                    </div>
                         </Button>
                     </Col>
                     <Col xs={24} sm={12} md={8} lg={6}>
@@ -342,7 +342,7 @@ const DashboardPage: React.FC = () => {
                             <div style={{ marginTop: '8px' }}>
                                 <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Xem báo cáo</div>
                                 <div style={{ fontSize: '12px', color: '#666' }}>Phân tích hiệu suất và an toàn</div>
-                            </div>
+                        </div>
                         </Button>
                     </Col>
                 </Row>
@@ -356,7 +356,7 @@ const DashboardPage: React.FC = () => {
                         {activitiesLoading ? (
                             <div style={{ textAlign: 'center', padding: '20px' }}>
                                 <Spin />
-                            </div>
+                    </div>
                         ) : (
                             <List
                                 dataSource={recentActivities.length > 0 ? recentActivities : [
@@ -403,7 +403,7 @@ const DashboardPage: React.FC = () => {
                                                 <div>
                                                     <div style={{ marginBottom: '4px' }}>{item.description}</div>
                                                     <Tag color="default" style={{ fontSize: '11px' }}>{item.time}</Tag>
-                                                </div>
+                            </div>
                                             }
                                         />
                                     </List.Item>
@@ -458,7 +458,7 @@ const DashboardPage: React.FC = () => {
                                                 <div>
                                                     <div style={{ marginBottom: '4px' }}>{item.description}</div>
                                                     <Tag color="default" style={{ fontSize: '11px' }}>{item.time}</Tag>
-                                                </div>
+                        </div>
                                             }
                                         />
                                     </List.Item>

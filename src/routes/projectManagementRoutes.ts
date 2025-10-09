@@ -1,13 +1,12 @@
 import { lazy } from 'react';
 
 // Lazy load project management components
-const ChangeRequests = lazy(() => import('../pages/Admin/ProjectManagement/ChangeRequests'));
-const Milestones = lazy(() => import('../pages/Admin/ProjectManagement/Milestones'));
-const Phases = lazy(() => import('../pages/Admin/ProjectManagement/Phases'));
-const Tasks = lazy(() => import('../pages/Admin/ProjectManagement/Tasks'));
-const Resources = lazy(() => import('../pages/Admin/ProjectManagement/Resources'));
-const Risks = lazy(() => import('../pages/Admin/ProjectManagement/Risks'));
-const StatusReports = lazy(() => import('../pages/Admin/ProjectManagement/StatusReports'));
+const ChangeRequests = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectChangeRequests'));
+const Milestones = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectMilestones'));
+const Tasks = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectTasks'));
+const Resources = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectResources'));
+const Risks = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectRisks'));
+const StatusReports = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectStatusReports'));
 
 export const projectManagementRoutes = [
   {
@@ -17,10 +16,6 @@ export const projectManagementRoutes = [
   {
     path: '/admin/project-management/milestones',
     component: Milestones,
-  },
-  {
-    path: '/admin/project-management/phases',
-    component: Phases,
   },
   {
     path: '/admin/project-management/tasks',

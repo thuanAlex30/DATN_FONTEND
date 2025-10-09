@@ -1,15 +1,58 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import {
+  Card,
+  Row,
+  Col,
+  Button,
+  Typography,
+  Space,
+  Tag,
+  Progress,
+  Avatar,
+  Tooltip,
+  Dropdown,
+  Menu,
+  Empty,
+  Spin,
+  Alert,
+  Select,
+  Statistic,
+  Badge,
+  Modal,
+  message
+} from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  FlagOutlined,
+  CalendarOutlined,
+  UserOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
+  MoreOutlined,
+  AppstoreOutlined,
+  UnorderedListOutlined
+} from '@ant-design/icons';
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectMilestones, deleteMilestone } from '../../../../store/slices/projectMilestoneSlice';
+import CreateMilestoneModal from './CreateMilestoneModal';
 
 interface ProjectMilestonesProps {
   projectId: string;
 }
 
+const { Title, Text, Paragraph } = Typography;
+const { Option } = Select;
+
 const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { milestones, loading, error } = useSelector((state: RootState) => state.projectMilestone);
+  const [selectedView, setSelectedView] = useState<'grid' | 'list'>('grid');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -18,26 +61,45 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
   }, [dispatch, projectId]);
 
 
-  const handleDeleteMilestone = (id: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa milestone này?')) {
-      dispatch(deleteMilestone(id));
-    }
-  };
 
-  const getStatusBadgeClass = (status: string) => {
+  const getStatusInfo = (status: string) => {
     switch (status) {
       case 'COMPLETED':
-        return 'status-completed';
+        return { 
+          color: 'success',
+          label: 'Hoàn thành', 
+          icon: <CheckCircleOutlined />
+        };
       case 'IN_PROGRESS':
-        return 'status-in-progress';
-      case 'PLANNED':
-        return 'status-pending';
+        return { 
+          color: 'processing',
+          label: 'Đang thực hiện', 
+          icon: <ClockCircleOutlined />
+        };
+      case 'PENDING':
+        return { 
+          color: 'warning',
+          label: 'Chờ thực hiện', 
+          icon: <ClockCircleOutlined />
+        };
       case 'CANCELLED':
-        return 'status-cancelled';
+        return { 
+          color: 'error',
+          label: 'Đã hủy', 
+          icon: <ExclamationCircleOutlined />
+        };
       case 'OVERDUE':
-        return 'status-overdue';
+        return { 
+          color: 'error',
+          label: 'Quá hạn', 
+          icon: <ExclamationCircleOutlined />
+        };
       default:
-        return 'status-default';
+        return { 
+          color: 'default',
+          label: status, 
+          icon: <ClockCircleOutlined />
+        };
     }
   };
 
@@ -62,126 +124,319 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
     return new Date(dateString).toLocaleDateString('vi-VN');
   };
 
+  const getMilestoneTypeInfo = (type: string) => {
+    switch (type) {
+      case 'PHASE_COMPLETION':
+        return { label: 'Hoàn thành giai đoạn', icon: <FlagOutlined />, color: '#8b5cf6' };
+      case 'DELIVERY':
+        return { label: 'Bàn giao', icon: <FlagOutlined />, color: '#06b6d4' };
+      case 'APPROVAL':
+        return { label: 'Phê duyệt', icon: <CheckCircleOutlined />, color: '#10b981' };
+      case 'REVIEW':
+        return { label: 'Đánh giá', icon: <FlagOutlined />, color: '#f59e0b' };
+      case 'CHECKPOINT':
+        return { label: 'Điểm kiểm tra', icon: <FlagOutlined />, color: '#ef4444' };
+      default:
+        return { label: type, icon: <FlagOutlined />, color: '#6b7280' };
+    }
+  };
+
+  const filteredMilestones = milestones?.filter(milestone => 
+    filterStatus === 'all' || milestone.status === filterStatus
+  ) || [];
+
   if (loading) {
     return (
-      <div className="project-milestones-loading">
-        <div className="loading-spinner">
-          <i className="fas fa-spinner fa-spin"></i>
-          <p>Đang tải danh sách milestone...</p>
-        </div>
+      <div style={{ padding: '50px', textAlign: 'center' }}>
+        <Spin size="large" />
+        <Title level={3} style={{ marginTop: '20px' }}>
+          Đang tải danh sách milestone...
+        </Title>
+        <Text type="secondary">Vui lòng chờ trong giây lát</Text>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="project-milestones-error">
-        <div className="error-message">
-          <i className="fas fa-exclamation-triangle"></i>
-          <h3>Lỗi tải milestone</h3>
-          <p>{error}</p>
-        </div>
+      <div style={{ padding: '20px' }}>
+        <Alert
+          message="Không thể tải milestone"
+          description={error}
+          type="error"
+          showIcon
+          action={
+            <Button 
+              size="small" 
+              danger 
+              onClick={() => dispatch(fetchProjectMilestones(projectId))}
+            >
+              Thử lại
+            </Button>
+          }
+        />
       </div>
     );
   }
 
+  const handleDeleteConfirm = (id: string) => {
+    Modal.confirm({
+      title: 'Xác nhận xóa milestone',
+      content: 'Bạn có chắc chắn muốn xóa milestone này? Hành động này không thể hoàn tác.',
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk() {
+        dispatch(deleteMilestone(id));
+        message.success('Milestone đã được xóa thành công');
+      },
+    });
+  };
+
+  const menu = (milestoneId: string) => (
+    <Menu>
+      <Menu.Item key="edit" icon={<EditOutlined />} disabled>
+        Chỉnh sửa
+      </Menu.Item>
+      <Menu.Item 
+        key="delete" 
+        icon={<DeleteOutlined />} 
+        danger
+        onClick={() => handleDeleteConfirm(milestoneId)}
+      >
+        Xóa
+      </Menu.Item>
+    </Menu>
+  );
+
   return (
-    <div className="project-milestones">
-      <div className="milestones-header">
-        <h2>Milestone Dự án</h2>
-        <button 
-          className="btn btn-primary"
-          onClick={() => {}}
-          disabled
-          title="Sắp ra mắt"
-        >
-          <i className="fas fa-plus"></i>
-          Thêm milestone
-        </button>
+    <div style={{ padding: '24px' }}>
+      {/* Header Section */}
+      <div style={{ marginBottom: '24px' }}>
+        <Row justify="space-between" align="middle">
+          <Col>
+            <Space direction="vertical" size={0}>
+              <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <FlagOutlined style={{ color: '#1890ff' }} />
+                Milestone Dự án
+              </Title>
+              <Text type="secondary">
+                Quản lý và theo dõi các mốc quan trọng của dự án
+              </Text>
+            </Space>
+          </Col>
+          <Col>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={() => setShowCreateModal(true)}
+            >
+              Thêm milestone
+            </Button>
+          </Col>
+        </Row>
       </div>
 
-      {milestones?.length === 0 ? (
-        <div className="milestones-empty">
-          <div className="empty-state">
-            <i className="fas fa-flag-checkered"></i>
-            <h3>Chưa có milestone nào</h3>
-            <p>Dự án này chưa có milestone nào được tạo.</p>
-            <button 
-              className="btn btn-primary"
-              onClick={() => {}}
-              disabled
-              title="Sắp ra mắt"
-            >
-              Tạo milestone đầu tiên
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="milestones-list">
-          {milestones?.map((milestone) => (
-            <div key={milestone.id} className="milestone-card">
-              <div className="milestone-header">
-                <div className="milestone-title">
-                  <h3>{milestone.milestone_name}</h3>
-                  <span className={`status-badge ${getStatusBadgeClass(milestone.status)}`}>
-                    {milestone.status}
-                  </span>
-                </div>
-                <div className="milestone-actions">
-                  <button
-                    className="btn btn-sm btn-outline"
-                    onClick={() => {}}
-                    disabled
-                    title="Sắp ra mắt"
-                  >
-                    <i className="fas fa-edit"></i>
-                  </button>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() => handleDeleteMilestone(milestone.id)}
-                    title="Xóa"
-                  >
-                    <i className="fas fa-trash"></i>
-                  </button>
-                </div>
-              </div>
+      {/* Controls Section */}
+      <Card style={{ marginBottom: '24px' }}>
+        <Row justify="space-between" align="middle">
+          <Col>
+            <Space size="large">
+              <Space.Compact>
+                <Button 
+                  type={selectedView === 'grid' ? 'primary' : 'default'}
+                  icon={<AppstoreOutlined />}
+                  onClick={() => setSelectedView('grid')}
+                >
+                  Lưới
+                </Button>
+                <Button 
+                  type={selectedView === 'list' ? 'primary' : 'default'}
+                  icon={<UnorderedListOutlined />}
+                  onClick={() => setSelectedView('list')}
+                >
+                  Danh sách
+                </Button>
+              </Space.Compact>
               
-              <div className="milestone-content">
-                <p className="milestone-description">
-                  {milestone.description || 'Không có mô tả'}
-                </p>
-                
-                <div className="milestone-details">
-                  <div className="detail-item">
-                    <i className="fas fa-calendar-alt"></i>
-                    <span>
-                      {formatDate(milestone.planned_date)}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <i className="fas fa-percent"></i>
-                    <span>Tiến độ: {getProgressFromStatus(milestone.status)}%</span>
-                  </div>
-                  <div className="detail-item">
-                    <i className="fas fa-user"></i>
-                    <span>Người phụ trách: {milestone.responsible_user_id || 'N/A'}</span>
-                  </div>
-                </div>
-                
-                <div className="milestone-progress">
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill" 
-                      style={{ width: `${getProgressFromStatus(milestone.status)}%` }}
-                    ></div>
-                  </div>
-                  <span className="progress-text">{getProgressFromStatus(milestone.status)}%</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              <Select
+                value={filterStatus}
+                onChange={setFilterStatus}
+                style={{ width: 200 }}
+                placeholder="Lọc theo trạng thái"
+              >
+                <Option value="all">Tất cả trạng thái</Option>
+                <Option value="PENDING">Chờ thực hiện</Option>
+                <Option value="IN_PROGRESS">Đang thực hiện</Option>
+                <Option value="COMPLETED">Hoàn thành</Option>
+                <Option value="OVERDUE">Quá hạn</Option>
+                <Option value="CANCELLED">Đã hủy</Option>
+              </Select>
+            </Space>
+          </Col>
+          
+          <Col>
+            <Space size="large">
+              <Statistic 
+                title="Tổng milestone" 
+                value={filteredMilestones.length} 
+                prefix={<FlagOutlined />}
+              />
+              <Statistic 
+                title="Đã hoàn thành" 
+                value={filteredMilestones.filter(m => m.status === 'COMPLETED').length}
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Content Section */}
+      {milestones?.length === 0 ? (
+        <Card>
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              <Space direction="vertical" size="middle">
+                <Title level={4} style={{ color: '#8c8c8c' }}>
+                  Chưa có milestone nào
+                </Title>
+                <Text type="secondary">
+                  Dự án này chưa có milestone nào được tạo. Hãy tạo milestone đầu tiên để bắt đầu theo dõi tiến độ.
+                </Text>
+                <Button 
+                  type="primary" 
+                  icon={<PlusOutlined />}
+                  onClick={() => {}}
+                  disabled
+                  title="Sắp ra mắt"
+                >
+                  Tạo milestone đầu tiên
+                </Button>
+              </Space>
+            }
+          />
+        </Card>
+      ) : (
+        <Row gutter={[16, 16]}>
+          {filteredMilestones.map((milestone) => {
+            const statusInfo = getStatusInfo(milestone.status);
+            const typeInfo = getMilestoneTypeInfo(milestone.milestone_type);
+            const progress = getProgressFromStatus(milestone.status);
+            
+            return (
+              <Col 
+                key={milestone._id} 
+                xs={24} 
+                sm={24} 
+                md={selectedView === 'grid' ? 12 : 24} 
+                lg={selectedView === 'grid' ? 8 : 24}
+                xl={selectedView === 'grid' ? 6 : 24}
+              >
+                <Card
+                  hoverable
+                  actions={[
+                    <Tooltip title="Chỉnh sửa">
+                      <Button 
+                        type="text" 
+                        icon={<EditOutlined />} 
+                        disabled
+                        title="Sắp ra mắt"
+                      />
+                    </Tooltip>,
+                    <Dropdown overlay={menu(milestone._id)} trigger={['click']}>
+                      <Button type="text" icon={<MoreOutlined />} />
+                    </Dropdown>
+                  ]}
+                  extra={
+                    <Tag color={statusInfo.color} icon={statusInfo.icon}>
+                      {statusInfo.label}
+                    </Tag>
+                  }
+                >
+                  <Card.Meta
+                    avatar={
+                      <Avatar 
+                        icon={typeInfo.icon} 
+                        style={{ backgroundColor: typeInfo.color }}
+                      />
+                    }
+                    title={
+                      <Space>
+                        <Text strong>{milestone.milestone_name}</Text>
+                        {milestone.is_critical && (
+                          <Badge status="error" text="Quan trọng" />
+                        )}
+                      </Space>
+                    }
+                    description={
+                      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                        <Paragraph 
+                          ellipsis={{ rows: 2 }} 
+                          style={{ margin: 0, color: '#8c8c8c' }}
+                        >
+                          {milestone.description || 'Không có mô tả chi tiết'}
+                        </Paragraph>
+                        
+                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                          <Space>
+                            <CalendarOutlined style={{ color: '#1890ff' }} />
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                              Ngày dự kiến: {formatDate(milestone.planned_date)}
+                            </Text>
+                          </Space>
+                          
+                          {milestone.actual_date && (
+                            <Space>
+                              <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Hoàn thành: {formatDate(milestone.actual_date)}
+                              </Text>
+                            </Space>
+                          )}
+                          
+                          <Space>
+                            <UserOutlined style={{ color: '#1890ff' }} />
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                              Phụ trách: {(milestone as any).responsible_user?.full_name || 'Chưa phân công'}
+                            </Text>
+                          </Space>
+                        </Space>
+                        
+                        <div style={{ marginTop: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                              Tiến độ
+                            </Text>
+                            <Text strong style={{ fontSize: '12px' }}>
+                              {progress}%
+                            </Text>
+                          </div>
+                          <Progress 
+                            percent={progress} 
+                            size="small" 
+                            status={statusInfo.color === 'error' ? 'exception' : 'normal'}
+                            strokeColor={statusInfo.color === 'success' ? '#52c41a' : undefined}
+                          />
+                        </div>
+                      </Space>
+                    }
+                  />
+                </Card>
+              </Col>
+            );
+          })}
+        </Row>
       )}
+
+      {/* Create Milestone Modal */}
+      <CreateMilestoneModal
+        visible={showCreateModal}
+        onCancel={() => setShowCreateModal(false)}
+        projectId={projectId}
+      />
     </div>
   );
 };

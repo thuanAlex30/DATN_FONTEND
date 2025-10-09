@@ -1,4 +1,5 @@
 export interface ProjectTask {
+  _id: string;
   id: string;
   phase_id: string;
   task_name: string;
