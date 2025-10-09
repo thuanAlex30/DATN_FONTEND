@@ -1,7 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { Card, Row, Col, Progress, Statistic, Timeline, Tag, Avatar, Space, Divider, Typography, Badge } from 'antd';
+import { 
+  Card, 
+  Row, 
+  Col, 
+  Progress, 
+  Timeline, 
+  Tag, 
+  Avatar, 
+  Space, 
+  Divider, 
+  Typography, 
+  Badge,
+  Button,
+  Tooltip
+} from 'antd';
 import { 
   CalendarOutlined, 
   UserOutlined, 
@@ -13,18 +27,23 @@ import {
   BarChartOutlined,
   TrophyOutlined,
   AlertOutlined,
-  SettingOutlined,
-  FileTextOutlined,
-  PlayCircleOutlined,
-  LineChartOutlined
+  LineChartOutlined,
+  EditOutlined,
+  EyeOutlined,
+  RiseOutlined,
+  SafetyOutlined,
+  ToolOutlined,
+  BookOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons';
 import type { RootState, AppDispatch } from '../../../../store';
-import { fetchProjectStats } from '../../../../store/slices/projectSlice';
+import { fetchProjectStats, fetchProjectById } from '../../../../store/slices/projectSlice';
 import { fetchProjectTasks } from '../../../../store/slices/projectTaskSlice';
 import { fetchProjectMilestones } from '../../../../store/slices/projectMilestoneSlice';
 import { fetchProjectRisks } from '../../../../store/slices/projectRiskSlice';
 import { fetchProjectResources, setCurrentProjectId } from '../../../../store/slices/projectResourceSlice';
 import { clearProjectResourceCache } from '../../../../utils/apiCache';
+import EditProjectOverviewModal from './EditProjectOverviewModal';
 
 interface ProjectOverviewProps {
   projectId: string;
@@ -37,6 +56,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
   const { milestones } = useSelector((state: RootState) => state.projectMilestone);
   const { risks } = useSelector((state: RootState) => state.projectRisk);
   const { resources } = useSelector((state: RootState) => state.projectResource);
+  const [isEditOverviewModalOpen, setIsEditOverviewModalOpen] = useState(false);
   
   const [projectFlow] = useState({
     currentPhase: 'PLANNING',
@@ -102,117 +122,308 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
   // const daysRemaining = getDaysRemaining();
 
   return (
-    <div className="project-overview" style={{ padding: '24px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div className="project-overview" style={{ padding: '24px', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
       {/* Header Section */}
-      <div style={{ marginBottom: '24px' }}>
-        <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-          Tổng quan dự án
-        </Title>
-        <Text type="secondary">
-          Quản lý và theo dõi tiến độ dự án một cách hiệu quả
-        </Text>
+      <div style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+          <div>
+            <Title level={2} style={{ margin: 0, color: '#1e293b', fontWeight: 600 }}>
+              Tổng quan dự án
+            </Title>
+            <Text type="secondary" style={{ fontSize: '16px' }}>
+              Quản lý và theo dõi tiến độ dự án một cách hiệu quả
+            </Text>
+          </div>
+          <Space>
+            <Tooltip title="Chỉnh sửa dự án">
+              <Button 
+                type="primary" 
+                icon={<EditOutlined />} 
+                size="large"
+                onClick={() => setIsEditOverviewModalOpen(true)}
+              >
+                Chỉnh sửa
+              </Button>
+            </Tooltip>
+            <Tooltip title="Xem chi tiết">
+              <Button icon={<EyeOutlined />} size="large">
+                Xem chi tiết
+              </Button>
+            </Tooltip>
+          </Space>
+        </div>
       </div>
 
       {/* Key Metrics Row */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic
-              title="Tiến độ dự án"
-              value={project.progress}
-              suffix="%"
-              valueStyle={{ color: '#3f8600' }}
-              prefix={<BarChartOutlined />}
-            />
+      <Row gutter={[24, 24]} style={{ marginBottom: '32px' }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card 
+            hoverable
+            style={{ 
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: 'none'
+            }}
+            bodyStyle={{ padding: '24px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ 
+                padding: '12px', 
+                borderRadius: '10px', 
+                backgroundColor: '#dcfce7',
+                marginRight: '16px'
+              }}>
+                <RiseOutlined style={{ fontSize: '20px', color: '#16a34a' }} />
+              </div>
+              <div>
+                <Text type="secondary" style={{ fontSize: '14px', fontWeight: 500 }}>Tiến độ dự án</Text>
+                <div style={{ fontSize: '28px', fontWeight: 700, color: '#16a34a' }}>
+                  {project.progress}%
+                </div>
+              </div>
+            </div>
             <Progress 
               percent={project.progress} 
-              size="small" 
-              status={project.progress >= 80 ? 'success' : project.progress >= 50 ? 'active' : 'normal'}
+              strokeColor={{
+                '0%': '#16a34a',
+                '100%': '#22c55e',
+              }}
+              trailColor="#e5e7eb"
+              strokeWidth={8}
+              showInfo={false}
             />
           </Card>
         </Col>
         
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic
-              title="Giai đoạn"
-              value={0}
-              prefix={<SettingOutlined />}
-              valueStyle={{ color: '#1890ff' }}
-            />
-            <Text type="secondary">Đang thực hiện</Text>
+        <Col xs={24} sm={12} lg={6}>
+          <Card 
+            hoverable
+            style={{ 
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: 'none'
+            }}
+            bodyStyle={{ padding: '24px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ 
+                padding: '12px', 
+                borderRadius: '10px', 
+                backgroundColor: '#dbeafe',
+                marginRight: '16px'
+              }}>
+                <ToolOutlined style={{ fontSize: '20px', color: '#2563eb' }} />
+              </div>
+              <div>
+                <Text type="secondary" style={{ fontSize: '14px', fontWeight: 500 }}>Giai đoạn</Text>
+                <div style={{ fontSize: '28px', fontWeight: 700, color: '#2563eb' }}>
+                  {milestones?.length || 0}
+                </div>
+              </div>
+            </div>
+            <Text type="secondary" style={{ fontSize: '12px' }}>Đang thực hiện</Text>
           </Card>
         </Col>
         
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic
-              title="Nhiệm vụ"
-              value={tasks?.length || 0}
-              prefix={<CheckCircleOutlined />}
-              valueStyle={{ color: '#722ed1' }}
-            />
-            <Text type="secondary">Tổng số nhiệm vụ</Text>
+        <Col xs={24} sm={12} lg={6}>
+          <Card 
+            hoverable
+            style={{ 
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: 'none'
+            }}
+            bodyStyle={{ padding: '24px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ 
+                padding: '12px', 
+                borderRadius: '10px', 
+                backgroundColor: '#f3e8ff',
+                marginRight: '16px'
+              }}>
+                <CheckCircleOutlined style={{ fontSize: '20px', color: '#9333ea' }} />
+              </div>
+              <div>
+                <Text type="secondary" style={{ fontSize: '14px', fontWeight: 500 }}>Nhiệm vụ</Text>
+                <div style={{ fontSize: '28px', fontWeight: 700, color: '#9333ea' }}>
+                  {tasks?.length || 0}
+                </div>
+              </div>
+            </div>
+            <Text type="secondary" style={{ fontSize: '12px' }}>Tổng số nhiệm vụ</Text>
           </Card>
         </Col>
         
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic
-              title="Rủi ro"
-              value={risks?.length || 0}
-              prefix={<AlertOutlined />}
-              valueStyle={{ color: risks?.length > 0 ? '#cf1322' : '#52c41a' }}
-            />
-            <Text type="secondary">Cần xử lý</Text>
+        <Col xs={24} sm={12} lg={6}>
+          <Card 
+            hoverable
+            style={{ 
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: 'none'
+            }}
+            bodyStyle={{ padding: '24px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ 
+                padding: '12px', 
+                borderRadius: '10px', 
+                backgroundColor: risks?.length > 0 ? '#fef2f2' : '#f0fdf4',
+                marginRight: '16px'
+              }}>
+                <AlertOutlined style={{ 
+                  fontSize: '20px', 
+                  color: risks?.length > 0 ? '#dc2626' : '#16a34a' 
+                }} />
+              </div>
+              <div>
+                <Text type="secondary" style={{ fontSize: '14px', fontWeight: 500 }}>Rủi ro</Text>
+                <div style={{ 
+                  fontSize: '28px', 
+                  fontWeight: 700, 
+                  color: risks?.length > 0 ? '#dc2626' : '#16a34a' 
+                }}>
+                  {risks?.length || 0}
+                </div>
+              </div>
+            </div>
+            <Text type="secondary" style={{ fontSize: '12px' }}>Cần xử lý</Text>
           </Card>
         </Col>
       </Row>
 
       {/* Main Content Row */}
-      <Row gutter={[16, 16]}>
+      <Row gutter={[24, 24]}>
         {/* Left Column - Project Flow & Details */}
         <Col xs={24} lg={16}>
           {/* Project Flow Timeline */}
           <Card 
             title={
               <Space>
-                <LineChartOutlined />
-                Trạng thái Luồng Dự án
+                <div style={{ 
+                  padding: '8px', 
+                  borderRadius: '8px', 
+                  backgroundColor: '#e0f2fe',
+                  marginRight: '8px'
+                }}>
+                  <LineChartOutlined style={{ fontSize: '16px', color: '#0284c7' }} />
+                </div>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: '#1e293b' }}>
+                  Trạng thái Luồng Dự án
+                </span>
               </Space>
             }
-            style={{ marginBottom: '16px' }}
+            style={{ 
+              marginBottom: '24px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: 'none'
+            }}
+            bodyStyle={{ padding: '24px' }}
           >
             <Timeline 
               mode="left"
               items={[
                 {
-                  dot: <FileTextOutlined style={{ fontSize: '16px' }} />,
+                  dot: (
+                    <div style={{ 
+                      width: '32px', 
+                      height: '32px', 
+                      borderRadius: '50%', 
+                      backgroundColor: projectFlow.currentPhase === 'PLANNING' ? '#3b82f6' : '#e5e7eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '14px',
+                      fontWeight: 600
+                    }}>
+                      1
+                    </div>
+                  ),
                   color: projectFlow.currentPhase === 'PLANNING' ? 'blue' : 'gray',
                   children: (
-                    <div>
-                      <Title level={5} style={{ margin: 0 }}>Khởi tạo Dự án</Title>
-                      <Text type="secondary">Project Registration → Site Setup → Phase Planning</Text>
+                    <div style={{ paddingLeft: '16px' }}>
+                      <Title level={5} style={{ margin: 0, color: '#1e293b', fontWeight: 600 }}>
+                        Khởi tạo Dự án
+                      </Title>
+                      <Text type="secondary" style={{ fontSize: '14px' }}>
+                        Project Registration → Site Setup → Phase Planning
+                      </Text>
+                      <div style={{ marginTop: '8px' }}>
+                        <Tag color={projectFlow.currentPhase === 'PLANNING' ? 'blue' : 'default'}>
+                          {projectFlow.currentPhase === 'PLANNING' ? 'Đang thực hiện' : 'Hoàn thành'}
+                        </Tag>
+                      </div>
                     </div>
                   )
                 },
                 {
-                  dot: <PlayCircleOutlined style={{ fontSize: '16px' }} />,
+                  dot: (
+                    <div style={{ 
+                      width: '32px', 
+                      height: '32px', 
+                      borderRadius: '50%', 
+                      backgroundColor: projectFlow.currentPhase === 'EXECUTION' ? '#3b82f6' : '#e5e7eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '14px',
+                      fontWeight: 600
+                    }}>
+                      2
+                    </div>
+                  ),
                   color: projectFlow.currentPhase === 'EXECUTION' ? 'blue' : 'gray',
                   children: (
-                    <div>
-                      <Title level={5} style={{ margin: 0 }}>Quản lý Tiến độ</Title>
-                      <Text type="secondary">Task Assignment → Progress Tracking → Milestone Management</Text>
+                    <div style={{ paddingLeft: '16px' }}>
+                      <Title level={5} style={{ margin: 0, color: '#1e293b', fontWeight: 600 }}>
+                        Quản lý Tiến độ
+                      </Title>
+                      <Text type="secondary" style={{ fontSize: '14px' }}>
+                        Task Assignment → Progress Tracking → Milestone Management
+                      </Text>
+                      <div style={{ marginTop: '8px' }}>
+                        <Tag color={projectFlow.currentPhase === 'EXECUTION' ? 'blue' : 'default'}>
+                          {projectFlow.currentPhase === 'EXECUTION' ? 'Đang thực hiện' : 'Chờ xử lý'}
+                        </Tag>
+                      </div>
                     </div>
                   )
                 },
                 {
-                  dot: <LineChartOutlined style={{ fontSize: '16px' }} />,
+                  dot: (
+                    <div style={{ 
+                      width: '32px', 
+                      height: '32px', 
+                      borderRadius: '50%', 
+                      backgroundColor: projectFlow.currentPhase === 'MONITORING' ? '#3b82f6' : '#e5e7eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '14px',
+                      fontWeight: 600
+                    }}>
+                      3
+                    </div>
+                  ),
                   color: projectFlow.currentPhase === 'MONITORING' ? 'blue' : 'gray',
                   children: (
-                    <div>
-                      <Title level={5} style={{ margin: 0 }}>Giám sát & Báo cáo</Title>
-                      <Text type="secondary">Status Reporting → Change Management → Quality Control</Text>
+                    <div style={{ paddingLeft: '16px' }}>
+                      <Title level={5} style={{ margin: 0, color: '#1e293b', fontWeight: 600 }}>
+                        Giám sát & Báo cáo
+                      </Title>
+                      <Text type="secondary" style={{ fontSize: '14px' }}>
+                        Status Reporting → Change Management → Quality Control
+                      </Text>
+                      <div style={{ marginTop: '8px' }}>
+                        <Tag color={projectFlow.currentPhase === 'MONITORING' ? 'blue' : 'default'}>
+                          {projectFlow.currentPhase === 'MONITORING' ? 'Đang thực hiện' : 'Chờ xử lý'}
+                        </Tag>
+                      </div>
                     </div>
                   )
                 }
@@ -224,31 +435,57 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
           <Card 
             title={
               <Space>
-                <FileTextOutlined />
-                Thông tin dự án
+                <div style={{ 
+                  padding: '8px', 
+                  borderRadius: '8px', 
+                  backgroundColor: '#f0f9ff',
+                  marginRight: '8px'
+                }}>
+                  <BookOutlined style={{ fontSize: '16px', color: '#0369a1' }} />
+                </div>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: '#1e293b' }}>
+                  Thông tin dự án
+                </span>
               </Space>
             }
-            style={{ marginBottom: '16px' }}
+            style={{ 
+              marginBottom: '24px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: 'none'
+            }}
+            bodyStyle={{ padding: '24px' }}
           >
-            <Row gutter={[16, 16]}>
+            <Row gutter={[24, 24]}>
               <Col xs={24} sm={12}>
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Space direction="vertical" size="large" style={{ width: '100%' }}>
                   <div>
-                    <Text strong>Tên dự án:</Text>
-                    <br />
-                    <Text>{project.project_name}</Text>
+                    <Text strong style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                      Tên dự án
+                    </Text>
+                    <Text style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b' }}>
+                      {project.project_name}
+                    </Text>
                   </div>
                   <div>
-                    <Text strong>Trạng thái:</Text>
-                    <br />
-                    <Tag color={project.status === 'ACTIVE' ? 'green' : project.status === 'COMPLETED' ? 'blue' : 'orange'}>
+                    <Text strong style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                      Trạng thái
+                    </Text>
+                    <Tag 
+                      color={project.status === 'ACTIVE' ? 'green' : project.status === 'COMPLETED' ? 'blue' : 'orange'}
+                      style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px' }}
+                    >
                       {project.status}
                     </Tag>
                   </div>
                   <div>
-                    <Text strong>Ưu tiên:</Text>
-                    <br />
-                    <Tag color={project.priority === 'HIGH' ? 'red' : project.priority === 'MEDIUM' ? 'orange' : 'green'}>
+                    <Text strong style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                      Ưu tiên
+                    </Text>
+                    <Tag 
+                      color={project.priority === 'HIGH' ? 'red' : project.priority === 'MEDIUM' ? 'orange' : 'green'}
+                      style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px' }}
+                    >
                       {project.priority}
                     </Tag>
                   </div>
@@ -256,47 +493,63 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
               </Col>
               
               <Col xs={24} sm={12}>
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Space direction="vertical" size="large" style={{ width: '100%' }}>
                   <div>
-                    <Text strong>Trưởng dự án:</Text>
-                    <br />
+                    <Text strong style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                      Trưởng dự án
+                    </Text>
                     <Space>
-                      <Avatar icon={<UserOutlined />} size="small" />
-                      <Text>{project.leader_id && typeof project.leader_id === 'object' ? 
-                        project.leader_id.full_name || 'N/A' : 
-                        project.leader_id || 'N/A'}</Text>
+                      <Avatar 
+                        icon={<UserOutlined />} 
+                        size="small" 
+                        style={{ backgroundColor: '#3b82f6' }}
+                      />
+                      <Text style={{ fontSize: '16px', fontWeight: 500 }}>
+                        {project.leader_id && typeof project.leader_id === 'object' ? 
+                          project.leader_id.full_name || 'N/A' : 
+                          project.leader_id || 'N/A'}
+                      </Text>
                     </Space>
                   </div>
                   <div>
-                    <Text strong>Địa điểm:</Text>
-                    <br />
+                    <Text strong style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                      Địa điểm
+                    </Text>
                     <Space>
-                      <EnvironmentOutlined />
-                      <Text>{project.site_id && typeof project.site_id === 'object' ? 
-                        project.site_id.site_name || 'N/A' : 
-                        project.site_id || 'N/A'}</Text>
+                      <EnvironmentOutlined style={{ color: '#64748b' }} />
+                      <Text style={{ fontSize: '16px', fontWeight: 500 }}>
+                        {project.site_id && typeof project.site_id === 'object' ? 
+                          project.site_id.site_name || 'N/A' : 
+                          project.site_id || 'N/A'}
+                      </Text>
                     </Space>
                   </div>
                   <div>
-                    <Text strong>Ngân sách:</Text>
-                    <br />
+                    <Text strong style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                      Ngân sách
+                    </Text>
                     <Space>
-                      <DollarOutlined />
-                      <Text>{formatCurrency(project.budget)}</Text>
+                      <DollarOutlined style={{ color: '#16a34a' }} />
+                      <Text style={{ fontSize: '16px', fontWeight: 600, color: '#16a34a' }}>
+                        {formatCurrency(project.budget)}
+                      </Text>
                     </Space>
                   </div>
                 </Space>
               </Col>
             </Row>
             
-            <Divider />
+            <Divider style={{ margin: '24px 0' }} />
             
             <div>
-              <Text strong>Thời gian thực hiện:</Text>
-              <br />
+              <Text strong style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                Thời gian thực hiện
+              </Text>
               <Space>
-                <CalendarOutlined />
-                <Text>{formatDate(project.start_date)} - {formatDate(project.end_date)}</Text>
+                <CalendarOutlined style={{ color: '#64748b' }} />
+                <Text style={{ fontSize: '16px', fontWeight: 500 }}>
+                  {formatDate(project.start_date)} - {formatDate(project.end_date)}
+                </Text>
               </Space>
             </div>
             
@@ -304,11 +557,14 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
              !project.description.toLowerCase().includes('ádasdasd') && 
              !project.description.toLowerCase().includes('test') && (
               <>
-                <Divider />
+                <Divider style={{ margin: '24px 0' }} />
                 <div>
-                  <Text strong>Mô tả dự án:</Text>
-                  <br />
-                  <Paragraph>{project.description}</Paragraph>
+                  <Text strong style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                    Mô tả dự án
+                  </Text>
+                  <Paragraph style={{ fontSize: '16px', color: '#374151', lineHeight: '1.6' }}>
+                    {project.description}
+                  </Paragraph>
                 </div>
               </>
             )}
@@ -319,25 +575,58 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
             <Card 
               title={
                 <Space>
-                  <TeamOutlined />
-                  Thành viên dự án ({assignments.length})
+                  <div style={{ 
+                    padding: '8px', 
+                    borderRadius: '8px', 
+                    backgroundColor: '#f0fdf4',
+                    marginRight: '8px'
+                  }}>
+                    <TeamOutlined style={{ fontSize: '16px', color: '#16a34a' }} />
+                  </div>
+                  <span style={{ fontSize: '18px', fontWeight: 600, color: '#1e293b' }}>
+                    Thành viên dự án ({assignments.length})
+                  </span>
                 </Space>
               }
+              style={{ 
+                borderRadius: '12px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                border: 'none'
+              }}
+              bodyStyle={{ padding: '24px' }}
             >
               <Row gutter={[16, 16]}>
                 {assignments?.map((assignment) => (
                   <Col xs={24} sm={12} md={8} key={assignment.id}>
-                    <Card size="small" hoverable>
+                    <Card 
+                      size="small" 
+                      hoverable
+                      style={{ 
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        transition: 'all 0.3s ease'
+                      }}
+                      bodyStyle={{ padding: '16px' }}
+                    >
                       <Space direction="vertical" align="center" style={{ width: '100%' }}>
-                        <Avatar size={48} icon={<UserOutlined />} />
+                        <Avatar 
+                          size={48} 
+                          icon={<UserOutlined />} 
+                          style={{ backgroundColor: '#3b82f6' }}
+                        />
                         <div style={{ textAlign: 'center' }}>
-                          <Text strong>
+                          <Text strong style={{ fontSize: '14px', color: '#1e293b' }}>
                             {typeof assignment.user_id === 'object' ? assignment.user_id?.full_name : assignment.user_id || 'N/A'}
                           </Text>
                           <br />
-                          <Text type="secondary">{assignment.role_in_project || 'Thành viên'}</Text>
+                          <Text type="secondary" style={{ fontSize: '12px' }}>
+                            {assignment.role_in_project || 'Thành viên'}
+                          </Text>
                           <br />
-                          <Tag color={assignment.status === 'active' ? 'green' : 'orange'}>
+                          <Tag 
+                            color={assignment.status === 'active' ? 'green' : 'orange'}
+                            style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '4px' }}
+                          >
                             {assignment.status}
                           </Tag>
                         </div>
@@ -356,47 +645,122 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
           <Card 
             title={
               <Space>
-                <SettingOutlined />
-                Thao tác nhanh
+                <div style={{ 
+                  padding: '8px', 
+                  borderRadius: '8px', 
+                  backgroundColor: '#fef3c7',
+                  marginRight: '8px'
+                }}>
+                  <ThunderboltOutlined style={{ fontSize: '16px', color: '#d97706' }} />
+                </div>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: '#1e293b' }}>
+                  Thao tác nhanh
+                </span>
               </Space>
             }
-            style={{ marginBottom: '16px' }}
+            style={{ 
+              marginBottom: '24px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: 'none'
+            }}
+            bodyStyle={{ padding: '24px' }}
           >
-            <Space direction="vertical" style={{ width: '100%' }}>
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
               <Link to={`/admin/project-management/${projectId}/tasks`} style={{ width: '100%' }}>
-                <Card size="small" hoverable>
+                <Card 
+                  size="small" 
+                  hoverable
+                  style={{ 
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    transition: 'all 0.3s ease'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
                   <Space>
-                    <CheckCircleOutlined style={{ color: '#1890ff' }} />
+                    <div style={{ 
+                      padding: '8px', 
+                      borderRadius: '6px', 
+                      backgroundColor: '#dbeafe',
+                      marginRight: '12px'
+                    }}>
+                      <CheckCircleOutlined style={{ fontSize: '16px', color: '#2563eb' }} />
+                    </div>
                     <div>
-                      <Text strong>Quản lý Nhiệm vụ</Text>
+                      <Text strong style={{ fontSize: '14px', color: '#1e293b' }}>
+                        Quản lý Nhiệm vụ
+                      </Text>
                       <br />
-                      <Text type="secondary" style={{ fontSize: '12px' }}>Task Assignment & Tracking</Text>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        Task Assignment & Tracking
+                      </Text>
                     </div>
                   </Space>
                 </Card>
               </Link>
               
               <Link to={`/admin/project-management/${projectId}/milestones`} style={{ width: '100%' }}>
-                <Card size="small" hoverable>
+                <Card 
+                  size="small" 
+                  hoverable
+                  style={{ 
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    transition: 'all 0.3s ease'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
                   <Space>
-                    <TrophyOutlined style={{ color: '#52c41a' }} />
+                    <div style={{ 
+                      padding: '8px', 
+                      borderRadius: '6px', 
+                      backgroundColor: '#dcfce7',
+                      marginRight: '12px'
+                    }}>
+                      <TrophyOutlined style={{ fontSize: '16px', color: '#16a34a' }} />
+                    </div>
                     <div>
-                      <Text strong>Quản lý Milestone</Text>
+                      <Text strong style={{ fontSize: '14px', color: '#1e293b' }}>
+                        Quản lý Milestone
+                      </Text>
                       <br />
-                      <Text type="secondary" style={{ fontSize: '12px' }}>Milestone Tracking</Text>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        Milestone Tracking
+                      </Text>
                     </div>
                   </Space>
                 </Card>
               </Link>
               
               <Link to={`/admin/project-management/${projectId}/resources`} style={{ width: '100%' }}>
-                <Card size="small" hoverable>
+                <Card 
+                  size="small" 
+                  hoverable
+                  style={{ 
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    transition: 'all 0.3s ease'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
                   <Space>
-                    <TeamOutlined style={{ color: '#722ed1' }} />
+                    <div style={{ 
+                      padding: '8px', 
+                      borderRadius: '6px', 
+                      backgroundColor: '#f3e8ff',
+                      marginRight: '12px'
+                    }}>
+                      <TeamOutlined style={{ fontSize: '16px', color: '#9333ea' }} />
+                    </div>
                     <div>
-                      <Text strong>Quản lý Tài nguyên</Text>
+                      <Text strong style={{ fontSize: '14px', color: '#1e293b' }}>
+                        Quản lý Tài nguyên
+                      </Text>
                       <br />
-                      <Text type="secondary" style={{ fontSize: '12px' }}>Resource Planning</Text>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        Resource Planning
+                      </Text>
                     </div>
                   </Space>
                 </Card>
@@ -408,23 +772,63 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
           <Card 
             title={
               <Space>
-                <AlertOutlined style={{ color: '#f5222d' }} />
-                Đánh giá Rủi ro
+                <div style={{ 
+                  padding: '8px', 
+                  borderRadius: '8px', 
+                  backgroundColor: '#fef2f2',
+                  marginRight: '8px'
+                }}>
+                  <SafetyOutlined style={{ fontSize: '16px', color: '#dc2626' }} />
+                </div>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: '#1e293b' }}>
+                  Đánh giá Rủi ro
+                </span>
               </Space>
             }
-            style={{ marginBottom: '16px' }}
-            styles={{ header: { backgroundColor: '#fff2f0', borderBottom: '1px solid #ffccc7' } }}
+            style={{ 
+              marginBottom: '24px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: 'none'
+            }}
+            styles={{ header: { backgroundColor: '#fef2f2', borderBottom: '1px solid #fecaca' } }}
+            bodyStyle={{ padding: '24px' }}
           >
             <Link to={`/admin/project-management/${projectId}/risks`} style={{ width: '100%' }}>
-              <Card size="small" hoverable style={{ border: '1px solid #ffccc7' }}>
+              <Card 
+                size="small" 
+                hoverable 
+                style={{ 
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  transition: 'all 0.3s ease'
+                }}
+                bodyStyle={{ padding: '16px' }}
+              >
                 <Space>
-                  <AlertOutlined style={{ color: '#f5222d', fontSize: '20px' }} />
+                  <div style={{ 
+                    padding: '8px', 
+                    borderRadius: '6px', 
+                    backgroundColor: '#fef2f2',
+                    marginRight: '12px'
+                  }}>
+                    <AlertOutlined style={{ color: '#dc2626', fontSize: '16px' }} />
+                  </div>
                   <div>
-                    <Text strong style={{ color: '#f5222d' }}>Quản lý Rủi ro</Text>
+                    <Text strong style={{ color: '#dc2626', fontSize: '14px' }}>
+                      Quản lý Rủi ro
+                    </Text>
                     <br />
-                    <Text type="secondary" style={{ fontSize: '12px' }}>Risk Assessment & Management</Text>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      Risk Assessment & Management
+                    </Text>
                     <br />
-                    <Badge count={risks?.length || 0} showZero color="#f5222d" style={{ marginTop: '4px' }} />
+                    <Badge 
+                      count={risks?.length || 0} 
+                      showZero 
+                      color="#dc2626" 
+                      style={{ marginTop: '4px' }} 
+                    />
                   </div>
                 </Space>
               </Card>
@@ -435,28 +839,71 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
           <Card 
             title={
               <Space>
-                <BarChartOutlined />
-                Thống kê bổ sung
+                <div style={{ 
+                  padding: '8px', 
+                  borderRadius: '8px', 
+                  backgroundColor: '#f0f9ff',
+                  marginRight: '8px'
+                }}>
+                  <BarChartOutlined style={{ fontSize: '16px', color: '#0284c7' }} />
+                </div>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: '#1e293b' }}>
+                  Thống kê bổ sung
+                </span>
               </Space>
             }
-            style={{ marginBottom: '16px' }}
+            style={{ 
+              marginBottom: '24px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: 'none'
+            }}
+            bodyStyle={{ padding: '24px' }}
           >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text>Tài nguyên:</Text>
-                <Badge count={resources?.length || 0} showZero color="#1890ff" />
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '12px',
+                backgroundColor: '#f8fafc',
+                borderRadius: '8px'
+              }}>
+                <Text style={{ fontSize: '14px', fontWeight: 500 }}>Tài nguyên:</Text>
+                <Badge count={resources?.length || 0} showZero color="#2563eb" />
               </div>  
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text>Milestone:</Text>
-                <Badge count={milestones?.length || 0} showZero color="#52c41a" />
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '12px',
+                backgroundColor: '#f8fafc',
+                borderRadius: '8px'
+              }}>
+                <Text style={{ fontSize: '14px', fontWeight: 500 }}>Milestone:</Text>
+                <Badge count={milestones?.length || 0} showZero color="#16a34a" />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text>Rủi ro:</Text>
-                <Badge count={risks?.length || 0} showZero color="#f5222d" />
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '12px',
+                backgroundColor: '#f8fafc',
+                borderRadius: '8px'
+              }}>
+                <Text style={{ fontSize: '14px', fontWeight: 500 }}>Rủi ro:</Text>
+                <Badge count={risks?.length || 0} showZero color="#dc2626" />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text>Nhiệm vụ:</Text>
-                <Badge count={tasks?.length || 0} showZero color="#722ed1" />
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '12px',
+                backgroundColor: '#f8fafc',
+                borderRadius: '8px'
+              }}>
+                <Text style={{ fontSize: '14px', fontWeight: 500 }}>Nhiệm vụ:</Text>
+                <Badge count={tasks?.length || 0} showZero color="#9333ea" />
               </div>
             </Space>
           </Card>
@@ -465,18 +912,51 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
           <Card 
             title={
               <Space>
-                <ClockCircleOutlined />
-                Hoạt động gần đây
+                <div style={{ 
+                  padding: '8px', 
+                  borderRadius: '8px', 
+                  backgroundColor: '#f0fdf4',
+                  marginRight: '8px'
+                }}>
+                  <ClockCircleOutlined style={{ fontSize: '16px', color: '#16a34a' }} />
+                </div>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: '#1e293b' }}>
+                  Hoạt động gần đây
+                </span>
               </Space>
             }
+            style={{ 
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: 'none'
+            }}
+            bodyStyle={{ padding: '24px' }}
           >
             <Timeline
               items={[
                 {
+                  dot: (
+                    <div style={{ 
+                      width: '24px', 
+                      height: '24px', 
+                      borderRadius: '50%', 
+                      backgroundColor: '#16a34a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '12px',
+                      fontWeight: 600
+                    }}>
+                      ✓
+                    </div>
+                  ),
                   color: "green",
                   children: (
-                    <div>
-                      <Text strong>Dự án được tạo</Text>
+                    <div style={{ paddingLeft: '16px' }}>
+                      <Text strong style={{ fontSize: '14px', color: '#1e293b' }}>
+                        Dự án được tạo
+                      </Text>
                       <br />
                       <Text type="secondary" style={{ fontSize: '12px' }}>
                         {formatDate(project.created_at)}
@@ -485,10 +965,28 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
                   )
                 },
                 {
+                  dot: (
+                    <div style={{ 
+                      width: '24px', 
+                      height: '24px', 
+                      borderRadius: '50%', 
+                      backgroundColor: '#2563eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '12px',
+                      fontWeight: 600
+                    }}>
+                      ↑
+                    </div>
+                  ),
                   color: "blue",
                   children: (
-                    <div>
-                      <Text strong>Cập nhật tiến độ</Text>
+                    <div style={{ paddingLeft: '16px' }}>
+                      <Text strong style={{ fontSize: '14px', color: '#1e293b' }}>
+                        Cập nhật tiến độ
+                      </Text>
                       <br />
                       <Text type="secondary" style={{ fontSize: '12px' }}>
                         Tiến độ: {project.progress}% - {formatDate(project.updated_at)}
@@ -501,6 +999,18 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
           </Card>
         </Col>
       </Row>
+
+      {/* Edit Project Overview Modal */}
+      <EditProjectOverviewModal
+        isOpen={isEditOverviewModalOpen}
+        onClose={() => setIsEditOverviewModalOpen(false)}
+        onSuccess={() => {
+          // Refresh project data after successful edit
+          dispatch(fetchProjectById(projectId));
+        }}
+        projectId={projectId}
+        project={selectedProject}
+      />
     </div>
   );
 };

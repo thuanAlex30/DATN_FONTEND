@@ -1,22 +1,63 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { 
+  Card, 
+  Button, 
+  Typography, 
+  Space, 
+  Tag, 
+  Spin, 
+  Alert, 
+  Row, 
+  Col,
+  Empty,
+  Tooltip,
+  Modal,
+  message
+} from 'antd';
+import { 
+  PlusOutlined, 
+  EditOutlined, 
+  DeleteOutlined, 
+  ExclamationCircleOutlined,
+  WarningOutlined,
+  UserOutlined,
+  CalculatorOutlined,
+  ThunderboltOutlined,
+  ReloadOutlined
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectRisks, createRisk, updateRisk, deleteRisk } from '../../../../store/slices/projectRiskSlice';
 import type { ProjectRisk, CreateRiskData, UpdateRiskData } from '../../../../types/projectRisk';
+import RiskFormModal from './RiskFormModal';
 
 interface ProjectRisksProps {
   projectId: string;
 }
 
+const { Title, Text, Paragraph } = Typography;
+
 const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { risks, loading, error } = useSelector((state: RootState) => state.projectRisk);
+  
+  // Modal states
+  const [showRiskModal, setShowRiskModal] = useState(false);
+  const [editingRisk, setEditingRisk] = useState<ProjectRisk | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
 
   useEffect(() => {
     if (projectId) {
+      console.log('Fetching risks for project:', projectId);
       dispatch(fetchProjectRisks(projectId));
     }
   }, [dispatch, projectId]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Risks state updated:', { risks, loading, error });
+  }, [risks, loading, error]);
 
   const handleCreateRisk = (data: CreateRiskData) => {
     dispatch(createRisk({ ...data, project_id: projectId }));
@@ -27,36 +68,61 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
   };
 
   const handleDeleteRisk = (id: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa rủi ro này?')) {
-      dispatch(deleteRisk(id));
-    }
+    Modal.confirm({
+      title: 'Xác nhận xóa rủi ro',
+      content: 'Bạn có chắc chắn muốn xóa rủi ro này? Hành động này không thể hoàn tác.',
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk() {
+        dispatch(deleteRisk(id));
+        message.success('Rủi ro đã được xóa thành công');
+      },
+    });
   };
 
-  const getRiskLevelClass = (level: string) => {
+  const handleOpenCreateModal = () => {
+    setModalMode('create');
+    setEditingRisk(null);
+    setShowRiskModal(true);
+  };
+
+  const handleEditRisk = (risk: ProjectRisk) => {
+    setModalMode('edit');
+    setEditingRisk(risk);
+    setShowRiskModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowRiskModal(false);
+    setEditingRisk(null);
+  };
+
+  const getRiskLevelInfo = (level: string) => {
     switch (level) {
       case 'high':
-        return 'risk-high';
+        return { color: 'error', label: 'Cao' };
       case 'medium':
-        return 'risk-medium';
+        return { color: 'warning', label: 'Trung bình' };
       case 'low':
-        return 'risk-low';
+        return { color: 'success', label: 'Thấp' };
       default:
-        return 'risk-default';
+        return { color: 'default', label: level };
     }
   };
 
-  const getStatusBadgeClass = (status: string) => {
+  const getStatusInfo = (status: string) => {
     switch (status) {
       case 'identified':
-        return 'status-identified';
+        return { color: 'blue', label: 'Đã xác định' };
       case 'monitoring':
-        return 'status-monitoring';
+        return { color: 'orange', label: 'Đang theo dõi' };
       case 'mitigated':
-        return 'status-mitigated';
+        return { color: 'green', label: 'Đã giảm thiểu' };
       case 'resolved':
-        return 'status-resolved';
+        return { color: 'default', label: 'Đã giải quyết' };
       default:
-        return 'status-default';
+        return { color: 'default', label: status };
     }
   };
 
@@ -66,136 +132,277 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
 
   if (loading) {
     return (
-      <div className="project-risks-loading">
-        <div className="loading-spinner">
-          <i className="fas fa-spinner fa-spin"></i>
-          <p>Đang tải danh sách rủi ro...</p>
-        </div>
-      </div>
+      <motion.div 
+        style={{ 
+          padding: '50px', 
+          textAlign: 'center',
+          minHeight: '300px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <Spin size="large" />
+        <Title level={3} style={{ marginTop: '20px' }}>
+          Đang tải danh sách rủi ro...
+        </Title>
+        <Text type="secondary">Vui lòng chờ trong giây lát</Text>
+      </motion.div>
     );
   }
 
   if (error) {
     return (
-      <div className="project-risks-error">
-        <div className="error-message">
-          <i className="fas fa-exclamation-triangle"></i>
-          <h3>Lỗi tải rủi ro</h3>
-          <p>{error}</p>
-        </div>
-      </div>
+      <motion.div 
+        style={{ padding: '20px' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <Alert
+          message="Lỗi tải rủi ro"
+          description={error}
+          type="error"
+          showIcon
+          action={
+            <Button 
+              size="small" 
+              danger 
+              icon={<ReloadOutlined />}
+              onClick={() => dispatch(fetchProjectRisks(projectId))}
+            >
+              Thử lại
+            </Button>
+          }
+        />
+      </motion.div>
     );
   }
 
   return (
-    <div className="project-risks">
-      <div className="risks-header">
-        <h2>Rủi ro Dự án</h2>
-        <button 
-          className="btn btn-primary"
-          onClick={() => {}}
-          disabled
-          title="Sắp ra mắt"
-        >
-          <i className="fas fa-plus"></i>
-          Thêm rủi ro
-        </button>
-      </div>
-
-      {risks.length === 0 ? (
-        <div className="risks-empty">
-          <div className="empty-state">
-            <i className="fas fa-exclamation-triangle"></i>
-            <h3>Chưa có rủi ro nào</h3>
-            <p>Dự án này chưa có rủi ro nào được xác định.</p>
-            <button 
-              className="btn btn-primary"
-              onClick={() => {}}
-              disabled
-              title="Sắp ra mắt"
+    <motion.div 
+      style={{ padding: '24px' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6 }}
+    >
+      {/* Header Section */}
+      <Card style={{ marginBottom: '24px' }}>
+        <Row justify="space-between" align="middle">
+          <Col>
+            <Space direction="vertical" size={0}>
+              <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <WarningOutlined style={{ color: '#faad14' }} />
+                Rủi ro Dự án
+              </Title>
+              <Text type="secondary">
+                Quản lý và theo dõi các rủi ro tiềm ẩn của dự án
+              </Text>
+            </Space>
+          </Col>
+          <Col>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={handleOpenCreateModal}
             >
-              Xác định rủi ro đầu tiên
-            </button>
-          </div>
-        </div>
+              Thêm rủi ro
+            </Button>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Content Section */}
+      {!risks || risks.length === 0 ? (
+        <Card>
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              <Space direction="vertical" size="middle">
+                <Title level={4} style={{ color: '#8c8c8c' }}>
+                  Chưa có rủi ro nào
+                </Title>
+                <Text type="secondary">
+                  Dự án này chưa có rủi ro nào được xác định. Hãy xác định rủi ro đầu tiên để bắt đầu quản lý.
+                </Text>
+                <Button 
+                  type="primary" 
+                  icon={<PlusOutlined />}
+                  onClick={handleOpenCreateModal}
+                >
+                  Xác định rủi ro đầu tiên
+                </Button>
+              </Space>
+            }
+          />
+        </Card>
       ) : (
-        <div className="risks-list">
-          {risks.map((risk) => (
-            <div key={risk.id} className="risk-card">
-              <div className="risk-header">
-                <div className="risk-title">
-                  <h3>{risk.risk_name}</h3>
-                  <div className="risk-badges">
-                    <span className={`risk-level ${getRiskLevelClass(risk.probability)}`}>
-                      {risk.probability}
-                    </span>
-                    <span className={`status-badge ${getStatusBadgeClass(risk.status)}`}>
-                      {risk.status}
-                    </span>
-                  </div>
-                </div>
-                <div className="risk-actions">
-                  <button
-                    className="btn btn-sm btn-outline"
-                    onClick={() => {}}
-                    disabled
-                    title="Sắp ra mắt"
+        <Row gutter={[16, 16]}>
+          {risks.map((risk) => {
+            const riskLevelInfo = getRiskLevelInfo(typeof risk.probability === 'object' ? 'medium' : risk.probability.toString());
+            const statusInfo = getStatusInfo(risk.status);
+            
+            return (
+              <Col key={risk.id} xs={24} sm={24} md={12} lg={8} xl={6}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Card
+                    hoverable
+                    actions={[
+                      <Tooltip key="edit" title="Chỉnh sửa">
+                        <Button 
+                          type="text" 
+                          icon={<EditOutlined />}
+                          onClick={() => handleEditRisk(risk)}
+                        />
+                      </Tooltip>,
+                      <Tooltip key="delete" title="Xóa">
+                        <Button 
+                          type="text" 
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => handleDeleteRisk(risk.id)}
+                        />
+                      </Tooltip>
+                    ]}
+                    extra={
+                      <Space>
+                        <Tag color={riskLevelInfo.color}>
+                          {riskLevelInfo.label}
+                        </Tag>
+                        <Tag color={statusInfo.color}>
+                          {statusInfo.label}
+                        </Tag>
+                      </Space>
+                    }
                   >
-                    <i className="fas fa-edit"></i>
-                  </button>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() => handleDeleteRisk(risk.id)}
-                    title="Xóa"
-                  >
-                    <i className="fas fa-trash"></i>
-                  </button>
-                </div>
-              </div>
-              
-              <div className="risk-content">
-                <p className="risk-description">
-                  {risk.risk_description || 'Không có mô tả'}
-                </p>
-                
-                <div className="risk-details">
-                  <div className="detail-item">
-                    <i className="fas fa-exclamation-circle"></i>
-                    <span>Xác suất: {risk.probability}</span>
-                  </div>
-                  <div className="detail-item">
-                    <i className="fas fa-bomb"></i>
-                    <span>Tác động: {risk.impact_score}</span>
-                  </div>
-                  <div className="detail-item">
-                    <i className="fas fa-calculator"></i>
-                    <span>Điểm rủi ro: {risk.risk_score}</span>
-                  </div>
-                  <div className="detail-item">
-                    <i className="fas fa-user"></i>
-                    <span>Người phụ trách: {risk.owner_id || 'N/A'}</span>
-                  </div>
-                </div>
-                
-                {risk.mitigation_plan && (
-                  <div className="risk-mitigation">
-                    <strong>Kế hoạch giảm thiểu:</strong>
-                    <p>{risk.mitigation_plan}</p>
-                  </div>
-                )}
-                
-                {risk.contingency_plan && (
-                  <div className="risk-contingency">
-                    <strong>Kế hoạch dự phòng:</strong>
-                    <p>{risk.contingency_plan}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+                    <Card.Meta
+                      avatar={
+                        <div style={{ 
+                          width: '40px', 
+                          height: '40px', 
+                          borderRadius: '50%', 
+                          background: riskLevelInfo.color === 'error' ? '#ff4d4f' : 
+                                     riskLevelInfo.color === 'warning' ? '#faad14' : '#52c41a',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <ExclamationCircleOutlined style={{ color: 'white', fontSize: '20px' }} />
+                        </div>
+                      }
+                      title={
+                        <Text strong style={{ fontSize: '16px' }}>
+                          {risk.risk_name}
+                        </Text>
+                      }
+                      description={
+                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                          <Paragraph 
+                            ellipsis={{ rows: 2 }} 
+                            style={{ margin: 0, color: '#8c8c8c' }}
+                          >
+                            {risk.description || 'Không có mô tả'}
+                          </Paragraph>
+                          
+                          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                            <Space>
+                              <ExclamationCircleOutlined style={{ color: '#1890ff' }} />
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Xác suất: {typeof risk.probability === 'object' ? 'Trung bình' : risk.probability}
+                              </Text>
+                            </Space>
+                            
+                            <Space>
+                              <ThunderboltOutlined style={{ color: '#faad14' }} />
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Tác động: {typeof risk.impact_score === 'object' ? 'Trung bình' : risk.impact_score}
+                              </Text>
+                            </Space>
+                            
+                            <Space>
+                              <CalculatorOutlined style={{ color: '#52c41a' }} />
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Điểm rủi ro: {typeof risk.risk_score === 'object' ? 'Trung bình' : risk.risk_score}
+                              </Text>
+                            </Space>
+                            
+                            <Space>
+                              <UserOutlined style={{ color: '#1890ff' }} />
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Người phụ trách: {typeof risk.owner_id === 'object' && risk.owner_id ? risk.owner_id.full_name : (risk.owner_id || 'N/A')}
+                              </Text>
+                            </Space>
+                          </Space>
+                          
+                          {risk.mitigation_plan && (
+                            <Card 
+                              size="small" 
+                              style={{ 
+                                marginTop: '8px',
+                                background: '#f6ffed',
+                                border: '1px solid #b7eb8f'
+                              }}
+                            >
+                              <Text strong style={{ fontSize: '12px', color: '#52c41a' }}>
+                                Kế hoạch giảm thiểu:
+                              </Text>
+                              <Paragraph 
+                                style={{ margin: '4px 0 0 0', fontSize: '12px' }}
+                                ellipsis={{ rows: 2 }}
+                              >
+                                {risk.mitigation_plan}
+                              </Paragraph>
+                            </Card>
+                          )}
+                          
+                          {risk.contingency_plan && (
+                            <Card 
+                              size="small" 
+                              style={{ 
+                                marginTop: '8px',
+                                background: '#fff7e6',
+                                border: '1px solid #ffd591'
+                              }}
+                            >
+                              <Text strong style={{ fontSize: '12px', color: '#fa8c16' }}>
+                                Kế hoạch dự phòng:
+                              </Text>
+                              <Paragraph 
+                                style={{ margin: '4px 0 0 0', fontSize: '12px' }}
+                                ellipsis={{ rows: 2 }}
+                              >
+                                {risk.contingency_plan}
+                              </Paragraph>
+                            </Card>
+                          )}
+                        </Space>
+                      }
+                    />
+                  </Card>
+                </motion.div>
+              </Col>
+            );
+          })}
+        </Row>
       )}
-    </div>
+
+      {/* Risk Form Modal */}
+      <RiskFormModal
+        visible={showRiskModal}
+        onClose={handleModalClose}
+        projectId={projectId}
+        editingRisk={editingRisk}
+        mode={modalMode}
+      />
+    </motion.div>
   );
 };
 

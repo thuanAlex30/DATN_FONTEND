@@ -1,175 +1,200 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import { 
+  Card, 
+  Button, 
+  Typography, 
+  Space, 
+  Tag, 
+  Spin, 
+  Alert, 
+  Row, 
+  Col,
+  Empty,
+  Tooltip,
+  Modal,
+  message,
+  Input,
+  Select,
+  Form,
+  DatePicker,
+  InputNumber
+} from 'antd';
+import { 
+  PlusOutlined, 
+  EditOutlined, 
+  DeleteOutlined, 
+  ToolOutlined,
+  ReloadOutlined,
+  UserOutlined,
+  CalendarOutlined,
+  FlagOutlined
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
 import type { RootState } from '../../../../store';
 import projectResourceService, { type ProjectResource, type CreateProjectResourceData } from '../../../../services/projectResourceService';
 import projectPhaseService, { type ProjectPhase } from '../../../../services/projectPhaseService';
-import styles from './ResourceAllocationManagement.module.css';
 
 interface ResourceAllocationManagementProps {
   projectId: string;
   onComplete: () => void;
 }
 
+const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
+
 const ResourceAllocationManagement: React.FC<ResourceAllocationManagementProps> = ({ projectId, onComplete }) => {
-  const { user } = useSelector((state: RootState) => state.auth);
   const [resources, setResources] = useState<ProjectResource[]>([]);
   const [phases, setPhases] = useState<ProjectPhase[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreateResource, setShowCreateResource] = useState(false);
   const [editingResource, setEditingResource] = useState<ProjectResource | null>(null);
-  const [filterPhase, setFilterPhase] = useState<string>('');
-  const [filterType, setFilterType] = useState<string>('');
-
-  // Form states
-  const [resourceForm, setResourceForm] = useState<CreateProjectResourceData>({
-    project_id: projectId,
-    resource_type: 'MATERIAL',
-    resource_name: '',
-    description: '',
-    planned_quantity: 0,
-    unit_cost: 0,
-    unit_measure: '',
-    required_date: '',
-    location: '',
-    notes: ''
-  });
+  const [form] = Form.useForm();
 
   useEffect(() => {
     loadData();
   }, [projectId]);
 
   const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const [resourcesData, phasesData] = await Promise.all([
         projectResourceService.getProjectResources(projectId),
         projectPhaseService.getProjectPhases(projectId)
       ]);
+
       setResources(resourcesData);
       setPhases(phasesData);
     } catch (err) {
-      console.error('Error loading data:', err);
-      setError('Không thể tải dữ liệu');
+      setError('Không thể tải dữ liệu phân bổ tài nguyên');
+      console.error('Error loading resource allocation data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateResource = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateResource = async (values: CreateProjectResourceData) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      await projectResourceService.createResource(resourceForm);
+      await projectResourceService.createProjectResource({ ...values, project_id: projectId });
+      message.success('Tài nguyên đã được phân bổ thành công');
       await loadData();
       setShowCreateResource(false);
-      resetForm();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể tạo tài nguyên');
+      form.resetFields();
+    } catch (err) {
+      message.error('Không thể phân bổ tài nguyên');
+      console.error('Error creating resource allocation:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateResource = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateResource = async (values: Partial<ProjectResource>) => {
     if (!editingResource) return;
-
+    
+    setLoading(true);
     try {
-      setLoading(true);
-      await projectResourceService.updateResource(editingResource._id, resourceForm);
+      await projectResourceService.updateProjectResource(editingResource._id, values);
+      message.success('Tài nguyên đã được cập nhật thành công');
       await loadData();
+      setShowCreateResource(false);
       setEditingResource(null);
-      resetForm();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể cập nhật tài nguyên');
+      form.resetFields();
+    } catch (err) {
+      message.error('Không thể cập nhật tài nguyên');
+      console.error('Error updating resource allocation:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteResource = async (resourceId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa tài nguyên này?')) return;
-
-    try {
-      setLoading(true);
-      await projectResourceService.deleteResource(resourceId);
-      await loadData();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể xóa tài nguyên');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setResourceForm({
-      project_id: projectId,
-      resource_type: 'MATERIAL',
-      resource_name: '',
-      description: '',
-      planned_quantity: 0,
-      unit_cost: 0,
-      unit_measure: '',
-      required_date: '',
-      location: '',
-      notes: ''
+  const handleDeleteResource = async (id: string) => {
+    Modal.confirm({
+      title: 'Xác nhận xóa tài nguyên',
+      content: 'Bạn có chắc chắn muốn xóa tài nguyên này? Hành động này không thể hoàn tác.',
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          await projectResourceService.deleteProjectResource(id);
+          message.success('Tài nguyên đã được xóa thành công');
+          await loadData();
+        } catch (err) {
+          message.error('Không thể xóa tài nguyên');
+          console.error('Error deleting resource allocation:', err);
+        }
+      },
     });
   };
 
   const handleEditResource = (resource: ProjectResource) => {
     setEditingResource(resource);
-    setResourceForm({
-      project_id: resource.project_id,
-      resource_type: resource.resource_type,
+    form.setFieldsValue({
       resource_name: resource.resource_name,
-      description: resource.description || '',
-      planned_quantity: resource.planned_quantity,
+      resource_type: resource.resource_type,
+      quantity: resource.quantity,
       unit_cost: resource.unit_cost,
-      unit_measure: resource.unit_measure,
-      supplier_id: resource.supplier_id,
-      supplier_name: resource.supplier_name || '',
-      required_date: resource.required_date.split('T')[0],
-      location: resource.location || '',
-      notes: resource.notes || ''
+      total_cost: resource.total_cost,
+      phase_id: resource.phase_id,
+      start_date: resource.start_date ? new Date(resource.start_date) : null,
+      end_date: resource.end_date ? new Date(resource.end_date) : null,
+      description: resource.description,
+      status: resource.status
     });
     setShowCreateResource(true);
   };
 
-  const getResourceTypeLabel = (type: string) => {
-    const labels: { [key: string]: string } = {
-      'MATERIAL': 'Vật liệu',
-      'EQUIPMENT': 'Thiết bị',
-      'TOOL': 'Công cụ',
-      'VEHICLE': 'Phương tiện',
-      'PERSONNEL': 'Nhân lực',
-      'SUBCONTRACTOR': 'Nhà thầu phụ'
-    };
-    return labels[type] || type;
+  const handleModalClose = () => {
+    setShowCreateResource(false);
+    setEditingResource(null);
+    form.resetFields();
   };
 
-  const getStatusLabel = (status: string) => {
-    const labels: { [key: string]: string } = {
-      'PLANNED': 'Đã lên kế hoạch',
-      'ORDERED': 'Đã đặt hàng',
-      'DELIVERED': 'Đã giao',
-      'IN_USE': 'Đang sử dụng',
-      'CONSUMED': 'Đã sử dụng hết',
-      'RETURNED': 'Đã trả'
-    };
-    return labels[status] || status;
+  const getResourceTypeColor = (type: string) => {
+    switch (type) {
+      case 'HUMAN': return 'blue';
+      case 'EQUIPMENT': return 'green';
+      case 'MATERIAL': return 'orange';
+      case 'FINANCIAL': return 'purple';
+      default: return 'default';
+    }
+  };
+
+  const getResourceTypeLabel = (type: string) => {
+    switch (type) {
+      case 'HUMAN': return 'Nhân lực';
+      case 'EQUIPMENT': return 'Thiết bị';
+      case 'MATERIAL': return 'Vật liệu';
+      case 'FINANCIAL': return 'Tài chính';
+      default: return type;
+    }
   };
 
   const getStatusColor = (status: string) => {
-    const colors: { [key: string]: string } = {
-      'PLANNED': '#3498db',
-      'ORDERED': '#f39c12',
-      'DELIVERED': '#27ae60',
-      'IN_USE': '#2ecc71',
-      'CONSUMED': '#95a5a6',
-      'RETURNED': '#9b59b6'
-    };
-    return colors[status] || '#95a5a6';
+    switch (status) {
+      case 'ALLOCATED': return 'green';
+      case 'IN_USE': return 'blue';
+      case 'AVAILABLE': return 'orange';
+      case 'DEPLETED': return 'red';
+      default: return 'default';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'ALLOCATED': return 'Đã phân bổ';
+      case 'IN_USE': return 'Đang sử dụng';
+      case 'AVAILABLE': return 'Có sẵn';
+      case 'DEPLETED': return 'Đã hết';
+      default: return status;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('vi-VN');
   };
 
   const formatCurrency = (amount: number) => {
@@ -179,397 +204,360 @@ const ResourceAllocationManagement: React.FC<ResourceAllocationManagementProps> 
     }).format(amount);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN');
-  };
-
-  const filteredResources = resources.filter(resource => {
-    const matchesPhase = !filterPhase || resource.project_id === filterPhase;
-    const matchesType = !filterType || resource.resource_type === filterType;
-    return matchesPhase && matchesType;
-  });
-
-  const totalBudget = resources.reduce((sum, resource) => sum + (resource.planned_quantity * resource.unit_cost), 0);
-  const totalActualCost = resources.reduce((sum, resource) => sum + (resource.actual_quantity * resource.unit_cost), 0);
-
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h2>Phân bổ Tài nguyên</h2>
-        <p>Quản lý và phân bổ tài nguyên cho dự án</p>
-      </div>
+    <motion.div 
+      style={{ padding: '24px' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6 }}
+    >
+      {/* Header Section */}
+      <Card style={{ marginBottom: '24px' }}>
+        <Row justify="space-between" align="middle">
+          <Col>
+            <Space direction="vertical" size={0}>
+              <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <ToolOutlined style={{ color: '#1890ff' }} />
+                Phân bổ Tài nguyên
+              </Title>
+              <Text type="secondary">
+                Quản lý và phân bổ các tài nguyên cho dự án
+              </Text>
+            </Space>
+          </Col>
+          <Col>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={() => setShowCreateResource(true)}
+            >
+              Phân bổ tài nguyên
+            </Button>
+          </Col>
+        </Row>
+      </Card>
 
+      {/* Error Alert */}
       {error && (
-        <div className={styles.alert}>
-          <i className="fas fa-exclamation-triangle"></i>
-          {error}
-          <button onClick={() => setError(null)} className={styles.alertClose}>
-            <i className="fas fa-times"></i>
-          </button>
-        </div>
+        <Alert
+          message="Lỗi"
+          description={error}
+          type="error"
+          showIcon
+          closable
+          onClose={() => setError(null)}
+          action={
+            <Button 
+              size="small" 
+              danger 
+              icon={<ReloadOutlined />}
+              onClick={loadData}
+            >
+              Thử lại
+            </Button>
+          }
+          style={{ marginBottom: '24px' }}
+        />
       )}
 
-      <div className={styles.content}>
-        {/* Budget Summary */}
-        <div className={styles.section}>
-          <h3>Tổng quan Ngân sách</h3>
-          <div className={styles.budgetGrid}>
-            <div className={styles.budgetCard}>
-              <div className={styles.budgetIcon}>
-                <i className="fas fa-wallet"></i>
-              </div>
-              <div className={styles.budgetContent}>
-                <h4>Ngân sách dự kiến</h4>
-                <p className={styles.budgetAmount}>{formatCurrency(totalBudget)}</p>
-              </div>
-            </div>
-            <div className={styles.budgetCard}>
-              <div className={styles.budgetIcon}>
-                <i className="fas fa-receipt"></i>
-              </div>
-              <div className={styles.budgetContent}>
-                <h4>Chi phí thực tế</h4>
-                <p className={styles.budgetAmount}>{formatCurrency(totalActualCost)}</p>
-              </div>
-            </div>
-            <div className={styles.budgetCard}>
-              <div className={styles.budgetIcon}>
-                <i className="fas fa-chart-line"></i>
-              </div>
-              <div className={styles.budgetContent}>
-                <h4>Chênh lệch</h4>
-                <p className={`${styles.budgetAmount} ${totalActualCost > totalBudget ? styles.overBudget : styles.underBudget}`}>
-                  {formatCurrency(totalActualCost - totalBudget)}
-                </p>
-              </div>
+      {/* Resources List */}
+      <Card>
+        <Title level={3} style={{ marginBottom: '16px' }}>Danh sách Tài nguyên</Title>
+        
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '50px' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: '16px' }}>
+              <Text>Đang tải danh sách tài nguyên...</Text>
             </div>
           </div>
-        </div>
-
-        {/* Filters */}
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h3>Tài nguyên Dự án</h3>
-            <button
-              onClick={() => {
-                setShowCreateResource(true);
-                setEditingResource(null);
-                resetForm();
-              }}
-              className={styles.btnPrimary}
-            >
-              <i className="fas fa-plus"></i>
-              Thêm tài nguyên
-            </button>
-          </div>
-
-          <div className={styles.filters}>
-            <div className={styles.filterGroup}>
-              <label>Lọc theo loại:</label>
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className={styles.select}
-              >
-                <option value="">Tất cả loại</option>
-                <option value="MATERIAL">Vật liệu</option>
-                <option value="EQUIPMENT">Thiết bị</option>
-                <option value="TOOL">Công cụ</option>
-                <option value="VEHICLE">Phương tiện</option>
-                <option value="PERSONNEL">Nhân lực</option>
-                <option value="SUBCONTRACTOR">Nhà thầu phụ</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Resources List */}
-        <div className={styles.section}>
-          {loading ? (
-            <div className={styles.loading}>
-              <i className="fas fa-spinner fa-spin"></i>
-              Đang tải...
-            </div>
-          ) : (
-            <div className={styles.resourcesGrid}>
-              {filteredResources.map(resource => (
-                <div key={resource._id} className={styles.resourceCard}>
-                  <div className={styles.resourceHeader}>
-                    <div className={styles.resourceType}>
-                      <i className={`fas fa-${getResourceTypeIcon(resource.resource_type)}`}></i>
-                      <span>{getResourceTypeLabel(resource.resource_type)}</span>
-                    </div>
-                    <div className={styles.resourceActions}>
-                      <button
-                        onClick={() => handleEditResource(resource)}
-                        className={styles.btnIcon}
-                        title="Chỉnh sửa"
-                      >
-                        <i className="fas fa-edit"></i>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteResource(resource._id)}
-                        className={styles.btnIconDanger}
-                        title="Xóa"
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className={styles.resourceContent}>
-                    <h4>{resource.resource_name}</h4>
-                    {resource.description && (
-                      <p className={styles.description}>{resource.description}</p>
-                    )}
-
-                    <div className={styles.resourceDetails}>
-                      <div className={styles.detailRow}>
-                        <span className={styles.label}>Số lượng dự kiến:</span>
-                        <span className={styles.value}>{resource.planned_quantity} {resource.unit_measure}</span>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.label}>Số lượng thực tế:</span>
-                        <span className={styles.value}>{resource.actual_quantity} {resource.unit_measure}</span>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.label}>Đơn giá:</span>
-                        <span className={styles.value}>{formatCurrency(resource.unit_cost)}</span>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.label}>Tổng chi phí:</span>
-                        <span className={styles.value}>{formatCurrency(resource.planned_quantity * resource.unit_cost)}</span>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.label}>Ngày yêu cầu:</span>
-                        <span className={styles.value}>{formatDate(resource.required_date)}</span>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.label}>Trạng thái:</span>
-                        <span className={styles.status} style={{ color: getStatusColor(resource.status) }}>
+        ) : resources.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              <Space direction="vertical" size="middle">
+                <Title level={4} style={{ color: '#8c8c8c' }}>
+                  Chưa có tài nguyên nào
+                </Title>
+                <Text type="secondary">
+                  Dự án này chưa có tài nguyên nào được phân bổ. Hãy phân bổ tài nguyên đầu tiên để bắt đầu quản lý.
+                </Text>
+                <Button 
+                  type="primary" 
+                  icon={<PlusOutlined />}
+                  onClick={() => setShowCreateResource(true)}
+                >
+                  Phân bổ Tài nguyên Đầu Tiên
+                </Button>
+              </Space>
+            }
+          />
+        ) : (
+          <Row gutter={[16, 16]}>
+            {resources.map((resource) => (
+              <Col key={resource._id} xs={24} sm={24} md={12} lg={8}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Card
+                    hoverable
+                    actions={[
+                      <Tooltip key="edit" title="Chỉnh sửa">
+                        <Button 
+                          type="text" 
+                          icon={<EditOutlined />}
+                          onClick={() => handleEditResource(resource)}
+                        />
+                      </Tooltip>,
+                      <Tooltip key="delete" title="Xóa">
+                        <Button 
+                          type="text" 
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => handleDeleteResource(resource._id)}
+                        />
+                      </Tooltip>
+                    ]}
+                    extra={
+                      <Space>
+                        <Tag color={getResourceTypeColor(resource.resource_type)}>
+                          {getResourceTypeLabel(resource.resource_type)}
+                        </Tag>
+                        <Tag color={getStatusColor(resource.status)}>
                           {getStatusLabel(resource.status)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {resource.supplier_name && (
-                      <div className={styles.supplierInfo}>
-                        <strong>Nhà cung cấp:</strong> {resource.supplier_name}
-                      </div>
-                    )}
-
-                    {resource.location && (
-                      <div className={styles.locationInfo}>
-                        <strong>Vị trí:</strong> {resource.location}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {filteredResources.length === 0 && (
-                <div className={styles.emptyState}>
-                  <i className="fas fa-boxes"></i>
-                  <p>Chưa có tài nguyên nào được thêm</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+                        </Tag>
+                      </Space>
+                    }
+                  >
+                    <Card.Meta
+                      avatar={
+                        <div style={{ 
+                          width: '40px', 
+                          height: '40px', 
+                          borderRadius: '50%', 
+                          background: '#1890ff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <ToolOutlined style={{ color: 'white', fontSize: '20px' }} />
+                        </div>
+                      }
+                      title={
+                        <Text strong style={{ fontSize: '16px' }}>
+                          {resource.resource_name}
+                        </Text>
+                      }
+                      description={
+                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                          <Paragraph 
+                            ellipsis={{ rows: 2 }} 
+                            style={{ margin: 0, color: '#8c8c8c' }}
+                          >
+                            {resource.description || 'Không có mô tả'}
+                          </Paragraph>
+                          
+                          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                            <Space>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Số lượng: {resource.quantity} {resource.unit || 'đơn vị'}
+                              </Text>
+                            </Space>
+                            
+                            <Space>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Đơn giá: {formatCurrency(resource.unit_cost || 0)}
+                              </Text>
+                            </Space>
+                            
+                            <Space>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Tổng chi phí: {formatCurrency(resource.total_cost || 0)}
+                              </Text>
+                            </Space>
+                            
+                            <Space>
+                              <FlagOutlined style={{ color: '#1890ff' }} />
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Giai đoạn: {resource.phase?.phase_name || 'Chưa gán'}
+                              </Text>
+                            </Space>
+                            
+                            {resource.start_date && (
+                              <Space>
+                                <CalendarOutlined style={{ color: '#1890ff' }} />
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                  Bắt đầu: {formatDate(resource.start_date)}
+                                </Text>
+                              </Space>
+                            )}
+                            
+                            {resource.end_date && (
+                              <Space>
+                                <CalendarOutlined style={{ color: '#52c41a' }} />
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                  Kết thúc: {formatDate(resource.end_date)}
+                                </Text>
+                              </Space>
+                            )}
+                          </Space>
+                        </Space>
+                      }
+                    />
+                  </Card>
+                </motion.div>
+              </Col>
+            ))}
+          </Row>
+        )}
+      </Card>
 
       {/* Create/Edit Resource Modal */}
-      {showCreateResource && (
-        <div className={styles.modal}>
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h3>{editingResource ? 'Chỉnh sửa tài nguyên' : 'Thêm tài nguyên mới'}</h3>
-              <button
-                onClick={() => {
-                  setShowCreateResource(false);
-                  setEditingResource(null);
-                  resetForm();
-                }}
-                className={styles.modalClose}
+      <Modal
+        title={editingResource ? 'Chỉnh sửa Tài nguyên' : 'Phân bổ Tài nguyên Mới'}
+        open={showCreateResource}
+        onCancel={handleModalClose}
+        footer={null}
+        width={800}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={editingResource ? handleUpdateResource : handleCreateResource}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="resource_name"
+                label="Tên tài nguyên"
+                rules={[{ required: true, message: 'Vui lòng nhập tên tài nguyên' }]}
               >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            <form onSubmit={editingResource ? handleUpdateResource : handleCreateResource} className={styles.form}>
-              <div className={styles.formGrid}>
-                <div className={styles.formGroup}>
-                  <label>Loại tài nguyên *</label>
-                  <select
-                    value={resourceForm.resource_type}
-                    onChange={(e) => setResourceForm(prev => ({ ...prev, resource_type: e.target.value }))}
-                    required
-                    className={styles.select}
-                  >
-                    <option value="MATERIAL">Vật liệu</option>
-                    <option value="EQUIPMENT">Thiết bị</option>
-                    <option value="TOOL">Công cụ</option>
-                    <option value="VEHICLE">Phương tiện</option>
-                    <option value="PERSONNEL">Nhân lực</option>
-                    <option value="SUBCONTRACTOR">Nhà thầu phụ</option>
-                  </select>
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>Tên tài nguyên *</label>
-                  <input
-                    type="text"
-                    value={resourceForm.resource_name}
-                    onChange={(e) => setResourceForm(prev => ({ ...prev, resource_name: e.target.value }))}
-                    required
-                    className={styles.input}
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>Số lượng dự kiến *</label>
-                  <input
-                    type="number"
-                    value={resourceForm.planned_quantity}
-                    onChange={(e) => setResourceForm(prev => ({ ...prev, planned_quantity: Number(e.target.value) }))}
-                    required
-                    min="0"
-                    className={styles.input}
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>Đơn vị đo *</label>
-                  <input
-                    type="text"
-                    value={resourceForm.unit_measure}
-                    onChange={(e) => setResourceForm(prev => ({ ...prev, unit_measure: e.target.value }))}
-                    required
-                    placeholder="Ví dụ: cái, kg, m, giờ..."
-                    className={styles.input}
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>Đơn giá (VND) *</label>
-                  <input
-                    type="number"
-                    value={resourceForm.unit_cost}
-                    onChange={(e) => setResourceForm(prev => ({ ...prev, unit_cost: Number(e.target.value) }))}
-                    required
-                    min="0"
-                    className={styles.input}
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>Ngày yêu cầu *</label>
-                  <input
-                    type="date"
-                    value={resourceForm.required_date}
-                    onChange={(e) => setResourceForm(prev => ({ ...prev, required_date: e.target.value }))}
-                    required
-                    className={styles.input}
-                  />
-                </div>
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Mô tả</label>
-                <textarea
-                  value={resourceForm.description}
-                  onChange={(e) => setResourceForm(prev => ({ ...prev, description: e.target.value }))}
-                  rows={3}
-                  className={styles.textarea}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Tên nhà cung cấp</label>
-                <input
-                  type="text"
-                  value={resourceForm.supplier_name}
-                  onChange={(e) => setResourceForm(prev => ({ ...prev, supplier_name: e.target.value }))}
-                  className={styles.input}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Vị trí lưu trữ</label>
-                <input
-                  type="text"
-                  value={resourceForm.location}
-                  onChange={(e) => setResourceForm(prev => ({ ...prev, location: e.target.value }))}
-                  className={styles.input}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Ghi chú</label>
-                <textarea
-                  value={resourceForm.notes}
-                  onChange={(e) => setResourceForm(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={2}
-                  className={styles.textarea}
-                />
-              </div>
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateResource(false);
-                    setEditingResource(null);
-                    resetForm();
-                  }}
-                  className={styles.btnSecondary}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={styles.btnPrimary}
-                >
-                  {loading ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin"></i>
-                      Đang xử lý...
-                    </>
-                  ) : (
-                    editingResource ? 'Cập nhật' : 'Tạo mới'
-                  )}
-                </button>
-              </div>
-            </form>
+                <Input placeholder="Nhập tên tài nguyên" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="resource_type"
+                label="Loại tài nguyên"
+                rules={[{ required: true, message: 'Vui lòng chọn loại tài nguyên' }]}
+              >
+                <Select placeholder="Chọn loại tài nguyên">
+                  <Option value="HUMAN">Nhân lực</Option>
+                  <Option value="EQUIPMENT">Thiết bị</Option>
+                  <Option value="MATERIAL">Vật liệu</Option>
+                  <Option value="FINANCIAL">Tài chính</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="quantity"
+                label="Số lượng"
+                rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
+              >
+                <InputNumber min={0} style={{ width: '100%' }} placeholder="Nhập số lượng" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="unit_cost"
+                label="Đơn giá"
+                rules={[{ required: true, message: 'Vui lòng nhập đơn giá' }]}
+              >
+                <InputNumber min={0} style={{ width: '100%' }} placeholder="Nhập đơn giá" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="total_cost"
+                label="Tổng chi phí"
+                rules={[{ required: true, message: 'Vui lòng nhập tổng chi phí' }]}
+              >
+                <InputNumber min={0} style={{ width: '100%' }} placeholder="Nhập tổng chi phí" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="phase_id"
+                label="Giai đoạn"
+              >
+                <Select placeholder="Chọn giai đoạn" allowClear>
+                  {phases.map(phase => (
+                    <Option key={phase._id} value={phase._id}>
+                      {phase.phase_name}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="status"
+                label="Trạng thái"
+                rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
+              >
+                <Select placeholder="Chọn trạng thái">
+                  <Option value="ALLOCATED">Đã phân bổ</Option>
+                  <Option value="IN_USE">Đang sử dụng</Option>
+                  <Option value="AVAILABLE">Có sẵn</Option>
+                  <Option value="DEPLETED">Đã hết</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="start_date"
+                label="Ngày bắt đầu"
+              >
+                <DatePicker style={{ width: '100%' }} placeholder="Chọn ngày bắt đầu" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="end_date"
+                label="Ngày kết thúc"
+              >
+                <DatePicker style={{ width: '100%' }} placeholder="Chọn ngày kết thúc" />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item
+                name="description"
+                label="Mô tả"
+              >
+                <TextArea rows={3} placeholder="Nhập mô tả tài nguyên" />
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <div style={{ textAlign: 'right', marginTop: '24px' }}>
+            <Space>
+              <Button onClick={handleModalClose}>
+                Hủy
+              </Button>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                {editingResource ? 'Cập nhật' : 'Tạo mới'}
+              </Button>
+            </Space>
           </div>
-        </div>
-      )}
+        </Form>
+      </Modal>
 
       {/* Action Buttons */}
-      <div className={styles.actions}>
-        <button onClick={onComplete} className={styles.btnSuccess}>
-          <i className="fas fa-check"></i>
+      <div style={{ textAlign: 'center', marginTop: '24px' }}>
+        <Button 
+          type="primary" 
+          size="large"
+          icon={<ToolOutlined />}
+          onClick={onComplete}
+        >
           Hoàn thành Phân bổ Tài nguyên
-        </button>
+        </Button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
-// Helper function to get icon for resource type
-const getResourceTypeIcon = (type: string): string => {
-  const icons: { [key: string]: string } = {
-    'MATERIAL': 'cube',
-    'EQUIPMENT': 'cogs',
-    'TOOL': 'wrench',
-    'VEHICLE': 'truck',
-    'PERSONNEL': 'users',
-    'SUBCONTRACTOR': 'handshake'
-  };
-  return icons[type] || 'box';
-};
-
 export default ResourceAllocationManagement;
-
-
-

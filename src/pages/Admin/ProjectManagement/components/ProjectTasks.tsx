@@ -35,6 +35,7 @@ import {
 } from '@ant-design/icons';
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectTasks, deleteTask } from '../../../../store/slices/projectTaskSlice';
+import TaskFormModal from './TaskFormModal';
 
 interface ProjectTasksProps {
   projectId: string;
@@ -45,7 +46,8 @@ const { Title, Text } = Typography;
 const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { tasks, loading, error } = useSelector((state: RootState) => state.projectTask);
-  const [, setCreateModalVisible] = useState(false);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState<any>(null);
 
   useEffect(() => {
     if (projectId) {
@@ -55,6 +57,26 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
 
   const handleDeleteTask = (id: string) => {
     dispatch(deleteTask(id));
+  };
+
+  const handleCreateTask = () => {
+    setEditingTask(null);
+    setCreateModalVisible(true);
+  };
+
+  const handleEditTask = (task: any) => {
+    setEditingTask(task);
+    setCreateModalVisible(true);
+  };
+
+  const handleModalClose = () => {
+    setCreateModalVisible(false);
+    setEditingTask(null);
+  };
+
+  const handleTaskSuccess = () => {
+    // Refresh tasks list
+    dispatch(fetchProjectTasks(projectId));
   };
 
 
@@ -150,7 +172,7 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
           type="primary"
           size="large"
           icon={<PlusOutlined />}
-          onClick={() => setCreateModalVisible(true)}
+          onClick={handleCreateTask}
           className="bg-gradient-to-r from-blue-500 to-blue-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
         >
           Thêm nhiệm vụ
@@ -234,7 +256,7 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
               type="primary"
               size="large"
               icon={<PlusOutlined />}
-              onClick={() => setCreateModalVisible(true)}
+              onClick={handleCreateTask}
               className="bg-gradient-to-r from-blue-500 to-blue-600 border-0"
             >
               Tạo nhiệm vụ đầu tiên
@@ -264,7 +286,7 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
                       <Button
                         type="text"
                         icon={<EditOutlined />}
-                        disabled
+                        onClick={() => handleEditTask(task)}
                         className="text-blue-500 hover:text-blue-700"
                       />
                     </Tooltip>,
@@ -404,6 +426,15 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
           })}
         </div>
       )}
+
+      {/* Task Form Modal */}
+      <TaskFormModal
+        visible={createModalVisible}
+        onClose={handleModalClose}
+        onSuccess={handleTaskSuccess}
+        projectId={projectId}
+        task={editingTask}
+      />
     </motion.div>
   );
 };

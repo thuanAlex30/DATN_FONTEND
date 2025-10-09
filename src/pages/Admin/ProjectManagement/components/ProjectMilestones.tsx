@@ -12,7 +12,6 @@ import {
   Avatar,
   Tooltip,
   Dropdown,
-  Menu,
   Empty,
   Spin,
   Alert,
@@ -193,21 +192,21 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
     });
   };
 
-  const menu = (milestoneId: string) => (
-    <Menu>
-      <Menu.Item key="edit" icon={<EditOutlined />} disabled>
-        Chỉnh sửa
-      </Menu.Item>
-      <Menu.Item 
-        key="delete" 
-        icon={<DeleteOutlined />} 
-        danger
-        onClick={() => handleDeleteConfirm(milestoneId)}
-      >
-        Xóa
-      </Menu.Item>
-    </Menu>
-  );
+  const menu = (milestoneId: string) => [
+    {
+      key: 'edit',
+      label: 'Chỉnh sửa',
+      icon: <EditOutlined />,
+      disabled: true,
+    },
+    {
+      key: 'delete',
+      label: 'Xóa',
+      icon: <DeleteOutlined />,
+      danger: true,
+      onClick: () => handleDeleteConfirm(milestoneId),
+    },
+  ];
 
   return (
     <div style={{ padding: '24px' }}>
@@ -338,7 +337,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                 <Card
                   hoverable
                   actions={[
-                    <Tooltip title="Chỉnh sửa">
+                    <Tooltip key="edit" title="Chỉnh sửa">
                       <Button 
                         type="text" 
                         icon={<EditOutlined />} 
@@ -346,7 +345,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                         title="Sắp ra mắt"
                       />
                     </Tooltip>,
-                    <Dropdown overlay={menu(milestone._id)} trigger={['click']}>
+                    <Dropdown key="more" menu={{ items: menu(milestone._id) }} trigger={['click']}>
                       <Button type="text" icon={<MoreOutlined />} />
                     </Dropdown>
                   ]}
@@ -367,7 +366,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                       <Space>
                         <Text strong>{milestone.milestone_name}</Text>
                         {milestone.is_critical && (
-                          <Badge status="error" text="Quan trọng" />
+                          <Badge key="critical-badge" status="error" text="Quan trọng" />
                         )}
                       </Space>
                     }
@@ -381,7 +380,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                         </Paragraph>
                         
                         <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                          <Space>
+                          <Space key="planned-date-space">
                             <CalendarOutlined style={{ color: '#1890ff' }} />
                             <Text type="secondary" style={{ fontSize: '12px' }}>
                               Ngày dự kiến: {formatDate(milestone.planned_date)}
@@ -389,7 +388,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                           </Space>
                           
                           {milestone.actual_date && (
-                            <Space>
+                            <Space key="actual-date-space">
                               <CheckCircleOutlined style={{ color: '#52c41a' }} />
                               <Text type="secondary" style={{ fontSize: '12px' }}>
                                 Hoàn thành: {formatDate(milestone.actual_date)}
@@ -397,7 +396,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                             </Space>
                           )}
                           
-                          <Space>
+                          <Space key="responsible-space">
                             <UserOutlined style={{ color: '#1890ff' }} />
                             <Text type="secondary" style={{ fontSize: '12px' }}>
                               Phụ trách: {(milestone as any).responsible_user?.full_name || 'Chưa phân công'}

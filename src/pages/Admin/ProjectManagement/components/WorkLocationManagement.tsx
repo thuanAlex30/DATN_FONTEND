@@ -1,484 +1,429 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import { 
+  Card, 
+  Button, 
+  Typography, 
+  Space, 
+  Tag, 
+  Spin, 
+  Alert, 
+  Row, 
+  Col,
+  Empty,
+  Tooltip,
+  Modal,
+  message,
+  Input,
+  Select,
+  Form
+} from 'antd';
+import { 
+  PlusOutlined, 
+  EditOutlined, 
+  DeleteOutlined, 
+  EnvironmentOutlined,
+  ReloadOutlined
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
 import type { RootState } from '../../../../store';
 import workLocationService, { type WorkLocation, type CreateWorkLocationData } from '../../../../services/workLocationService';
 import siteAreaService, { type SiteArea } from '../../../../services/siteAreaService';
-import styles from './WorkLocationManagement.module.css';
 
 interface WorkLocationManagementProps {
   projectId: string;
   onComplete: () => void;
 }
 
+const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
+
 const WorkLocationManagement: React.FC<WorkLocationManagementProps> = ({ projectId, onComplete }) => {
-  const { user } = useSelector((state: RootState) => state.auth);
-  const [siteAreas, setSiteAreas] = useState<SiteArea[]>([]);
-  const [selectedArea, setSelectedArea] = useState<string>('');
   const [workLocations, setWorkLocations] = useState<WorkLocation[]>([]);
+  const [siteAreas, setSiteAreas] = useState<SiteArea[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreateLocation, setShowCreateLocation] = useState(false);
   const [editingLocation, setEditingLocation] = useState<WorkLocation | null>(null);
-
-  // Form states
-  const [locationForm, setLocationForm] = useState<CreateWorkLocationData>({
-    area_id: '',
-    location_code: '',
-    location_name: '',
-    location_type: 'WORKSTATION',
-    access_requirements: '',
-    capacity: 1,
-    safety_equipment_required: [],
-    special_instructions: ''
-  });
+  const [form] = Form.useForm();
 
   useEffect(() => {
-    loadSiteAreas();
-  }, []);
+    loadData();
+  }, [projectId]);
 
-  useEffect(() => {
-    if (selectedArea) {
-      loadWorkLocations(selectedArea);
-    }
-  }, [selectedArea]);
-
-  const loadSiteAreas = async () => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      // Get all areas for the project's site
-      const data = await siteAreaService.getAllAreas();
-      setSiteAreas(data);
+      const [locationsData, areasData] = await Promise.all([
+        workLocationService.getWorkLocationsByProject(projectId),
+        siteAreaService.getAreasByProject(projectId)
+      ]);
+
+      setWorkLocations(locationsData);
+      setSiteAreas(areasData);
     } catch (err) {
-      console.error('Error loading site areas:', err);
-      setError('Không thể tải danh sách khu vực');
+      setError('Không thể tải dữ liệu vị trí làm việc');
+      console.error('Error loading work location data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadWorkLocations = async (areaId: string) => {
+  const handleCreateLocation = async (values: CreateWorkLocationData) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const data = await workLocationService.getAreaLocations(areaId);
-      setWorkLocations(data);
-    } catch (err) {
-      console.error('Error loading work locations:', err);
-      setError('Không thể tải danh sách vị trí làm việc');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateLocation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      await workLocationService.createLocation(locationForm);
-      await loadWorkLocations(selectedArea);
+      await workLocationService.createWorkLocation({ ...values, project_id: projectId });
+      message.success('Vị trí làm việc đã được tạo thành công');
+      await loadData();
       setShowCreateLocation(false);
-      resetForm();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể tạo vị trí làm việc');
+      form.resetFields();
+    } catch (err) {
+      message.error('Không thể tạo vị trí làm việc');
+      console.error('Error creating work location:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateLocation = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateLocation = async (values: Partial<WorkLocation>) => {
     if (!editingLocation) return;
-
+    
+    setLoading(true);
     try {
-      setLoading(true);
-      await workLocationService.updateLocation(editingLocation._id, locationForm);
-      await loadWorkLocations(selectedArea);
+      await workLocationService.updateWorkLocation(editingLocation._id, values);
+      message.success('Vị trí làm việc đã được cập nhật thành công');
+      await loadData();
+      setShowCreateLocation(false);
       setEditingLocation(null);
-      resetForm();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể cập nhật vị trí làm việc');
+      form.resetFields();
+    } catch (err) {
+      message.error('Không thể cập nhật vị trí làm việc');
+      console.error('Error updating work location:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteLocation = async (locationId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa vị trí làm việc này?')) return;
-
-    try {
-      setLoading(true);
-      await workLocationService.deleteLocation(locationId);
-      await loadWorkLocations(selectedArea);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể xóa vị trí làm việc');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setLocationForm({
-      area_id: selectedArea,
-      location_code: '',
-      location_name: '',
-      location_type: 'WORKSTATION',
-      access_requirements: '',
-      capacity: 1,
-      safety_equipment_required: [],
-      special_instructions: ''
+  const handleDeleteLocation = async (id: string) => {
+    Modal.confirm({
+      title: 'Xác nhận xóa vị trí làm việc',
+      content: 'Bạn có chắc chắn muốn xóa vị trí làm việc này? Hành động này không thể hoàn tác.',
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          await workLocationService.deleteWorkLocation(id);
+          message.success('Vị trí làm việc đã được xóa thành công');
+          await loadData();
+        } catch (err) {
+          message.error('Không thể xóa vị trí làm việc');
+          console.error('Error deleting work location:', err);
+        }
+      },
     });
   };
 
   const handleEditLocation = (location: WorkLocation) => {
     setEditingLocation(location);
-    setLocationForm({
-      area_id: location.area_id,
-      location_code: location.location_code,
+    form.setFieldsValue({
       location_name: location.location_name,
-      location_type: location.location_type,
-      coordinates_within_area: location.coordinates_within_area,
-      access_requirements: location.access_requirements || '',
+      description: location.description,
+      area_id: location.area_id,
       capacity: location.capacity,
-      safety_equipment_required: location.safety_equipment_required || [],
-      special_instructions: location.special_instructions || ''
+      status: location.status
     });
     setShowCreateLocation(true);
   };
 
-  const addSafetyEquipment = () => {
-    setLocationForm(prev => ({
-      ...prev,
-      safety_equipment_required: [
-        ...prev.safety_equipment_required,
-        { equipment_name: '', is_mandatory: true }
-      ]
-    }));
+  const handleModalClose = () => {
+    setShowCreateLocation(false);
+    setEditingLocation(null);
+    form.resetFields();
   };
 
-  const removeSafetyEquipment = (index: number) => {
-    setLocationForm(prev => ({
-      ...prev,
-      safety_equipment_required: prev.safety_equipment_required.filter((_, i) => i !== index)
-    }));
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': return 'green';
+      case 'INACTIVE': return 'red';
+      case 'MAINTENANCE': return 'orange';
+      default: return 'default';
+    }
   };
 
-  const updateSafetyEquipment = (index: number, field: string, value: any) => {
-    setLocationForm(prev => ({
-      ...prev,
-      safety_equipment_required: prev.safety_equipment_required.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
-    }));
-  };
-
-  const getLocationTypeLabel = (type: string) => {
-    const labels: { [key: string]: string } = {
-      'WORKSTATION': 'Trạm làm việc',
-      'EQUIPMENT_AREA': 'Khu vực thiết bị',
-      'MEETING_POINT': 'Điểm họp',
-      'STORAGE': 'Kho lưu trữ',
-      'SAFETY_ZONE': 'Khu vực an toàn',
-      'REST_AREA': 'Khu nghỉ ngơi'
-    };
-    return labels[type] || type;
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': return 'Hoạt động';
+      case 'INACTIVE': return 'Không hoạt động';
+      case 'MAINTENANCE': return 'Bảo trì';
+      default: return status;
+    }
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h2>Thiết lập Vị trí Làm việc</h2>
-        <p>Quản lý các vị trí làm việc trong khu vực</p>
-      </div>
+    <motion.div 
+      style={{ padding: '24px' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6 }}
+    >
+      {/* Header Section */}
+      <Card style={{ marginBottom: '24px' }}>
+        <Row justify="space-between" align="middle">
+          <Col>
+            <Space direction="vertical" size={0}>
+              <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <EnvironmentOutlined style={{ color: '#1890ff' }} />
+                Quản lý Vị trí Làm việc
+              </Title>
+              <Text type="secondary">
+                Quản lý các vị trí làm việc cụ thể trong dự án
+              </Text>
+            </Space>
+          </Col>
+          <Col>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={() => setShowCreateLocation(true)}
+            >
+              Thêm vị trí
+            </Button>
+          </Col>
+        </Row>
+      </Card>
 
+      {/* Error Alert */}
       {error && (
-        <div className={styles.alert}>
-          <i className="fas fa-exclamation-triangle"></i>
-          {error}
-          <button onClick={() => setError(null)} className={styles.alertClose}>
-            <i className="fas fa-times"></i>
-          </button>
-        </div>
+        <Alert
+          message="Lỗi"
+          description={error}
+          type="error"
+          showIcon
+          closable
+          onClose={() => setError(null)}
+          action={
+            <Button 
+              size="small" 
+              danger 
+              icon={<ReloadOutlined />}
+              onClick={loadData}
+            >
+              Thử lại
+            </Button>
+          }
+          style={{ marginBottom: '24px' }}
+        />
       )}
 
-      <div className={styles.content}>
-        {/* Area Selection */}
-        <div className={styles.section}>
-          <h3>Chọn Khu vực</h3>
-          <select
-            value={selectedArea}
-            onChange={(e) => {
-              setSelectedArea(e.target.value);
-              setLocationForm(prev => ({ ...prev, area_id: e.target.value }));
-            }}
-            className={styles.select}
-          >
-            <option value="">Chọn khu vực...</option>
-            {siteAreas.map(area => (
-              <option key={area._id} value={area._id}>
-                {area.area_name} ({area.area_code}) - {area.area_type}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Work Locations List */}
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h3>Vị trí Làm việc</h3>
-            <button
-              onClick={() => {
-                setShowCreateLocation(true);
-                setEditingLocation(null);
-                resetForm();
-              }}
-              className={styles.btnPrimary}
-              disabled={!selectedArea}
-            >
-              <i className="fas fa-plus"></i>
-              Thêm vị trí
-            </button>
+      {/* Work Locations List */}
+      <Card>
+        <Title level={3} style={{ marginBottom: '16px' }}>Danh sách Vị trí Làm việc</Title>
+        
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '50px' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: '16px' }}>
+              <Text>Đang tải danh sách vị trí làm việc...</Text>
+            </div>
           </div>
-
-          {loading ? (
-            <div className={styles.loading}>
-              <i className="fas fa-spinner fa-spin"></i>
-              Đang tải...
-            </div>
-          ) : (
-            <div className={styles.locationsGrid}>
-              {workLocations.map(location => (
-                <div key={location._id} className={styles.locationCard}>
-                  <div className={styles.locationHeader}>
-                    <h4>{location.location_name}</h4>
-                    <div className={styles.locationActions}>
-                      <button
-                        onClick={() => handleEditLocation(location)}
-                        className={styles.btnIcon}
-                        title="Chỉnh sửa"
-                      >
-                        <i className="fas fa-edit"></i>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteLocation(location._id)}
-                        className={styles.btnIconDanger}
-                        title="Xóa"
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <div className={styles.locationDetails}>
-                    <p><strong>Mã vị trí:</strong> {location.location_code}</p>
-                    <p><strong>Loại:</strong> {getLocationTypeLabel(location.location_type)}</p>
-                    <p><strong>Sức chứa:</strong> {location.capacity} người</p>
-                    {location.access_requirements && (
-                      <p><strong>Yêu cầu truy cập:</strong> {location.access_requirements}</p>
-                    )}
-                    {location.special_instructions && (
-                      <p><strong>Hướng dẫn đặc biệt:</strong> {location.special_instructions}</p>
-                    )}
-                    {location.safety_equipment_required.length > 0 && (
-                      <div>
-                        <strong>Thiết bị an toàn yêu cầu:</strong>
-                        <ul className={styles.equipmentList}>
-                          {location.safety_equipment_required.map((equipment, index) => (
-                            <li key={index}>
-                              {equipment.equipment_name}
-                              {equipment.is_mandatory && <span className={styles.mandatory}> (Bắt buộc)</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {workLocations.length === 0 && (
-                <div className={styles.emptyState}>
-                  <i className="fas fa-map-pin"></i>
-                  <p>Chưa có vị trí làm việc nào trong khu vực này</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+        ) : workLocations.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              <Space direction="vertical" size="middle">
+                <Title level={4} style={{ color: '#8c8c8c' }}>
+                  Chưa có vị trí làm việc nào
+                </Title>
+                <Text type="secondary">
+                  Dự án này chưa có vị trí làm việc nào được tạo. Hãy tạo vị trí đầu tiên để bắt đầu quản lý.
+                </Text>
+                <Button 
+                  type="primary" 
+                  icon={<PlusOutlined />}
+                  onClick={() => setShowCreateLocation(true)}
+                >
+                  Tạo Vị trí Đầu Tiên
+                </Button>
+              </Space>
+            }
+          />
+        ) : (
+          <Row gutter={[16, 16]}>
+            {workLocations.map((location) => (
+              <Col key={location._id} xs={24} sm={24} md={12} lg={8}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Card
+                    hoverable
+                    actions={[
+                      <Tooltip key="edit" title="Chỉnh sửa">
+                        <Button 
+                          type="text" 
+                          icon={<EditOutlined />}
+                          onClick={() => handleEditLocation(location)}
+                        />
+                      </Tooltip>,
+                      <Tooltip key="delete" title="Xóa">
+                        <Button 
+                          type="text" 
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => handleDeleteLocation(location._id)}
+                        />
+                      </Tooltip>
+                    ]}
+                    extra={
+                      <Tag color={getStatusColor(location.status)}>
+                        {getStatusLabel(location.status)}
+                      </Tag>
+                    }
+                  >
+                    <Card.Meta
+                      avatar={
+                        <div style={{ 
+                          width: '40px', 
+                          height: '40px', 
+                          borderRadius: '50%', 
+                          background: '#1890ff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <EnvironmentOutlined style={{ color: 'white', fontSize: '20px' }} />
+                        </div>
+                      }
+                      title={
+                        <Text strong style={{ fontSize: '16px' }}>
+                          {location.location_name}
+                        </Text>
+                      }
+                      description={
+                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                          <Paragraph 
+                            ellipsis={{ rows: 2 }} 
+                            style={{ margin: 0, color: '#8c8c8c' }}
+                          >
+                            {location.description || 'Không có mô tả'}
+                          </Paragraph>
+                          
+                          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                            <Space>
+                              <EnvironmentOutlined style={{ color: '#1890ff' }} />
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Khu vực: {location.area?.area_name || 'Chưa gán'}
+                              </Text>
+                            </Space>
+                            
+                            <Space>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Sức chứa: {location.capacity} người
+                              </Text>
+                            </Space>
+                          </Space>
+                        </Space>
+                      }
+                    />
+                  </Card>
+                </motion.div>
+              </Col>
+            ))}
+          </Row>
+        )}
+      </Card>
 
       {/* Create/Edit Location Modal */}
-      {showCreateLocation && (
-        <div className={styles.modal}>
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h3>{editingLocation ? 'Chỉnh sửa vị trí làm việc' : 'Thêm vị trí làm việc mới'}</h3>
-              <button
-                onClick={() => {
-                  setShowCreateLocation(false);
-                  setEditingLocation(null);
-                  resetForm();
-                }}
-                className={styles.modalClose}
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
+      <Modal
+        title={editingLocation ? 'Chỉnh sửa Vị trí Làm việc' : 'Tạo Vị trí Làm việc Mới'}
+        open={showCreateLocation}
+        onCancel={handleModalClose}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={editingLocation ? handleUpdateLocation : handleCreateLocation}
+        >
+          <Form.Item
+            name="location_name"
+            label="Tên vị trí"
+            rules={[{ required: true, message: 'Vui lòng nhập tên vị trí' }]}
+          >
+            <Input placeholder="Nhập tên vị trí làm việc" />
+          </Form.Item>
 
-            <form onSubmit={editingLocation ? handleUpdateLocation : handleCreateLocation} className={styles.form}>
-              <div className={styles.formGrid}>
-                <div className={styles.formGroup}>
-                  <label>Mã vị trí *</label>
-                  <input
-                    type="text"
-                    value={locationForm.location_code}
-                    onChange={(e) => setLocationForm(prev => ({ ...prev, location_code: e.target.value }))}
-                    required
-                    className={styles.input}
-                  />
-                </div>
+          <Form.Item
+            name="area_id"
+            label="Khu vực"
+            rules={[{ required: true, message: 'Vui lòng chọn khu vực' }]}
+          >
+            <Select placeholder="Chọn khu vực">
+              {siteAreas.map(area => (
+                <Option key={area._id} value={area._id}>
+                  {area.area_name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
 
-                <div className={styles.formGroup}>
-                  <label>Tên vị trí *</label>
-                  <input
-                    type="text"
-                    value={locationForm.location_name}
-                    onChange={(e) => setLocationForm(prev => ({ ...prev, location_name: e.target.value }))}
-                    required
-                    className={styles.input}
-                  />
-                </div>
+          <Form.Item
+            name="capacity"
+            label="Sức chứa"
+            rules={[{ required: true, message: 'Vui lòng nhập sức chứa' }]}
+          >
+            <Input type="number" placeholder="Nhập sức chứa (người)" />
+          </Form.Item>
 
-                <div className={styles.formGroup}>
-                  <label>Loại vị trí *</label>
-                  <select
-                    value={locationForm.location_type}
-                    onChange={(e) => setLocationForm(prev => ({ ...prev, location_type: e.target.value }))}
-                    required
-                    className={styles.select}
-                  >
-                    <option value="WORKSTATION">Trạm làm việc</option>
-                    <option value="EQUIPMENT_AREA">Khu vực thiết bị</option>
-                    <option value="MEETING_POINT">Điểm họp</option>
-                    <option value="STORAGE">Kho lưu trữ</option>
-                    <option value="SAFETY_ZONE">Khu vực an toàn</option>
-                    <option value="REST_AREA">Khu nghỉ ngơi</option>
-                  </select>
-                </div>
+          <Form.Item
+            name="status"
+            label="Trạng thái"
+            rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
+          >
+            <Select placeholder="Chọn trạng thái">
+              <Option value="ACTIVE">Hoạt động</Option>
+              <Option value="INACTIVE">Không hoạt động</Option>
+              <Option value="MAINTENANCE">Bảo trì</Option>
+            </Select>
+          </Form.Item>
 
-                <div className={styles.formGroup}>
-                  <label>Sức chứa (người)</label>
-                  <input
-                    type="number"
-                    value={locationForm.capacity}
-                    onChange={(e) => setLocationForm(prev => ({ ...prev, capacity: Number(e.target.value) }))}
-                    min="1"
-                    className={styles.input}
-                  />
-                </div>
-              </div>
+          <Form.Item
+            name="description"
+            label="Mô tả"
+          >
+            <TextArea rows={3} placeholder="Nhập mô tả vị trí làm việc" />
+          </Form.Item>
 
-              <div className={styles.formGroup}>
-                <label>Yêu cầu truy cập</label>
-                <textarea
-                  value={locationForm.access_requirements}
-                  onChange={(e) => setLocationForm(prev => ({ ...prev, access_requirements: e.target.value }))}
-                  rows={2}
-                  className={styles.textarea}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Hướng dẫn đặc biệt</label>
-                <textarea
-                  value={locationForm.special_instructions}
-                  onChange={(e) => setLocationForm(prev => ({ ...prev, special_instructions: e.target.value }))}
-                  rows={2}
-                  className={styles.textarea}
-                />
-              </div>
-
-              {/* Safety Equipment */}
-              <div className={styles.formGroup}>
-                <div className={styles.equipmentHeader}>
-                  <label>Thiết bị An toàn Yêu cầu</label>
-                  <button
-                    type="button"
-                    onClick={addSafetyEquipment}
-                    className={styles.btnAdd}
-                  >
-                    <i className="fas fa-plus"></i>
-                    Thêm thiết bị
-                  </button>
-                </div>
-                {locationForm.safety_equipment_required.map((equipment, index) => (
-                  <div key={index} className={styles.equipmentItem}>
-                    <input
-                      type="text"
-                      value={equipment.equipment_name}
-                      onChange={(e) => updateSafetyEquipment(index, 'equipment_name', e.target.value)}
-                      placeholder="Tên thiết bị"
-                      className={styles.input}
-                    />
-                    <label className={styles.checkboxLabel}>
-                      <input
-                        type="checkbox"
-                        checked={equipment.is_mandatory}
-                        onChange={(e) => updateSafetyEquipment(index, 'is_mandatory', e.target.checked)}
-                      />
-                      Bắt buộc
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => removeSafetyEquipment(index)}
-                      className={styles.btnRemove}
-                    >
-                      <i className="fas fa-trash"></i>
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateLocation(false);
-                    setEditingLocation(null);
-                    resetForm();
-                  }}
-                  className={styles.btnSecondary}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={styles.btnPrimary}
-                >
-                  {loading ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin"></i>
-                      Đang xử lý...
-                    </>
-                  ) : (
-                    editingLocation ? 'Cập nhật' : 'Tạo mới'
-                  )}
-                </button>
-              </div>
-            </form>
+          <div style={{ textAlign: 'right', marginTop: '24px' }}>
+            <Space>
+              <Button onClick={handleModalClose}>
+                Hủy
+              </Button>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                {editingLocation ? 'Cập nhật' : 'Tạo mới'}
+              </Button>
+            </Space>
           </div>
-        </div>
-      )}
+        </Form>
+      </Modal>
 
       {/* Action Buttons */}
-      <div className={styles.actions}>
-        <button onClick={onComplete} className={styles.btnSuccess}>
-          <i className="fas fa-check"></i>
-          Hoàn thành thiết lập Vị trí Làm việc
-        </button>
+      <div style={{ textAlign: 'center', marginTop: '24px' }}>
+        <Button 
+          type="primary" 
+          size="large"
+          icon={<EnvironmentOutlined />}
+          onClick={onComplete}
+        >
+          Hoàn thành Quản lý Vị trí Làm việc
+        </Button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
 export default WorkLocationManagement;
-
-
-

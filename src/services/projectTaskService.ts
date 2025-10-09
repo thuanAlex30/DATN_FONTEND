@@ -51,8 +51,8 @@ export const projectTaskService = {
   // Create new task
   createTask: async (data: CreateTaskData) => {
     try {
-      // Placeholder - will be implemented when backend adds project-tasks API
-      return { data: null, success: false, message: 'Task creation not available yet' };
+      const response = await api.post(`${API_BASE}/tasks`, data);
+      return { data: response.data.data, success: true };
     } catch (error) {
       console.error('Error creating task:', error);
       return { data: null, success: false, message: 'Failed to create task' };
@@ -62,8 +62,8 @@ export const projectTaskService = {
   // Update task
   updateTask: async (id: string, data: UpdateTaskData) => {
     try {
-      // Placeholder - will be implemented when backend adds project-tasks API
-      return { data: null, success: false, message: 'Task update not available yet' };
+      const response = await api.put(`${API_BASE}/tasks/${id}`, data);
+      return { data: response.data.data, success: true };
     } catch (error) {
       console.error('Error updating task:', error);
       return { data: null, success: false, message: 'Failed to update task' };
@@ -73,8 +73,8 @@ export const projectTaskService = {
   // Delete task
   deleteTask: async (id: string) => {
     try {
-      // Placeholder - will be implemented when backend adds project-tasks API
-      return { data: null, success: false, message: 'Task deletion not available yet' };
+      const response = await api.delete(`${API_BASE}/tasks/${id}`);
+      return { data: response.data.data, success: true };
     } catch (error) {
       console.error('Error deleting task:', error);
       return { data: null, success: false, message: 'Failed to delete task' };
@@ -84,8 +84,8 @@ export const projectTaskService = {
   // Update task progress
   updateTaskProgress: async (id: string, progress: number, notes?: string) => {
     try {
-      // Placeholder - will be implemented when backend adds project-tasks API
-      return { data: null, success: false, message: 'Task progress update not available yet' };
+      const response = await api.put(`${API_BASE}/tasks/${id}/progress`, { progress, notes });
+      return { data: response.data.data, success: true };
     } catch (error) {
       console.error('Error updating task progress:', error);
       return { data: null, success: false, message: 'Failed to update task progress' };

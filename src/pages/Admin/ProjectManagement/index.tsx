@@ -130,34 +130,59 @@ const ProjectManagement: React.FC = () => {
 
     if (loading) {
         return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <motion.div 
+        style={{ 
+          minHeight: '100vh', 
+          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
         <Spin size="large" />
-            </div>
+            </motion.div>
         );
     }
 
     if (error) {
         return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <motion.div 
+        style={{ 
+          minHeight: '100vh', 
+          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
         <Alert
           message="Lỗi tải dữ liệu"
           description={error}
           type="error"
           showIcon
         />
-            </div>
+            </motion.div>
         );
     }
 
   return (
     <motion.div 
-      className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"
+      style={{ 
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #f8fafc 0%, #e0f2fe 50%, #e0e7ff 100%)',
+        padding: '24px'
+      }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
     >
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           {/* Page Header - Only show when not in project detail view */}
           {!isProjectDetailView && (
             <motion.div
@@ -166,27 +191,55 @@ const ProjectManagement: React.FC = () => {
               transition={{ duration: 0.6, delay: 0.1 }}
             >
               <Card 
-                className="border-0 shadow-xl bg-gradient-to-r from-white to-blue-50/30 backdrop-blur-sm"
-                style={{ borderRadius: '24px' }}
+                style={{ 
+                  border: 'none',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                  background: 'linear-gradient(135deg, #ffffff 0%, rgba(219, 234, 254, 0.3) 100%)',
+                  borderRadius: '24px',
+                  backdropFilter: 'blur(8px)'
+                }}
               >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-8">
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '24px',
+                  padding: '32px'
+                }}>
                   {/* Left side - Title */}
                   <motion.div 
-                    className="flex items-center space-x-6"
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '24px',
+                      flexDirection: window.innerWidth < 1024 ? 'column' : 'row'
+                    }}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.6, delay: 0.2 }}
                   >
                     <motion.div 
-                      className="relative"
+                      style={{ position: 'relative' }}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <div className="p-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg">
-                        <ProjectOutlined className="text-white text-3xl" />
+                      <div style={{ 
+                        padding: '16px',
+                        background: 'linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%)',
+                        borderRadius: '16px',
+                        boxShadow: '0 10px 25px rgba(59, 130, 246, 0.3)'
+                      }}>
+                        <ProjectOutlined style={{ color: 'white', fontSize: '48px' }} />
                       </div>
                       <motion.div
-                        className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full"
+                        style={{
+                          position: 'absolute',
+                          top: '-4px',
+                          right: '-4px',
+                          width: '16px',
+                          height: '16px',
+                          background: '#10b981',
+                          borderRadius: '50%'
+                        }}
                         animate={{ scale: [1, 1.2, 1] }}
                         transition={{ duration: 2, repeat: Infinity }}
                       />
@@ -194,12 +247,23 @@ const ProjectManagement: React.FC = () => {
                     <div>
                       <Typography.Title 
                         level={1} 
-                        className="!mb-2 !text-transparent bg-clip-text bg-gradient-to-r from-gray-800 to-gray-600"
-                        style={{ fontSize: '2.5rem', fontWeight: '800' }}
+                        style={{ 
+                          fontSize: '2.5rem', 
+                          fontWeight: '800',
+                          marginBottom: '8px',
+                          background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text'
+                        }}
                       >
                         Quản lý Dự án
                       </Typography.Title>
-                      <Typography.Text className="text-gray-600 text-lg font-medium">
+                      <Typography.Text style={{ 
+                        color: '#64748b', 
+                        fontSize: '18px', 
+                        fontWeight: '500' 
+                      }}>
                         Quản lý và theo dõi tất cả các dự án trong hệ thống
                       </Typography.Text>
                     </div>
@@ -207,7 +271,12 @@ const ProjectManagement: React.FC = () => {
 
                   {/* Right side - Action Buttons */}
                   <motion.div 
-                    className="flex items-center space-x-4"
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '16px',
+                      justifyContent: window.innerWidth < 1024 ? 'center' : 'flex-end'
+                    }}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.6, delay: 0.3 }}
@@ -217,7 +286,6 @@ const ProjectManagement: React.FC = () => {
                         type="text"
                         icon={<ReloadOutlined />}
                         size="large"
-                        className="hover:bg-blue-50 hover:text-blue-600 transition-all duration-300"
                         style={{ 
                           height: '48px',
                           width: '48px',
@@ -231,7 +299,6 @@ const ProjectManagement: React.FC = () => {
                         type="text"
                         icon={<FilterOutlined />}
                         size="large"
-                        className="hover:bg-purple-50 hover:text-purple-600 transition-all duration-300"
                         style={{ 
                           height: '48px',
                           width: '48px',
@@ -249,7 +316,6 @@ const ProjectManagement: React.FC = () => {
                         icon={<PlusOutlined />}
                         onClick={handleCreateProject}
                         size="large"
-                        className="shadow-2xl hover:shadow-3xl transition-all duration-300"
                         style={{ 
                           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                           border: 'none',
@@ -570,8 +636,6 @@ const ProjectManagement: React.FC = () => {
               </AnimatePresence>
             </Card>
           </motion.div>
-        </div>
-      </div>
 
       {/* Modals */}
       {showEditModal && editingProject && (
@@ -615,6 +679,7 @@ const ProjectManagement: React.FC = () => {
           onClose={() => setShowFilters(false)}
         />
       </Drawer>
+      </div>
     </motion.div>
   );
 };

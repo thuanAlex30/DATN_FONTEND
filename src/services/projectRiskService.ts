@@ -2,6 +2,7 @@ import { api } from './api';
 
 export interface ProjectRisk {
   _id: string;
+  id: string;
   project_id: string;
   phase_id?: string;
   phase?: {
@@ -52,28 +53,40 @@ export interface UpdateProjectRiskData extends Partial<CreateProjectRiskData> {
 }
 
 class ProjectRiskService {
+  // Transform backend data to frontend format
+  private transformRiskData(backendRisk: any): ProjectRisk {
+    return {
+      ...backendRisk,
+      id: backendRisk._id,
+    };
+  }
+
   // Get all risks for a project
   async getProjectRisks(projectId: string): Promise<ProjectRisk[]> {
+    console.log('API call: getProjectRisks for project:', projectId);
     const response = await api.get(`/project-risks/project/${projectId}/risks`);
-    return response.data.data;
+    console.log('API response:', response.data);
+    const risks = response.data.data || [];
+    console.log('Transformed risks:', risks.map((risk: any) => this.transformRiskData(risk)));
+    return risks.map((risk: any) => this.transformRiskData(risk));
   }
 
   // Get risk by ID
   async getRiskById(id: string): Promise<ProjectRisk> {
     const response = await api.get(`/project-risks/risks/${id}`);
-    return response.data.data;
+    return this.transformRiskData(response.data.data);
   }
 
   // Create new risk
   async createRisk(data: CreateProjectRiskData): Promise<ProjectRisk> {
     const response = await api.post('/project-risks/risks', data);
-    return response.data.data;
+    return this.transformRiskData(response.data.data);
   }
 
   // Update risk
   async updateRisk(id: string, data: UpdateProjectRiskData): Promise<ProjectRisk> {
     const response = await api.put(`/project-risks/risks/${id}`, data);
-    return response.data.data;
+    return this.transformRiskData(response.data.data);
   }
 
   // Delete risk

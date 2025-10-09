@@ -329,7 +329,7 @@ const ProjectWorkLocations: React.FC<ProjectWorkLocationsProps> = ({ projectId }
       width: 120,
       render: (_, record: WorkLocation) => (
         <Space>
-          <Tooltip title="Chỉnh sửa">
+          <Tooltip key={`edit-${record._id}`} title="Chỉnh sửa">
             <Button
               type="text"
               icon={<EditOutlined />}
@@ -338,6 +338,7 @@ const ProjectWorkLocations: React.FC<ProjectWorkLocationsProps> = ({ projectId }
             />
           </Tooltip>
           <Popconfirm
+            key={`delete-${record._id}`}
             title="Xóa vị trí làm việc"
             description="Bạn có chắc chắn muốn xóa vị trí làm việc này?"
             onConfirm={() => handleDelete(record._id)}
@@ -598,11 +599,11 @@ const ProjectWorkLocations: React.FC<ProjectWorkLocationsProps> = ({ projectId }
             >
               {ppeItems.map(item => (
                 <Select.Option key={item.id} value={item.item_name}>
-                  <Space>
-                    <SafetyOutlined />
-                    <div>
-                      <div>{item.item_name}</div>
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                  <Space key={`space-${item.id}`}>
+                    <SafetyOutlined key={`icon-${item.id}`} />
+                    <div key={`content-${item.id}`}>
+                      <div key={`name-${item.id}`}>{item.item_name}</div>
+                      <Text key={`desc-${item.id}`} type="secondary" style={{ fontSize: '12px' }}>
                         {item.item_code} - {item.brand} {item.model}
                       </Text>
                     </div>

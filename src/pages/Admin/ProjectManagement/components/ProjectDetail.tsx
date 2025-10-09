@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Card, 
@@ -20,7 +20,8 @@ import {
   UserOutlined,
   BarChartOutlined,
   TeamOutlined,
-  AimOutlined
+  AimOutlined,
+  ExclamationCircleOutlined
 } from '@ant-design/icons';
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectById, fetchProjectTimeline, fetchProjectAssignments } from '../../../../store/slices/projectSlice';
@@ -29,7 +30,9 @@ import ProjectMilestones from './ProjectMilestones';
 import ProjectTasks from './ProjectTasks';
 import ProjectResources from './ProjectResources';
 import ProjectWorkLocations from './ProjectWorkLocations';
+import ProjectRisks from './ProjectRisks';
 import ProgressTrackingDashboard from './ProgressTrackingDashboard';
+import EditProjectModal from './EditProjectModal';
 
 interface ProjectDetailProps {
   projectId: string;
@@ -38,9 +41,10 @@ interface ProjectDetailProps {
 const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
-  const navigate = useNavigate();
   
   const { selectedProject, loading, error, projects } = useSelector((state: RootState) => state.project);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('overview');
 
   // Fallback: Use project from list if selectedProject is not available
   const project = selectedProject || projects.find(p => p.id === projectId);
@@ -69,6 +73,13 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
     });
   }, [projectId, selectedProject, project, loading, error, projects.length]);
 
+  // Sync activeTab with URL
+  useEffect(() => {
+    const currentPath = getCurrentPath();
+    console.log('Syncing activeTab with URL:', currentPath);
+    setActiveTab(currentPath || 'overview');
+  }, [location.pathname]);
+
   useEffect(() => {
     if (projectId && !selectedProject && !project) {
       console.log('ProjectDetail: Fetching project with ID:', projectId);
@@ -83,7 +94,9 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
     const path = location.pathname;
     const projectPath = `/admin/project-management/${projectId}`;
     const currentPath = path.replace(projectPath, '') || '';
-    return currentPath === '' ? 'overview' : currentPath.replace('/', '');
+    const result = currentPath === '' ? 'overview' : currentPath.replace('/', '');
+    console.log('ProjectDetail getCurrentPath:', { path, projectPath, currentPath, result, projectId });
+    return result;
   };
 
   if (loading) {
@@ -177,7 +190,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="space-y-6"
+      style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}
     >
       {/* Project Header */}
       <motion.div
@@ -185,137 +198,228 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1 }}
       >
-        <Card className="shadow-xl border-0 rounded-2xl bg-gradient-to-r from-white to-blue-50/50 backdrop-blur-md">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="flex-1">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
-                <div>
-                  <Typography.Title level={1} className="!mb-2 !text-gray-800">
-                    {project.project_name}
-                  </Typography.Title>
-                  <div className="flex flex-wrap gap-2">
-                    <Tag 
-                      color={project.status === 'ACTIVE' ? 'processing' : 
-                             project.status === 'COMPLETED' ? 'success' : 
-                             project.status === 'CANCELLED' ? 'error' : 
-                             project.status === 'ON_HOLD' ? 'warning' : 'default'}
-                      className="px-3 py-1 rounded-full font-medium"
-                    >
-                      {project.status === 'PLANNING' ? 'LẬP KẾ HOẠCH' :
-                       project.status === 'ACTIVE' ? 'ĐANG HOẠT ĐỘNG' :
-                       project.status === 'COMPLETED' ? 'HOÀN THÀNH' :
-                       project.status === 'CANCELLED' ? 'ĐÃ HỦY' :
-                       project.status === 'ON_HOLD' ? 'TẠM DỪNG' : project.status}
-                    </Tag>
-                    <Tag 
-                      color={project.priority === 'URGENT' ? 'red' :
-                             project.priority === 'HIGH' ? 'orange' : 
-                             project.priority === 'MEDIUM' ? 'blue' : 
-                             project.priority === 'LOW' ? 'green' : 'default'}
-                      className="px-3 py-1 rounded-full font-medium"
-                    >
-                      {project.priority === 'URGENT' ? 'KHẨN CẤP' :
-                       project.priority === 'HIGH' ? 'CAO' :
-                       project.priority === 'MEDIUM' ? 'TRUNG BÌNH' :
-                       project.priority === 'LOW' ? 'THẤP' : project.priority}
-                    </Tag>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Link to="/admin/project-management">
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button 
-                        icon={<ArrowLeftOutlined />}
-                        className="hover:bg-gray-50 transition-colors"
-                      >
-                        Quay lại
-                      </Button>
-                    </motion.div>
-                  </Link>
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button 
-                      icon={<EditOutlined />}
-                      className="hover:bg-green-50 hover:text-green-600 transition-colors"
-                    >
-                      Chỉnh sửa
-                    </Button>
-                  </motion.div>
+        <Card 
+          style={{ 
+            borderRadius: '16px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            border: 'none',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+          }}
+          bodyStyle={{ padding: '32px' }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Title and Tags Row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <Typography.Title 
+                  level={1} 
+                  style={{ 
+                    margin: 0, 
+                    color: '#1e293b', 
+                    fontWeight: 700,
+                    fontSize: '32px',
+                    lineHeight: '1.2'
+                  }}
+                >
+                  {project.project_name}
+                </Typography.Title>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+                  <Tag 
+                    color={project.status === 'ACTIVE' ? 'green' : 
+                           project.status === 'COMPLETED' ? 'blue' : 
+                           project.status === 'CANCELLED' ? 'red' : 
+                           project.status === 'ON_HOLD' ? 'orange' : 'default'}
+                    style={{ 
+                      fontSize: '12px', 
+                      padding: '6px 16px', 
+                      borderRadius: '20px',
+                      fontWeight: 600,
+                      border: 'none'
+                    }}
+                  >
+                    {project.status === 'PLANNING' ? 'LẬP KẾ HOẠCH' :
+                     project.status === 'ACTIVE' ? 'ĐANG HOẠT ĐỘNG' :
+                     project.status === 'COMPLETED' ? 'HOÀN THÀNH' :
+                     project.status === 'CANCELLED' ? 'ĐÃ HỦY' :
+                     project.status === 'ON_HOLD' ? 'TẠM DỪNG' : project.status}
+                  </Tag>
+                  <Tag 
+                    color={project.priority === 'URGENT' ? 'red' :
+                           project.priority === 'HIGH' ? 'orange' : 
+                           project.priority === 'MEDIUM' ? 'blue' : 
+                           project.priority === 'LOW' ? 'green' : 'default'}
+                    style={{ 
+                      fontSize: '12px', 
+                      padding: '6px 16px', 
+                      borderRadius: '20px',
+                      fontWeight: 600,
+                      border: 'none'
+                    }}
+                  >
+                    {project.priority === 'URGENT' ? 'KHẨN CẤP' :
+                     project.priority === 'HIGH' ? 'CAO' :
+                     project.priority === 'MEDIUM' ? 'TRUNG BÌNH' :
+                     project.priority === 'LOW' ? 'THẤP' : project.priority}
+                  </Tag>
                 </div>
               </div>
-              
-              <Typography.Text className="text-gray-600 text-base leading-relaxed block mb-6">
-                {project.description && project.description.trim() !== '' && 
-                 !project.description.toLowerCase().includes('ádasdasd') && 
-                 !project.description.toLowerCase().includes('test') 
-                 ? project.description 
-                 : 'Không có mô tả'}
-              </Typography.Text>
-              
-              {/* Debug Info - Hidden for better UX */}
-              {false && import.meta.env.DEV && (
-                <div className="mb-4 p-4 bg-gray-100 rounded-lg text-xs">
-                  <strong>Debug Info:</strong>
-                  <pre>{JSON.stringify({
-                    leader_id_type: typeof project?.leader_id,
-                    leader_id_value: project?.leader_id,
-                    site_id_type: typeof project?.site_id,
-                    site_id_value: project?.site_id,
-                    status: project?.status,
-                    priority: project?.priority
-                  }, null, 2)}</pre>
-                </div>
-              )}
-              
-              <Row gutter={[24, 16]}>
-                <Col xs={24} sm={12} md={6}>
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <CalendarOutlined className="text-blue-500" />
-                    <div>
-                      <div className="text-xs text-gray-500">Thời gian</div>
-                      <div className="font-medium">
-                        {new Date(project.start_date).toLocaleDateString('vi-VN')} - 
-                        {new Date(project.end_date).toLocaleDateString('vi-VN')}
-                      </div>
-                    </div>
-                  </div>
-                </Col>
-                <Col xs={24} sm={12} md={6}>
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <UserOutlined className="text-green-500" />
-                    <div>
-                      <div className="text-xs text-gray-500">Trưởng dự án</div>
-                      <div className="font-medium">
-                        {project.leader_id && typeof project.leader_id === 'object' ? 
-                          project.leader_id.full_name || 'N/A' : 
-                          project.leader_id || 'N/A'}
-                      </div>
-                    </div>
-                  </div>
-                </Col>
-                <Col xs={24} sm={12} md={6}>
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <EnvironmentOutlined className="text-orange-500" />
-                    <div>
-                      <div className="text-xs text-gray-500">Địa điểm</div>
-                      <div className="font-medium">
-                        {project.site_id && typeof project.site_id === 'object' ? 
-                          project.site_id.site_name || 'N/A' : 
-                          project.site_id || 'N/A'}
-                      </div>
-                    </div>
-                  </div>
-                </Col>
-                <Col xs={24} sm={12} md={6}>
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <BarChartOutlined className="text-purple-500" />
-                    <div>
-                      <div className="text-xs text-gray-500">Tiến độ</div>
-                      <div className="font-medium">{project.progress}%</div>
-                    </div>
-                  </div>
-                </Col>
-              </Row>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <Link to="/admin/project-management">
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button 
+                      icon={<ArrowLeftOutlined />}
+                      size="large"
+                      style={{ 
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        fontWeight: 500
+                      }}
+                    >
+                      Quay lại
+                    </Button>
+                  </motion.div>
+                </Link>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    type="primary"
+                    icon={<EditOutlined />}
+                    size="large"
+                    onClick={() => setIsEditModalOpen(true)}
+                    style={{ 
+                      borderRadius: '8px',
+                      fontWeight: 500,
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                      border: 'none'
+                    }}
+                  >
+                    Chỉnh sửa
+                  </Button>
+                </motion.div>
+              </div>
             </div>
+            
+            {/* Description */}
+            <Typography.Text 
+              style={{ 
+                fontSize: '16px', 
+                color: '#64748b', 
+                lineHeight: '1.6',
+                display: 'block'
+              }}
+            >
+              {project.description && project.description.trim() !== '' && 
+               !project.description.toLowerCase().includes('ádasdasd') && 
+               !project.description.toLowerCase().includes('test') 
+               ? project.description 
+               : 'Không có mô tả'}
+            </Typography.Text>
+            
+            {/* Project Info Grid */}
+            <Row gutter={[24, 16]}>
+              <Col xs={24} sm={12} md={6}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px',
+                  padding: '16px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <div style={{ 
+                    padding: '8px', 
+                    borderRadius: '8px', 
+                    backgroundColor: '#dbeafe'
+                  }}>
+                    <CalendarOutlined style={{ fontSize: '16px', color: '#2563eb' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Thời gian</div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
+                      {new Date(project.start_date).toLocaleDateString('vi-VN')} - 
+                      {new Date(project.end_date).toLocaleDateString('vi-VN')}
+                    </div>
+                  </div>
+                </div>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px',
+                  padding: '16px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <div style={{ 
+                    padding: '8px', 
+                    borderRadius: '8px', 
+                    backgroundColor: '#dcfce7'
+                  }}>
+                    <UserOutlined style={{ fontSize: '16px', color: '#16a34a' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Trưởng dự án</div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
+                      {project.leader_id && typeof project.leader_id === 'object' ? 
+                        project.leader_id.full_name || 'N/A' : 
+                        project.leader_id || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px',
+                  padding: '16px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <div style={{ 
+                    padding: '8px', 
+                    borderRadius: '8px', 
+                    backgroundColor: '#fef3c7'
+                  }}>
+                    <EnvironmentOutlined style={{ fontSize: '16px', color: '#d97706' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Địa điểm</div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
+                      {project.site_id && typeof project.site_id === 'object' ? 
+                        project.site_id.site_name || 'N/A' : 
+                        project.site_id || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px',
+                  padding: '16px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <div style={{ 
+                    padding: '8px', 
+                    borderRadius: '8px', 
+                    backgroundColor: '#f3e8ff'
+                  }}>
+                    <BarChartOutlined style={{ fontSize: '16px', color: '#9333ea' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Tiến độ</div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>{project.progress}%</div>
+                  </div>
+                </div>
+              </Col>
+            </Row>
           </div>
         </Card>
       </motion.div>
@@ -326,83 +430,169 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <Card className="shadow-xl border-0 rounded-2xl bg-white/80 backdrop-blur-md">
+        <Card 
+          className="shadow-xl border-0 rounded-2xl bg-white/80 backdrop-blur-md"
+          style={{ position: 'relative', zIndex: 1 }}
+        >
           <Tabs
-            activeKey={getCurrentPath() || 'overview'}
+            activeKey={activeTab}
             onChange={(key) => {
+              console.log('Tab clicked:', key);
+              console.log('Setting activeTab to:', key);
+              setActiveTab(key);
+              // Cập nhật URL để đồng bộ với state
               const path = key === 'overview' ? '' : `/${key}`;
-              navigate(`/admin/project-management/${projectId}${path}`);
+              window.history.replaceState(null, '', `/admin/project-management/${projectId}${path}`);
             }}
             items={[
               {
                 key: 'overview',
                 label: (
-                  <span className="flex items-center space-x-2">
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
                     <BarChartOutlined />
                     <span>Tổng quan</span>
                   </span>
                 ),
-                children: <ProjectOverview projectId={projectId} />
+                children: (() => {
+                  try {
+                    return <ProjectOverview projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ProjectOverview:', error);
+                    return <div>Lỗi tải tab Tổng quan</div>;
+                  }
+                })()
               },
               {
                 key: 'progress',
                 label: (
-                  <span className="flex items-center space-x-2">
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
                     <BarChartOutlined />
                     <span>Theo dõi Tiến độ</span>
                   </span>
                 ),
-                children: <ProgressTrackingDashboard projectId={projectId} />
+                children: (() => {
+                  try {
+                    return <ProgressTrackingDashboard projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ProgressTrackingDashboard:', error);
+                    return <div>Lỗi tải tab Theo dõi Tiến độ</div>;
+                  }
+                })()
               },
               {
                 key: 'milestones',
                 label: (
-                  <span className="flex items-center space-x-2">
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
                     <CalendarOutlined />
                     <span>Milestone</span>
                   </span>
                 ),
-                children: <ProjectMilestones projectId={projectId} />
+                children: (() => {
+                  try {
+                    return <ProjectMilestones projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ProjectMilestones:', error);
+                    return <div>Lỗi tải tab Milestone</div>;
+                  }
+                })()
               },
               {
                 key: 'tasks',
                 label: (
-                  <span className="flex items-center space-x-2">
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
                     <TeamOutlined />
                     <span>Nhiệm vụ</span>
                   </span>
                 ),
-                children: <ProjectTasks projectId={projectId} />
+                children: (() => {
+                  try {
+                    return <ProjectTasks projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ProjectTasks:', error);
+                    return <div>Lỗi tải tab Nhiệm vụ</div>;
+                  }
+                })()
               },
               {
                 key: 'work-locations',
                 label: (
-                  <span className="flex items-center space-x-2">
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
                     <AimOutlined />
                     <span>Vị trí Làm việc</span>
                   </span>
                 ),
-                children: <ProjectWorkLocations projectId={projectId} />
+                children: (() => {
+                  try {
+                    return <ProjectWorkLocations projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ProjectWorkLocations:', error);
+                    return <div>Lỗi tải tab Vị trí Làm việc</div>;
+                  }
+                })()
+              },
+              {
+                key: 'risks',
+                label: (
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
+                    <ExclamationCircleOutlined />
+                    <span>Rủi ro</span>
+                  </span>
+                ),
+                children: (() => {
+                  try {
+                    return <ProjectRisks projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ProjectRisks:', error);
+                    return <div>Lỗi tải tab Rủi ro</div>;
+                  }
+                })()
               },
               {
                 key: 'resources',
                 label: (
-                  <span className="flex items-center space-x-2">
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
                     <EnvironmentOutlined />
                     <span>Tài nguyên</span>
                   </span>
                 ),
-                children: <ProjectResources projectId={projectId} />
+                children: (() => {
+                  try {
+                    return <ProjectResources projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ProjectResources:', error);
+                    return <div>Lỗi tải tab Tài nguyên</div>;
+                  }
+                })()
               }
             ]}
-            className="project-tabs"
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+            }}
             tabBarStyle={{
               marginBottom: 24,
-              borderBottom: '1px solid #f0f0f0'
+              borderBottom: '1px solid #f0f0f0',
+              padding: '0 24px',
+              background: '#fafafa',
+              borderRadius: '12px 12px 0 0',
+              position: 'relative',
+              zIndex: 1
             }}
           />
         </Card>
       </motion.div>
+
+      {/* Edit Project Modal */}
+      <EditProjectModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSuccess={() => {
+          // Refresh project data after successful edit
+          dispatch(fetchProjectById(projectId));
+        }}
+        project={project}
+      />
     </motion.div>
   );
 };

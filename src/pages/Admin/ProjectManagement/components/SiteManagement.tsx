@@ -1,5 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { 
+  Card, 
+  Button, 
+  Typography, 
+  Space, 
+  Tag, 
+  Spin, 
+  Alert, 
+  Row, 
+  Col,
+  Empty,
+  Tooltip,
+  Modal,
+  message,
+  Input,
+  Select,
+  Form
+} from 'antd';
+import { 
+  PlusOutlined, 
+  EditOutlined, 
+  DeleteOutlined, 
+  EnvironmentOutlined,
+  ReloadOutlined
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
 import type { RootState } from '../../../../store';
 import type { AppDispatch } from '../../../../store';
 import { type SiteArea } from '../../../../services/siteAreaService';
@@ -12,430 +38,392 @@ import {
   setCurrentProjectId
 } from '../../../../store/slices/siteAreaSlice';
 import projectService from '../../../../services/projectService';
-import styles from './SiteManagement.module.css';
 
 interface SiteManagementProps {
   projectId: string;
   onComplete: () => void;
 }
 
+const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
+
 const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: RootState) => state.auth);
-  const { areas: siteAreas, loading, error } = useSelector((state: RootState) => state.siteArea);
-  const [sites, setSites] = useState<any[]>([]);
-  const [selectedSite, setSelectedSite] = useState<string>('');
-  const [localError, setLocalError] = useState<string | null>(null);
+  const { areas, loading, error } = useSelector((state: RootState) => state.siteArea);
   const [showCreateArea, setShowCreateArea] = useState(false);
   const [editingArea, setEditingArea] = useState<SiteArea | null>(null);
-
-  // Form states
-  const [areaForm, setAreaForm] = useState<CreateAreaData>({
-    site_id: '',
-    area_code: '',
-    area_name: '',
-    area_type: 'CONSTRUCTION',
-    description: '',
-    area_size_sqm: 0,
-    safety_level: 'MEDIUM',
-    supervisor_id: user?.id || '',
-    capacity: 1,
-    special_requirements: ''
-  });
+  const [form] = Form.useForm();
 
   useEffect(() => {
-    loadSites();
-    // Set current project ID for Redux
-    dispatch(setCurrentProjectId(projectId));
-    // Load areas for the project
-    dispatch(fetchAreasByProject(projectId));
-  }, [projectId, dispatch]);
-
-  useEffect(() => {
-    if (selectedSite) {
-      // Filter areas by selected site
-      // Areas are already loaded from Redux
+    if (projectId) {
+      dispatch(setCurrentProjectId(projectId));
+      dispatch(fetchAreasByProject(projectId));
     }
-  }, [selectedSite]);
+  }, [dispatch, projectId]);
 
-  const loadSites = async () => {
+  const handleCreateArea = async (values: CreateAreaData) => {
     try {
-      const response = await projectService.getAllSites();
-      const data = response.data || [];
-      setSites(data);
-      if (data.length > 0 && !selectedSite) {
-        setSelectedSite(data[0].id);
-        setAreaForm(prev => ({ ...prev, site_id: data[0].id }));
-      }
-    } catch (err) {
-      console.error('Error loading sites:', err);
-      setLocalError('Không thể tải danh sách site');
-    }
-  };
-
-  // Areas are now loaded from Redux, no need for separate loadSiteAreas method
-  const getFilteredAreas = () => {
-    return selectedSite ? siteAreas.filter(area => area.site_id === selectedSite) : siteAreas;
-  };
-
-  const handleCreateArea = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await dispatch(createAreaForProject({ projectId, data: areaForm })).unwrap();
+      await dispatch(createAreaForProject({ projectId, data: values })).unwrap();
+      message.success('Khu vực đã được tạo thành công');
       setShowCreateArea(false);
-      resetForm();
-    } catch (err: any) {
-      setLocalError(err?.message || 'Không thể tạo khu vực');
+      form.resetFields();
+    } catch (err) {
+      message.error('Không thể tạo khu vực');
+      console.error('Error creating area:', err);
     }
   };
 
-  const handleUpdateArea = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateArea = async (values: UpdateAreaData) => {
     if (!editingArea) return;
-
+    
     try {
-      await dispatch(updateAreaForProject({ id: editingArea._id, data: areaForm as UpdateAreaData })).unwrap();
+      await dispatch(updateAreaForProject({ 
+        projectId, 
+        areaId: editingArea._id, 
+        data: values 
+      })).unwrap();
+      message.success('Khu vực đã được cập nhật thành công');
+      setShowCreateArea(false);
       setEditingArea(null);
-      resetForm();
-    } catch (err: any) {
-      setLocalError(err?.message || 'Không thể cập nhật khu vực');
+      form.resetFields();
+    } catch (err) {
+      message.error('Không thể cập nhật khu vực');
+      console.error('Error updating area:', err);
     }
   };
 
   const handleDeleteArea = async (areaId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa khu vực này?')) return;
-
-    try {
-      await dispatch(deleteAreaForProject(areaId)).unwrap();
-    } catch (err: any) {
-      setLocalError(err?.message || 'Không thể xóa khu vực');
-    }
-  };
-
-  const resetForm = () => {
-    setAreaForm({
-      site_id: selectedSite,
-      area_code: '',
-      area_name: '',
-      area_type: 'CONSTRUCTION',
-      description: '',
-      area_size_sqm: 0,
-      safety_level: 'MEDIUM',
-      supervisor_id: user?.id || '',
-      capacity: 1,
-      special_requirements: ''
+    Modal.confirm({
+      title: 'Xác nhận xóa khu vực',
+      content: 'Bạn có chắc chắn muốn xóa khu vực này? Hành động này không thể hoàn tác.',
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          await dispatch(deleteAreaForProject({ projectId, areaId })).unwrap();
+          message.success('Khu vực đã được xóa thành công');
+        } catch (err) {
+          message.error('Không thể xóa khu vực');
+          console.error('Error deleting area:', err);
+        }
+      },
     });
   };
 
   const handleEditArea = (area: SiteArea) => {
     setEditingArea(area);
-    setAreaForm({
-      site_id: area.site_id,
-      area_code: area.area_code,
+    form.setFieldsValue({
       area_name: area.area_name,
+      description: area.description,
       area_type: area.area_type,
-      description: area.description || '',
-      area_size_sqm: area.area_size_sqm,
-      safety_level: area.safety_level,
-      supervisor_id: area.supervisor_id || '',
-      capacity: area.capacity,
-      special_requirements: area.special_requirements || ''
+      status: area.status
     });
     setShowCreateArea(true);
   };
 
-  const getAreaTypeLabel = (type: string) => {
-    const labels: { [key: string]: string } = {
-      'CONSTRUCTION': 'Xây dựng',
-      'STORAGE': 'Kho bãi',
-      'OFFICE': 'Văn phòng',
-      'SAFETY': 'An toàn',
-      'EQUIPMENT': 'Thiết bị',
-      'MEETING': 'Họp',
-      'REST': 'Nghỉ ngơi'
-    };
-    return labels[type] || type;
+  const handleModalClose = () => {
+    setShowCreateArea(false);
+    setEditingArea(null);
+    form.resetFields();
   };
 
-  const getSafetyLevelLabel = (level: string) => {
-    const labels: { [key: string]: string } = {
-      'LOW': 'Thấp',
-      'MEDIUM': 'Trung bình',
-      'HIGH': 'Cao',
-      'CRITICAL': 'Nghiêm trọng'
-    };
-    return labels[level] || level;
+  const getAreaTypeColor = (type: string) => {
+    switch (type) {
+      case 'WORK_AREA': return 'blue';
+      case 'STORAGE_AREA': return 'green';
+      case 'OFFICE_AREA': return 'purple';
+      case 'SAFETY_AREA': return 'red';
+      default: return 'default';
+    }
+  };
+
+  const getAreaTypeLabel = (type: string) => {
+    switch (type) {
+      case 'WORK_AREA': return 'Khu vực làm việc';
+      case 'STORAGE_AREA': return 'Khu vực lưu trữ';
+      case 'OFFICE_AREA': return 'Khu vực văn phòng';
+      case 'SAFETY_AREA': return 'Khu vực an toàn';
+      default: return type;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': return 'green';
+      case 'INACTIVE': return 'red';
+      case 'MAINTENANCE': return 'orange';
+      default: return 'default';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': return 'Hoạt động';
+      case 'INACTIVE': return 'Không hoạt động';
+      case 'MAINTENANCE': return 'Bảo trì';
+      default: return status;
+    }
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h2>Thiết lập Site và Khu vực</h2>
-        <p>Quản lý các khu vực trong site của dự án</p>
-      </div>
+    <motion.div 
+      style={{ padding: '24px' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6 }}
+    >
+      {/* Header Section */}
+      <Card style={{ marginBottom: '24px' }}>
+        <Row justify="space-between" align="middle">
+          <Col>
+            <Space direction="vertical" size={0}>
+              <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <EnvironmentOutlined style={{ color: '#52c41a' }} />
+                Quản lý Khu vực
+              </Title>
+              <Text type="secondary">
+                Quản lý các khu vực làm việc trong dự án
+              </Text>
+            </Space>
+          </Col>
+          <Col>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={() => setShowCreateArea(true)}
+            >
+              Thêm khu vực
+            </Button>
+          </Col>
+        </Row>
+      </Card>
 
-      {(error || localError) && (
-        <div className={styles.alert}>
-          <i className="fas fa-exclamation-triangle"></i>
-          {error || localError}
-          <button onClick={() => setLocalError(null)} className={styles.alertClose}>
-            <i className="fas fa-times"></i>
-          </button>
-        </div>
+      {/* Error Alert */}
+      {error && (
+        <Alert
+          message="Lỗi"
+          description={error}
+          type="error"
+          showIcon
+          closable
+          action={
+            <Button 
+              size="small" 
+              danger 
+              icon={<ReloadOutlined />}
+              onClick={() => dispatch(fetchAreasByProject(projectId))}
+            >
+              Thử lại
+            </Button>
+          }
+          style={{ marginBottom: '24px' }}
+        />
       )}
 
-      <div className={styles.content}>
-        {/* Site Selection */}
-        <div className={styles.section}>
-          <h3>Chọn Site</h3>
-          <select
-            value={selectedSite}
-            onChange={(e) => {
-              setSelectedSite(e.target.value);
-              setAreaForm(prev => ({ ...prev, site_id: e.target.value }));
-            }}
-            className={styles.select}
-          >
-            <option value="">Chọn site...</option>
-            {sites.map(site => (
-              <option key={site.id} value={site.id}>
-                {site.site_name} - {site.address}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Site Areas List */}
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h3>Khu vực trong Site</h3>
-            <button
-              onClick={() => {
-                setShowCreateArea(true);
-                setEditingArea(null);
-                resetForm();
-              }}
-              className={styles.btnPrimary}
-              disabled={!selectedSite}
-            >
-              <i className="fas fa-plus"></i>
-              Thêm khu vực
-            </button>
+      {/* Areas List */}
+      <Card>
+        <Title level={3} style={{ marginBottom: '16px' }}>Danh sách Khu vực</Title>
+        
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '50px' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: '16px' }}>
+              <Text>Đang tải danh sách khu vực...</Text>
+            </div>
           </div>
-
-          {loading ? (
-            <div className={styles.loading}>
-              <i className="fas fa-spinner fa-spin"></i>
-              Đang tải...
-            </div>
-          ) : (
-            <div className={styles.areasGrid}>
-              {getFilteredAreas().map((area: any) => (
-                <div key={area._id} className={styles.areaCard}>
-                  <div className={styles.areaHeader}>
-                    <h4>{area.area_name}</h4>
-                    <div className={styles.areaActions}>
-                      <button
-                        onClick={() => handleEditArea(area)}
-                        className={styles.btnIcon}
-                        title="Chỉnh sửa"
-                      >
-                        <i className="fas fa-edit"></i>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteArea(area._id)}
-                        className={styles.btnIconDanger}
-                        title="Xóa"
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <div className={styles.areaDetails}>
-                    <p><strong>Mã khu vực:</strong> {area.area_code}</p>
-                    <p><strong>Loại:</strong> {getAreaTypeLabel(area.area_type)}</p>
-                    <p><strong>Diện tích:</strong> {area.area_size_sqm} m²</p>
-                    <p><strong>Mức độ an toàn:</strong> {getSafetyLevelLabel(area.safety_level)}</p>
-                    <p><strong>Sức chứa:</strong> {area.capacity} người</p>
-                    {area.description && (
-                      <p><strong>Mô tả:</strong> {area.description}</p>
-                    )}
-                    {area.special_requirements && (
-                      <p><strong>Yêu cầu đặc biệt:</strong> {area.special_requirements}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {siteAreas.length === 0 && (
-                <div className={styles.emptyState}>
-                  <i className="fas fa-map-marker-alt"></i>
-                  <p>Chưa có khu vực nào trong site này</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+        ) : areas.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              <Space direction="vertical" size="middle">
+                <Title level={4} style={{ color: '#8c8c8c' }}>
+                  Chưa có khu vực nào
+                </Title>
+                <Text type="secondary">
+                  Dự án này chưa có khu vực nào được tạo. Hãy tạo khu vực đầu tiên để bắt đầu quản lý.
+                </Text>
+                <Button 
+                  type="primary" 
+                  icon={<PlusOutlined />}
+                  onClick={() => setShowCreateArea(true)}
+                >
+                  Tạo Khu vực Đầu Tiên
+                </Button>
+              </Space>
+            }
+          />
+        ) : (
+          <Row gutter={[16, 16]}>
+            {areas.map((area) => (
+              <Col key={area._id} xs={24} sm={24} md={12} lg={8}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Card
+                    hoverable
+                    actions={[
+                      <Tooltip key="edit" title="Chỉnh sửa">
+                        <Button 
+                          type="text" 
+                          icon={<EditOutlined />}
+                          onClick={() => handleEditArea(area)}
+                        />
+                      </Tooltip>,
+                      <Tooltip key="delete" title="Xóa">
+                        <Button 
+                          type="text" 
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => handleDeleteArea(area._id)}
+                        />
+                      </Tooltip>
+                    ]}
+                    extra={
+                      <Space>
+                        <Tag color={getAreaTypeColor(area.area_type)}>
+                          {getAreaTypeLabel(area.area_type)}
+                        </Tag>
+                        <Tag color={getStatusColor(area.status)}>
+                          {getStatusLabel(area.status)}
+                        </Tag>
+                      </Space>
+                    }
+                  >
+                    <Card.Meta
+                      avatar={
+                        <div style={{ 
+                          width: '40px', 
+                          height: '40px', 
+                          borderRadius: '50%', 
+                          background: '#52c41a',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <EnvironmentOutlined style={{ color: 'white', fontSize: '20px' }} />
+                        </div>
+                      }
+                      title={
+                        <Text strong style={{ fontSize: '16px' }}>
+                          {area.area_name}
+                        </Text>
+                      }
+                      description={
+                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                          <Paragraph 
+                            ellipsis={{ rows: 2 }} 
+                            style={{ margin: 0, color: '#8c8c8c' }}
+                          >
+                            {area.description || 'Không có mô tả'}
+                          </Paragraph>
+                          
+                          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                            <Space>
+                              <EnvironmentOutlined style={{ color: '#1890ff' }} />
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Loại: {getAreaTypeLabel(area.area_type)}
+                              </Text>
+                            </Space>
+                            
+                            <Space>
+                              <Tag color={getStatusColor(area.status)} style={{ fontSize: '12px' }}>
+                                {getStatusLabel(area.status)}
+                              </Tag>
+                            </Space>
+                          </Space>
+                        </Space>
+                      }
+                    />
+                  </Card>
+                </motion.div>
+              </Col>
+            ))}
+          </Row>
+        )}
+      </Card>
 
       {/* Create/Edit Area Modal */}
-      {showCreateArea && (
-        <div className={styles.modal}>
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h3>{editingArea ? 'Chỉnh sửa khu vực' : 'Thêm khu vực mới'}</h3>
-              <button
-                onClick={() => {
-                  setShowCreateArea(false);
-                  setEditingArea(null);
-                  resetForm();
-                }}
-                className={styles.modalClose}
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
+      <Modal
+        title={editingArea ? 'Chỉnh sửa Khu vực' : 'Tạo Khu vực Mới'}
+        open={showCreateArea}
+        onCancel={handleModalClose}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={editingArea ? handleUpdateArea : handleCreateArea}
+        >
+          <Form.Item
+            name="area_name"
+            label="Tên khu vực"
+            rules={[{ required: true, message: 'Vui lòng nhập tên khu vực' }]}
+          >
+            <Input placeholder="Nhập tên khu vực" />
+          </Form.Item>
 
-            <form onSubmit={editingArea ? handleUpdateArea : handleCreateArea} className={styles.form}>
-              <div className={styles.formGrid}>
-                <div className={styles.formGroup}>
-                  <label>Mã khu vực *</label>
-                  <input
-                    type="text"
-                    value={areaForm.area_code}
-                    onChange={(e) => setAreaForm(prev => ({ ...prev, area_code: e.target.value }))}
-                    required
-                    className={styles.input}
-                  />
-                </div>
+          <Form.Item
+            name="area_type"
+            label="Loại khu vực"
+            rules={[{ required: true, message: 'Vui lòng chọn loại khu vực' }]}
+          >
+            <Select placeholder="Chọn loại khu vực">
+              <Option value="WORK_AREA">Khu vực làm việc</Option>
+              <Option value="STORAGE_AREA">Khu vực lưu trữ</Option>
+              <Option value="OFFICE_AREA">Khu vực văn phòng</Option>
+              <Option value="SAFETY_AREA">Khu vực an toàn</Option>
+            </Select>
+          </Form.Item>
 
-                <div className={styles.formGroup}>
-                  <label>Tên khu vực *</label>
-                  <input
-                    type="text"
-                    value={areaForm.area_name}
-                    onChange={(e) => setAreaForm(prev => ({ ...prev, area_name: e.target.value }))}
-                    required
-                    className={styles.input}
-                  />
-                </div>
+          <Form.Item
+            name="status"
+            label="Trạng thái"
+            rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
+          >
+            <Select placeholder="Chọn trạng thái">
+              <Option value="ACTIVE">Hoạt động</Option>
+              <Option value="INACTIVE">Không hoạt động</Option>
+              <Option value="MAINTENANCE">Bảo trì</Option>
+            </Select>
+          </Form.Item>
 
-                <div className={styles.formGroup}>
-                  <label>Loại khu vực *</label>
-                  <select
-                    value={areaForm.area_type}
-                    onChange={(e) => setAreaForm(prev => ({ ...prev, area_type: e.target.value as CreateAreaData['area_type'] }))}
-                    required
-                    className={styles.select}
-                  >
-                    <option value="CONSTRUCTION">Xây dựng</option>
-                    <option value="STORAGE">Kho bãi</option>
-                    <option value="OFFICE">Văn phòng</option>
-                    <option value="SAFETY">An toàn</option>
-                    <option value="EQUIPMENT">Thiết bị</option>
-                    <option value="MEETING">Họp</option>
-                    <option value="REST">Nghỉ ngơi</option>
-                  </select>
-                </div>
+          <Form.Item
+            name="description"
+            label="Mô tả"
+          >
+            <TextArea rows={3} placeholder="Nhập mô tả khu vực" />
+          </Form.Item>
 
-                <div className={styles.formGroup}>
-                  <label>Mức độ an toàn *</label>
-                  <select
-                    value={areaForm.safety_level}
-                    onChange={(e) => setAreaForm(prev => ({ ...prev, safety_level: e.target.value as CreateAreaData['safety_level'] }))}
-                    required
-                    className={styles.select}
-                  >
-                    <option value="LOW">Thấp</option>
-                    <option value="MEDIUM">Trung bình</option>
-                    <option value="HIGH">Cao</option>
-                    <option value="CRITICAL">Nghiêm trọng</option>
-                  </select>
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>Diện tích (m²) *</label>
-                  <input
-                    type="number"
-                    value={areaForm.area_size_sqm}
-                    onChange={(e) => setAreaForm(prev => ({ ...prev, area_size_sqm: Number(e.target.value) }))}
-                    required
-                    min="0"
-                    className={styles.input}
-                  />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>Sức chứa (người)</label>
-                  <input
-                    type="number"
-                    value={areaForm.capacity}
-                    onChange={(e) => setAreaForm(prev => ({ ...prev, capacity: Number(e.target.value) }))}
-                    min="1"
-                    className={styles.input}
-                  />
-                </div>
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Mô tả</label>
-                <textarea
-                  value={areaForm.description}
-                  onChange={(e) => setAreaForm(prev => ({ ...prev, description: e.target.value }))}
-                  rows={3}
-                  className={styles.textarea}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Yêu cầu đặc biệt</label>
-                <textarea
-                  value={areaForm.special_requirements}
-                  onChange={(e) => setAreaForm(prev => ({ ...prev, special_requirements: e.target.value }))}
-                  rows={2}
-                  className={styles.textarea}
-                />
-              </div>
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateArea(false);
-                    setEditingArea(null);
-                    resetForm();
-                  }}
-                  className={styles.btnSecondary}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={styles.btnPrimary}
-                >
-                  {loading ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin"></i>
-                      Đang xử lý...
-                    </>
-                  ) : (
-                    editingArea ? 'Cập nhật' : 'Tạo mới'
-                  )}
-                </button>
-              </div>
-            </form>
+          <div style={{ textAlign: 'right', marginTop: '24px' }}>
+            <Space>
+              <Button onClick={handleModalClose}>
+                Hủy
+              </Button>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                {editingArea ? 'Cập nhật' : 'Tạo mới'}
+              </Button>
+            </Space>
           </div>
-        </div>
-      )}
+        </Form>
+      </Modal>
 
       {/* Action Buttons */}
-      <div className={styles.actions}>
-        <button onClick={onComplete} className={styles.btnSuccess}>
-          <i className="fas fa-check"></i>
-          Hoàn thành thiết lập Site
-        </button>
+      <div style={{ textAlign: 'center', marginTop: '24px' }}>
+        <Button 
+          type="primary" 
+          size="large"
+          icon={<EnvironmentOutlined />}
+          onClick={onComplete}
+        >
+          Hoàn thành Quản lý Khu vực
+        </Button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

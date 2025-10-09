@@ -17,19 +17,12 @@ Bộ components này cung cấp đầy đủ các chức năng "Thông tin bổ 
 ```
 components/
 ├── SiteManagement.tsx                    # Quản lý Site và Site Areas
-├── SiteManagement.module.css
 ├── WorkLocationManagement.tsx            # Quản lý Vị trí Làm việc
-├── WorkLocationManagement.module.css
 ├── ProjectPhaseManagement.tsx            # Quản lý Giai đoạn Dự án
-├── ProjectPhaseManagement.module.css
 ├── ResourceAllocationManagement.tsx      # Phân bổ Tài nguyên
-├── ResourceAllocationManagement.module.css
 ├── RiskAssessmentManagement.tsx          # Đánh giá Rủi ro
-├── RiskAssessmentManagement.module.css
 ├── MilestoneManagement.tsx               # Quản lý Milestone
-├── MilestoneManagement.module.css
 ├── ProjectCreationWizard.tsx             # Wizard tổng hợp
-├── ProjectCreationWizard.module.css
 └── README.md                             # File này
 ```
 
@@ -136,11 +129,11 @@ Tất cả các API đã được cấu hình sẵn trong backend:
 
 ## Styling
 
-Tất cả components sử dụng CSS Modules với:
+Tất cả components sử dụng Ant Design và Framer Motion với:
 - ✅ Responsive design
 - ✅ Modern UI/UX
 - ✅ Consistent color scheme
-- ✅ Hover effects và animations
+- ✅ Smooth animations với Framer Motion
 - ✅ Mobile-friendly
 
 ## Dependencies
@@ -150,7 +143,8 @@ Các dependencies cần thiết:
 - TypeScript
 - Redux Toolkit
 - React Router
-- Font Awesome Icons
+- Ant Design
+- Framer Motion
 
 ## Lưu ý
 

@@ -1,16 +1,20 @@
 export interface ProjectTask {
   _id: string;
   id: string;
-  phase_id: string;
+  project_id: string;
+  task_code: string;
   task_name: string;
   description: string;
-  start_date: string;
-  end_date: string;
-  progress: number;
-  status: 'pending' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  estimated_hours: number;
-  actual_hours: number;
+  planned_start_date: string;
+  planned_end_date: string;
+  progress_percentage: number;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  planned_duration_hours: number;
+  actual_duration_hours: number;
+  task_type: 'CONSTRUCTION' | 'INSPECTION' | 'DOCUMENTATION' | 'PLANNING' | 'COORDINATION' | 'SAFETY' | 'QUALITY';
+  area_id: string;
+  location_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -50,22 +54,32 @@ export interface TaskProgressLog {
 }
 
 export interface CreateTaskData {
-  phase_id: string;
+  project_id: string;
+  task_code: string;
   task_name: string;
   description: string;
-  start_date: string;
-  end_date: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  estimated_hours: number;
+  planned_start_date: string;
+  planned_end_date: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  planned_duration_hours: number;
+  task_type: 'CONSTRUCTION' | 'INSPECTION' | 'DOCUMENTATION' | 'PLANNING' | 'COORDINATION' | 'SAFETY' | 'QUALITY';
+  area_id: string;
+  location_id: string;
+  progress_percentage?: number;
 }
 
 export interface UpdateTaskData {
+  task_code?: string;
   task_name?: string;
   description?: string;
-  start_date?: string;
-  end_date?: string;
-  priority?: 'low' | 'medium' | 'high' | 'urgent';
-  estimated_hours?: number;
+  planned_start_date?: string;
+  planned_end_date?: string;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  planned_duration_hours?: number;
+  task_type?: 'CONSTRUCTION' | 'INSPECTION' | 'DOCUMENTATION' | 'PLANNING' | 'COORDINATION' | 'SAFETY' | 'QUALITY';
+  area_id?: string;
+  location_id?: string;
+  progress_percentage?: number;
 }
 
 export interface CreateAssignmentData {

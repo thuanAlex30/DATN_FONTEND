@@ -1,173 +1,190 @@
-import api from './api';
-import type { User, UserQuery, UserCreate, UserUpdate } from '../types/user';
+import axios from 'axios';
 
-const userService = {
-  // Get all users with pagination and filters
-  async getUsers(query: UserQuery = {}): Promise<{ success: boolean; message: string; data: User[]; timestamp: string }> {
+const API_BASE_URL = 'http://localhost:3000/api';
+
+// Create axios instance with interceptors
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+});
+
+// Add request interceptor to include token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle token expiration
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  full_name: string;
+  phone?: string;
+  role?: {
+    id: string;
+    role_name: string;
+  };
+  department?: {
+    id: string;
+    department_name: string;
+  };
+  position?: {
+    id: string;
+    position_name: string;
+  };
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface UsersResponse {
+  success: boolean;
+  message: string;
+  data: {
+    users: User[];
+    pagination?: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  };
+}
+
+export interface AllUsersResponse {
+  success: boolean;
+  message: string;
+  data: User[];
+}
+
+class UserService {
+
+  // Get all active users (for dropdowns)
+  async getAllUsers(): Promise<User[]> {
     try {
-      console.log('userService.getUsers called with query:', query);
-      const response = await api.get('/users/all', {
-        params: query
-      });
-      console.log('userService.getUsers response:', response);
-      console.log('userService.getUsers response.data:', response.data);
-      
-      // Check if response.data has the expected structure
-      if (response.data && typeof response.data === 'object') {
-        if (response.data.success !== undefined) {
-          // Response has success field (API response format)
-          // Check if there's nested data structure
-          if (response.data.data && response.data.data.data) {
-            // Double nested data structure
-            return {
-              success: response.data.success,
-              message: response.data.message,
-              data: response.data.data.data,
-              timestamp: response.data.timestamp
-            };
-          }
-          return response.data;
-        } else if (Array.isArray(response.data)) {
-          // Response is directly an array
-          return {
-            success: true,
-            message: 'Users retrieved successfully',
-            data: response.data,
-            timestamp: new Date().toISOString()
-          };
-        }
+      const response = await apiClient.get<AllUsersResponse>(
+        `/users/all`
+      );
+
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch users');
       }
-      
-      // Fallback
-      return {
-        success: true,
-        message: 'Users retrieved successfully',
-        data: response.data || [],
-        timestamp: new Date().toISOString()
-      };
-    } catch (error) {
-      console.error('Error fetching users:', error);
+    } catch (error: any) {
+      console.error('Error fetching all users:', error);
+      if (error.response?.status === 401) {
+        // Token expired or invalid
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
       throw error;
     }
-  },
+  }
+
+  // Get users with pagination and filters
+  async getUsers(options: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role_id?: string;
+    department_id?: string;
+    is_active?: boolean;
+  } = {}): Promise<UsersResponse> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (options.page) params.append('page', options.page.toString());
+      if (options.limit) params.append('limit', options.limit.toString());
+      if (options.search) params.append('search', options.search);
+      if (options.role_id) params.append('role_id', options.role_id);
+      if (options.department_id) params.append('department_id', options.department_id);
+      if (options.is_active !== undefined) params.append('is_active', options.is_active.toString());
+
+      const response = await apiClient.get<UsersResponse>(
+        `/users?${params.toString()}`
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
+      throw error;
+    }
+  }
 
   // Get user by ID
   async getUserById(id: string): Promise<User> {
     try {
-      const response = await api.get(`/users/${id}`);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      throw error;
-    }
-  },
+      const response = await apiClient.get<{
+        success: boolean;
+        message: string;
+        data: User;
+      }>(
+        `/users/${id}`
+      );
 
-  // Get potential managers
-  async getPotentialManagers(): Promise<{ success: boolean; message: string; data: User[]; timestamp: string }> {
-    try {
-      console.log('userService.getPotentialManagers called');
-      const response = await api.get('/users/managers');
-      console.log('userService.getPotentialManagers response:', response);
-      
-      if (response.data && typeof response.data === 'object') {
-        if (response.data.success !== undefined) {
-          return {
-            success: response.data.success,
-            message: response.data.message,
-            data: response.data.data?.managers || [],
-            timestamp: response.data.timestamp
-          };
-        } else if (Array.isArray(response.data)) {
-          return {
-            success: true,
-            message: 'Managers retrieved successfully',
-            data: response.data,
-            timestamp: new Date().toISOString()
-          };
-        }
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch user');
       }
-      
-      return {
-        success: true,
-        message: 'Managers retrieved successfully',
-        data: response.data?.managers || [],
-        timestamp: new Date().toISOString()
-      };
-    } catch (error) {
-      console.error('Error fetching potential managers:', error);
-      throw error;
-    }
-  },
-
-  // Create new user
-  async createUser(userData: UserCreate): Promise<User> {
-    try {
-      const response = await api.post('/users', userData);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
-    }
-  },
-
-  // Update user
-  async updateUser(id: string, userData: UserUpdate): Promise<User> {
-    try {
-      const response = await api.put(`/users/${id}`, userData);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error updating user:', error);
-      throw error;
-    }
-  },
-
-  // Delete user
-  async deleteUser(id: string): Promise<void> {
-    try {
-      await api.delete(`/users/${id}`);
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      throw error;
-    }
-  },
-
-  // Toggle user active status
-  async toggleUserStatus(id: string): Promise<User> {
-    try {
-      const response = await api.patch(`/users/${id}/toggle-status`);
-      return response.data;
-    } catch (error) {
-      console.error('Error toggling user status:', error);
-      throw error;
-    }
-  },
-
-  // Import users from Excel
-  async importUsers(formData: FormData): Promise<{ success: boolean; message: string; data: any }> {
-    try {
-      const response = await api.post('/users/import', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 300000, // 5 minutes timeout for file upload
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error importing users:', error);
-      throw error;
-    }
-  },
-
-  // Get user statistics
-  async getUserStats(): Promise<any> {
-    try {
-      const response = await api.get('/users/stats');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching user stats:', error);
+    } catch (error: any) {
+      console.error('Error fetching user:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
       throw error;
     }
   }
-};
 
-export default userService;
+  // Get potential managers
+  async getPotentialManagers(): Promise<User[]> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        message: string;
+        data: User[];
+      }>(
+        `/ppe/users`
+      );
+
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch users');
+      }
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
+      throw error;
+    }
+  }
+}
+
+export default new UserService();

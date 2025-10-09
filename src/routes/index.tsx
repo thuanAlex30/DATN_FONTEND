@@ -26,13 +26,13 @@ import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
 import EmployeePPE from '../pages/Employee/PPE';
 import WebSocketTest from '../pages/WebSocketTest';
+import { projectManagementRoutes } from './projectManagementRoutes';
+import ProjectManagementRouteWrapper from './ProjectManagementRouteWrapper';
 
 interface ProjectManagementRoute {
     path: string;
-    component: ComponentType;
+    component: ComponentType<{ projectId: string }>;
 }
-
-const projectManagementRoutes: ProjectManagementRoute[] = [];
 
 const AppRoutes = () => {
     return (
@@ -275,7 +275,7 @@ const AppRoutes = () => {
                         <AuthGuard requiredRole="admin">
                             <AdminLayout>
                                 <Suspense fallback={<div className="loading">Đang tải...</div>}>
-                                    <route.component />
+                                    <ProjectManagementRouteWrapper Component={route.component} />
                                 </Suspense>
                             </AdminLayout>
                         </AuthGuard>

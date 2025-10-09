@@ -5,32 +5,27 @@ const ChangeRequests = lazy(() => import('../pages/Admin/ProjectManagement/compo
 const Milestones = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectMilestones'));
 const Tasks = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectTasks'));
 const Resources = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectResources'));
-const Risks = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectRisks'));
 const StatusReports = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectStatusReports'));
 
 export const projectManagementRoutes = [
   {
-    path: '/admin/project-management/change-requests',
+    path: '/admin/project-management/:projectId/change-requests',
     component: ChangeRequests,
   },
   {
-    path: '/admin/project-management/milestones',
+    path: '/admin/project-management/:projectId/milestones',
     component: Milestones,
   },
   {
-    path: '/admin/project-management/tasks',
+    path: '/admin/project-management/:projectId/tasks',
     component: Tasks,
   },
   {
-    path: '/admin/project-management/resources',
+    path: '/admin/project-management/:projectId/resources',
     component: Resources,
   },
   {
-    path: '/admin/project-management/risks',
-    component: Risks,
-  },
-  {
-    path: '/admin/project-management/status-reports',
+    path: '/admin/project-management/:projectId/status-reports',
     component: StatusReports,
   },
 ];
