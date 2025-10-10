@@ -88,9 +88,9 @@ const UserManagement: React.FC = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const response = await userService.getUsers();
-      setUsers(response.data);
-      setFilteredUsers(response.data);
+      const users = await userService.getAllUsers();
+      setUsers(users);
+      setFilteredUsers(users);
     } catch (err) {
       message.error('Không thể tải danh sách người dùng');
       console.error('Error loading users:', err);

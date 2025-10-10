@@ -25,6 +25,7 @@ import ReportIncident from '../pages/Employee/ReportIncident';
 import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
 import EmployeePPE from '../pages/Employee/PPE';
+import EmployeeProjectManagement from '../pages/Employee/ProjectManagement';
 import WebSocketTest from '../pages/WebSocketTest';
 import { projectManagementRoutes } from './projectManagementRoutes';
 import ProjectManagementRouteWrapper from './ProjectManagementRouteWrapper';
@@ -81,6 +82,14 @@ const AppRoutes = () => {
                 element={
                     <AuthGuard requiredRole="employee">
                         <EmployeePPE />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/employee/project-management" 
+                element={
+                    <AuthGuard requiredRole="manager">
+                        <EmployeeProjectManagement />
                     </AuthGuard>
                 } 
             />

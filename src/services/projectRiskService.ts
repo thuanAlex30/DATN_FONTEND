@@ -1,169 +1,224 @@
-import { api } from './api';
+import api from './api';
+
+const API_BASE = '/project-risks';
 
 export interface ProjectRisk {
   _id: string;
-  id: string;
-  project_id: string;
-  phase_id?: string;
-  phase?: {
+  project_id: {
     _id: string;
-    phase_name: string;
+    project_name: string;
   };
   risk_name: string;
   description: string;
-  risk_category: 'TECHNICAL' | 'FINANCIAL' | 'SCHEDULE' | 'SAFETY' | 'ENVIRONMENTAL' | 'REGULATORY' | 'SUPPLIER' | 'PERSONNEL';
+  risk_category: 'SAFETY' | 'FINANCIAL' | 'SCHEDULE' | 'TECHNICAL' | 'ENVIRONMENTAL';
   probability: number;
   impact_score: number;
   risk_score: number;
   mitigation_plan: string;
-  owner_id: string;
-  owner?: {
+  contingency_plan?: string;
+  owner_id: {
     _id: string;
-    full_name: string;
     email: string;
+    full_name: string;
+    id: string;
   };
-  status: 'IDENTIFIED' | 'ANALYZED' | 'MITIGATED' | 'MONITORED' | 'CLOSED';
+  status: 'IDENTIFIED' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   identified_date: string;
   target_resolution_date: string;
-  actual_resolution_date?: string;
   cost_impact: number;
   schedule_impact_days: number;
   created_at: string;
   updated_at: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
 }
 
-export interface CreateProjectRiskData {
-  project_id: string;
-  phase_id?: string;
-  risk_name: string;
-  description: string;
-  risk_category: string;
-  probability: number;
-  impact_score: number;
-  mitigation_plan: string;
-  owner_id: string;
-  target_resolution_date: string;
-  cost_impact?: number;
-  schedule_impact_days?: number;
+export interface ProjectRisksResponse {
+  success: boolean;
+  message: string;
+  data: ProjectRisk[];
+  timestamp: string;
 }
 
-export interface UpdateProjectRiskData extends Partial<CreateProjectRiskData> {
-  actual_resolution_date?: string;
-  status?: string;
-}
-
-class ProjectRiskService {
-  // Transform backend data to frontend format
-  private transformRiskData(backendRisk: any): ProjectRisk {
+export const projectRiskService = {
+  // Get risks assigned to a specific user (manager)
+  getAssignedRisks: async (userId: string): Promise<{ data: ProjectRisk[]; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get<ProjectRisksResponse>(`${API_BASE}/risks/assigned/${userId}`);
+      return { 
+        data: response.data.data || [], 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching assigned risks:', error);
     return {
-      ...backendRisk,
-      id: backendRisk._id,
+        data: [], 
+        success: false, 
+        message: 'Failed to fetch assigned risks' 
     };
   }
+  },
 
   // Get all risks for a project
-  async getProjectRisks(projectId: string): Promise<ProjectRisk[]> {
-    console.log('API call: getProjectRisks for project:', projectId);
-    const response = await api.get(`/project-risks/project/${projectId}/risks`);
-    console.log('API response:', response.data);
-    const risks = response.data.data || [];
-    console.log('Transformed risks:', risks.map((risk: any) => this.transformRiskData(risk)));
-    return risks.map((risk: any) => this.transformRiskData(risk));
-  }
+  getProjectRisks: async (projectId: string): Promise<{ data: ProjectRisk[]; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get<ProjectRisksResponse>(`${API_BASE}/project/${projectId}/risks`);
+      return { 
+        data: response.data.data || [], 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching project risks:', error);
+      return { 
+        data: [], 
+        success: false, 
+        message: 'Failed to fetch project risks' 
+      };
+    }
+  },
 
   // Get risk by ID
-  async getRiskById(id: string): Promise<ProjectRisk> {
-    const response = await api.get(`/project-risks/risks/${id}`);
-    return this.transformRiskData(response.data.data);
-  }
-
-  // Create new risk
-  async createRisk(data: CreateProjectRiskData): Promise<ProjectRisk> {
-    const response = await api.post('/project-risks/risks', data);
-    return this.transformRiskData(response.data.data);
-  }
-
-  // Update risk
-  async updateRisk(id: string, data: UpdateProjectRiskData): Promise<ProjectRisk> {
-    const response = await api.put(`/project-risks/risks/${id}`, data);
-    return this.transformRiskData(response.data.data);
-  }
-
-  // Delete risk
-  async deleteRisk(id: string): Promise<void> {
-    await api.delete(`/project-risks/risks/${id}`);
-  }
+  getRiskById: async (riskId: string): Promise<{ data: ProjectRisk | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get<{ success: boolean; data: ProjectRisk }>(`${API_BASE}/risks/${riskId}`);
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching risk:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to fetch risk' 
+      };
+    }
+  },
 
   // Update risk status
-  async updateRiskStatus(id: string, status: string, notes?: string): Promise<ProjectRisk> {
-    const response = await api.put(`/project-risks/risks/${id}/status`, { status, notes });
-    return response.data.data;
-  }
+  updateRiskStatus: async (riskId: string, status: ProjectRisk['status']): Promise<{ data: ProjectRisk | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.put<{ success: boolean; data: ProjectRisk }>(`${API_BASE}/risks/${riskId}/status`, { status });
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error updating risk status:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to update risk status' 
+      };
+    }
+  },
 
-  // Get risk statistics
-  async getRiskStats(projectId: string): Promise<any> {
-    const response = await api.get(`/project-risks/project/${projectId}/stats`);
-    return response.data.data;
-  }
+  // Update risk progress
+  updateRiskProgress: async (riskId: string, progress: string): Promise<{ data: ProjectRisk | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.put<{ success: boolean; data: ProjectRisk }>(`${API_BASE}/risks/${riskId}/progress`, { progress });
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error updating risk progress:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to update risk progress' 
+      };
+    }
+  },
 
-  // Get all risks with filters
-  async getAllRisks(filters?: {
-    project_id?: string;
-    risk_category?: string;
-    status?: string;
-    owner_id?: string;
-    search?: string;
-  }): Promise<ProjectRisk[]> {
-    const response = await api.get('/project-risks/risks', { params: filters });
-    return response.data.data;
-  }
+  // Create risk
+  createRisk: async (data: any): Promise<{ data: ProjectRisk | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.post<{ success: boolean; data: ProjectRisk }>(`${API_BASE}/risks`, data);
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error creating risk:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to create risk' 
+      };
+    }
+  },
 
-  // Search risks
-  async searchRisks(query: string, filters?: {
-    project_id?: string;
-    risk_category?: string;
-  }): Promise<ProjectRisk[]> {
-    const response = await api.get('/project-risks/risks/search', {
-      params: { q: query, ...filters }
-    });
-    return response.data.data;
-  }
+  // Update risk
+  updateRisk: async (riskId: string, data: any): Promise<{ data: ProjectRisk | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.put<{ success: boolean; data: ProjectRisk }>(`${API_BASE}/risks/${riskId}`, data);
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error updating risk:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to update risk' 
+      };
+    }
+  },
 
-  // Get risk options
-  async getRiskOptions(projectId: string): Promise<{ value: string; label: string }[]> {
-    const response = await api.get(`/project-risks/project/${projectId}/options`);
-    return response.data.data;
-  }
+  // Delete risk
+  deleteRisk: async (riskId: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      await api.delete(`${API_BASE}/risks/${riskId}`);
+      return { 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error deleting risk:', error);
+      return { 
+        success: false, 
+        message: 'Failed to delete risk' 
+      };
+    }
+  },
 
-  // Bulk create risks
-  async bulkCreateRisks(risks: CreateProjectRiskData[]): Promise<ProjectRisk[]> {
-    const response = await api.post('/project-risks/risks/bulk', { risks });
-    return response.data.data;
-  }
+  // Get risk stats
+  getRiskStats: async (): Promise<{ data: any; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get(`${API_BASE}/stats`);
+      return { 
+        data: response.data.data || {}, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching risk stats:', error);
+      return { 
+        data: {}, 
+        success: false, 
+        message: 'Failed to fetch risk stats' 
+      };
+    }
+  },
 
-  // Bulk update risks
-  async bulkUpdateRisks(updates: { id: string; data: UpdateProjectRiskData }[]): Promise<ProjectRisk[]> {
-    const response = await api.put('/project-risks/risks/bulk', { updates });
-    return response.data.data;
+  // Get risks by category
+  getRisksByCategory: async (category: string): Promise<{ data: ProjectRisk[]; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get(`${API_BASE}/risks/category/${category}`);
+      return { 
+        data: response.data.data || [], 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching risks by category:', error);
+      return { 
+        data: [], 
+        success: false, 
+        message: 'Failed to fetch risks by category' 
+      };
+    }
   }
+};
 
-  // Bulk delete risks
-  async bulkDeleteRisks(ids: string[]): Promise<void> {
-    await api.delete('/project-risks/risks/bulk', { data: { ids } });
-  }
-
-  // Calculate risk score
-  calculateRiskScore(probability: number, impactScore: number): number {
-    return probability * impactScore;
-  }
-
-  // Get risk level based on score
-  getRiskLevel(riskScore: number): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
-    if (riskScore <= 1) return 'LOW';
-    if (riskScore <= 2.5) return 'MEDIUM';
-    if (riskScore <= 4) return 'HIGH';
-    return 'CRITICAL';
-  }
-}
-
-export default new ProjectRiskService();
+export default projectRiskService;

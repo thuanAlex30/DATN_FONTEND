@@ -1,134 +1,180 @@
-import { api } from './api';
+import api from './api';
+
+const API_BASE = '/project-milestones';
 
 export interface ProjectMilestone {
-  _id: string;
-  project_id: string;
-  phase_id: string;
-  phase?: {
-    _id: string;
-    phase_name: string;
+  id: string;
+  project_id: {
+    project_name: string;
+    id: string;
   };
   milestone_name: string;
-  description?: string;
+  description: string;
   planned_date: string;
-  actual_date?: string;
-  milestone_type: 'PHASE_COMPLETION' | 'DELIVERY' | 'APPROVAL' | 'REVIEW' | 'CHECKPOINT';
+  milestone_type: 'PHASE_COMPLETION' | 'DELIVERY' | 'REVIEW' | 'MILESTONE';
   completion_criteria: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE' | 'CANCELLED';
-  responsible_user_id: string;
-  responsible_user?: {
-    _id: string;
-    full_name: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED';
+  responsible_user_id: {
     email: string;
+    full_name: string;
+    id: string;
   };
   is_critical: boolean;
+  created_by: {
+    email: string;
+    full_name: string;
+    id: string;
+  };
   created_at: string;
   updated_at: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
 }
 
-export interface CreateProjectMilestoneData {
+export interface ProjectMilestonesResponse {
+  success: boolean;
+  message: string;
+  data: ProjectMilestone[];
+  timestamp: string;
+}
+
+export interface CreateMilestoneData {
   project_id: string;
-  phase_id: string;
+  phase_id?: string;
   milestone_name: string;
   description?: string;
   planned_date: string;
   milestone_type: string;
-  completion_criteria: string;
+  completion_criteria?: string;
   responsible_user_id: string;
   is_critical?: boolean;
 }
 
-export interface UpdateProjectMilestoneData extends Partial<CreateProjectMilestoneData> {
-  actual_date?: string;
-  status?: string;
-}
+export const projectMilestoneService = {
+  // Get milestones for a specific project
+  getProjectMilestones: async (projectId: string): Promise<{ data: ProjectMilestone[]; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get<ProjectMilestonesResponse>(`${API_BASE}/project/${projectId}/milestones`);
+      return { 
+        data: response.data.data || [], 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching project milestones:', error);
+      return { 
+        data: [], 
+        success: false, 
+        message: 'Failed to fetch project milestones' 
+      };
+    }
+  },
 
-class ProjectMilestoneService {
-  // Get all milestones for a project
-  async getProjectMilestones(projectId: string): Promise<ProjectMilestone[]> {
-    const response = await api.get(`/project-milestones/project/${projectId}/milestones`);
-    return response.data.data;
-  }
+  // Get milestones assigned to a specific user (manager)
+  getAssignedMilestones: async (userId: string): Promise<{ data: ProjectMilestone[]; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get<ProjectMilestonesResponse>(`${API_BASE}/milestones/assigned/${userId}`);
+      return { 
+        data: response.data.data || [], 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching assigned milestones:', error);
+      return { 
+        data: [], 
+        success: false, 
+        message: 'Failed to fetch assigned milestones' 
+      };
+    }
+  },
 
   // Get milestone by ID
-  async getMilestoneById(id: string): Promise<ProjectMilestone> {
-    const response = await api.get(`/project-milestones/milestones/${id}`);
-    return response.data.data;
-  }
+  getMilestoneById: async (milestoneId: string): Promise<{ data: ProjectMilestone | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get<{ success: boolean; data: ProjectMilestone }>(`${API_BASE}/milestones/${milestoneId}`);
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching milestone:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to fetch milestone' 
+      };
+    }
+  },
+
+  // Update milestone status
+  updateMilestoneStatus: async (milestoneId: string, status: ProjectMilestone['status']): Promise<{ data: ProjectMilestone | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.put<{ success: boolean; data: ProjectMilestone }>(`${API_BASE}/milestones/${milestoneId}/status`, { status });
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error updating milestone status:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to update milestone status' 
+      };
+    }
+  },
+
+  // Update milestone progress
+  updateMilestoneProgress: async (milestoneId: string, progress: string): Promise<{ data: ProjectMilestone | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.put<{ success: boolean; data: ProjectMilestone }>(`${API_BASE}/milestones/${milestoneId}/progress`, { progress });
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error updating milestone progress:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to update milestone progress' 
+      };
+    }
+  },
 
   // Create new milestone
-  async createMilestone(data: CreateProjectMilestoneData): Promise<ProjectMilestone> {
-    const response = await api.post('/project-milestones/milestones', data);
-    return response.data.data;
-  }
-
-  // Update milestone
-  async updateMilestone(id: string, data: UpdateProjectMilestoneData): Promise<ProjectMilestone> {
-    const response = await api.put(`/project-milestones/milestones/${id}`, data);
-    return response.data.data;
-  }
+  createMilestone: async (milestoneData: CreateMilestoneData): Promise<{ data: ProjectMilestone | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.post<{ success: boolean; data: ProjectMilestone }>(`${API_BASE}/milestones`, milestoneData);
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error creating milestone:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to create milestone' 
+      };
+    }
+  },
 
   // Delete milestone
-  async deleteMilestone(id: string): Promise<void> {
-    await api.delete(`/project-milestones/milestones/${id}`);
+  deleteMilestone: async (milestoneId: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      await api.delete(`${API_BASE}/milestones/${milestoneId}`);
+      return { 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error deleting milestone:', error);
+      return { 
+        success: false, 
+        message: 'Failed to delete milestone' 
+      };
+    }
   }
+};
 
-  // Mark milestone as completed
-  async completeMilestone(id: string, actualDate?: string): Promise<ProjectMilestone> {
-    const response = await api.put(`/project-milestones/milestones/${id}/complete`, { actual_date: actualDate });
-    return response.data.data;
-  }
-
-  // Get milestone deliverables
-  async getMilestoneDeliverables(milestoneId: string): Promise<any[]> {
-    const response = await api.get(`/project-milestones/milestones/${milestoneId}/deliverables`);
-    return response.data.data;
-  }
-
-  // Add milestone deliverable
-  async addMilestoneDeliverable(milestoneId: string, data: any): Promise<any> {
-    const response = await api.post(`/project-milestones/milestones/${milestoneId}/deliverables`, data);
-    return response.data.data;
-  }
-
-  // Update milestone deliverable
-  async updateMilestoneDeliverable(deliverableId: string, data: any): Promise<any> {
-    const response = await api.put(`/project-milestones/deliverables/${deliverableId}`, data);
-    return response.data.data;
-  }
-
-  // Submit deliverable for review
-  async submitDeliverable(deliverableId: string): Promise<any> {
-    const response = await api.put(`/project-milestones/deliverables/${deliverableId}/submit`);
-    return response.data.data;
-  }
-
-  // Approve/reject deliverable
-  async reviewDeliverable(deliverableId: string, decision: 'APPROVED' | 'REJECTED', comments?: string): Promise<any> {
-    const response = await api.put(`/project-milestones/deliverables/${deliverableId}/review`, {
-      decision,
-      comments
-    });
-    return response.data.data;
-  }
-
-  // Get milestone statistics
-  async getMilestoneStats(milestoneId: string): Promise<any> {
-    const response = await api.get(`/project-milestones/milestones/${milestoneId}/stats`);
-    return response.data.data;
-  }
-
-  // Bulk create milestones
-  async bulkCreateMilestones(milestones: CreateProjectMilestoneData[]): Promise<ProjectMilestone[]> {
-    const response = await api.post('/project-milestones/bulk-create', { milestones });
-    return response.data.data;
-  }
-
-  // Bulk update milestones
-  async bulkUpdateMilestones(updates: { id: string; data: UpdateProjectMilestoneData }[]): Promise<ProjectMilestone[]> {
-    const response = await api.put('/project-milestones/bulk-update', { updates });
-    return response.data.data;
-  }
-}
-
-export default new ProjectMilestoneService();
+export default projectMilestoneService;

@@ -1,0 +1,72 @@
+.sidebar {
+  background: #fff !important;
+  border-right: 1px solid #f0f0f0;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  overflow: auto;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.sidebarHeader {
+  padding: 24px 16px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.1), rgba(24, 144, 255, 0.05));
+}
+
+.sidebarNav {
+  padding: 16px 0;
+  flex: 1;
+}
+
+.menu {
+  border: none !important;
+  background: transparent !important;
+}
+
+.menu .ant-menu-item {
+  margin: 4px 8px;
+  border-radius: 8px;
+  height: 48px;
+  line-height: 48px;
+  transition: all 0.3s ease;
+}
+
+.menu .ant-menu-item:hover {
+  background: rgba(24, 144, 255, 0.1);
+  color: #1890ff;
+}
+
+.menu .ant-menu-item-selected {
+  background: #1890ff !important;
+  color: white !important;
+}
+
+.menu .ant-menu-item-selected::after {
+  display: none;
+}
+
+.sidebarFooter {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  border-top: 1px solid #f0f0f0;
+  background: #fff;
+}
+
+.logoutButton {
+  height: 40px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.logoutButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.3);
+}

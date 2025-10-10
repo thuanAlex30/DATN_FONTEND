@@ -1,16 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import './PPE.css';
+import {
+  Card,
+  Row,
+  Col,
+  Button,
+  Tabs,
+  Statistic,
+  Badge,
+  Modal,
+  Form,
+  Input,
+  Select,
+  DatePicker,
+  message,
+  Spin,
+  Empty,
+  Space,
+  Typography,
+} from 'antd';
+import {
+  SafetyOutlined,
+  ReloadOutlined,
+  UndoOutlined,
+  ExclamationCircleOutlined,
+  BarcodeOutlined,
+  NumberOutlined,
+  CalendarOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  InboxOutlined
+} from '@ant-design/icons';
 import * as ppeService from '../../../services/ppeService';
 import type { PPEIssuance } from '../../../services/ppeService';
-import type { RootState } from '../../../store';
+import { EmployeeLayout } from '../../../components/Employee';
+import dayjs from 'dayjs';
+
+const { Title, Text } = Typography;
+const { TabPane } = Tabs;
+const { Option } = Select;
+const { TextArea } = Input;
 
 const EmployeePPE: React.FC = () => {
-  const { user: currentUser } = useSelector((state: RootState) => state.auth);
   const [activeTab, setActiveTab] = useState('view');
   const [ppeIssuances, setPpeIssuances] = useState<PPEIssuance[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   
   // Modal states
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -42,7 +75,7 @@ const EmployeePPE: React.FC = () => {
       setPpeIssuances(data);
     } catch (err) {
       console.error('Error loading user PPE:', err);
-      setError('Không thể tải danh sách PPE');
+      message.error('Không thể tải danh sách PPE');
     } finally {
       setLoading(false);
     }
@@ -62,10 +95,10 @@ const EmployeePPE: React.FC = () => {
         return_condition: 'good' as 'good' | 'damaged' | 'worn',
         notes: ''
       });
-      setError(null);
+      message.success('Trả PPE thành công!');
     } catch (err) {
       console.error('Error returning PPE:', err);
-      setError('Có lỗi khi trả PPE');
+      message.error('Có lỗi khi trả PPE');
     } finally {
       setLoading(false);
     }
@@ -94,10 +127,10 @@ const EmployeePPE: React.FC = () => {
         severity: 'low' as 'low' | 'medium' | 'high',
         reported_date: new Date().toISOString().split('T')[0]
       });
-      setError(null);
+      message.success('Báo cáo PPE thành công!');
     } catch (err) {
       console.error('Error reporting PPE:', err);
-      setError('Có lỗi khi báo cáo PPE');
+      message.error('Có lỗi khi báo cáo PPE');
     } finally {
       setLoading(false);
     }
@@ -114,16 +147,6 @@ const EmployeePPE: React.FC = () => {
     return labels[status] || 'Không xác định';
   };
 
-  const getStatusClass = (status: string): string => {
-    const classes: { [key: string]: string } = {
-      'issued': 'status-issued',
-      'returned': 'status-returned',
-      'overdue': 'status-overdue',
-      'damaged': 'status-damaged',
-      'replacement_needed': 'status-replacement'
-    };
-    return classes[status] || 'status-unknown';
-  };
 
   const formatDateTime = (dateString: string): string => {
     const date = new Date(dateString);
@@ -148,517 +171,486 @@ const EmployeePPE: React.FC = () => {
   };
 
   return (
-    <div className="employee-ppe-container">
-      <div className="ppe-content">
-        {/* Header */}
-        <div className="header">
-          <div>
-            <h1>
-              <i className="fas fa-hard-hat"></i>
-              Quản lý PPE cá nhân
-            </h1>
-            <div className="breadcrumb">
-              <a href="/home">
-                <i className="fas fa-home"></i>
-                Trang chủ
-              </a>
-              <i className="fas fa-chevron-right"></i>
-              <span>PPE cá nhân</span>
-            </div>
-          </div>
-          <div className="action-buttons">
-            <button 
-              className="btn btn-primary"
-              onClick={loadUserPPE}
-              disabled={loading}
-            >
-              <i className="fas fa-sync-alt"></i>
-              Làm mới
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="alert alert-error">
-            <i className="fas fa-exclamation-triangle"></i>
-            {error}
-            <button onClick={() => setError(null)} className="alert-close">
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
-        )}
-
-        {/* Tabs */}
-        <div className="tabs">
-          <div className="tab-nav">
-            <button 
-              className={`tab-button ${activeTab === 'view' ? 'active' : ''}`}
-              onClick={() => setActiveTab('view')}
-            >
-              <i className="fas fa-eye"></i>
-              Xem PPE
-            </button>
-            <button 
-              className={`tab-button ${activeTab === 'return' ? 'active' : ''}`}
-              onClick={() => setActiveTab('return')}
-            >
-              <i className="fas fa-undo"></i>
-              Trả PPE
-            </button>
-            <button 
-              className={`tab-button ${activeTab === 'report' ? 'active' : ''}`}
-              onClick={() => setActiveTab('report')}
-            >
-              <i className="fas fa-exclamation-triangle"></i>
-              Báo cáo
-            </button>
-          </div>
-
-          {/* View PPE Tab */}
-          {activeTab === 'view' && (
-            <div className="tab-content active">
-              <div className="section-header">
-                <h2>PPE đang sử dụng</h2>
-              </div>
+    <EmployeeLayout
+      title="Quản lý PPE cá nhân"
+      icon={<SafetyOutlined />}
+      headerExtra={
+        <Button 
+          type="primary"
+          icon={<ReloadOutlined />}
+          onClick={loadUserPPE}
+          loading={loading}
+        >
+          Làm mới
+        </Button>
+      }
+    >
+      {/* Tabs */}
+      <Card>
+        <Tabs activeKey={activeTab} onChange={setActiveTab}>
+          <TabPane 
+            tab={
+              <span>
+                <SafetyOutlined />
+                Xem PPE
+              </span>
+            } 
+            key="view"
+          >
+            <div>
+              <Title level={3} style={{ marginBottom: '24px' }}>PPE đang sử dụng</Title>
 
               {/* Statistics */}
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-icon">
-                    <i className="fas fa-hard-hat"></i>
-                  </div>
-                  <div className="stat-content">
-                    <div className="stat-number">{getActiveIssuances().length}</div>
-                    <div className="stat-label">Đang sử dụng</div>
-                  </div>
-                </div>
-                
-                <div className="stat-card">
-                  <div className="stat-icon">
-                    <i className="fas fa-check-circle"></i>
-                  </div>
-                  <div className="stat-content">
-                    <div className="stat-number">{getReturnedIssuances().length}</div>
-                    <div className="stat-label">Đã trả</div>
-                  </div>
-                </div>
-                
-                <div className="stat-card">
-                  <div className="stat-icon">
-                    <i className="fas fa-exclamation-triangle"></i>
-                  </div>
-                  <div className="stat-content">
-                    <div className="stat-number">
-                      {ppeIssuances.filter(issuance => 
-                        issuance.status === 'overdue' || 
-                        isOverdue(issuance.expected_return_date)
-                      ).length}
-                    </div>
-                    <div className="stat-label">Quá hạn</div>
-                  </div>
-                </div>
-              </div>
+              <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+                <Col xs={24} sm={8}>
+                    <Card>
+                      <Statistic
+                        title="Đang sử dụng"
+                        value={getActiveIssuances().length}
+                        prefix={<SafetyOutlined style={{ color: '#3498db' }} />}
+                        valueStyle={{ color: '#2c3e50' }}
+                      />
+                    </Card>
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    <Card>
+                      <Statistic
+                        title="Đã trả"
+                        value={getReturnedIssuances().length}
+                        prefix={<CheckCircleOutlined style={{ color: '#27ae60' }} />}
+                        valueStyle={{ color: '#2c3e50' }}
+                      />
+                    </Card>
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    <Card>
+                      <Statistic
+                        title="Quá hạn"
+                        value={ppeIssuances.filter(issuance => 
+                          issuance.status === 'overdue' || 
+                          isOverdue(issuance.expected_return_date)
+                        ).length}
+                        prefix={<ExclamationCircleOutlined style={{ color: '#e74c3c' }} />}
+                        valueStyle={{ color: '#2c3e50' }}
+                      />
+                    </Card>
+                  </Col>
+                </Row>
 
-              {loading ? (
-                <div className="loading-container">
-                  <i className="fas fa-spinner fa-spin"></i>
-                  <span>Đang tải dữ liệu...</span>
-                </div>
-              ) : (
-                <div className="ppe-grid">
-                  {getActiveIssuances().map(issuance => {
-                    const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
-                      issuance.item_id : null;
-                    const isOverdueItem = isOverdue(issuance.expected_return_date);
+                {loading ? (
+                  <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
+                  </div>
+                ) : (
+                  <Row gutter={[16, 16]}>
+                    {getActiveIssuances().map(issuance => {
+                      const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
+                        issuance.item_id : null;
+                      const isOverdueItem = isOverdue(issuance.expected_return_date);
+                      
+                      return (
+                        <Col xs={24} sm={12} lg={8} key={issuance.id}>
+                          <Card
+                            title={
+                              <Space>
+                                <SafetyOutlined style={{ color: '#3498db' }} />
+                                {item?.item_name || 'Không xác định'}
+                              </Space>
+                            }
+                            extra={
+                              <Badge 
+                                status={isOverdueItem ? 'error' : 'success'} 
+                                text={getStatusLabel(issuance.status)}
+                              />
+                            }
+                            actions={[
+                              <Button 
+                                type="primary"
+                                size="small"
+                                icon={<UndoOutlined />}
+                                onClick={() => {
+                                  setSelectedIssuance(issuance);
+                                  setShowReturnModal(true);
+                                }}
+                              >
+                                Trả PPE
+                              </Button>,
+                              <Button 
+                                type="primary"
+                                danger
+                                size="small"
+                                icon={<ExclamationCircleOutlined />}
+                                onClick={() => {
+                                  setSelectedIssuance(issuance);
+                                  setShowReportModal(true);
+                                }}
+                              >
+                                Báo cáo
+                              </Button>
+                            ]}
+                          >
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                              <div>
+                                <BarcodeOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+                                <Text>{item?.item_code || 'N/A'}</Text>
+                              </div>
+                              <div>
+                                <NumberOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+                                <Text>Số lượng: {issuance.quantity}</Text>
+                              </div>
+                              <div>
+                                <CalendarOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+                                <Text>Ngày phát: {formatDateTime(issuance.issued_date)}</Text>
+                              </div>
+                              <div>
+                                <ClockCircleOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+                                <Text>Hạn trả: {formatDateTime(issuance.expected_return_date)}</Text>
+                              </div>
+                            </Space>
+                          </Card>
+                        </Col>
+                      );
+                    })}
                     
-                    return (
-                      <div key={issuance.id} className="ppe-card">
-                        <div className="card-header">
-                          <div className="card-title">
-                            {item?.item_name || 'Không xác định'}
-                          </div>
-                          <div className="ppe-icon">
-                            <i className="fas fa-shield-alt"></i>
-                          </div>
-                        </div>
-                        
-                        <div className="card-body">
-                          <div className="ppe-info">
-                            <div className="info-item">
-                              <i className="fas fa-barcode"></i>
-                              <span>{item?.item_code || 'N/A'}</span>
+                    {getActiveIssuances().length === 0 && (
+                      <Col span={24}>
+                        <Empty
+                          image={<InboxOutlined style={{ fontSize: '48px', color: '#bdc3c7' }} />}
+                          description={
+                            <div>
+                              <Title level={4}>Chưa có PPE</Title>
+                              <Text>Bạn chưa được phát PPE nào</Text>
                             </div>
-                            <div className="info-item">
-                              <i className="fas fa-hashtag"></i>
-                              <span>Số lượng: {issuance.quantity}</span>
-                            </div>
-                            <div className="info-item">
-                              <i className="fas fa-calendar-plus"></i>
-                              <span>Ngày phát: {formatDateTime(issuance.issued_date)}</span>
-                            </div>
-                            <div className="info-item">
-                              <i className="fas fa-calendar-check"></i>
-                              <span>Hạn trả: {formatDateTime(issuance.expected_return_date)}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="ppe-status">
-                            <span className={`status-badge ${getStatusClass(issuance.status)} ${isOverdueItem ? 'overdue' : ''}`}>
-                              {getStatusLabel(issuance.status)}
-                              {isOverdueItem && ' (Quá hạn)'}
-                            </span>
-                          </div>
-                          
-                          <div className="card-actions">
-                            <button 
-                              className="btn btn-warning btn-sm"
-                              onClick={() => {
-                                setSelectedIssuance(issuance);
-                                setShowReturnModal(true);
-                              }}
-                            >
-                              <i className="fas fa-undo"></i> Trả PPE
-                            </button>
-                            <button 
-                              className="btn btn-danger btn-sm"
-                              onClick={() => {
-                                setSelectedIssuance(issuance);
-                                setShowReportModal(true);
-                              }}
-                            >
-                              <i className="fas fa-exclamation-triangle"></i> Báo cáo
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {getActiveIssuances().length === 0 && (
-                    <div className="empty-state">
-                      <i className="fas fa-inbox"></i>
-                      <h4>Chưa có PPE</h4>
-                      <p>Bạn chưa được phát PPE nào</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Return PPE Tab */}
-          {activeTab === 'return' && (
-            <div className="tab-content active">
-              <div className="section-header">
-                <h2>Trả PPE</h2>
-                <p>Chọn PPE cần trả và điền thông tin trả</p>
+                          }
+                        />
+                      </Col>
+                    )}
+                  </Row>
+                )}
               </div>
+            </TabPane>
+            
+            <TabPane 
+              tab={
+                <span>
+                  <UndoOutlined />
+                  Trả PPE
+                </span>
+              } 
+              key="return"
+            >
+              <div>
+                <Title level={3} style={{ marginBottom: '8px' }}>Trả PPE</Title>
+                <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+                  Chọn PPE cần trả và điền thông tin trả
+                </Text>
 
-              {loading ? (
-                <div className="loading-container">
-                  <i className="fas fa-spinner fa-spin"></i>
-                  <span>Đang tải dữ liệu...</span>
-                </div>
-              ) : (
-                <div className="ppe-grid">
-                  {getActiveIssuances().map(issuance => {
-                    const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
-                      issuance.item_id : null;
+                {loading ? (
+                  <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
+                  </div>
+                ) : (
+                  <Row gutter={[16, 16]}>
+                    {getActiveIssuances().map(issuance => {
+                      const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
+                        issuance.item_id : null;
+                      
+                      return (
+                        <Col xs={24} sm={12} lg={8} key={issuance.id}>
+                          <Card
+                            title={
+                              <Space>
+                                <SafetyOutlined style={{ color: '#f39c12' }} />
+                                {item?.item_name || 'Không xác định'}
+                              </Space>
+                            }
+                            extra={
+                              <Badge status="warning" text="Có thể trả" />
+                            }
+                            actions={[
+                              <Button 
+                                type="primary"
+                                size="small"
+                                icon={<UndoOutlined />}
+                                onClick={() => {
+                                  setSelectedIssuance(issuance);
+                                  setShowReturnModal(true);
+                                }}
+                              >
+                                Trả PPE này
+                              </Button>
+                            ]}
+                          >
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                              <div>
+                                <BarcodeOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+                                <Text>{item?.item_code || 'N/A'}</Text>
+                              </div>
+                              <div>
+                                <NumberOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+                                <Text>Số lượng: {issuance.quantity}</Text>
+                              </div>
+                              <div>
+                                <ClockCircleOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+                                <Text>Hạn trả: {formatDateTime(issuance.expected_return_date)}</Text>
+                              </div>
+                            </Space>
+                          </Card>
+                        </Col>
+                      );
+                    })}
                     
-                    return (
-                      <div key={issuance.id} className="ppe-card return-card">
-                        <div className="card-header">
-                          <div className="card-title">
-                            {item?.item_name || 'Không xác định'}
-                          </div>
-                          <div className="ppe-icon">
-                            <i className="fas fa-shield-alt"></i>
-                          </div>
-                        </div>
-                        
-                        <div className="card-body">
-                          <div className="ppe-info">
-                            <div className="info-item">
-                              <i className="fas fa-barcode"></i>
-                              <span>{item?.item_code || 'N/A'}</span>
+                    {getActiveIssuances().length === 0 && (
+                      <Col span={24}>
+                        <Empty
+                          image={<InboxOutlined style={{ fontSize: '48px', color: '#bdc3c7' }} />}
+                          description={
+                            <div>
+                              <Title level={4}>Không có PPE để trả</Title>
+                              <Text>Bạn không có PPE nào đang sử dụng</Text>
                             </div>
-                            <div className="info-item">
-                              <i className="fas fa-hashtag"></i>
-                              <span>Số lượng: {issuance.quantity}</span>
-                            </div>
-                            <div className="info-item">
-                              <i className="fas fa-calendar-check"></i>
-                              <span>Hạn trả: {formatDateTime(issuance.expected_return_date)}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="card-actions">
-                            <button 
-                              className="btn btn-primary btn-sm"
-                              onClick={() => {
-                                setSelectedIssuance(issuance);
-                                setShowReturnModal(true);
-                              }}
-                            >
-                              <i className="fas fa-undo"></i> Trả PPE này
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {getActiveIssuances().length === 0 && (
-                    <div className="empty-state">
-                      <i className="fas fa-inbox"></i>
-                      <h4>Không có PPE để trả</h4>
-                      <p>Bạn không có PPE nào đang sử dụng</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Report PPE Tab */}
-          {activeTab === 'report' && (
-            <div className="tab-content active">
-              <div className="section-header">
-                <h2>Báo cáo PPE</h2>
-                <p>Báo cáo hư hại hoặc cần thay thế PPE</p>
+                          }
+                        />
+                      </Col>
+                    )}
+                  </Row>
+                )}
               </div>
+            </TabPane>
+            
+            <TabPane 
+              tab={
+                <span>
+                  <ExclamationCircleOutlined />
+                  Báo cáo
+                </span>
+              } 
+              key="report"
+            >
+              <div>
+                <Title level={3} style={{ marginBottom: '8px' }}>Báo cáo PPE</Title>
+                <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
+                  Báo cáo hư hại hoặc cần thay thế PPE
+                </Text>
 
-              {loading ? (
-                <div className="loading-container">
-                  <i className="fas fa-spinner fa-spin"></i>
-                  <span>Đang tải dữ liệu...</span>
-                </div>
-              ) : (
-                <div className="ppe-grid">
-                  {getActiveIssuances().map(issuance => {
-                    const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
-                      issuance.item_id : null;
+                {loading ? (
+                  <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
+                  </div>
+                ) : (
+                  <Row gutter={[16, 16]}>
+                    {getActiveIssuances().map(issuance => {
+                      const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
+                        issuance.item_id : null;
+                      
+                      return (
+                        <Col xs={24} sm={12} lg={8} key={issuance.id}>
+                          <Card
+                            title={
+                              <Space>
+                                <SafetyOutlined style={{ color: '#e74c3c' }} />
+                                {item?.item_name || 'Không xác định'}
+                              </Space>
+                            }
+                            extra={
+                              <Badge status="error" text="Cần báo cáo" />
+                            }
+                            actions={[
+                              <Button 
+                                type="primary"
+                                danger
+                                size="small"
+                                icon={<ExclamationCircleOutlined />}
+                                onClick={() => {
+                                  setSelectedIssuance(issuance);
+                                  setShowReportModal(true);
+                                }}
+                              >
+                                Báo cáo vấn đề
+                              </Button>
+                            ]}
+                          >
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                              <div>
+                                <BarcodeOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+                                <Text>{item?.item_code || 'N/A'}</Text>
+                              </div>
+                              <div>
+                                <NumberOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+                                <Text>Số lượng: {issuance.quantity}</Text>
+                              </div>
+                              <div>
+                                <ClockCircleOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+                                <Text>Hạn trả: {formatDateTime(issuance.expected_return_date)}</Text>
+                              </div>
+                            </Space>
+                          </Card>
+                        </Col>
+                      );
+                    })}
                     
-                    return (
-                      <div key={issuance.id} className="ppe-card report-card">
-                        <div className="card-header">
-                          <div className="card-title">
-                            {item?.item_name || 'Không xác định'}
-                          </div>
-                          <div className="ppe-icon">
-                            <i className="fas fa-shield-alt"></i>
-                          </div>
-                        </div>
-                        
-                        <div className="card-body">
-                          <div className="ppe-info">
-                            <div className="info-item">
-                              <i className="fas fa-barcode"></i>
-                              <span>{item?.item_code || 'N/A'}</span>
+                    {getActiveIssuances().length === 0 && (
+                      <Col span={24}>
+                        <Empty
+                          image={<InboxOutlined style={{ fontSize: '48px', color: '#bdc3c7' }} />}
+                          description={
+                            <div>
+                              <Title level={4}>Không có PPE để báo cáo</Title>
+                              <Text>Bạn không có PPE nào đang sử dụng</Text>
                             </div>
-                            <div className="info-item">
-                              <i className="fas fa-hashtag"></i>
-                              <span>Số lượng: {issuance.quantity}</span>
-                            </div>
-                            <div className="info-item">
-                              <i className="fas fa-calendar-check"></i>
-                              <span>Hạn trả: {formatDateTime(issuance.expected_return_date)}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="card-actions">
-                            <button 
-                              className="btn btn-danger btn-sm"
-                              onClick={() => {
-                                setSelectedIssuance(issuance);
-                                setShowReportModal(true);
-                              }}
-                            >
-                              <i className="fas fa-exclamation-triangle"></i> Báo cáo vấn đề
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {getActiveIssuances().length === 0 && (
-                    <div className="empty-state">
-                      <i className="fas fa-inbox"></i>
-                      <h4>Không có PPE để báo cáo</h4>
-                      <p>Bạn không có PPE nào đang sử dụng</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+                          }
+                        />
+                      </Col>
+                    )}
+                  </Row>
+                )}
+              </div>
+            </TabPane>
+          </Tabs>
+        </Card>
 
       {/* Return PPE Modal */}
-      {showReturnModal && selectedIssuance && (
-        <div className="modal-overlay" onClick={() => setShowReturnModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Trả PPE</h3>
-              <button onClick={() => setShowReturnModal(false)} className="modal-close">
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              handleReturnPPE();
-            }}>
-              <div className="form-group">
-                <label className="form-label">Thiết bị</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={typeof selectedIssuance.item_id === 'object' && selectedIssuance.item_id ? 
-                    selectedIssuance.item_id.item_name : 'Không xác định'}
-                  disabled
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Ngày trả</label>
-                <input 
-                  type="date" 
-                  className="form-input" 
-                  value={returnForm.actual_return_date}
-                  onChange={(e) => setReturnForm(prev => ({ ...prev, actual_return_date: e.target.value }))}
-                  required
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Tình trạng khi trả</label>
-                <select 
-                  className="form-select" 
-                  value={returnForm.return_condition}
-                  onChange={(e) => setReturnForm(prev => ({ ...prev, return_condition: e.target.value as 'good' | 'damaged' | 'worn' }))}
-                  required
-                >
-                  <option value="good">Tốt</option>
-                  <option value="damaged">Hư hại</option>
-                  <option value="worn">Mòn</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Ghi chú</label>
-                <textarea 
-                  className="form-textarea" 
-                  value={returnForm.notes}
-                  onChange={(e) => setReturnForm(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Ghi chú về tình trạng PPE khi trả..."
-                />
-              </div>
-              
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowReturnModal(false)} className="btn btn-secondary">
-                  Hủy
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
-                  {loading ? 'Đang trả...' : 'Trả PPE'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal
+        title="Trả PPE"
+        open={showReturnModal}
+        onCancel={() => setShowReturnModal(false)}
+        footer={null}
+        width={500}
+      >
+        <Form
+          layout="vertical"
+          onFinish={handleReturnPPE}
+        >
+          <Form.Item label="Thiết bị">
+            <Input
+              value={typeof selectedIssuance?.item_id === 'object' && selectedIssuance?.item_id ? 
+                selectedIssuance.item_id.item_name : 'Không xác định'}
+              disabled
+            />
+          </Form.Item>
+          
+          <Form.Item label="Ngày trả" required>
+            <DatePicker
+              style={{ width: '100%' }}
+              value={returnForm.actual_return_date ? dayjs(returnForm.actual_return_date) : null}
+              onChange={(date) => setReturnForm(prev => ({ 
+                ...prev, 
+                actual_return_date: date ? date.format('YYYY-MM-DD') : '' 
+              }))}
+            />
+          </Form.Item>
+          
+          <Form.Item label="Tình trạng khi trả" required>
+            <Select
+              value={returnForm.return_condition}
+              onChange={(value) => setReturnForm(prev => ({ ...prev, return_condition: value }))}
+            >
+              <Option value="good">Tốt</Option>
+              <Option value="damaged">Hư hại</Option>
+              <Option value="worn">Mòn</Option>
+            </Select>
+          </Form.Item>
+          
+          <Form.Item label="Ghi chú">
+            <TextArea
+              value={returnForm.notes}
+              onChange={(e) => setReturnForm(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="Ghi chú về tình trạng PPE khi trả..."
+              rows={4}
+            />
+          </Form.Item>
+          
+          <Form.Item>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => setShowReturnModal(false)}>
+                Hủy
+              </Button>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                {loading ? 'Đang trả...' : 'Trả PPE'}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Report PPE Modal */}
-      {showReportModal && selectedIssuance && (
-        <div className="modal-overlay" onClick={() => setShowReportModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Báo cáo PPE</h3>
-              <button onClick={() => setShowReportModal(false)} className="modal-close">
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              handleReportPPE();
-            }}>
-              <div className="form-group">
-                <label className="form-label">Thiết bị</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={typeof selectedIssuance.item_id === 'object' && selectedIssuance.item_id ? 
-                    selectedIssuance.item_id.item_name : 'Không xác định'}
-                  disabled
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Loại báo cáo</label>
-                <select 
-                  className="form-select" 
-                  value={reportForm.report_type}
-                  onChange={(e) => setReportForm(prev => ({ ...prev, report_type: e.target.value as 'damage' | 'replacement' | 'lost' }))}
-                  required
-                >
-                  <option value="damage">Hư hại</option>
-                  <option value="replacement">Cần thay thế</option>
-                  <option value="lost">Mất</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Mức độ nghiêm trọng</label>
-                <select 
-                  className="form-select" 
-                  value={reportForm.severity}
-                  onChange={(e) => setReportForm(prev => ({ ...prev, severity: e.target.value as 'low' | 'medium' | 'high' }))}
-                  required
-                >
-                  <option value="low">Thấp</option>
-                  <option value="medium">Trung bình</option>
-                  <option value="high">Cao</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Mô tả chi tiết</label>
-                <textarea 
-                  className="form-textarea" 
-                  value={reportForm.description}
-                  onChange={(e) => setReportForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Mô tả chi tiết về vấn đề với PPE..."
-                  required
-                />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Ngày báo cáo</label>
-                <input 
-                  type="date" 
-                  className="form-input" 
-                  value={reportForm.reported_date}
-                  onChange={(e) => setReportForm(prev => ({ ...prev, reported_date: e.target.value }))}
-                  required
-                />
-              </div>
-              
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowReportModal(false)} className="btn btn-secondary">
-                  Hủy
-                </button>
-                <button type="submit" className="btn btn-danger" disabled={loading}>
-                  {loading ? 'Đang báo cáo...' : 'Gửi báo cáo'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+      <Modal
+        title="Báo cáo PPE"
+        open={showReportModal}
+        onCancel={() => setShowReportModal(false)}
+        footer={null}
+        width={500}
+      >
+        <Form
+          layout="vertical"
+          onFinish={handleReportPPE}
+        >
+          <Form.Item label="Thiết bị">
+            <Input
+              value={typeof selectedIssuance?.item_id === 'object' && selectedIssuance?.item_id ? 
+                selectedIssuance.item_id.item_name : 'Không xác định'}
+              disabled
+            />
+          </Form.Item>
+          
+          <Form.Item label="Loại báo cáo" required>
+            <Select
+              value={reportForm.report_type}
+              onChange={(value) => setReportForm(prev => ({ ...prev, report_type: value }))}
+            >
+              <Option value="damage">Hư hại</Option>
+              <Option value="replacement">Cần thay thế</Option>
+              <Option value="lost">Mất</Option>
+            </Select>
+          </Form.Item>
+          
+          <Form.Item label="Mức độ nghiêm trọng" required>
+            <Select
+              value={reportForm.severity}
+              onChange={(value) => setReportForm(prev => ({ ...prev, severity: value }))}
+            >
+              <Option value="low">Thấp</Option>
+              <Option value="medium">Trung bình</Option>
+              <Option value="high">Cao</Option>
+            </Select>
+          </Form.Item>
+          
+          <Form.Item label="Mô tả chi tiết" required>
+            <TextArea
+              value={reportForm.description}
+              onChange={(e) => setReportForm(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Mô tả chi tiết về vấn đề với PPE..."
+              rows={4}
+            />
+          </Form.Item>
+          
+          <Form.Item label="Ngày báo cáo" required>
+            <DatePicker
+              style={{ width: '100%' }}
+              value={reportForm.reported_date ? dayjs(reportForm.reported_date) : null}
+              onChange={(date) => setReportForm(prev => ({ 
+                ...prev, 
+                reported_date: date ? date.format('YYYY-MM-DD') : '' 
+              }))}
+            />
+          </Form.Item>
+          
+          <Form.Item>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => setShowReportModal(false)}>
+                Hủy
+              </Button>
+              <Button type="primary" danger htmlType="submit" loading={loading}>
+                {loading ? 'Đang báo cáo...' : 'Gửi báo cáo'}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </EmployeeLayout>
   );
 };
 

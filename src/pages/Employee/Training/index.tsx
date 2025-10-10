@@ -1,10 +1,43 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import {
+  Card,
+  Row,
+  Col,
+  Button,
+  Tabs,
+  Input,
+  Select,
+  message,
+  Spin,
+  Empty,
+  Space,
+  Typography,
+  Badge,
+  Tag
+} from 'antd';
+import {
+  BookOutlined,
+  TrophyOutlined,
+  SearchOutlined,
+  PlusOutlined,
+  PlayCircleOutlined,
+  SafetyCertificateOutlined,
+  RedoOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
+  GroupOutlined
+} from '@ant-design/icons';
 import type { RootState } from '../../../store';
 import { useCourses, useTrainingSessions, useTrainingEnrollments } from '../../../hooks/useTraining';
 import { api } from '../../../services/api';
-import styles from './Training.module.css';
+import { EmployeeLayout } from '../../../components/Employee';
+
+const { Title, Text } = Typography;
+const { TabPane } = Tabs;
+const { Option } = Select;
+const { Search } = Input;
 
 const EmployeeTraining: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -31,13 +64,13 @@ const EmployeeTraining: React.FC = () => {
 
   // Get user's enrollments
   const userEnrollments = enrollments.filter(enrollment => 
-    enrollment.user_id._id === user?.id
+    user?.id && enrollment.user_id?._id === user.id
   );
 
   // Get enrolled course IDs
   const enrolledCourseIds = userEnrollments.map(enrollment => {
-    const session = sessions.find(s => s._id === enrollment.session_id._id);
-    return session?.course_id._id;
+    const session = sessions.find(s => s._id === enrollment.session_id?._id);
+    return session?.course_id?._id;
   }).filter(Boolean);
 
   // Get available courses (not enrolled)
@@ -54,8 +87,8 @@ const EmployeeTraining: React.FC = () => {
   const completedCourses = userEnrollments
     .filter(enrollment => enrollment.status === 'completed')
     .map(enrollment => {
-      const session = sessions.find(s => s._id === enrollment.session_id._id);
-      return session ? courses.find(c => c._id === session.course_id._id) : null;
+      const session = sessions.find(s => s._id === enrollment.session_id?._id);
+      return session ? courses.find(c => c._id === session.course_id?._id) : null;
     })
     .filter(Boolean);
 
@@ -63,13 +96,13 @@ const EmployeeTraining: React.FC = () => {
     try {
       // Find available sessions for this course
       const availableSessions = sessions.filter(session => 
-        session.course_id._id === courseId && 
+        session.course_id?._id === courseId && 
         session.status_code === 'SCHEDULED' &&
-        !userEnrollments.some(enrollment => enrollment.session_id._id === session._id)
+        !userEnrollments.some(enrollment => enrollment.session_id?._id === session._id)
       );
 
       if (availableSessions.length === 0) {
-        alert('Không có buổi đào tạo nào khả dụng cho khóa học này');
+        message.warning('Không có buổi đào tạo nào khả dụng cho khóa học này');
         return;
       }
 
@@ -82,16 +115,16 @@ const EmployeeTraining: React.FC = () => {
       });
 
       if (response.data.success) {
-        alert('Đăng ký thành công!');
+        message.success('Đăng ký thành công!');
         // Refresh the page or update state
         window.location.reload();
       } else {
-        alert(`Lỗi đăng ký: ${response.data.message || 'Có lỗi xảy ra'}`);
+        message.error(`Lỗi đăng ký: ${response.data.message || 'Có lỗi xảy ra'}`);
       }
     } catch (error: any) {
       console.error('Error enrolling:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi đăng ký';
-      alert(`Lỗi đăng ký: ${errorMessage}`);
+      message.error(`Lỗi đăng ký: ${errorMessage}`);
     }
   };
 
@@ -103,18 +136,18 @@ const EmployeeTraining: React.FC = () => {
     try {
       // Find the session for this course that user is enrolled in
       const enrollment = userEnrollments.find(enrollment => {
-        const session = sessions.find(s => s._id === enrollment.session_id._id);
-        return session?.course_id._id === courseId;
+        const session = sessions.find(s => s._id === enrollment.session_id?._id);
+        return session?.course_id?._id === courseId;
       });
 
       if (!enrollment) {
-        alert('Không tìm thấy đăng ký cho khóa học này');
+        message.error('Không tìm thấy đăng ký cho khóa học này');
         return;
       }
 
-      const session = sessions.find(s => s._id === enrollment.session_id._id);
+      const session = sessions.find(s => s._id === enrollment.session_id?._id);
       if (!session) {
-        alert('Không tìm thấy buổi đào tạo');
+        message.error('Không tìm thấy buổi đào tạo');
         return;
       }
 
@@ -131,12 +164,12 @@ const EmployeeTraining: React.FC = () => {
           } 
         });
       } else {
-        alert(`Lỗi: ${response.data.message || 'Không thể bắt đầu học'}`);
+        message.error(`Lỗi: ${response.data.message || 'Không thể bắt đầu học'}`);
       }
     } catch (error: any) {
       console.error('Error starting training:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi bắt đầu học';
-      alert(`Lỗi: ${errorMessage}`);
+      message.error(`Lỗi: ${errorMessage}`);
     }
   };
 
@@ -144,18 +177,18 @@ const EmployeeTraining: React.FC = () => {
     try {
       // Find the session for this course that user is enrolled in
       const enrollment = userEnrollments.find(enrollment => {
-        const session = sessions.find(s => s._id === enrollment.session_id._id);
-        return session?.course_id._id === courseId;
+        const session = sessions.find(s => s._id === enrollment.session_id?._id);
+        return session?.course_id?._id === courseId;
       });
 
       if (!enrollment) {
-        alert('Không tìm thấy đăng ký cho khóa học này');
+        message.error('Không tìm thấy đăng ký cho khóa học này');
         return;
       }
 
-      const session = sessions.find(s => s._id === enrollment.session_id._id);
+      const session = sessions.find(s => s._id === enrollment.session_id?._id);
       if (!session) {
-        alert('Không tìm thấy buổi đào tạo');
+        message.error('Không tìm thấy buổi đào tạo');
         return;
       }
 
@@ -174,7 +207,7 @@ const EmployeeTraining: React.FC = () => {
       const response = await api.post(`/training/sessions/${session._id}/retake`);
 
       if (response.data.success) {
-        alert('Đã khởi tạo làm lại bài thành công!');
+        message.success('Đã khởi tạo làm lại bài thành công!');
         // Navigate to training page with retake data
         navigate('/training/session', { 
           state: { 
@@ -185,28 +218,28 @@ const EmployeeTraining: React.FC = () => {
           } 
         });
       } else {
-        alert(`Lỗi: ${response.data.message || 'Không thể làm lại bài'}`);
+        message.error(`Lỗi: ${response.data.message || 'Không thể làm lại bài'}`);
       }
     } catch (error: any) {
       console.error('Error retaking training:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi làm lại bài';
-      alert(`Lỗi: ${errorMessage}`);
+      message.error(`Lỗi: ${errorMessage}`);
     }
   };
 
 
   const getEnrollmentStatus = (courseId: string) => {
     const enrollment = userEnrollments.find(enrollment => {
-      const session = sessions.find(s => s._id === enrollment.session_id._id);
-      return session?.course_id._id === courseId;
+      const session = sessions.find(s => s._id === enrollment.session_id?._id);
+      return session?.course_id?._id === courseId;
     });
     return enrollment?.status || 'not_enrolled';
   };
 
   const getEnrollmentScore = (courseId: string) => {
     const enrollment = userEnrollments.find(enrollment => {
-      const session = sessions.find(s => s._id === enrollment.session_id._id);
-      return session?.course_id._id === courseId;
+      const session = sessions.find(s => s._id === enrollment.session_id?._id);
+      return session?.course_id?._id === courseId;
     });
     return enrollment?.score || null;
   };
@@ -215,210 +248,240 @@ const EmployeeTraining: React.FC = () => {
     const enrollmentStatus = getEnrollmentStatus(course._id);
     const score = getEnrollmentScore(course._id);
     
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'enrolled': return 'blue';
+        case 'completed': return 'green';
+        case 'failed': return 'red';
+        default: return 'default';
+      }
+    };
+
+    const getStatusText = (status: string) => {
+      switch (status) {
+        case 'enrolled': return 'Đã đăng ký';
+        case 'completed': return 'Hoàn thành';
+        case 'failed': return 'Chưa đạt';
+        default: return status;
+      }
+    };
+    
     return (
-      <div key={course._id} className={styles.courseCard}>
-        <div className={styles.cardHeader}>
-          <div className={styles.cardTitle}>{course.course_name}</div>
-          <div className={styles.cardDescription}>{course.description}</div>
-          {course.is_mandatory && <div className={styles.mandatoryBadge}>Bắt buộc</div>}
-        </div>
-        
-        <div className={styles.cardBody}>
-          <div className={styles.courseInfo}>
-            <div className={styles.infoItem}>
-              <i className="fas fa-clock"></i>
-              <span>{course.duration_hours} giờ</span>
-            </div>
-            <div className={styles.infoItem}>
-              <i className="fas fa-certificate"></i>
-              <span>{course.validity_months ? course.validity_months + ' tháng' : 'Vĩnh viễn'}</span>
-            </div>
-            <div className={styles.infoItem}>
-              <i className="fas fa-layer-group"></i>
-              <span>{course.course_set_id?.name || 'N/A'}</span>
-            </div>
-          </div>
-          
-          {enrollmentStatus !== 'not_enrolled' && (
-            <div className={styles.enrollmentStatus}>
-              <span className={`${styles.statusBadge} ${styles[enrollmentStatus]}`}>
-                {enrollmentStatus === 'enrolled' ? 'Đã đăng ký' : 
-                 enrollmentStatus === 'completed' ? 'Hoàn thành' : 
-                 enrollmentStatus === 'failed' ? 'Chưa đạt' : enrollmentStatus}
-              </span>
-              {score && (
-                <span className={styles.score}>
-                  Điểm: {score}/100
-                </span>
+      <Col xs={24} sm={12} lg={8} key={course._id}>
+        <Card
+          title={
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Title level={4} style={{ margin: 0 }}>{course.course_name}</Title>
+              <Text type="secondary">{course.description}</Text>
+              {course.is_mandatory && (
+                <Tag color="red">Bắt buộc</Tag>
               )}
-            </div>
-          )}
-          
-          <div className={styles.cardActions}>
-            {showEnrollButton && enrollmentStatus === 'not_enrolled' && (
-              <button 
-                className={styles.enrollBtn}
+            </Space>
+          }
+          extra={
+            enrollmentStatus !== 'not_enrolled' && (
+              <Space>
+                <Badge 
+                  status={getStatusColor(enrollmentStatus) as any} 
+                  text={getStatusText(enrollmentStatus)}
+                />
+                {score && (
+                  <Text strong>Điểm: {score}/100</Text>
+                )}
+              </Space>
+            )
+          }
+          actions={[
+            showEnrollButton && enrollmentStatus === 'not_enrolled' && (
+              <Button 
+                type="primary"
+                icon={<PlusOutlined />}
                 onClick={() => handleEnroll(course._id)}
               >
-                <i className="fas fa-user-plus"></i> Đăng ký
-              </button>
-            )}
-            
-            {enrollmentStatus === 'enrolled' && (
-              <button 
-                className={styles.viewBtn}
+                Đăng ký
+              </Button>
+            ),
+            enrollmentStatus === 'enrolled' && (
+              <Button 
+                type="primary"
+                icon={<PlayCircleOutlined />}
                 onClick={() => handleStartTraining(course._id)}
               >
-                <i className="fas fa-play"></i> Vào học
-              </button>
-            )}
-            
-            {enrollmentStatus === 'completed' && (
-              <button className={styles.certificateBtn}>
-                <i className="fas fa-certificate"></i> Xem chứng chỉ
-              </button>
-            )}
-            
-            {enrollmentStatus === 'failed' && (
-              <button 
-                className={styles.retakeBtn}
+                Vào học
+              </Button>
+            ),
+            enrollmentStatus === 'completed' && (
+              <Button 
+                type="default"
+                icon={<SafetyCertificateOutlined />}
+              >
+                Xem chứng chỉ
+              </Button>
+            ),
+            enrollmentStatus === 'failed' && (
+              <Button 
+                type="primary"
+                danger
+                icon={<RedoOutlined />}
                 onClick={() => handleRetakeTraining(course._id)}
               >
-                <i className="fas fa-redo"></i> Làm lại bài
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+                Làm lại bài
+              </Button>
+            )
+          ].filter(Boolean)}
+        >
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <div>
+              <ClockCircleOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+              <Text>{course.duration_hours} giờ</Text>
+            </div>
+            <div>
+              <CheckCircleOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+              <Text>{course.validity_months ? course.validity_months + ' tháng' : 'Vĩnh viễn'}</Text>
+            </div>
+            <div>
+              <GroupOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+              <Text>{course.course_set_id?.name || 'N/A'}</Text>
+            </div>
+          </Space>
+        </Card>
+      </Col>
     );
   };
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <h1><i className="fas fa-graduation-cap"></i> Đào tạo an toàn lao động</h1>
-        <div className={styles.userInfo}>
-          <span>Xin chào, {user?.full_name || 'Người dùng'}</span>
-          <button onClick={handleLogout} className={styles.logoutBtn}>
-            <i className="fas fa-sign-out-alt"></i> Đăng xuất
-          </button>
-        </div>
-      </header>
-
-      {/* Navigation */}
-      <div className={styles.navigation}>
-        <button 
-          className={`${styles.navBtn} ${activeTab === 'available' ? styles.active : ''}`}
-          onClick={() => setActiveTab('available')}
-        >
-          <i className="fas fa-book"></i> Khóa học có sẵn
-        </button>
-        <button 
-          className={`${styles.navBtn} ${activeTab === 'enrolled' ? styles.active : ''}`}
-          onClick={() => setActiveTab('enrolled')}
-        >
-          <i className="fas fa-user-check"></i> Đã đăng ký
-        </button>
-        <button 
-          className={`${styles.navBtn} ${activeTab === 'completed' ? styles.active : ''}`}
-          onClick={() => setActiveTab('completed')}
-        >
-          <i className="fas fa-trophy"></i> Đã hoàn thành
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className={styles.filters}>
-        <div className={styles.searchBox}>
-          <i className="fas fa-search"></i>
-          <input 
-            type="text" 
-            placeholder="Tìm kiếm khóa học..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        
-        <select 
-          className={styles.filterSelect}
-          value={isMandatory}
-          onChange={(e) => setIsMandatory(e.target.value)}
-        >
-          <option value="">Tất cả</option>
-          <option value="true">Bắt buộc</option>
-          <option value="false">Tự chọn</option>
-        </select>
-      </div>
+    <EmployeeLayout
+      title="Đào tạo an toàn lao động"
+      icon={<BookOutlined />}
+      onLogout={handleLogout}
+    >
+      {/* Navigation and Filters */}
+      <Card style={{ marginBottom: '20px' }}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col xs={24} sm={12} md={8}>
+            <Search
+              placeholder="Tìm kiếm khóa học..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              prefix={<SearchOutlined />}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Select
+              style={{ width: '100%' }}
+              value={isMandatory}
+              onChange={(value) => setIsMandatory(value)}
+              placeholder="Lọc theo loại"
+            >
+              <Option value="">Tất cả</Option>
+              <Option value="true">Bắt buộc</Option>
+              <Option value="false">Tự chọn</Option>
+            </Select>
+          </Col>
+        </Row>
+      </Card>
 
       {/* Content */}
-      <div className={styles.content}>
-        {activeTab === 'available' && (
-          <div className={styles.tabContent}>
-            <h2>Khóa học có sẵn</h2>
+      <Card>
+        <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key as 'available' | 'enrolled' | 'completed')}>
+          <TabPane 
+            tab={
+              <span>
+                <BookOutlined />
+                Khóa học có sẵn
+              </span>
+            } 
+            key="available"
+          >
+            <Title level={3} style={{ marginBottom: '20px' }}>Khóa học có sẵn</Title>
             {coursesLoading ? (
-              <div className={styles.loading}>
-                <i className="fas fa-spinner fa-spin"></i>
-                <span>Đang tải dữ liệu...</span>
+              <div style={{ textAlign: 'center', padding: '60px' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
               </div>
             ) : availableCourses.length === 0 ? (
-              <div className={styles.emptyState}>
-                <i className="fas fa-graduation-cap"></i>
-                <h3>Không có khóa học nào khả dụng</h3>
-                <p>Bạn đã đăng ký tất cả các khóa học có sẵn</p>
-              </div>
+              <Empty
+                image={<BookOutlined style={{ fontSize: '48px', color: '#bdc3c7' }} />}
+                description={
+                  <div>
+                    <Title level={4}>Không có khóa học nào khả dụng</Title>
+                    <Text>Bạn đã đăng ký tất cả các khóa học có sẵn</Text>
+                  </div>
+                }
+              />
             ) : (
-              <div className={styles.coursesGrid}>
+              <Row gutter={[16, 16]}>
                 {availableCourses.map(course => renderCourseCard(course, true))}
-              </div>
+              </Row>
             )}
-          </div>
-        )}
+          </TabPane>
 
-        {activeTab === 'enrolled' && (
-          <div className={styles.tabContent}>
-            <h2>Khóa học đã đăng ký</h2>
+          <TabPane 
+            tab={
+              <span>
+                <CheckCircleOutlined />
+                Đã đăng ký
+              </span>
+            } 
+            key="enrolled"
+          >
+            <Title level={3} style={{ marginBottom: '20px' }}>Khóa học đã đăng ký</Title>
             {enrollmentsLoading ? (
-              <div className={styles.loading}>
-                <i className="fas fa-spinner fa-spin"></i>
-                <span>Đang tải dữ liệu...</span>
+              <div style={{ textAlign: 'center', padding: '60px' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
               </div>
             ) : enrolledCourses.length === 0 ? (
-              <div className={styles.emptyState}>
-                <i className="fas fa-user-check"></i>
-                <h3>Chưa đăng ký khóa học nào</h3>
-                <p>Hãy đăng ký khóa học để bắt đầu học tập</p>
-              </div>
+              <Empty
+                image={<CheckCircleOutlined style={{ fontSize: '48px', color: '#bdc3c7' }} />}
+                description={
+                  <div>
+                    <Title level={4}>Chưa đăng ký khóa học nào</Title>
+                    <Text>Hãy đăng ký khóa học để bắt đầu học tập</Text>
+                  </div>
+                }
+              />
             ) : (
-              <div className={styles.coursesGrid}>
+              <Row gutter={[16, 16]}>
                 {enrolledCourses.map(course => renderCourseCard(course, false))}
-              </div>
+              </Row>
             )}
-          </div>
-        )}
+          </TabPane>
 
-        {activeTab === 'completed' && (
-          <div className={styles.tabContent}>
-            <h2>Khóa học đã hoàn thành</h2>
+          <TabPane 
+            tab={
+              <span>
+                <TrophyOutlined />
+                Đã hoàn thành
+              </span>
+            } 
+            key="completed"
+          >
+            <Title level={3} style={{ marginBottom: '20px' }}>Khóa học đã hoàn thành</Title>
             {enrollmentsLoading ? (
-              <div className={styles.loading}>
-                <i className="fas fa-spinner fa-spin"></i>
-                <span>Đang tải dữ liệu...</span>
+              <div style={{ textAlign: 'center', padding: '60px' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
               </div>
             ) : completedCourses.length === 0 ? (
-              <div className={styles.emptyState}>
-                <i className="fas fa-trophy"></i>
-                <h3>Chưa hoàn thành khóa học nào</h3>
-                <p>Hoàn thành các khóa học để nhận chứng chỉ</p>
-              </div>
+              <Empty
+                image={<TrophyOutlined style={{ fontSize: '48px', color: '#bdc3c7' }} />}
+                description={
+                  <div>
+                    <Title level={4}>Chưa hoàn thành khóa học nào</Title>
+                    <Text>Hoàn thành các khóa học để nhận chứng chỉ</Text>
+                  </div>
+                }
+              />
             ) : (
-              <div className={styles.coursesGrid}>
+              <Row gutter={[16, 16]}>
                 {completedCourses.map(course => renderCourseCard(course, false))}
-              </div>
+              </Row>
             )}
-          </div>
-        )}
-      </div>
-    </div>
+          </TabPane>
+        </Tabs>
+      </Card>
+    </EmployeeLayout>
   );
 };
 

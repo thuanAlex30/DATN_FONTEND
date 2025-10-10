@@ -201,7 +201,7 @@ class FrontendLoggingService {
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', '/api/v1/system-logs/frontend', false);
                 xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('token')}`);
+                xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('accessToken')}`);
                 xhr.send(JSON.stringify({ logs: logsToSend }));
             } else {
                 // Asynchronous request

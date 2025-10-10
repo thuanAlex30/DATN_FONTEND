@@ -1,9 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import projectRiskService, { type CreateProjectRiskData, type UpdateProjectRiskData } from '../../services/projectRiskService';
+import projectRiskService, { type ProjectRisk } from '../../services/projectRiskService';
 import type { 
-  ProjectRisk, 
-  RiskStats 
+  RiskStats,
+  CreateRiskData,
+  UpdateRiskData
 } from '../../types/projectRisk';
 
 interface ProjectRiskState {
@@ -27,7 +28,7 @@ export const fetchProjectRisks = createAsyncThunk(
   'projectRisk/fetchProjectRisks',
   async (projectId: string) => {
     const response = await projectRiskService.getProjectRisks(projectId);
-    return response;
+    return response.data || [];
   }
 );
 
@@ -41,24 +42,24 @@ export const fetchRiskById = createAsyncThunk(
 
 export const createRisk = createAsyncThunk(
   'projectRisk/createRisk',
-  async (data: CreateProjectRiskData) => {
+  async (data: CreateRiskData) => {
     const response = await projectRiskService.createRisk(data);
-    return response;
+    return response.data;
   }
 );
 
 export const updateRisk = createAsyncThunk(
   'projectRisk/updateRisk',
-  async ({ id, data }: { id: string; data: UpdateProjectRiskData }) => {
+  async ({ id, data }: { id: string; data: UpdateRiskData }) => {
     const response = await projectRiskService.updateRisk(id, data);
-    return response;
+    return response.data;
   }
 );
 
 export const deleteRisk = createAsyncThunk(
   'projectRisk/deleteRisk',
   async (id: string) => {
-    await projectRiskService.deleteRisk(id);
+    const response = await projectRiskService.deleteRisk(id);
     return id;
   }
 );
@@ -66,8 +67,8 @@ export const deleteRisk = createAsyncThunk(
 export const updateRiskStatus = createAsyncThunk(
   'projectRisk/updateRiskStatus',
   async ({ id, status, notes }: { id: string; status: string; notes?: string }) => {
-    const response = await projectRiskService.updateRiskStatus(id, status, notes);
-    return response;
+    const response = await projectRiskService.updateRiskStatus(id, status);
+    return response.data;
   }
 );
 
@@ -75,7 +76,7 @@ export const fetchRiskStats = createAsyncThunk(
   'projectRisk/fetchRiskStats',
   async () => {
     const response = await projectRiskService.getRiskStats();
-    return response;
+    return response.data;
   }
 );
 
@@ -157,11 +158,11 @@ const projectRiskSlice = createSlice({
       })
       .addCase(updateRisk.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.risks.findIndex(risk => risk.id === action.payload.id);
+        const index = state.risks.findIndex(risk => risk._id === action.payload._id);
         if (index !== -1) {
           state.risks[index] = action.payload;
         }
-        if (state.selectedRisk?.id === action.payload.id) {
+        if (state.selectedRisk?._id === action.payload._id) {
           state.selectedRisk = action.payload;
         }
       })
@@ -177,8 +178,8 @@ const projectRiskSlice = createSlice({
       })
       .addCase(deleteRisk.fulfilled, (state, action) => {
         state.loading = false;
-        state.risks = state.risks.filter(risk => risk.id !== action.payload);
-        if (state.selectedRisk?.id === action.payload) {
+        state.risks = state.risks.filter(risk => risk._id !== action.payload);
+        if (state.selectedRisk?._id === action.payload) {
           state.selectedRisk = null;
         }
       })
@@ -189,11 +190,11 @@ const projectRiskSlice = createSlice({
       
       // Update risk status
       .addCase(updateRiskStatus.fulfilled, (state, action) => {
-        const index = state.risks.findIndex(risk => risk.id === action.payload.id);
+        const index = state.risks.findIndex(risk => risk._id === action.payload._id);
         if (index !== -1) {
           state.risks[index] = action.payload;
         }
-        if (state.selectedRisk?.id === action.payload.id) {
+        if (state.selectedRisk?._id === action.payload._id) {
           state.selectedRisk = action.payload;
         }
       })

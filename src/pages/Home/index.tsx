@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import type { RootState } from '../../store';
 // WebSocket notifications are handled by RealtimeNotifications component
 import NotificationPanel from '../../components/NotificationPanel';
+import { projectRiskService } from '../../services/projectRiskService';
+import { projectMilestoneService } from '../../services/projectMilestoneService';
 import styles from './Home.module.css';
 
 const Home: React.FC = () => {
@@ -11,10 +13,56 @@ const Home: React.FC = () => {
   const { unreadCount } = useSelector((state: RootState) => state.websocket);
   const navigate = useNavigate();
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const [assignedTasks, setAssignedTasks] = useState({
+    risks: 0,
+    milestones: 0,
+    highPriorityRisks: 0,
+    criticalMilestones: 0
+  });
+  const [loading, setLoading] = useState(false);
 
   const handleLogout = () => {
     navigate('/login');
   };
+
+  // Fetch assigned tasks for the current user
+  useEffect(() => {
+    const fetchAssignedTasks = async () => {
+      if (!user?.id || user?.role?.role_name !== 'manager') return;
+      
+      try {
+        setLoading(true);
+        const [risksResponse, milestonesResponse] = await Promise.all([
+          projectRiskService.getAssignedRisks(user.id),
+          projectMilestoneService.getAssignedMilestones(user.id)
+        ]);
+
+        const risks = risksResponse.data || [];
+        const milestones = milestonesResponse.data || [];
+
+        const highPriorityRisks = risks.filter((risk: any) => 
+          risk.risk_level >= 4 || risk.status === 'IDENTIFIED'
+        ).length;
+
+        const criticalMilestones = milestones.filter((milestone: any) => 
+          milestone.is_critical || milestone.status === 'PENDING'
+        ).length;
+
+        setAssignedTasks({
+          risks: risks.length,
+          milestones: milestones.length,
+          highPriorityRisks,
+          criticalMilestones
+        });
+      } catch (error) {
+        console.error('Error fetching assigned tasks:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssignedTasks();
+  }, [user]);
 
   // WebSocket connection is handled by RealtimeNotifications component in App.tsx
   // No need to duplicate WebSocket connection here
@@ -64,6 +112,11 @@ const Home: React.FC = () => {
             <Link to="/employee/ppe" className={styles.homeNavItem}>
               <i className="fas fa-hard-hat"></i> PPE cá nhân
             </Link>
+            {user?.role?.role_name === 'manager' && (
+              <Link to="/employee/project-management" className={styles.homeNavItem}>
+                <i className="fas fa-project-diagram"></i> Quản lý dự án
+              </Link>
+            )}
             <Link to="#" className={styles.homeNavItem}>
               <i className="fas fa-award"></i> Chứng chỉ
             </Link>
@@ -97,6 +150,46 @@ const Home: React.FC = () => {
               <p>Xem các chứng chỉ an toàn lao động của bạn</p>
             </div>
           </div>
+
+          {/* Assigned Tasks Section */}
+          {user?.role?.role_name === 'manager' && (
+            <div className={styles.assignedTasks}>
+              <h3>Nhiệm vụ được giao</h3>
+              {loading ? (
+                <div className={styles.loading}>Đang tải thông tin nhiệm vụ...</div>
+              ) : (
+                <div className={styles.taskStats}>
+                  <div className={styles.taskStatItem}>
+                    <div className={styles.taskStatNumber}>{assignedTasks.risks}</div>
+                    <div className={styles.taskStatLabel}>Rủi ro được giao</div>
+                    {assignedTasks.highPriorityRisks > 0 && (
+                      <div className={styles.taskStatAlert}>
+                        {assignedTasks.highPriorityRisks} rủi ro ưu tiên cao
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.taskStatItem}>
+                    <div className={styles.taskStatNumber}>{assignedTasks.milestones}</div>
+                    <div className={styles.taskStatLabel}>Cột mốc được giao</div>
+                    {assignedTasks.criticalMilestones > 0 && (
+                      <div className={styles.taskStatAlert}>
+                        {assignedTasks.criticalMilestones} cột mốc quan trọng
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.taskActions}>
+                    <button 
+                      className={styles.taskActionBtn}
+                      onClick={() => navigate('/employee/project-management')}
+                    >
+                      <i className="fas fa-project-diagram"></i>
+                      Xem chi tiết
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
 

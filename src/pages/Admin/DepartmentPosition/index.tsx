@@ -117,16 +117,16 @@ const DepartmentPositionPage: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const [deptStats, posStats, userStats] = await Promise.all([
+      const [deptStats, posStats, users] = await Promise.all([
         departmentService.getStats(),
         positionService.getStats(),
-        userService.getUserStats()
+        userService.getAllUsers()
       ]);
       
       setStats({
         totalDepartments: deptStats.data?.total || 0,
         totalPositions: posStats.data?.totalPositions || 0,
-        totalEmployees: userStats.data?.total || 0,
+        totalEmployees: users.length || 0,
         totalProjects: 0
       });
     } catch (error) {
@@ -136,9 +136,9 @@ const DepartmentPositionPage: React.FC = () => {
 
   const loadEmployees = async () => {
     try {
-      const response = await userService.getUsers({});
+      const response = await userService.getAllUsers();
       // Convert User[] to Employee[] format
-      const employees = (response.data || []).map((user: any) => ({
+      const employees = (response || []).map((user: any) => ({
         employee_id: user.id,
         user_id: user.id,
         department_id: user.department_id || 0,

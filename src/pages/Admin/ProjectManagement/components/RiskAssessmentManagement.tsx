@@ -290,7 +290,7 @@ const RiskAssessmentManagement: React.FC<RiskAssessmentManagementProps> = ({ pro
               const statusInfo = getStatusInfo(risk.status);
               
               return (
-                <Col key={risk.id} xs={24} sm={24} md={12} lg={8}>
+                <Col key={risk._id} xs={24} sm={24} md={12} lg={8}>
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -311,7 +311,7 @@ const RiskAssessmentManagement: React.FC<RiskAssessmentManagementProps> = ({ pro
                             type="text" 
                             danger
                             icon={<DeleteOutlined />}
-                            onClick={() => handleDeleteRisk(risk.id)}
+                            onClick={() => handleDeleteRisk(risk._id)}
                           />
                         </Tooltip>
                       ]}

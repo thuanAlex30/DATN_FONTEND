@@ -29,7 +29,8 @@ import {
 import { motion } from 'framer-motion';
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectRisks, createRisk, updateRisk, deleteRisk } from '../../../../store/slices/projectRiskSlice';
-import type { ProjectRisk, CreateRiskData, UpdateRiskData } from '../../../../types/projectRisk';
+import type { ProjectRisk } from '../../../../services/projectRiskService';
+import type { CreateRiskData, UpdateRiskData } from '../../../../types/projectRisk';
 import RiskFormModal from './RiskFormModal';
 
 interface ProjectRisksProps {
@@ -247,7 +248,7 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
             const statusInfo = getStatusInfo(risk.status);
             
             return (
-              <Col key={risk.id} xs={24} sm={24} md={12} lg={8} xl={6}>
+              <Col key={risk._id} xs={24} sm={24} md={12} lg={8} xl={6}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -268,7 +269,7 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
                           type="text" 
                           danger
                           icon={<DeleteOutlined />}
-                          onClick={() => handleDeleteRisk(risk.id)}
+                          onClick={() => handleDeleteRisk(risk._id)}
                         />
                       </Tooltip>
                     ]}

@@ -10,7 +10,7 @@ const apiClient = axios.create({
 // Add request interceptor to include token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -26,7 +26,8 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -93,7 +94,8 @@ class UserService {
       console.error('Error fetching all users:', error);
       if (error.response?.status === 401) {
         // Token expired or invalid
-        localStorage.removeItem('token');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         window.location.href = '/login';
       }
       throw error;
@@ -127,7 +129,8 @@ class UserService {
     } catch (error: any) {
       console.error('Error fetching users:', error);
       if (error.response?.status === 401) {
-        localStorage.removeItem('token');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         window.location.href = '/login';
       }
       throw error;
@@ -153,7 +156,8 @@ class UserService {
     } catch (error: any) {
       console.error('Error fetching user:', error);
       if (error.response?.status === 401) {
-        localStorage.removeItem('token');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         window.location.href = '/login';
       }
       throw error;
@@ -179,7 +183,8 @@ class UserService {
     } catch (error: any) {
       console.error('Error fetching users:', error);
       if (error.response?.status === 401) {
-        localStorage.removeItem('token');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         window.location.href = '/login';
       }
       throw error;

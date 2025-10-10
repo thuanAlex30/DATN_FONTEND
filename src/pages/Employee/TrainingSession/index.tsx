@@ -1,7 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Card,
+  Button,
+  Progress,
+  Radio,
+  Space,
+  Typography,
+  message,
+  Spin,
+  Row,
+  Col,
+  Divider
+} from 'antd';
+import {
+  ArrowLeftOutlined,
+  ClockCircleOutlined,
+  CheckOutlined,
+  ExclamationCircleOutlined
+} from '@ant-design/icons';
 import { api } from '../../../services/api';
-import styles from './TrainingSession.module.css';
+
+const { Title, Text } = Typography;
 
 interface Question {
   _id: string;
@@ -47,7 +67,7 @@ const TrainingSession: React.FC = () => {
   const clearAndRedirect = (reason: string) => {
     console.log(`Clearing invalid data: ${reason}`);
     localStorage.removeItem('currentTrainingData');
-    alert(`Phiên học không hợp lệ: ${reason}. Vui lòng thử lại từ trang đào tạo.`);
+    message.error(`Phiên học không hợp lệ: ${reason}. Vui lòng thử lại từ trang đào tạo.`);
     navigate('/training');
   };
   const [trainingData, setTrainingData] = useState<TrainingData | null>(null);
@@ -142,7 +162,7 @@ const TrainingSession: React.FC = () => {
         console.log('This is a retake session');
         // Show retake notification
         setTimeout(() => {
-          alert('Đây là lần làm lại bài. Kết quả trước đó đã được reset. Chúc bạn làm bài tốt!');
+          message.info('Đây là lần làm lại bài. Kết quả trước đó đã được reset. Chúc bạn làm bài tốt!');
         }, 500);
       }
       
@@ -191,7 +211,7 @@ const TrainingSession: React.FC = () => {
         handleSubmit();
       } else {
         console.log('Time expired but no answers provided, not auto-submitting');
-        alert('Thời gian đã hết và bạn chưa trả lời câu hỏi nào. Phiên học sẽ được đóng.');
+        message.warning('Thời gian đã hết và bạn chưa trả lời câu hỏi nào. Phiên học sẽ được đóng.');
         navigate('/training');
       }
     }
@@ -237,14 +257,14 @@ const TrainingSession: React.FC = () => {
     console.log('===================');
     
     if (!currentTrainingData?.session?._id) {
-      alert('Không tìm thấy thông tin phiên học. Vui lòng thử lại.');
+      message.error('Không tìm thấy thông tin phiên học. Vui lòng thử lại.');
       return;
     }
 
     // Check if user has answered at least one question
     const answeredQuestions = Object.keys(answers).length;
     if (answeredQuestions === 0) {
-      alert('Bạn chưa trả lời câu hỏi nào. Vui lòng trả lời ít nhất một câu hỏi trước khi nộp bài.');
+      message.warning('Bạn chưa trả lời câu hỏi nào. Vui lòng trả lời ít nhất một câu hỏi trước khi nộp bài.');
       return;
     }
 
@@ -289,15 +309,15 @@ const TrainingSession: React.FC = () => {
       });
 
       if (response.data.success) {
-        alert(`Hoàn thành khóa học! Điểm số: ${totalScore}/${currentTrainingData?.questions.reduce((sum, q) => sum + q.points, 0)}`);
+        message.success(`Hoàn thành khóa học! Điểm số: ${totalScore}/${currentTrainingData?.questions.reduce((sum, q) => sum + q.points, 0)}`);
         localStorage.removeItem('currentTrainingData');
         navigate('/training');
       } else {
-        alert(`Lỗi: ${response.data.message}`);
+        message.error(`Lỗi: ${response.data.message}`);
       }
     } catch (error: any) {
       console.error('Error submitting training:', error);
-      alert('Có lỗi xảy ra khi nộp bài');
+      message.error('Có lỗi xảy ra khi nộp bài');
     }
   };
 
@@ -310,10 +330,16 @@ const TrainingSession: React.FC = () => {
 
   if (loading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loading}>
-          <i className="fas fa-spinner fa-spin"></i>
-          <span>Đang tải...</span>
+      <div style={{ 
+        minHeight: '100vh', 
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+      }}>
+        <div style={{ textAlign: 'center', color: 'white' }}>
+          <Spin size="large" />
+          <div style={{ marginTop: '16px' }}>Đang tải...</div>
         </div>
       </div>
     );
@@ -321,14 +347,20 @@ const TrainingSession: React.FC = () => {
 
   if (!trainingData) {
     return (
-      <div className={styles.container}>
-        <div className={styles.error}>
-          <i className="fas fa-exclamation-triangle"></i>
-          <h3>Không tìm thấy dữ liệu khóa học</h3>
-          <button onClick={() => navigate('/training')} className={styles.backBtn}>
+      <div style={{ 
+        minHeight: '100vh', 
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+      }}>
+        <Card style={{ textAlign: 'center', maxWidth: '400px' }}>
+          <ExclamationCircleOutlined style={{ fontSize: '48px', color: '#ff6b6b', marginBottom: '16px' }} />
+          <Title level={3}>Không tìm thấy dữ liệu khóa học</Title>
+          <Button type="primary" onClick={() => navigate('/training')}>
             Quay lại
-          </button>
-        </div>
+          </Button>
+        </Card>
       </div>
     );
   }
@@ -339,125 +371,207 @@ const TrainingSession: React.FC = () => {
   // Show loading if currentQuestion is not available
   if (!currentQuestion) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loading}>
-          <div className={styles.spinner}></div>
-          <p>Đang tải câu hỏi...</p>
+      <div style={{ 
+        minHeight: '100vh', 
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+      }}>
+        <div style={{ textAlign: 'center', color: 'white' }}>
+          <Spin size="large" />
+          <div style={{ marginTop: '16px' }}>Đang tải câu hỏi...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <button onClick={() => navigate('/training')} className={styles.backBtn}>
-            <i className="fas fa-arrow-left"></i> Quay lại
-          </button>
-          <div className={styles.sessionInfo}>
-            <h1>{trainingData.session?.session_name || 'Training Session'}</h1>
-            <p>{trainingData.course?.course_name || 'Course'}</p>
-          </div>
-        </div>
-        <div className={styles.headerRight}>
-          <div className={styles.timer}>
-            <i className="fas fa-clock"></i>
-            <span className={timeLeft < 300 ? styles.timeWarning : ''}>
-              {formatTime(timeLeft)}
-            </span>
-          </div>
-        </div>
-      </header>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+      padding: '20px' 
+    }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        {/* Header */}
+        <Card style={{ marginBottom: '20px' }}>
+          <Row justify="space-between" align="middle">
+            <Col>
+              <Space>
+                <Button 
+                  type="primary"
+                  icon={<ArrowLeftOutlined />}
+                  onClick={() => navigate('/training')}
+                >
+                  Quay lại
+                </Button>
+                <div>
+                  <Title level={3} style={{ margin: 0 }}>
+                    {trainingData.session?.session_name || 'Training Session'}
+                  </Title>
+                  <Text type="secondary">
+                    {trainingData.course?.course_name || 'Course'}
+                  </Text>
+                </div>
+              </Space>
+            </Col>
+            <Col>
+              <Space>
+                <ClockCircleOutlined />
+                <Text 
+                  strong 
+                  style={{ 
+                    color: timeLeft < 300 ? '#ff4d4f' : '#333',
+                    animation: timeLeft < 300 ? 'pulse 1s infinite' : 'none'
+                  }}
+                >
+                  {formatTime(timeLeft)}
+                </Text>
+              </Space>
+            </Col>
+          </Row>
+        </Card>
 
-      <div className={styles.progressBar}>
-        <div 
-          className={styles.progressFill} 
-          style={{ width: `${progress}%` }}
-        ></div>
-        <span className={styles.progressText}>
-          Câu {currentQuestionIndex + 1} / {trainingData.questions?.length || 0}
-        </span>
-      </div>
+        {/* Progress Bar */}
+        <Card style={{ marginBottom: '20px' }}>
+          <Progress 
+            percent={progress} 
+            format={() => `Câu ${currentQuestionIndex + 1} / ${trainingData.questions?.length || 0}`}
+            strokeColor={{
+              '0%': '#667eea',
+              '100%': '#764ba2',
+            }}
+          />
+        </Card>
 
-      <div className={styles.content}>
-        <div className={styles.questionCard}>
-          <div className={styles.questionHeader}>
-            <div className={styles.questionNumber}>
-              Câu {currentQuestionIndex + 1}
-            </div>
-            <div className={styles.questionPoints}>
-              {currentQuestion.points} điểm
-            </div>
-            <div className={styles.questionDifficulty}>
-              {currentQuestion.difficulty_level === 'EASY' ? 'Dễ' :
-               currentQuestion.difficulty_level === 'MEDIUM' ? 'Trung bình' : 'Khó'}
-            </div>
+        {/* Question Card */}
+        <Card style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '20px' }}>
+            <Row justify="space-between" align="middle">
+              <Col>
+                <Space>
+                  <Button type="primary" shape="round">
+                    Câu {currentQuestionIndex + 1}
+                  </Button>
+                  <Button type="default" shape="round">
+                    {currentQuestion.points} điểm
+                  </Button>
+                  <Button 
+                    type="default" 
+                    shape="round"
+                    style={{ 
+                      backgroundColor: currentQuestion.difficulty_level === 'EASY' ? '#52c41a' :
+                                     currentQuestion.difficulty_level === 'MEDIUM' ? '#faad14' : '#ff4d4f',
+                      color: 'white',
+                      border: 'none'
+                    }}
+                  >
+                    {currentQuestion.difficulty_level === 'EASY' ? 'Dễ' :
+                     currentQuestion.difficulty_level === 'MEDIUM' ? 'Trung bình' : 'Khó'}
+                  </Button>
+                </Space>
+              </Col>
+            </Row>
           </div>
           
-          <div className={styles.questionContent}>
-            <h3>{currentQuestion.content}</h3>
-          </div>
+          <Divider />
+          
+          <Title level={4} style={{ marginBottom: '20px' }}>
+            {currentQuestion.content}
+          </Title>
 
-          <div className={styles.options}>
-            {currentQuestion.options.map((option, index) => (
-              <label key={index} className={styles.option}>
-                <input
-                  type="radio"
-                  name={`question_${currentQuestion._id}`}
+          <Radio.Group
+            value={answers[currentQuestion._id]}
+            onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
+            style={{ width: '100%' }}
+          >
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {currentQuestion.options.map((option, index) => (
+                <Radio 
+                  key={index} 
                   value={option}
-                  checked={answers[currentQuestion._id] === option}
-                  onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
-                />
-                <span className={styles.optionText}>
-                  {String.fromCharCode(65 + index)}. {option}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
+                  style={{ 
+                    padding: '12px',
+                    border: '2px solid #e9ecef',
+                    borderRadius: '8px',
+                    width: '100%',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  <Text style={{ fontSize: '16px' }}>
+                    {String.fromCharCode(65 + index)}. {option}
+                  </Text>
+                </Radio>
+              ))}
+            </Space>
+          </Radio.Group>
+        </Card>
 
-        <div className={styles.navigation}>
-          <button 
-            onClick={handlePrevious}
-            disabled={currentQuestionIndex === 0}
-            className={styles.navBtn}
-          >
-            <i className="fas fa-chevron-left"></i> Câu trước
-          </button>
-          
-          <div className={styles.questionNav}>
-            {trainingData.questions?.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentQuestionIndex(index)}
-                className={`${styles.questionNavBtn} ${
-                  answers[trainingData.questions?.[index]?._id] ? styles.answered : ''
-                } ${index === currentQuestionIndex ? styles.current : ''}`}
+        {/* Navigation */}
+        <Card style={{ marginBottom: '20px' }}>
+          <Row justify="space-between" align="middle">
+            <Col>
+              <Button 
+                onClick={handlePrevious}
+                disabled={currentQuestionIndex === 0}
+                icon={<ArrowLeftOutlined />}
               >
-                {index + 1}
-              </button>
-            ))}
-          </div>
-          
-          <button 
-            onClick={handleNext}
-            disabled={currentQuestionIndex === (trainingData.questions?.length || 1) - 1}
-            className={styles.navBtn}
-          >
-            Câu sau <i className="fas fa-chevron-right"></i>
-          </button>
-        </div>
+                Câu trước
+              </Button>
+            </Col>
+            
+            <Col>
+              <Space wrap>
+                {trainingData.questions?.map((_, index) => (
+                  <Button
+                    key={index}
+                    onClick={() => setCurrentQuestionIndex(index)}
+                    type={index === currentQuestionIndex ? 'primary' : 'default'}
+                    style={{
+                      backgroundColor: answers[trainingData.questions?.[index]?._id] ? '#52c41a' : undefined,
+                      color: answers[trainingData.questions?.[index]?._id] ? 'white' : undefined,
+                      borderColor: answers[trainingData.questions?.[index]?._id] ? '#52c41a' : undefined
+                    }}
+                  >
+                    {index + 1}
+                  </Button>
+                ))}
+              </Space>
+            </Col>
+            
+            <Col>
+              <Button 
+                onClick={handleNext}
+                disabled={currentQuestionIndex === (trainingData.questions?.length || 1) - 1}
+              >
+                Câu sau
+                <ArrowLeftOutlined style={{ transform: 'rotate(180deg)', marginLeft: '8px' }} />
+              </Button>
+            </Col>
+          </Row>
+        </Card>
 
-        <div className={styles.submitSection}>
-          <button 
-            onClick={handleSubmit}
-            disabled={isSubmitted}
-            className={styles.submitBtn}
-          >
-            <i className="fas fa-check"></i> Nộp bài
-          </button>
-        </div>
+        {/* Submit Section */}
+        <Card>
+          <div style={{ textAlign: 'center' }}>
+            <Button 
+              type="primary"
+              size="large"
+              icon={<CheckOutlined />}
+              onClick={handleSubmit}
+              disabled={isSubmitted}
+              style={{
+                background: 'linear-gradient(135deg, #28a745, #20c997)',
+                border: 'none',
+                height: '48px',
+                fontSize: '16px',
+                fontWeight: 'bold'
+              }}
+            >
+              Nộp bài
+            </Button>
+          </div>
+        </Card>
       </div>
     </div>
   );

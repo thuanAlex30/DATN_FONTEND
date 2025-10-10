@@ -1,6 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, Space, Tabs, Table, Tag, Avatar, Row, Col, Statistic, Input, Select, Modal, Form, message, Popconfirm, Upload } from 'antd';
-import { BookOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, FilterOutlined, UploadOutlined, DownloadOutlined, UserOutlined, CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { 
+  Card, 
+  Typography, 
+  Button, 
+  Space, 
+  Tabs, 
+  Table, 
+  Tag, 
+  Avatar, 
+  Row, 
+  Col, 
+  Input, 
+  Select, 
+  Modal, 
+  Form, 
+  Popconfirm, 
+  Upload,
+  Breadcrumb,
+  Spin,
+  Empty,
+  Tooltip,
+  Divider,
+  Alert,
+  Checkbox,
+  DatePicker
+} from 'antd';
+import { 
+  BookOutlined, 
+  PlusOutlined, 
+  EditOutlined, 
+  DeleteOutlined, 
+  SearchOutlined, 
+  UploadOutlined, 
+  DownloadOutlined, 
+  UserOutlined, 
+  CalendarOutlined, 
+  ClockCircleOutlined,
+  EyeOutlined,
+  QuestionCircleOutlined,
+  FileExcelOutlined,
+  CheckCircleOutlined,
+  InfoCircleOutlined,
+  ArrowLeftOutlined
+} from '@ant-design/icons';
 import { downloadQuestionTemplate } from '../../../utils/questionTemplate';
 import {
   useCourses,
@@ -508,805 +550,1102 @@ const TrainingManagement: React.FC = () => {
   console.log('Courses data:', courses);
 
   return (
-    <div className="training-management">
-      <div className="container">
+    <div style={{ padding: '24px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
-        <div className="header">
-          <div>
-            <h1><i className="fas fa-graduation-cap"></i> Quản lý đào tạo</h1>
-            <div className="breadcrumb">
-              <a href="/admin/dashboard">Dashboard</a> / Quản lý đào tạo
-            </div>
-          </div>
-          <a href="/admin/dashboard" className="btn btn-secondary">
-            <i className="fas fa-arrow-left"></i> Quay lại
-          </a>
-        </div>
+        <Card style={{ marginBottom: '24px' }}>
+          <Row justify="space-between" align="middle">
+            <Col>
+              <Space direction="vertical" size={0}>
+                <Typography.Title level={2} style={{ margin: 0, color: '#1890ff' }}>
+                  <BookOutlined style={{ marginRight: '8px' }} />
+                  Quản lý đào tạo
+                </Typography.Title>
+                <Breadcrumb style={{ marginTop: '8px' }}>
+                  <Breadcrumb.Item>
+                    <a href="/admin/dashboard">Dashboard</a>
+                  </Breadcrumb.Item>
+                  <Breadcrumb.Item>Quản lý đào tạo</Breadcrumb.Item>
+                </Breadcrumb>
+              </Space>
+            </Col>
+            <Col>
+              <Button 
+                type="default" 
+                icon={<ArrowLeftOutlined />}
+                href="/admin/dashboard"
+              >
+                Quay lại
+              </Button>
+            </Col>
+          </Row>
+        </Card>
 
         {/* Tabs */}
-        <div className="tabs">
-          <div className="tab-nav">
-            <button 
-              className={`tab-button ${activeTab === 'courses' ? 'active' : ''}`}
-              onClick={() => switchTab('courses')}
-            >
-              <i className="fas fa-book"></i> Khóa học
-            </button>
-            <button 
-              className={`tab-button ${activeTab === 'sessions' ? 'active' : ''}`}
-              onClick={() => switchTab('sessions')}
-            >
-              <i className="fas fa-calendar-alt"></i> Buổi đào tạo
-            </button>
-            <button 
-              className={`tab-button ${activeTab === 'enrollments' ? 'active' : ''}`}
-              onClick={() => switchTab('enrollments')}
-            >
-              <i className="fas fa-user-graduate"></i> Đăng ký tham gia
-            </button>
-            <button 
-              className={`tab-button ${activeTab === 'question-banks' ? 'active' : ''}`}
-              onClick={() => switchTab('question-banks')}
-            >
-              <i className="fas fa-question-circle"></i> Ngân hàng câu hỏi
-            </button>
-          </div>
+        <Card>
+          <Tabs
+            activeKey={activeTab}
+            onChange={(key) => switchTab(key as any)}
+            items={[
+              {
+                key: 'courses',
+                label: (
+                  <span>
+                    <BookOutlined />
+                    Khóa học
+                  </span>
+                ),
+                children: null
+              },
+              {
+                key: 'sessions',
+                label: (
+                  <span>
+                    <CalendarOutlined />
+                    Buổi đào tạo
+                  </span>
+                ),
+                children: null
+              },
+              {
+                key: 'enrollments',
+                label: (
+                  <span>
+                    <UserOutlined />
+                    Đăng ký tham gia
+                  </span>
+                ),
+                children: null
+              },
+              {
+                key: 'question-banks',
+                label: (
+                  <span>
+                    <QuestionCircleOutlined />
+                    Ngân hàng câu hỏi
+                  </span>
+                ),
+                children: null
+              }
+            ]}
+          />
 
           {/* Courses Tab */}
           {activeTab === 'courses' && (
-            <div className="tab-content active">
-              <div className="controls">
-                <div className="search-filters">
-                  <div className="search-box">
-                    <i className="fas fa-search"></i>
-                    <input 
-                      type="text" 
-                      placeholder="Tìm kiếm khóa học..." 
-                      value={filters.search}
-                      onChange={(e) => handleFilterChange('search', e.target.value)}
-                    />
-                  </div>
-                  
-                  <select 
-                    className="filter-select"
-                    value={filters.courseSetId}
-                    onChange={(e) => handleFilterChange('courseSetId', e.target.value)}
-                  >
-                    <option value="">Tất cả bộ khóa học</option>
-                    {courseSets.map(courseSet => (
-                      <option key={courseSet._id} value={courseSet._id}>
-                        {courseSet.name}
-                      </option>
-                    ))}
-                  </select>
-                  
-                  <select 
-                    className="filter-select"
-                    value={filters.isMandatory}
-                    onChange={(e) => handleFilterChange('isMandatory', e.target.value)}
-                  >
-                    <option value="">Tất cả</option>
-                    <option value="true">Bắt buộc</option>
-                    <option value="false">Tự chọn</option>
-                  </select>
-                </div>
-                
-                <button className="btn btn-primary" onClick={() => openModal('addCourseModal')}>
-                  <i className="fas fa-plus"></i> Tạo khóa học
-                </button>
-              </div>
+            <div style={{ marginTop: '16px' }}>
+              <Card>
+                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+                  <Col>
+                    <Space wrap>
+                      <Input
+                        placeholder="Tìm kiếm khóa học..."
+                        prefix={<SearchOutlined />}
+                        style={{ width: 300 }}
+                        value={filters.search}
+                        onChange={(e) => handleFilterChange('search', e.target.value)}
+                      />
+                      
+                      <Select
+                        placeholder="Tất cả bộ khóa học"
+                        style={{ width: 200 }}
+                        value={filters.courseSetId}
+                        onChange={(value) => handleFilterChange('courseSetId', value)}
+                        allowClear
+                      >
+                        {courseSets.map(courseSet => (
+                          <Select.Option key={courseSet._id} value={courseSet._id}>
+                            {courseSet.name}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                      
+                      <Select
+                        placeholder="Tất cả"
+                        style={{ width: 150 }}
+                        value={filters.isMandatory}
+                        onChange={(value) => handleFilterChange('isMandatory', value)}
+                        allowClear
+                      >
+                        <Select.Option value="true">Bắt buộc</Select.Option>
+                        <Select.Option value="false">Tự chọn</Select.Option>
+                      </Select>
+                    </Space>
+                  </Col>
+                  <Col>
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />}
+                      onClick={() => openModal('addCourseModal')}
+                    >
+                      Tạo khóa học
+                    </Button>
+                  </Col>
+                </Row>
 
-              <div className="data-grid">
                 {coursesLoading ? (
-                  <div className="loading-spinner">
-                    <i className="fas fa-spinner fa-spin"></i>
-                    <span>Đang tải dữ liệu...</span>
+                  <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
                   </div>
                 ) : courses.length === 0 ? (
-                  <div className="empty-state">
-                    <i className="fas fa-graduation-cap"></i>
-                    <h3>Chưa có khóa học nào</h3>
-                    <p>Hãy tạo khóa học đầu tiên để bắt đầu quản lý đào tạo</p>
-                    <button className="btn btn-primary" onClick={() => openModal('addCourseModal')}>
-                      <i className="fas fa-plus"></i> Tạo khóa học
-                    </button>
-                  </div>
+                  <Empty
+                    image={<BookOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                    description={
+                      <div>
+                        <Typography.Title level={4}>Chưa có khóa học nào</Typography.Title>
+                        <Typography.Text type="secondary">
+                          Hãy tạo khóa học đầu tiên để bắt đầu quản lý đào tạo
+                        </Typography.Text>
+                      </div>
+                    }
+                  >
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />}
+                      onClick={() => openModal('addCourseModal')}
+                    >
+                      Tạo khóa học
+                    </Button>
+                  </Empty>
                 ) : (
-                  courses.map(course => (
-                    <div key={course._id} className="course-card">
-                    <div className="card-header">
-                      <div className="card-title">{course.course_name}</div>
-                      <div className="card-description">{course.description}</div>
-                      {course.is_mandatory && <div className="mandatory-badge">Bắt buộc</div>}
-                    </div>
-                    
-                    <div className="card-body">
-                      <div className="course-info">
-                        <div className="info-item">
-                          <i className="fas fa-clock"></i>
-                          <span>{course.duration_hours} giờ</span>
-                        </div>
-                        <div className="info-item">
-                          <i className="fas fa-certificate"></i>
-                          <span>{course.validity_months ? course.validity_months + ' tháng' : 'Vĩnh viễn'}</span>
-                        </div>
-                        <div className="info-item">
-                          <i className="fas fa-layer-group"></i>
-                            <span>{course.course_set_id?.name || 'N/A'}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="card-actions">
-                          <button 
-                            className="btn btn-warning btn-sm"
-                            onClick={() => handleEditCourse(course)}
-                          >
-                          <i className="fas fa-edit"></i> Sửa
-                        </button>
-                          <button 
-                            className="btn btn-success btn-sm"
-                            onClick={() => openModalWithData('viewCourseModal', course)}
-                          >
-                          <i className="fas fa-eye"></i> Xem
-                        </button>
-                          <button 
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => openModalWithData('questionBankModal', course)}
-                          >
-                          <i className="fas fa-question-circle"></i> Câu hỏi
-                        </button>
-                          <button 
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleDeleteCourse(course._id)}
-                          >
-                            <i className="fas fa-trash"></i> Xóa
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  ))
+                  <Row gutter={[16, 16]}>
+                    {courses.map(course => (
+                      <Col xs={24} sm={12} lg={8} xl={6} key={course._id}>
+                        <Card
+                          hoverable
+                          style={{ height: '100%' }}
+                          actions={[
+                            <Tooltip title="Sửa">
+                              <Button 
+                                type="text" 
+                                icon={<EditOutlined />}
+                                onClick={() => handleEditCourse(course)}
+                              />
+                            </Tooltip>,
+                            <Tooltip title="Xem">
+                              <Button 
+                                type="text" 
+                                icon={<EyeOutlined />}
+                                onClick={() => openModalWithData('viewCourseModal', course)}
+                              />
+                            </Tooltip>,
+                            <Tooltip title="Câu hỏi">
+                              <Button 
+                                type="text" 
+                                icon={<QuestionCircleOutlined />}
+                                onClick={() => openModalWithData('questionBankModal', course)}
+                              />
+                            </Tooltip>,
+                            <Popconfirm
+                              title="Xóa khóa học"
+                              description="Bạn có chắc chắn muốn xóa khóa học này?"
+                              onConfirm={() => handleDeleteCourse(course._id)}
+                              okText="Xóa"
+                              cancelText="Hủy"
+                            >
+                              <Tooltip title="Xóa">
+                                <Button 
+                                  type="text" 
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                />
+                              </Tooltip>
+                            </Popconfirm>
+                          ]}
+                        >
+                          <Card.Meta
+                            title={
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography.Text strong style={{ fontSize: '16px' }}>
+                                  {course.course_name}
+                                </Typography.Text>
+                                {course.is_mandatory && (
+                                  <Tag color="red">Bắt buộc</Tag>
+                                )}
+                              </div>
+                            }
+                            description={
+                              <div>
+                                <Typography.Paragraph 
+                                  ellipsis={{ rows: 2 }} 
+                                  style={{ marginBottom: '12px', color: '#666' }}
+                                >
+                                  {course.description}
+                                </Typography.Paragraph>
+                                
+                                <Space direction="vertical" size={4}>
+                                  <Space>
+                                    <ClockCircleOutlined style={{ color: '#1890ff' }} />
+                                    <Typography.Text>{course.duration_hours} giờ</Typography.Text>
+                                  </Space>
+                                  <Space>
+                                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                                    <Typography.Text>
+                                      {course.validity_months ? course.validity_months + ' tháng' : 'Vĩnh viễn'}
+                                    </Typography.Text>
+                                  </Space>
+                                  <Space>
+                                    <BookOutlined style={{ color: '#722ed1' }} />
+                                    <Typography.Text>{course.course_set_id?.name || 'N/A'}</Typography.Text>
+                                  </Space>
+                                </Space>
+                              </div>
+                            }
+                          />
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
                 )}
-              </div>
+              </Card>
             </div>
           )}
 
           {/* Sessions Tab */}
           {activeTab === 'sessions' && (
-            <div className="tab-content active">
-              <div className="controls">
-                <div className="search-filters">
-                  <div className="search-box">
-                    <i className="fas fa-search"></i>
-                    <input 
-                      type="text" 
-                      placeholder="Tìm kiếm buổi đào tạo..." 
-                      value={filters.search}
-                      onChange={(e) => handleFilterChange('search', e.target.value)}
-                    />
-                  </div>
-                  
-                  <select 
-                    className="filter-select"
-                    value={filters.statusCode}
-                    onChange={(e) => handleFilterChange('statusCode', e.target.value)}
-                  >
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="SCHEDULED">Đã lên lịch</option>
-                    <option value="ONGOING">Đang diễn ra</option>
-                    <option value="COMPLETED">Hoàn thành</option>
-                    <option value="CANCELLED">Đã hủy</option>
-                  </select>
+            <div style={{ marginTop: '16px' }}>
+              <Card>
+                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+                  <Col>
+                    <Space wrap>
+                      <Input
+                        placeholder="Tìm kiếm buổi đào tạo..."
+                        prefix={<SearchOutlined />}
+                        style={{ width: 300 }}
+                        value={filters.search}
+                        onChange={(e) => handleFilterChange('search', e.target.value)}
+                      />
+                      
+                      <Select
+                        placeholder="Tất cả trạng thái"
+                        style={{ width: 180 }}
+                        value={filters.statusCode}
+                        onChange={(value) => handleFilterChange('statusCode', value)}
+                        allowClear
+                      >
+                        <Select.Option value="SCHEDULED">Đã lên lịch</Select.Option>
+                        <Select.Option value="ONGOING">Đang diễn ra</Select.Option>
+                        <Select.Option value="COMPLETED">Hoàn thành</Select.Option>
+                        <Select.Option value="CANCELLED">Đã hủy</Select.Option>
+                      </Select>
 
-                  <select 
-                    className="filter-select"
-                    value={filters.courseId}
-                    onChange={(e) => handleFilterChange('courseId', e.target.value)}
-                  >
-                    <option value="">Tất cả khóa học</option>
-                    {courses.map(course => (
-                      <option key={course._id} value={course._id}>
-                        {course.course_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <button className="btn btn-primary" onClick={() => openModal('addSessionModal')}>
-                  <i className="fas fa-plus"></i> Lên lịch đào tạo
-                </button>
-              </div>
+                      <Select
+                        placeholder="Tất cả khóa học"
+                        style={{ width: 200 }}
+                        value={filters.courseId}
+                        onChange={(value) => handleFilterChange('courseId', value)}
+                        allowClear
+                      >
+                        {courses.map(course => (
+                          <Select.Option key={course._id} value={course._id}>
+                            {course.course_name}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Space>
+                  </Col>
+                  <Col>
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />}
+                      onClick={() => openModal('addSessionModal')}
+                    >
+                      Lên lịch đào tạo
+                    </Button>
+                  </Col>
+                </Row>
 
-              <div className="data-grid">
                 {sessionsLoading ? (
-                  <div className="loading-spinner">
-                    <i className="fas fa-spinner fa-spin"></i>
-                    <span>Đang tải dữ liệu...</span>
+                  <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
                   </div>
                 ) : sessions.length === 0 ? (
-                  <div className="empty-state">
-                    <i className="fas fa-calendar-alt"></i>
-                    <h3>Chưa có buổi đào tạo nào</h3>
-                    <p>Hãy lên lịch buổi đào tạo đầu tiên</p>
-                    <button className="btn btn-primary" onClick={() => openModal('addSessionModal')}>
-                      <i className="fas fa-plus"></i> Lên lịch đào tạo
-                    </button>
-                  </div>
+                  <Empty
+                    image={<CalendarOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                    description={
+                      <div>
+                        <Typography.Title level={4}>Chưa có buổi đào tạo nào</Typography.Title>
+                        <Typography.Text type="secondary">
+                          Hãy lên lịch buổi đào tạo đầu tiên
+                        </Typography.Text>
+                      </div>
+                    }
+                  >
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />}
+                      onClick={() => openModal('addSessionModal')}
+                    >
+                      Lên lịch đào tạo
+                    </Button>
+                  </Empty>
                 ) : (
-                  sessions.map(session => (
-                    <div key={session._id} className="session-card">
-                    <div className="card-header">
-                      <div className="card-title">{session.session_name}</div>
-                        <div className="card-description">{session.course_id.course_name}</div>
-                      <div className={`status-badge status-${session.status_code.toLowerCase()}`}>
-                        {getStatusLabel(session.status_code)}
-                      </div>
-                    </div>
-                    
-                    <div className="card-body">
-                      <div className="session-info">
-                        <div className="info-item">
-                          <i className="fas fa-calendar-alt"></i>
-                          <span>{formatDateTime(session.start_time)}</span>
-                        </div>
-                        <div className="info-item">
-                          <i className="fas fa-calendar-check"></i>
-                          <span>{formatDateTime(session.end_time)}</span>
-                        </div>
-                        <div className="info-item">
-                          <i className="fas fa-map-marker-alt"></i>
-                          <span>{session.location || 'Chưa xác định'}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="card-actions">
-                          <button 
-                            className="btn btn-warning btn-sm"
-                            onClick={() => handleEditSession(session)}
+                  <Row gutter={[16, 16]}>
+                    {sessions.map(session => {
+                      const getStatusColor = (status: string) => {
+                        switch (status) {
+                          case 'SCHEDULED': return 'blue';
+                          case 'ONGOING': return 'orange';
+                          case 'COMPLETED': return 'green';
+                          case 'CANCELLED': return 'red';
+                          default: return 'default';
+                        }
+                      };
+
+                      return (
+                        <Col xs={24} sm={12} lg={8} xl={6} key={session._id}>
+                          <Card
+                            hoverable
+                            style={{ height: '100%' }}
+                            actions={[
+                              <Tooltip title="Sửa">
+                                <Button 
+                                  type="text" 
+                                  icon={<EditOutlined />}
+                                  onClick={() => handleEditSession(session)}
+                                />
+                              </Tooltip>,
+                              <Tooltip title="Chi tiết">
+                                <Button 
+                                  type="text" 
+                                  icon={<EyeOutlined />}
+                                  onClick={() => openModalWithData('viewSessionModal', session)}
+                                />
+                              </Tooltip>,
+                              <Tooltip title="Đăng ký">
+                                <Button 
+                                  type="text" 
+                                  icon={<UserOutlined />}
+                                  onClick={() => openModalWithData('enrollmentModal', session)}
+                                />
+                              </Tooltip>,
+                              <Popconfirm
+                                title="Xóa buổi đào tạo"
+                                description="Bạn có chắc chắn muốn xóa buổi đào tạo này?"
+                                onConfirm={() => handleDeleteSession(session._id)}
+                                okText="Xóa"
+                                cancelText="Hủy"
+                              >
+                                <Tooltip title="Xóa">
+                                  <Button 
+                                    type="text" 
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                  />
+                                </Tooltip>
+                              </Popconfirm>
+                            ]}
                           >
-                          <i className="fas fa-edit"></i> Sửa
-                        </button>
-                          <button 
-                            className="btn btn-success btn-sm"
-                            onClick={() => openModalWithData('viewSessionModal', session)}
-                          >
-                          <i className="fas fa-eye"></i> Chi tiết
-                        </button>
-                          <button 
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => openModalWithData('enrollmentModal', session)}
-                          >
-                            <i className="fas fa-user-check"></i> Đăng ký
-                          </button>
-                          <button 
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleDeleteSession(session._id)}
-                          >
-                            <i className="fas fa-trash"></i> Xóa
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  ))
+                            <Card.Meta
+                              title={
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Typography.Text strong style={{ fontSize: '16px' }}>
+                                    {session.session_name}
+                                  </Typography.Text>
+                                  <Tag color={getStatusColor(session.status_code)}>
+                                    {getStatusLabel(session.status_code)}
+                                  </Tag>
+                                </div>
+                              }
+                              description={
+                                <div>
+                                  <Typography.Text type="secondary" style={{ fontSize: '14px' }}>
+                                    {session.course_id.course_name}
+                                  </Typography.Text>
+                                  
+                                  <Divider style={{ margin: '12px 0' }} />
+                                  
+                                  <Space direction="vertical" size={4}>
+                                    <Space>
+                                      <CalendarOutlined style={{ color: '#1890ff' }} />
+                                      <Typography.Text style={{ fontSize: '12px' }}>
+                                        {formatDateTime(session.start_time)}
+                                      </Typography.Text>
+                                    </Space>
+                                    <Space>
+                                      <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                                      <Typography.Text style={{ fontSize: '12px' }}>
+                                        {formatDateTime(session.end_time)}
+                                      </Typography.Text>
+                                    </Space>
+                                    <Space>
+                                      <InfoCircleOutlined style={{ color: '#722ed1' }} />
+                                      <Typography.Text style={{ fontSize: '12px' }}>
+                                        {session.location || 'Chưa xác định'}
+                                      </Typography.Text>
+                                    </Space>
+                                  </Space>
+                                </div>
+                              }
+                            />
+                          </Card>
+                        </Col>
+                      );
+                    })}
+                  </Row>
                 )}
-              </div>
+              </Card>
             </div>
           )}
 
           {/* Enrollments Tab */}
           {activeTab === 'enrollments' && (
-            <div className="tab-content active">
-              <div className="controls">
-                <div className="search-filters">
-                  <div className="search-box">
-                    <i className="fas fa-search"></i>
-                    <input type="text" placeholder="Tìm kiếm theo tên nhân viên..." />
-                  </div>
-                  
-                  <select className="filter-select">
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="enrolled">Đã đăng ký</option>
-                    <option value="completed">Hoàn thành</option>
-                    <option value="failed">Chưa đạt</option>
-                  </select>
-                </div>
-                
-                <button className="btn btn-success" onClick={() => openModal('exportReportModal')}>
-                  <i className="fas fa-download"></i> Xuất báo cáo
-                </button>
-              </div>
-
-              <div className="data-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Nhân viên</th>
-                      <th>Phòng ban</th>
-                      <th>Khóa học</th>
-                      <th>Buổi đào tạo</th>
-                      <th>Ngày đăng ký</th>
-                      <th>Trạng thái</th>
-                      <th>Điểm số</th>
-                      <th>Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enrollments.map(enrollment => {
-                      const session = sessions.find(s => s._id === enrollment.session_id._id);
-                      const courseName = session ? session.course_id.course_name : 'Không xác định';
-                      const sessionName = session ? session.session_name : 'Không xác định';
+            <div style={{ marginTop: '16px' }}>
+              <Card>
+                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+                  <Col>
+                    <Space wrap>
+                      <Input
+                        placeholder="Tìm kiếm theo tên nhân viên..."
+                        prefix={<SearchOutlined />}
+                        style={{ width: 300 }}
+                      />
                       
-                      return (
-                        <tr key={enrollment._id}>
-                          <td style={{fontWeight: 600, color: '#2c3e50'}}>{enrollment.user_id.full_name}</td>
-                          <td>{enrollment.user_id.email}</td>
-                          <td>{courseName}</td>
-                          <td>{sessionName}</td>
-                          <td>{formatDateTime(enrollment.enrolled_at)}</td>
-                          <td>
-                            <span className={`status-badge status-${enrollment.status}`}>
-                              {enrollment.status === 'enrolled' ? 'Đã đăng ký' : 
-                               enrollment.status === 'completed' ? 'Hoàn thành' : 
-                               enrollment.status === 'failed' ? 'Chưa đạt' : enrollment.status}
-                            </span>
-                          </td>
-                          <td style={{
-                            color: enrollment.score ? (enrollment.passed ? '#27ae60' : '#e74c3c') : '#666',
-                            fontWeight: 600
-                          }}>
-                            {enrollment.score ? `${enrollment.score}/100` : '-'}
-                          </td>
-                          <td>
-                            <button 
-                              className="btn btn-warning btn-sm"
+                      <Select
+                        placeholder="Tất cả trạng thái"
+                        style={{ width: 180 }}
+                        allowClear
+                      >
+                        <Select.Option value="enrolled">Đã đăng ký</Select.Option>
+                        <Select.Option value="completed">Hoàn thành</Select.Option>
+                        <Select.Option value="failed">Chưa đạt</Select.Option>
+                      </Select>
+                    </Space>
+                  </Col>
+                  <Col>
+                    <Button 
+                      type="primary" 
+                      icon={<DownloadOutlined />}
+                      onClick={() => openModal('exportReportModal')}
+                    >
+                      Xuất báo cáo
+                    </Button>
+                  </Col>
+                </Row>
+
+                <Table
+                  dataSource={enrollments}
+                  rowKey="_id"
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    showQuickJumper: true,
+                    showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} mục`
+                  }}
+                  columns={[
+                    {
+                      title: 'Nhân viên',
+                      dataIndex: ['user_id', 'full_name'],
+                      key: 'user',
+                      render: (text: string, record: any) => (
+                        <Space>
+                          <Avatar size="small" icon={<UserOutlined />} />
+                          <Typography.Text strong>{text}</Typography.Text>
+                        </Space>
+                      )
+                    },
+                    {
+                      title: 'Email',
+                      dataIndex: ['user_id', 'email'],
+                      key: 'email',
+                      render: (text: string) => (
+                        <Typography.Text type="secondary">{text}</Typography.Text>
+                      )
+                    },
+                    {
+                      title: 'Khóa học',
+                      key: 'course',
+                      render: (_, record: any) => {
+                        const session = sessions.find(s => s._id === record.session_id._id);
+                        return session ? session.course_id.course_name : 'Không xác định';
+                      }
+                    },
+                    {
+                      title: 'Buổi đào tạo',
+                      key: 'session',
+                      render: (_, record: any) => {
+                        const session = sessions.find(s => s._id === record.session_id._id);
+                        return session ? session.session_name : 'Không xác định';
+                      }
+                    },
+                    {
+                      title: 'Ngày đăng ký',
+                      dataIndex: 'enrolled_at',
+                      key: 'enrolled_at',
+                      render: (text: string) => formatDateTime(text)
+                    },
+                    {
+                      title: 'Trạng thái',
+                      dataIndex: 'status',
+                      key: 'status',
+                      render: (status: string) => {
+                        const getStatusColor = (status: string) => {
+                          switch (status) {
+                            case 'enrolled': return 'blue';
+                            case 'completed': return 'green';
+                            case 'failed': return 'red';
+                            default: return 'default';
+                          }
+                        };
+
+                        const getStatusText = (status: string) => {
+                          switch (status) {
+                            case 'enrolled': return 'Đã đăng ký';
+                            case 'completed': return 'Hoàn thành';
+                            case 'failed': return 'Chưa đạt';
+                            default: return status;
+                          }
+                        };
+
+                        return (
+                          <Tag color={getStatusColor(status)}>
+                            {getStatusText(status)}
+                          </Tag>
+                        );
+                      }
+                    },
+                    {
+                      title: 'Điểm số',
+                      dataIndex: 'score',
+                      key: 'score',
+                      render: (score: number, record: any) => {
+                        if (!score) return <Typography.Text type="secondary">-</Typography.Text>;
+                        
+                        const color = record.passed ? '#52c41a' : '#ff4d4f';
+                        return (
+                          <Typography.Text style={{ color, fontWeight: 600 }}>
+                            {score}/100
+                          </Typography.Text>
+                        );
+                      }
+                    },
+                    {
+                      title: 'Thao tác',
+                      key: 'actions',
+                      render: (_, record: any) => (
+                        <Space>
+                          <Tooltip title="Chỉnh sửa">
+                            <Button 
+                              type="text" 
+                              icon={<EditOutlined />}
                               onClick={() => {
-                                setEditingItem(enrollment);
+                                setEditingItem(record);
                                 openModal('editEnrollmentModal');
                               }}
-                            >
-                              <i className="fas fa-edit"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            />
+                          </Tooltip>
+                        </Space>
+                      )
+                    }
+                  ]}
+                />
+              </Card>
             </div>
           )}
 
           {/* Question Banks Tab */}
           {activeTab === 'question-banks' && (
-            <div className="tab-content active">
-              <div className="controls">
-                <div className="search-filters">
-                  <div className="search-box">
-                    <i className="fas fa-search"></i>
-                    <input type="text" placeholder="Tìm kiếm ngân hàng câu hỏi..." />
-                  </div>
-                  
-                  <select className="filter-select">
-                    <option value="">Tất cả khóa học</option>
-                    {courses.map(course => (
-                      <option key={course._id} value={course._id}>
-                        {course.course_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <button className="btn btn-primary" onClick={() => openModal('addBankModal')}>
-                  <i className="fas fa-plus"></i> Tạo ngân hàng câu hỏi
-                </button>
-              </div>
+            <div style={{ marginTop: '16px' }}>
+              <Card>
+                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+                  <Col>
+                    <Space wrap>
+                      <Input
+                        placeholder="Tìm kiếm ngân hàng câu hỏi..."
+                        prefix={<SearchOutlined />}
+                        style={{ width: 300 }}
+                      />
+                      
+                      <Select
+                        placeholder="Tất cả khóa học"
+                        style={{ width: 200 }}
+                        allowClear
+                      >
+                        {courses.map(course => (
+                          <Select.Option key={course._id} value={course._id}>
+                            {course.course_name}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Space>
+                  </Col>
+                  <Col>
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />}
+                      onClick={() => openModal('addBankModal')}
+                    >
+                      Tạo ngân hàng câu hỏi
+                    </Button>
+                  </Col>
+                </Row>
 
-              <div className="data-grid">
                 {questionBanksLoading ? (
-                  <div className="loading-spinner">
-                    <i className="fas fa-spinner fa-spin"></i>
-                    <span>Đang tải dữ liệu...</span>
+                  <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
                   </div>
                 ) : questionBanks.length === 0 ? (
-                  <div className="empty-state">
-                    <i className="fas fa-question-circle"></i>
-                    <h3>Chưa có ngân hàng câu hỏi nào</h3>
-                    <p>Hãy tạo ngân hàng câu hỏi đầu tiên</p>
-                    <button className="btn btn-primary" onClick={() => openModal('addBankModal')}>
-                      <i className="fas fa-plus"></i> Tạo ngân hàng câu hỏi
-                    </button>
-                  </div>
+                  <Empty
+                    image={<QuestionCircleOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                    description={
+                      <div>
+                        <Typography.Title level={4}>Chưa có ngân hàng câu hỏi nào</Typography.Title>
+                        <Typography.Text type="secondary">
+                          Hãy tạo ngân hàng câu hỏi đầu tiên
+                        </Typography.Text>
+                      </div>
+                    }
+                  >
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />}
+                      onClick={() => openModal('addBankModal')}
+                    >
+                      Tạo ngân hàng câu hỏi
+                    </Button>
+                  </Empty>
                 ) : (
-                  questionBanks.map(bank => (
-                    <div key={bank._id} className="course-card">
-                    <div className="card-header">
-                      <div className="card-title">{bank.name}</div>
-                      <div className="card-description">{bank.description}</div>
-                    </div>
-                    
-                    <div className="card-body">
-                      <div className="course-info">
-                        <div className="info-item">
-                          <i className="fas fa-book"></i>
-                            <span>{bank.course_id.course_name}</span>
-                        </div>
-                        <div className="info-item">
-                          <i className="fas fa-question-circle"></i>
-                            <span>{questions.filter(q => q.bank_id === bank._id).length} câu hỏi</span>
-                        </div>
-                      </div>
-                      
-                      <div className="card-actions">
-                          <button 
-                            className="btn btn-warning btn-sm"
-                            onClick={() => handleEditQuestionBank(bank)}
-                          >
-                          <i className="fas fa-edit"></i> Sửa
-                        </button>
-                          <button 
-                            className="btn btn-success btn-sm"
-                            onClick={() => openModalWithData('manageQuestionsModal', bank)}
-                          >
-                          <i className="fas fa-list"></i> Quản lý câu hỏi
-                        </button>
-                          <button 
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => openModalWithData('previewBankModal', bank)}
-                          >
-                          <i className="fas fa-eye"></i> Xem trước
-                        </button>
-                          <button 
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleDeleteQuestionBank(bank._id)}
-                          >
-                            <i className="fas fa-trash"></i> Xóa
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  ))
+                  <Row gutter={[16, 16]}>
+                    {questionBanks.map(bank => (
+                      <Col xs={24} sm={12} lg={8} xl={6} key={bank._id}>
+                        <Card
+                          hoverable
+                          style={{ height: '100%' }}
+                          actions={[
+                            <Tooltip title="Sửa">
+                              <Button 
+                                type="text" 
+                                icon={<EditOutlined />}
+                                onClick={() => handleEditQuestionBank(bank)}
+                              />
+                            </Tooltip>,
+                            <Tooltip title="Quản lý câu hỏi">
+                              <Button 
+                                type="text" 
+                                icon={<QuestionCircleOutlined />}
+                                onClick={() => openModalWithData('manageQuestionsModal', bank)}
+                              />
+                            </Tooltip>,
+                            <Tooltip title="Xem trước">
+                              <Button 
+                                type="text" 
+                                icon={<EyeOutlined />}
+                                onClick={() => openModalWithData('previewBankModal', bank)}
+                              />
+                            </Tooltip>,
+                            <Popconfirm
+                              title="Xóa ngân hàng câu hỏi"
+                              description="Bạn có chắc chắn muốn xóa ngân hàng câu hỏi này?"
+                              onConfirm={() => handleDeleteQuestionBank(bank._id)}
+                              okText="Xóa"
+                              cancelText="Hủy"
+                            >
+                              <Tooltip title="Xóa">
+                                <Button 
+                                  type="text" 
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                />
+                              </Tooltip>
+                            </Popconfirm>
+                          ]}
+                        >
+                          <Card.Meta
+                            title={
+                              <Typography.Text strong style={{ fontSize: '16px' }}>
+                                {bank.name}
+                              </Typography.Text>
+                            }
+                            description={
+                              <div>
+                                <Typography.Paragraph 
+                                  ellipsis={{ rows: 2 }} 
+                                  style={{ marginBottom: '12px', color: '#666' }}
+                                >
+                                  {bank.description}
+                                </Typography.Paragraph>
+                                
+                                <Space direction="vertical" size={4}>
+                                  <Space>
+                                    <BookOutlined style={{ color: '#1890ff' }} />
+                                    <Typography.Text>{bank.course_id.course_name}</Typography.Text>
+                                  </Space>
+                                  <Space>
+                                    <QuestionCircleOutlined style={{ color: '#52c41a' }} />
+                                    <Typography.Text>
+                                      {questions.filter(q => q.bank_id === bank._id).length} câu hỏi
+                                    </Typography.Text>
+                                  </Space>
+                                </Space>
+                              </div>
+                            }
+                          />
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
                 )}
-              </div>
+              </Card>
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Add Course Modal */}
-      {showModal === 'addCourseModal' && (
-        <div className="modal active">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="modal-title">{editingItem ? 'Chỉnh sửa khóa học' : 'Tạo khóa học mới'}</h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
-            </div>
-            
-            <form onSubmit={handleCourseSubmit}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Tên khóa học *</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    required 
-                    value={courseForm.course_name}
-                    onChange={(e) => setCourseForm(prev => ({ ...prev, course_name: e.target.value }))}
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Bộ khóa học *</label>
-                  <select 
-                    className="form-input"
-                    required
-                    value={courseForm.course_set_id}
-                    onChange={(e) => setCourseForm(prev => ({ ...prev, course_set_id: e.target.value }))}
-                  >
-                    <option value="">Chọn bộ khóa học</option>
-                    {courseSets.map(courseSet => (
-                      <option key={courseSet._id} value={courseSet._id}>
-                        {courseSet.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Thời lượng (giờ) *</label>
-                  <input 
-                    type="number" 
-                    className="form-input" 
-                    required 
-                    min="1" 
-                    value={courseForm.duration_hours}
-                    onChange={(e) => setCourseForm(prev => ({ ...prev, duration_hours: e.target.value }))}
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Hiệu lực (tháng)</label>
-                  <input 
-                    type="number" 
-                    className="form-input" 
-                    min="1" 
-                    value={courseForm.validity_months}
-                    onChange={(e) => setCourseForm(prev => ({ ...prev, validity_months: e.target.value }))}
-                  />
-                </div>
-                
-                <div className="form-group full-width">
-                  <label className="form-label">Mô tả khóa học</label>
-                  <textarea 
-                    className="form-input" 
-                    rows={4}
-                    value={courseForm.description}
-                    onChange={(e) => setCourseForm(prev => ({ ...prev, description: e.target.value }))}
-                  ></textarea>
-                </div>
-                
-                <div className="form-group full-width">
-                  <div className="form-checkbox">
-                    <input 
-                      type="checkbox" 
-                      checked={courseForm.is_mandatory}
-                      onChange={(e) => setCourseForm(prev => ({ ...prev, is_mandatory: e.target.checked }))}
-                    />
-                    <label>Khóa học bắt buộc</label>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                  Hủy
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-save"></i> {editingItem ? 'Cập nhật' : 'Tạo'} khóa học
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal
+        title={editingItem ? 'Chỉnh sửa khóa học' : 'Tạo khóa học mới'}
+        open={showModal === 'addCourseModal'}
+        onCancel={closeModal}
+        footer={null}
+        width={800}
+      >
+        <Form
+          layout="vertical"
+          onFinish={handleCourseSubmit}
+          initialValues={courseForm}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Tên khóa học"
+                name="course_name"
+                rules={[{ required: true, message: 'Vui lòng nhập tên khóa học' }]}
+              >
+                <Input 
+                  placeholder="Nhập tên khóa học"
+                  value={courseForm.course_name}
+                  onChange={(e) => setCourseForm(prev => ({ ...prev, course_name: e.target.value }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Bộ khóa học"
+                name="course_set_id"
+                rules={[{ required: true, message: 'Vui lòng chọn bộ khóa học' }]}
+              >
+                <Select
+                  placeholder="Chọn bộ khóa học"
+                  value={courseForm.course_set_id}
+                  onChange={(value) => setCourseForm(prev => ({ ...prev, course_set_id: value }))}
+                >
+                  {courseSets.map(courseSet => (
+                    <Select.Option key={courseSet._id} value={courseSet._id}>
+                      {courseSet.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Thời lượng (giờ)"
+                name="duration_hours"
+                rules={[{ required: true, message: 'Vui lòng nhập thời lượng' }]}
+              >
+                <Input 
+                  type="number"
+                  min={1}
+                  placeholder="Nhập số giờ"
+                  value={courseForm.duration_hours}
+                  onChange={(e) => setCourseForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Hiệu lực (tháng)"
+                name="validity_months"
+              >
+                <Input 
+                  type="number"
+                  min={1}
+                  placeholder="Nhập số tháng"
+                  value={courseForm.validity_months}
+                  onChange={(e) => setCourseForm(prev => ({ ...prev, validity_months: e.target.value }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            label="Mô tả khóa học"
+            name="description"
+          >
+            <Input.TextArea 
+              rows={4}
+              placeholder="Nhập mô tả khóa học"
+              value={courseForm.description}
+              onChange={(e) => setCourseForm(prev => ({ ...prev, description: e.target.value }))}
+            />
+          </Form.Item>
+
+          <Form.Item name="is_mandatory" valuePropName="checked">
+            <Checkbox
+              checked={courseForm.is_mandatory}
+              onChange={(e) => setCourseForm(prev => ({ ...prev, is_mandatory: e.target.checked }))}
+            >
+              Khóa học bắt buộc
+            </Checkbox>
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={closeModal}>
+                Hủy
+              </Button>
+              <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+                {editingItem ? 'Cập nhật' : 'Tạo'} khóa học
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Add Session Modal */}
-      {showModal === 'addSessionModal' && (
-        <div className="modal active">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="modal-title">{editingItem ? 'Chỉnh sửa buổi đào tạo' : 'Lên lịch đào tạo'}</h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
-            </div>
-            
-            <form onSubmit={handleSessionSubmit}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Tên buổi đào tạo *</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    required 
-                    value={sessionForm.session_name}
-                    onChange={(e) => setSessionForm(prev => ({ ...prev, session_name: e.target.value }))}
+      <Modal
+        title={editingItem ? 'Chỉnh sửa buổi đào tạo' : 'Lên lịch đào tạo'}
+        open={showModal === 'addSessionModal'}
+        onCancel={closeModal}
+        footer={null}
+        width={800}
+      >
+        <Form
+          layout="vertical"
+          onFinish={handleSessionSubmit}
+          initialValues={sessionForm}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Tên buổi đào tạo"
+                name="session_name"
+                rules={[{ required: true, message: 'Vui lòng nhập tên buổi đào tạo' }]}
+              >
+                <Input 
+                  placeholder="Nhập tên buổi đào tạo"
+                  value={sessionForm.session_name}
+                  onChange={(e) => setSessionForm(prev => ({ ...prev, session_name: e.target.value }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Khóa học"
+                name="course_id"
+                rules={[{ required: true, message: 'Vui lòng chọn khóa học' }]}
+              >
+                {!allCourses || allCourses.length === 0 ? (
+                  <Alert
+                    message="Không có khóa học nào!"
+                    description="Vui lòng tạo khóa học trước khi tạo buổi đào tạo."
+                    type="warning"
+                    showIcon
                   />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Khóa học *</label>
-                  {sessionForm.course_id && (
-                    <div className="mb-2 p-2 bg-blue-100 border border-blue-300 rounded text-sm">
-                      <strong>Debug:</strong> Current course_id: <code>{sessionForm.course_id}</code>
-                      <button 
-                        type="button" 
-                        className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs"
-                        onClick={() => setSessionForm(prev => ({ ...prev, course_id: '' }))}
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  )}
-                  {!allCourses || allCourses.length === 0 ? (
-                    <div className="alert alert-warning">
-                      <strong>Không có khóa học nào!</strong><br />
-                      Vui lòng tạo khóa học trước khi tạo buổi đào tạo.
-                      <br />
-                      <div className="mt-2 space-x-2">
-                        <button 
-                          type="button" 
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => {
-                            console.log('Force clearing course_id:', sessionForm.course_id);
-                            setSessionForm(prev => ({ ...prev, course_id: '' }));
-                          }}
-                        >
-                          Xóa Course ID (Debug)
-                        </button>
-                        <button 
-                          type="button" 
-                          className="btn btn-sm btn-outline-success"
-                          onClick={() => {
-                            console.log('Setting test course ID');
-                            setSessionForm(prev => ({ ...prev, course_id: '68d4036ff00023bc69569527' }));
-                          }}
-                        >
-                          Set Test Course ID
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <select 
-                      className="form-input" 
-                      required
-                      value={sessionForm.course_id}
-                      onChange={(e) => setSessionForm(prev => ({ ...prev, course_id: e.target.value }))}
-                    >
-                    <option value="">Chọn khóa học</option>
-                      {allCourses.map(course => (
-                        <option key={course._id} value={course._id}>
-                        {course.course_name}
-                      </option>
-                    ))}
-                  </select>
-                  )}
-                  {sessionForm.course_id && (
-                    <div className="mt-2">
-                      <small className="text-muted">
-                        Current course_id: <code>{sessionForm.course_id}</code>
-                      </small>
-                      <button 
-                        type="button" 
-                        className="btn btn-sm btn-outline-danger ml-2"
-                        onClick={() => {
-                          console.log('Manual clear course_id:', sessionForm.course_id);
-                          setSessionForm(prev => ({ ...prev, course_id: '' }));
-                        }}
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Ngày bắt đầu *</label>
-                  <input 
-                    type="datetime-local" 
-                    className="form-input" 
-                    required 
-                    value={sessionForm.start_time}
-                    onChange={(e) => setSessionForm(prev => ({ ...prev, start_time: e.target.value }))}
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Ngày kết thúc *</label>
-                  <input 
-                    type="datetime-local" 
-                    className="form-input" 
-                    required 
-                    value={sessionForm.end_time}
-                    onChange={(e) => setSessionForm(prev => ({ ...prev, end_time: e.target.value }))}
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Số lượng tối đa</label>
-                  <input 
-                    type="number" 
-                    className="form-input" 
-                    min="1" 
-                    defaultValue="20"
-                    value={sessionForm.max_participants}
-                    onChange={(e) => setSessionForm(prev => ({ ...prev, max_participants: e.target.value }))}
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Trạng thái</label>
-                  <select 
-                    className="form-input"
-                    value={sessionForm.status_code}
-                    onChange={(e) => setSessionForm(prev => ({ ...prev, status_code: e.target.value }))}
+                ) : (
+                  <Select
+                    placeholder="Chọn khóa học"
+                    value={sessionForm.course_id}
+                    onChange={(value) => setSessionForm(prev => ({ ...prev, course_id: value }))}
                   >
-                    <option value="SCHEDULED">Đã lên lịch</option>
-                    <option value="ONGOING">Đang diễn ra</option>
-                    <option value="COMPLETED">Hoàn thành</option>
-                    <option value="CANCELLED">Đã hủy</option>
-                  </select>
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Địa điểm</label>
-                  <input 
-                    type="text" 
-                    className="form-input"
-                    value={sessionForm.location}
-                    onChange={(e) => setSessionForm(prev => ({ ...prev, location: e.target.value }))}
-                  />
-                </div>
-              </div>
-              
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                  Hủy
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-calendar-plus"></i> {editingItem ? 'Cập nhật' : 'Tạo'} lịch đào tạo
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                    {allCourses.map(course => (
+                      <Select.Option key={course._id} value={course._id}>
+                        {course.course_name}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                )}
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Ngày bắt đầu"
+                name="start_time"
+                rules={[{ required: true, message: 'Vui lòng chọn ngày bắt đầu' }]}
+              >
+                <DatePicker
+                  showTime
+                  format="YYYY-MM-DD HH:mm"
+                  placeholder="Chọn ngày bắt đầu"
+                  style={{ width: '100%' }}
+                  value={sessionForm.start_time ? new Date(sessionForm.start_time) : null}
+                  onChange={(date) => {
+                    if (date) {
+                      setSessionForm(prev => ({ 
+                        ...prev, 
+                        start_time: date.toISOString().slice(0, 16)
+                      }));
+                    }
+                  }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Ngày kết thúc"
+                name="end_time"
+                rules={[{ required: true, message: 'Vui lòng chọn ngày kết thúc' }]}
+              >
+                <DatePicker
+                  showTime
+                  format="YYYY-MM-DD HH:mm"
+                  placeholder="Chọn ngày kết thúc"
+                  style={{ width: '100%' }}
+                  value={sessionForm.end_time ? new Date(sessionForm.end_time) : null}
+                  onChange={(date) => {
+                    if (date) {
+                      setSessionForm(prev => ({ 
+                        ...prev, 
+                        end_time: date.toISOString().slice(0, 16)
+                      }));
+                    }
+                  }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Số lượng tối đa"
+                name="max_participants"
+              >
+                <Input 
+                  type="number"
+                  min={1}
+                  placeholder="Nhập số lượng"
+                  value={sessionForm.max_participants}
+                  onChange={(e) => setSessionForm(prev => ({ ...prev, max_participants: e.target.value }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Trạng thái"
+                name="status_code"
+              >
+                <Select
+                  value={sessionForm.status_code}
+                  onChange={(value) => setSessionForm(prev => ({ ...prev, status_code: value }))}
+                >
+                  <Select.Option value="SCHEDULED">Đã lên lịch</Select.Option>
+                  <Select.Option value="ONGOING">Đang diễn ra</Select.Option>
+                  <Select.Option value="COMPLETED">Hoàn thành</Select.Option>
+                  <Select.Option value="CANCELLED">Đã hủy</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            label="Địa điểm"
+            name="location"
+          >
+            <Input 
+              placeholder="Nhập địa điểm"
+              value={sessionForm.location}
+              onChange={(e) => setSessionForm(prev => ({ ...prev, location: e.target.value }))}
+            />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={closeModal}>
+                Hủy
+              </Button>
+              <Button type="primary" htmlType="submit" icon={<CalendarOutlined />}>
+                {editingItem ? 'Cập nhật' : 'Tạo'} lịch đào tạo
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Add Question Bank Modal */}
-      {showModal === 'addBankModal' && (
-        <div className="modal active">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="modal-title">{editingItem ? 'Chỉnh sửa ngân hàng câu hỏi' : 'Tạo ngân hàng câu hỏi'}</h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
-            </div>
-            
-            <form onSubmit={handleQuestionBankSubmit}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Tên ngân hàng câu hỏi *</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    required 
-                    value={questionBankForm.name}
-                    onChange={(e) => setQuestionBankForm(prev => ({ ...prev, name: e.target.value }))}
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Khóa học *</label>
-                  {!allCourses || allCourses.length === 0 ? (
-                    <div className="alert alert-warning">
-                      <strong>Không có khóa học nào!</strong><br />
-                      Vui lòng tạo khóa học trước khi tạo ngân hàng câu hỏi.
-                    </div>
-                  ) : (
-                    <select 
-                      className="form-input" 
-                      required
-                      value={questionBankForm.course_id}
-                      onChange={(e) => setQuestionBankForm(prev => ({ ...prev, course_id: e.target.value }))}
-                    >
-                    <option value="">Chọn khóa học</option>
-                      {allCourses.map(course => (
-                        <option key={course._id} value={course._id}>
-                        {course.course_name}
-                      </option>
-                    ))}
-                  </select>
-                  )}
-                </div>
-                
-                <div className="form-group full-width">
-                  <label className="form-label">Mô tả</label>
-                  <textarea 
-                    className="form-input" 
-                    rows={3}
-                    value={questionBankForm.description}
-                    onChange={(e) => setQuestionBankForm(prev => ({ ...prev, description: e.target.value }))}
-                  ></textarea>
-                </div>
-              </div>
-              
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                  Hủy
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-save"></i> {editingItem ? 'Cập nhật' : 'Tạo'} ngân hàng câu hỏi
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal
+        title={editingItem ? 'Chỉnh sửa ngân hàng câu hỏi' : 'Tạo ngân hàng câu hỏi'}
+        open={showModal === 'addBankModal'}
+        onCancel={closeModal}
+        footer={null}
+        width={600}
+      >
+        <Form
+          layout="vertical"
+          onFinish={handleQuestionBankSubmit}
+          initialValues={questionBankForm}
+        >
+          <Form.Item
+            label="Tên ngân hàng câu hỏi"
+            name="name"
+            rules={[{ required: true, message: 'Vui lòng nhập tên ngân hàng câu hỏi' }]}
+          >
+            <Input 
+              placeholder="Nhập tên ngân hàng câu hỏi"
+              value={questionBankForm.name}
+              onChange={(e) => setQuestionBankForm(prev => ({ ...prev, name: e.target.value }))}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Khóa học"
+            name="course_id"
+            rules={[{ required: true, message: 'Vui lòng chọn khóa học' }]}
+          >
+            {!allCourses || allCourses.length === 0 ? (
+              <Alert
+                message="Không có khóa học nào!"
+                description="Vui lòng tạo khóa học trước khi tạo ngân hàng câu hỏi."
+                type="warning"
+                showIcon
+              />
+            ) : (
+              <Select
+                placeholder="Chọn khóa học"
+                value={questionBankForm.course_id}
+                onChange={(value) => setQuestionBankForm(prev => ({ ...prev, course_id: value }))}
+              >
+                {allCourses.map(course => (
+                  <Select.Option key={course._id} value={course._id}>
+                    {course.course_name}
+                  </Select.Option>
+                ))}
+              </Select>
+            )}
+          </Form.Item>
+
+          <Form.Item
+            label="Mô tả"
+            name="description"
+          >
+            <Input.TextArea 
+              rows={3}
+              placeholder="Nhập mô tả ngân hàng câu hỏi"
+              value={questionBankForm.description}
+              onChange={(e) => setQuestionBankForm(prev => ({ ...prev, description: e.target.value }))}
+            />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={closeModal}>
+                Hủy
+              </Button>
+              <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+                {editingItem ? 'Cập nhật' : 'Tạo'} ngân hàng câu hỏi
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* View Course Modal */}
       {showModal === 'viewCourseModal' && (
@@ -1325,101 +1664,151 @@ const TrainingManagement: React.FC = () => {
       )}
 
       {/* Manage Questions Modal */}
-      {showModal === 'manageQuestionsModal' && editingItem && (
-        <div className="modal active">
-          <div className="modal-content large">
-            <div className="modal-header">
-              <h2 className="modal-title">Quản lý câu hỏi - {editingItem.name}</h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
-            </div>
-            
-            <div className="questions-management">
-              <div className="questions-header">
-                <div className="questions-info">
-                  <p>Tổng số câu hỏi: {questions.filter(q => q.bank_id === editingItem._id).length}</p>
-                </div>
-                <div className="questions-actions">
-                  <button 
-                    className="btn btn-success"
+      <Modal
+        title={`Quản lý câu hỏi - ${editingItem?.name || ''}`}
+        open={showModal === 'manageQuestionsModal'}
+        onCancel={closeModal}
+        footer={null}
+        width={1000}
+      >
+        {editingItem && (
+          <div>
+            <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+              <Col>
+                <Typography.Text strong>
+                  Tổng số câu hỏi: {questions.filter(q => q.bank_id === editingItem._id).length}
+                </Typography.Text>
+              </Col>
+              <Col>
+                <Space>
+                  <Button 
+                    icon={<DownloadOutlined />}
                     onClick={handleDownloadTemplate}
                   >
-                    <i className="fas fa-download"></i> Tải template
-                  </button>
-                  <button 
-                    className="btn btn-info"
+                    Tải template
+                  </Button>
+                  <Button 
+                    icon={<FileExcelOutlined />}
                     onClick={() => openModalWithData('importExcelModal', editingItem)}
                   >
-                    <i className="fas fa-file-excel"></i> Import Excel
-                  </button>
-                  <button 
-                    className="btn btn-primary"
+                    Import Excel
+                  </Button>
+                  <Button 
+                    type="primary"
+                    icon={<PlusOutlined />}
                     onClick={() => openModal('addQuestionModal')}
                   >
-                    <i className="fas fa-plus"></i> Thêm câu hỏi
-                  </button>
-                </div>
-              </div>
-              
-              <div className="questions-list">
-                {questions.filter(q => q.bank_id === editingItem._id).length === 0 ? (
-                  <div className="empty-state">
-                    <i className="fas fa-question-circle"></i>
-                    <h3>Chưa có câu hỏi nào</h3>
-                    <p>Hãy thêm câu hỏi đầu tiên cho ngân hàng này</p>
-                    <button 
-                      className="btn btn-primary"
-                      onClick={() => openModal('addQuestionModal')}
-                    >
-                      <i className="fas fa-plus"></i> Thêm câu hỏi
-                    </button>
+                    Thêm câu hỏi
+                  </Button>
+                </Space>
+              </Col>
+            </Row>
+
+            {questions.filter(q => q.bank_id === editingItem._id).length === 0 ? (
+              <Empty
+                image={<QuestionCircleOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                description={
+                  <div>
+                    <Typography.Title level={4}>Chưa có câu hỏi nào</Typography.Title>
+                    <Typography.Text type="secondary">
+                      Hãy thêm câu hỏi đầu tiên cho ngân hàng này
+                    </Typography.Text>
                   </div>
-                ) : (
-                  questions.filter(q => q.bank_id === editingItem._id).map((question, index) => (
-                    <div key={question._id} className="question-item">
-                      <div className="question-header">
-                        <span className="question-number">Câu {index + 1}</span>
-                        <span className="question-type">{(question as any).type || 'Multiple Choice'}</span>
-                        <div className="question-actions">
-                          <button 
-                            className="btn btn-warning btn-sm"
-                            onClick={() => handleEditQuestion(question)}
-                          >
-                            <i className="fas fa-edit"></i>
-                          </button>
-                          <button 
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleDeleteQuestion(question._id)}
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
+                }
+              >
+                <Button 
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => openModal('addQuestionModal')}
+                >
+                  Thêm câu hỏi
+                </Button>
+              </Empty>
+            ) : (
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                {questions.filter(q => q.bank_id === editingItem._id).map((question, index) => (
+                  <Card 
+                    key={question._id} 
+                    size="small" 
+                    style={{ marginBottom: '12px' }}
+                    actions={[
+                      <Tooltip title="Sửa">
+                        <Button 
+                          type="text" 
+                          icon={<EditOutlined />}
+                          onClick={() => handleEditQuestion(question)}
+                        />
+                      </Tooltip>,
+                      <Popconfirm
+                        title="Xóa câu hỏi"
+                        description="Bạn có chắc chắn muốn xóa câu hỏi này?"
+                        onConfirm={() => handleDeleteQuestion(question._id)}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                      >
+                        <Tooltip title="Xóa">
+                          <Button 
+                            type="text" 
+                            danger
+                            icon={<DeleteOutlined />}
+                          />
+                        </Tooltip>
+                      </Popconfirm>
+                    ]}
+                  >
+                    <Card.Meta
+                      title={
+                        <Space>
+                          <Tag color="blue">Câu {index + 1}</Tag>
+                          <Tag color="green">{(question as any).type || 'Multiple Choice'}</Tag>
+                        </Space>
+                      }
+                      description={
+                        <div>
+                          <Typography.Paragraph style={{ marginBottom: '12px' }}>
+                            {(question as any).content || (question as any).question_text || (question as any).question || 'Nội dung câu hỏi'}
+                          </Typography.Paragraph>
+                          {question.options && (
+                            <div>
+                              {(question as any).options?.map((option: string, optIndex: number) => (
+                                <div 
+                                  key={optIndex} 
+                                  style={{ 
+                                    padding: '4px 8px', 
+                                    margin: '2px 0',
+                                    backgroundColor: option === (question as any).correct_answer ? '#f6ffed' : '#fafafa',
+                                    border: option === (question as any).correct_answer ? '1px solid #b7eb8f' : '1px solid #d9d9d9',
+                                    borderRadius: '4px'
+                                  }}
+                                >
+                                  <Typography.Text 
+                                    style={{ 
+                                      color: option === (question as any).correct_answer ? '#52c41a' : '#666',
+                                      fontWeight: option === (question as any).correct_answer ? 600 : 400
+                                    }}
+                                  >
+                                    {String.fromCharCode(65 + optIndex)}. {option}
+                                  </Typography.Text>
+                                </div>
+                              )) || []}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                      <div className="question-content">
-                        <p>{(question as any).content || (question as any).question_text || (question as any).question || 'Nội dung câu hỏi'}</p>
-                        {question.options && (
-                          <div className="question-options">
-                            {(question as any).options?.map((option: string, optIndex: number) => (
-                              <div key={optIndex} className={`option ${option === (question as any).correct_answer ? 'correct' : ''}`}>
-                                {String.fromCharCode(65 + optIndex)}. {option}
-                              </div>
-                            )) || []}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
+                      }
+                    />
+                  </Card>
+                ))}
               </div>
-            </div>
-            
-            <div className="form-actions">
-              <button type="button" className="btn btn-secondary" onClick={closeModal}>
+            )}
+
+            <div style={{ textAlign: 'right', marginTop: '16px' }}>
+              <Button onClick={closeModal}>
                 Đóng
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* Preview Question Bank Modal */}
       {showModal === 'previewBankModal' && editingItem && (
@@ -1557,129 +1946,141 @@ const TrainingManagement: React.FC = () => {
       )}
 
       {/* Add Question Modal */}
-      {showModal === 'addQuestionModal' && (
-        <div className="modal active">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="modal-title">{editingItem && editingItem.content ? 'Chỉnh sửa câu hỏi' : 'Thêm câu hỏi mới'}</h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
-            </div>
-            
-            <form onSubmit={handleQuestionSubmit}>
-              <div className="form-group">
-                <label className="form-label">Nội dung câu hỏi</label>
-                <textarea 
-                  className="form-input" 
-                  rows={3}
-                  placeholder="Nhập nội dung câu hỏi..."
-                  value={questionForm.content}
-                  onChange={(e) => setQuestionForm(prev => ({ ...prev, content: e.target.value }))}
-                  required
+      <Modal
+        title={editingItem && editingItem.content ? 'Chỉnh sửa câu hỏi' : 'Thêm câu hỏi mới'}
+        open={showModal === 'addQuestionModal'}
+        onCancel={closeModal}
+        footer={null}
+        width={600}
+      >
+        <Form
+          layout="vertical"
+          onFinish={handleQuestionSubmit}
+          initialValues={questionForm}
+        >
+          <Form.Item
+            label="Nội dung câu hỏi"
+            name="content"
+            rules={[{ required: true, message: 'Vui lòng nhập nội dung câu hỏi' }]}
+          >
+            <Input.TextArea 
+              rows={3}
+              placeholder="Nhập nội dung câu hỏi..."
+              value={questionForm.content}
+              onChange={(e) => setQuestionForm(prev => ({ ...prev, content: e.target.value }))}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Các lựa chọn"
+            name="options"
+            rules={[{ required: true, message: 'Vui lòng nhập ít nhất 2 lựa chọn' }]}
+          >
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {questionForm.options.map((option, index) => (
+                <Input
+                  key={index}
+                  placeholder={`Lựa chọn ${String.fromCharCode(65 + index)}`}
+                  value={option}
+                  onChange={(e) => {
+                    const newOptions = [...questionForm.options];
+                    newOptions[index] = e.target.value;
+                    setQuestionForm(prev => ({ ...prev, options: newOptions }));
+                  }}
+                  required={index < 2}
                 />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Các lựa chọn</label>
-                <div className="options-container">
-                  {questionForm.options.map((option, index) => (
-                    <input 
-                      key={index}
-                      type="text" 
-                      className="form-input" 
-                      placeholder={`Lựa chọn ${String.fromCharCode(65 + index)}`}
-                      value={option}
-                      onChange={(e) => {
-                        const newOptions = [...questionForm.options];
-                        newOptions[index] = e.target.value;
-                        setQuestionForm(prev => ({ ...prev, options: newOptions }));
-                      }}
-                      required={index < 2}
-                    />
-                  ))}
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Đáp án đúng</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="Nhập đáp án đúng..."
-                  value={questionForm.correct_answer}
-                  onChange={(e) => setQuestionForm(prev => ({ ...prev, correct_answer: e.target.value }))}
-                  required
-                />
-              </div>
-              
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                  Hủy
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-plus"></i> Thêm câu hỏi
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              ))}
+            </Space>
+          </Form.Item>
+
+          <Form.Item
+            label="Đáp án đúng"
+            name="correct_answer"
+            rules={[{ required: true, message: 'Vui lòng nhập đáp án đúng' }]}
+          >
+            <Input 
+              placeholder="Nhập đáp án đúng..."
+              value={questionForm.correct_answer}
+              onChange={(e) => setQuestionForm(prev => ({ ...prev, correct_answer: e.target.value }))}
+            />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={closeModal}>
+                Hủy
+              </Button>
+              <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+                Thêm câu hỏi
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Import Excel Modal */}
-      {showModal === 'importExcelModal' && (
-        <div className="modal active">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="modal-title">Import câu hỏi từ Excel</h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Ngân hàng câu hỏi</label>
-              <div className="form-input-static">
-                <i className="fas fa-database"></i>
-                {editingItem ? editingItem.name : 'Chưa chọn ngân hàng câu hỏi'}
-              </div>
-              <small className="form-text">
-                Câu hỏi sẽ được import vào ngân hàng này
-              </small>
-            </div>
+      <Modal
+        title="Import câu hỏi từ Excel"
+        open={showModal === 'importExcelModal'}
+        onCancel={closeModal}
+        footer={null}
+        width={500}
+      >
+        <Form layout="vertical">
+          <Form.Item label="Ngân hàng câu hỏi">
+            <Input 
+              value={editingItem ? editingItem.name : 'Chưa chọn ngân hàng câu hỏi'}
+              disabled
+              prefix={<QuestionCircleOutlined />}
+            />
+            <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+              Câu hỏi sẽ được import vào ngân hàng này
+            </Typography.Text>
+          </Form.Item>
 
-            <div className="form-group">
-              <label className="form-label">Chọn file Excel</label>
-              <input 
-                type="file" 
-                className="form-input" 
-                accept=".xlsx,.xls"
-                onChange={handleExcelFileChange}
-              />
-              <small className="form-text">
-                Chỉ chấp nhận file Excel (.xlsx, .xls). Tải template mẫu để xem định dạng.
-              </small>
-            </div>
+          <Form.Item label="Chọn file Excel">
+            <Upload
+              accept=".xlsx,.xls"
+              beforeUpload={(file) => {
+                setExcelFile(file);
+                return false; // Prevent auto upload
+              }}
+              onRemove={() => setExcelFile(null)}
+              maxCount={1}
+            >
+              <Button icon={<UploadOutlined />}>Chọn file Excel</Button>
+            </Upload>
+            <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+              Chỉ chấp nhận file Excel (.xlsx, .xls). Tải template mẫu để xem định dạng.
+            </Typography.Text>
+          </Form.Item>
 
-            {excelFile && (
-              <div className="alert alert-info">
-                <i className="fas fa-info-circle"></i>
-                File đã chọn: {excelFile.name}
-              </div>
-            )}
-            
-            <div className="form-actions">
-              <button type="button" className="btn btn-secondary" onClick={closeModal}>
+          {excelFile && (
+            <Alert
+              message={`File đã chọn: ${excelFile.name}`}
+              type="info"
+              showIcon
+              style={{ marginBottom: '16px' }}
+            />
+          )}
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={closeModal}>
                 Hủy
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-success"
+              </Button>
+              <Button 
+                type="primary"
+                icon={<UploadOutlined />}
                 onClick={handleImportExcel}
                 disabled={!excelFile || !editingItem}
               >
-                <i className="fas fa-upload"></i> Import câu hỏi
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                Import câu hỏi
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

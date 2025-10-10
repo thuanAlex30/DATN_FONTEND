@@ -1,6 +1,30 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Card,
+  Form,
+  Input,
+  Select,
+  Button,
+  Upload,
+  Image,
+  Space,
+  Typography,
+  message,
+  Row,
+  Col
+} from 'antd';
+import {
+  ArrowLeftOutlined,
+  UploadOutlined,
+  DeleteOutlined,
+  ExclamationCircleOutlined
+} from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
+const { TextArea } = Input;
 
 const ReportIncident: React.FC = () => {
   const navigate = useNavigate();
@@ -10,8 +34,6 @@ const ReportIncident: React.FC = () => {
   const [severity, setSeverity] = useState<'nhẹ' | 'nặng' | 'rất nghiêm trọng'>('nhẹ');
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const handleFilesSelected = async (files: FileList | null) => {
     if (!files) return;
@@ -27,7 +49,7 @@ const ReportIncident: React.FC = () => {
       const base64Images = await Promise.all(selected.map((f) => toBase64(f)));
       setImages((prev) => [...prev, ...base64Images]);
     } catch {
-      setError('Không thể đọc file hình ảnh');
+      message.error('Không thể đọc file hình ảnh');
     }
   };
 
@@ -39,83 +61,176 @@ const ReportIncident: React.FC = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      setError(null);
-      setSuccess(null);
       await incidentService.reportIncident({ title, description, location, severity, images });
-      setSuccess('Ghi nhận sự cố thành công!');
+      message.success('Ghi nhận sự cố thành công!');
       setTitle('');
       setDescription('');
       setLocation('');
       setSeverity('nhẹ');
       setImages([]);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Không thể ghi nhận sự cố');
+      message.error(err?.response?.data?.message || 'Không thể ghi nhận sự cố');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>Ghi nhận sự cố</h2>
-        <button className="btn btn-secondary" onClick={() => navigate('/home')}>
-          <i className="fas fa-arrow-left"></i> Về trang Home
-        </button>
-      </div>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+      padding: '24px' 
+    }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        {/* Header */}
+        <Card style={{ marginBottom: '24px' }}>
+          <Row justify="space-between" align="middle">
+            <Col>
+              <Title level={2} style={{ margin: 0, color: '#2c3e50' }}>
+                <ExclamationCircleOutlined style={{ color: '#e74c3c', marginRight: '10px' }} />
+                Ghi nhận sự cố
+              </Title>
+            </Col>
+            <Col>
+              <Button 
+                type="default"
+                icon={<ArrowLeftOutlined />}
+                onClick={() => navigate('/home')}
+              >
+                Về trang Home
+              </Button>
+            </Col>
+          </Row>
+        </Card>
 
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12, maxWidth: 720 }}>
-        <label>
-          Tiêu đề
-          <input value={title} onChange={(e) => setTitle(e.target.value)} required style={{ width: '100%', padding: 8 }} />
-        </label>
-        <label>
-          Mô tả
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} style={{ width: '100%', padding: 8 }} />
-        </label>
-        <label>
-          Vị trí
-          <input value={location} onChange={(e) => setLocation(e.target.value)} style={{ width: '100%', padding: 8 }} />
-        </label>
-        <label>
-          Mức độ
-          <select value={severity} onChange={(e) => setSeverity(e.target.value as any)} style={{ width: '100%', padding: 8 }}>
-            <option value="nhẹ">Nhẹ</option>
-            <option value="nặng">Nặng</option>
-            <option value="rất nghiêm trọng">Rất nghiêm trọng</option>
-          </select>
-        </label>
+        {/* Form */}
+        <Card>
+          <Form
+            layout="vertical"
+            onFinish={handleSubmit}
+          >
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={12}>
+                <Form.Item label="Tiêu đề" required>
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Nhập tiêu đề sự cố"
+                    required
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item label="Vị trí">
+                  <Input
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Nhập vị trí xảy ra sự cố"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
 
-        <div>
-          <div style={{ marginBottom: 8, fontWeight: 600 }}>Hình ảnh</div>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => handleFilesSelected(e.target.files)}
-          />
-          {images.length > 0 && (
-            <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
-              {images.map((img, idx) => (
-                <div key={idx} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #eee' }}>
-                  <img src={img} alt={`incident-${idx}`} style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block' }} />
-                  <button type="button" onClick={() => handleRemoveImage(idx)}
-                    style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 6px', cursor: 'pointer' }}>
-                    x
-                  </button>
+            <Form.Item label="Mức độ nghiêm trọng" required>
+              <Select
+                value={severity}
+                onChange={(value) => setSeverity(value)}
+                style={{ width: '100%' }}
+              >
+                <Option value="nhẹ">Nhẹ</Option>
+                <Option value="nặng">Nặng</Option>
+                <Option value="rất nghiêm trọng">Rất nghiêm trọng</Option>
+              </Select>
+            </Form.Item>
+
+            <Form.Item label="Mô tả chi tiết">
+              <TextArea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                placeholder="Mô tả chi tiết về sự cố..."
+              />
+            </Form.Item>
+
+            <Form.Item label="Hình ảnh">
+              <Upload
+                accept="image/*"
+                multiple
+                beforeUpload={(file) => {
+                  const files = [file];
+                  handleFilesSelected(files as any);
+                  return false; // Prevent upload
+                }}
+                showUploadList={false}
+              >
+                <Button icon={<UploadOutlined />}>
+                  Chọn hình ảnh
+                </Button>
+              </Upload>
+              
+              {images.length > 0 && (
+                <div style={{ marginTop: '16px' }}>
+                  <Row gutter={[8, 8]}>
+                    {images.map((img, idx) => (
+                      <Col key={idx} xs={12} sm={8} md={6}>
+                        <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
+                          <Image
+                            src={img}
+                            alt={`incident-${idx}`}
+                            style={{ width: '100%', height: '100px', objectFit: 'cover' }}
+                            preview={false}
+                          />
+                          <Button
+                            type="primary"
+                            danger
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleRemoveImage(idx)}
+                            style={{
+                              position: 'absolute',
+                              top: '4px',
+                              right: '4px',
+                              minWidth: '24px',
+                              height: '24px',
+                              padding: '0'
+                            }}
+                          />
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              )}
+            </Form.Item>
 
-        {error && <div style={{ color: '#dc2626' }}>{error}</div>}
-        {success && <div style={{ color: '#16a34a' }}>{success}</div>}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="submit" disabled={loading} className="btn btn-primary">{loading ? 'Đang gửi...' : 'Gửi'}</button>
-          <button type="reset" className="btn btn-secondary" onClick={() => { setTitle(''); setDescription(''); setLocation(''); setSeverity('nhẹ'); setImages([]); }}>Xóa</button>
-        </div>
-      </form>
+            <Form.Item>
+              <Space>
+                <Button 
+                  type="primary" 
+                  htmlType="submit" 
+                  loading={loading}
+                  size="large"
+                >
+                  {loading ? 'Đang gửi...' : 'Gửi báo cáo'}
+                </Button>
+                <Button 
+                  type="default"
+                  onClick={() => {
+                    setTitle('');
+                    setDescription('');
+                    setLocation('');
+                    setSeverity('nhẹ');
+                    setImages([]);
+                  }}
+                  size="large"
+                >
+                  Xóa tất cả
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Card>
+      </div>
     </div>
   );
 };
