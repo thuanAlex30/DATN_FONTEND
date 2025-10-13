@@ -47,7 +47,10 @@ const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
   const totalQuantity = items.reduce((sum, item) => sum + (item.quantity_available || 0), 0);
   const totalAllocated = items.reduce((sum, item) => sum + (item.quantity_allocated || 0), 0);
   const totalRemaining = totalQuantity - totalAllocated;
-  const lowStockItems = items.filter(item => (item.quantity_available || 0) <= (item.reorder_level || 0)).length;
+  const lowStockItems = items.filter(item => {
+    const remaining = (item.quantity_available || 0) - (item.quantity_allocated || 0);
+    return remaining <= (item.reorder_level || 0);
+  }).length;
 
   // Item columns for table
   const itemColumns = [
@@ -87,7 +90,7 @@ const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
         
         if (remaining <= 0) {
           return <Tag color="red">Hết hàng</Tag>;
-        } else if (remaining <= reorderLevel) {
+        } else if (remaining <= (reorderLevel || 0)) {
           return <Tag color="orange">Cần bổ sung</Tag>;
         } else {
           return <Tag color="green">Còn hàng</Tag>;

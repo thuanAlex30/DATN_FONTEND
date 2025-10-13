@@ -14,8 +14,11 @@ import {
   Alert
 } from 'antd';
 import { UserOutlined, SafetyOutlined } from '@ant-design/icons';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../store';
 import * as ppeService from '../../../services/ppeService';
 import type { CreateIssuanceData } from '../../../services/ppeService';
+import dayjs from 'dayjs';
 
 interface AssignPPEModalProps {
   isOpen: boolean;
@@ -38,6 +41,7 @@ const AssignPPEModal: React.FC<AssignPPEModalProps> = ({
   const [users, setUsers] = useState<any[]>([]);
   const [ppeItems, setPpeItems] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     if (isOpen) {
@@ -45,6 +49,8 @@ const AssignPPEModal: React.FC<AssignPPEModalProps> = ({
       loadPPEItems();
       if (selectedUser) {
         form.setFieldsValue({ user_id: selectedUser.id || selectedUser._id });
+      } else {
+        form.resetFields();
       }
     }
   }, [isOpen, selectedUser]);
@@ -75,9 +81,9 @@ const AssignPPEModal: React.FC<AssignPPEModalProps> = ({
         user_id: values.user_id,
         item_id: values.item_id,
         quantity: values.quantity,
-        issued_date: values.issued_date.format('YYYY-MM-DD'),
-        expected_return_date: values.expected_return_date.format('YYYY-MM-DD'),
-        issued_by: 'current_user_id' // TODO: Get from auth context
+        issued_date: dayjs(values.issued_date).format('YYYY-MM-DD'),
+        expected_return_date: dayjs(values.expected_return_date).format('YYYY-MM-DD'),
+        issued_by: user?.id || ''
       };
 
       await ppeService.createPPEIssuance(issuanceData);
@@ -120,10 +126,20 @@ const AssignPPEModal: React.FC<AssignPPEModalProps> = ({
         layout="vertical"
         onFinish={handleSubmit}
         initialValues={{
-          issued_date: new Date(),
-          expected_return_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+          issued_date: dayjs(),
+          expected_return_date: dayjs().add(30, 'day') // 30 days from now
         }}
       >
+        {selectedUser && (
+          <Alert
+            message={`Đang phát PPE cho: ${selectedUser.full_name}`}
+            description={`${selectedUser.department_name || 'Không xác định'} - ${selectedUser.position_name || 'Không xác định'}`}
+            type="info"
+            style={{ marginBottom: 16 }}
+            showIcon
+          />
+        )}
+
         <Row gutter={16}>
           <Col span={24}>
             <Form.Item
@@ -144,7 +160,7 @@ const AssignPPEModal: React.FC<AssignPPEModalProps> = ({
                       <div>
                         <div>{user.full_name}</div>
                         <Text type="secondary" style={{ fontSize: '12px' }}>
-                          {user.department_name || 'Không xác định'} - {user.position || 'Không xác định'}
+                          {user.department_name || 'Không xác định'} - {user.position_name || 'Không xác định'}
                         </Text>
                       </div>
                     </Space>

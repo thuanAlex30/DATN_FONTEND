@@ -11,11 +11,13 @@ import {
   Row,
   Col,
   Typography,
-  Alert,
   InputNumber
 } from 'antd';
-import { ToolOutlined, SafetyOutlined, CalendarOutlined, UserOutlined } from '@ant-design/icons';
+import { ToolOutlined, SafetyOutlined, UserOutlined } from '@ant-design/icons';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../store';
 import * as ppeService from '../../../services/ppeService';
+import dayjs from 'dayjs';
 
 interface CreateMaintenanceModalProps {
   isOpen: boolean;
@@ -23,7 +25,7 @@ interface CreateMaintenanceModalProps {
   onSuccess: () => void;
 }
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
@@ -35,6 +37,7 @@ const CreateMaintenanceModal: React.FC<CreateMaintenanceModalProps> = ({
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [ppeItems, setPpeItems] = useState<any[]>([]);
+  const { user } = useSelector((state: RootState) => state.auth);
   const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
@@ -69,13 +72,13 @@ const CreateMaintenanceModal: React.FC<CreateMaintenanceModalProps> = ({
       const maintenanceData = {
         item_id: values.item_id,
         maintenance_type: values.maintenance_type,
-        scheduled_date: values.scheduled_date.format('YYYY-MM-DD'),
+        scheduled_date: dayjs(values.scheduled_date).format('YYYY-MM-DD'),
         assigned_to: values.assigned_to,
         priority: values.priority,
         estimated_duration: values.estimated_duration,
         description: values.description,
         notes: values.notes,
-        created_by: 'current_user_id' // TODO: Get from auth context
+        created_by: user?.id || ''
       };
 
       await ppeService.createMaintenance(maintenanceData);
@@ -110,7 +113,7 @@ const CreateMaintenanceModal: React.FC<CreateMaintenanceModalProps> = ({
         initialValues={{
           maintenance_type: 'preventive',
           priority: 'medium',
-          scheduled_date: new Date(Date.now() + 24 * 60 * 60 * 1000) // Tomorrow
+          scheduled_date: dayjs().add(1, 'day') // Tomorrow
         }}
       >
         <Row gutter={16}>

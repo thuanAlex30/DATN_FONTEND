@@ -75,7 +75,7 @@ const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         end_date: values.end_date.format('YYYY-MM-DD'),
         priority: values.priority,
         description: values.description,
-        assigned_by: 'current_user_id' // TODO: Get from auth context
+        assigned_by: user?.id || ''
       };
 
       await ppeService.createAssignment(assignmentData);

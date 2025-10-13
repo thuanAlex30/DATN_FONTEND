@@ -31,16 +31,16 @@ interface ProfileModalProps {
 }
 
 const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
-    const { accessToken } = useSelector((state: RootState) => state.auth);
+    const { token } = useSelector((state: RootState) => state.auth);
     const [profileData, setProfileData] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (isOpen && accessToken) {
+        if (isOpen && token) {
             fetchProfile();
         }
-    }, [isOpen, accessToken]);
+    }, [isOpen, token]);
 
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -63,7 +63,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
         setError(null);
         
         try {
-            console.log('Fetching profile with token:', accessToken);
+            console.log('Fetching profile with token:', token);
             const response = await api.get('/auth/profile');
 
             console.log('Response status:', response.status);

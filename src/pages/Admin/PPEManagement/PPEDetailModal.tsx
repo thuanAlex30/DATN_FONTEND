@@ -26,7 +26,7 @@ const PPEDetailModal: React.FC<PPEDetailModalProps> = ({
   const getStatusInfo = () => {
     if (remaining <= 0) {
       return { color: 'red', text: 'Hết hàng' };
-    } else if (remaining <= reorderLevel) {
+    } else if (remaining <= (reorderLevel || 0)) {
       return { color: 'orange', text: 'Cần bổ sung' };
     } else {
       return { color: 'green', text: 'Còn hàng' };
@@ -122,7 +122,7 @@ const PPEDetailModal: React.FC<PPEDetailModalProps> = ({
             <Text>{reorderLevel}</Text>
           </div>
           
-          {remaining <= reorderLevel && remaining > 0 && (
+          {remaining <= (reorderLevel || 0) && remaining > 0 && (
             <div style={{ color: '#ff4d4f' }}>
               <ExclamationCircleOutlined /> Cần bổ sung ngay
             </div>

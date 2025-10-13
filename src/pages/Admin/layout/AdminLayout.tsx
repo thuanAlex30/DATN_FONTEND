@@ -2,9 +2,6 @@ import React from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import RealtimeNotifications from '../../../components/RealtimeNotifications';
-import { useSelector } from 'react-redux';
-import type { RootState } from '../../../store';
 
 // Định nghĩa kiểu cho props, children là nội dung trang sẽ được render bên trong layout
 type AdminLayoutProps = {
@@ -14,8 +11,6 @@ type AdminLayoutProps = {
 const { Content } = Layout;
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
-    const { accessToken } = useSelector((state: RootState) => state.auth);
-    
     return (
         <Layout style={{ minHeight: '100vh' }}>
             <Sidebar />
@@ -32,9 +27,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     {children}
                 </Content>
             </Layout>
-            
-            {/* Realtime Notifications for Admin */}
-            <RealtimeNotifications authToken={accessToken} />
         </Layout>
     );
 };

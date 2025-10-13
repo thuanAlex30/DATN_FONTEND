@@ -17,6 +17,9 @@ import {
   Empty,
   Space,
   Typography,
+  Descriptions,
+  Tag,
+  Tooltip
 } from 'antd';
 import {
   SafetyOutlined,
@@ -28,12 +31,20 @@ import {
   CalendarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  InboxOutlined
+  InboxOutlined,
+  WarningOutlined,
+  InfoCircleOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  ToolOutlined
 } from '@ant-design/icons';
 import * as ppeService from '../../../services/ppeService';
 import type { PPEIssuance } from '../../../services/ppeService';
 import { EmployeeLayout } from '../../../components/Employee';
 import dayjs from 'dayjs';
+import { usePPEWebSocket } from '../../../hooks/usePPEWebSocket';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../store';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -41,28 +52,47 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 const EmployeePPE: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('view');
+  const { user, token } = useSelector((state: RootState) => state.auth);
+  const [activeTab, setActiveTab] = useState('current');
   const [ppeIssuances, setPpeIssuances] = useState<PPEIssuance[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // WebSocket hook for realtime updates
+  const { isConnected } = usePPEWebSocket({
+    userId: user?.id,
+    token: token || '',
+    showNotifications: false, // Disable notifications here since WebSocketProvider handles them
+    onPPEDistributed: (data) => {
+      console.log('PPE distributed to me:', data);
+      // Reload data when PPE is distributed to me
+      loadUserPPE();
+    },
+    onPPEReturned: (data) => {
+      console.log('PPE returned:', data);
+      // Reload data when PPE is returned
+      loadUserPPE();
+    },
+    onPPEReported: (data) => {
+      console.log('PPE reported:', data);
+      // Reload data when PPE issue is reported
+      loadUserPPE();
+    },
+    onPPEOverdue: (data) => {
+      console.log('PPE overdue:', data);
+      // Show overdue notification
+      message.warning(`PPE quá hạn: ${data.item_name}`);
+    }
+  });
   
   // Modal states
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedIssuance, setSelectedIssuance] = useState<PPEIssuance | null>(null);
   
   // Form states
-  const [returnForm, setReturnForm] = useState({
-    actual_return_date: new Date().toISOString().split('T')[0],
-    return_condition: 'good' as 'good' | 'damaged' | 'worn',
-    notes: ''
-  });
-  
-  const [reportForm, setReportForm] = useState({
-    report_type: 'damage' as 'damage' | 'replacement' | 'lost',
-    description: '',
-    severity: 'low' as 'low' | 'medium' | 'high',
-    reported_date: new Date().toISOString().split('T')[0]
-  });
+  const [returnForm] = Form.useForm();
+  const [reportForm] = Form.useForm();
 
   useEffect(() => {
     loadUserPPE();
@@ -81,56 +111,50 @@ const EmployeePPE: React.FC = () => {
     }
   };
 
-  const handleReturnPPE = async () => {
+  const handleReturnPPE = async (values: any) => {
     if (!selectedIssuance) return;
     
     setLoading(true);
     try {
-      await ppeService.returnPPEIssuanceEmployee(selectedIssuance.id, returnForm);
+      await ppeService.returnPPEIssuanceEmployee(selectedIssuance.id, {
+        actual_return_date: values.actual_return_date.format('YYYY-MM-DD'),
+        return_condition: values.return_condition,
+        notes: values.notes || ''
+      });
+      
       await loadUserPPE(); // Reload data
       setShowReturnModal(false);
       setSelectedIssuance(null);
-      setReturnForm({
-        actual_return_date: new Date().toISOString().split('T')[0],
-        return_condition: 'good' as 'good' | 'damaged' | 'worn',
-        notes: ''
-      });
+      returnForm.resetFields();
       message.success('Trả PPE thành công!');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error returning PPE:', err);
-      message.error('Có lỗi khi trả PPE');
+      message.error(err.response?.data?.message || 'Có lỗi xảy ra khi trả PPE');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReportPPE = async () => {
+  const handleReportPPE = async (values: any) => {
     if (!selectedIssuance) return;
     
     setLoading(true);
     try {
-      // Use the new employee-specific report API
-      const reportData = {
-        report_type: reportForm.report_type,
-        description: reportForm.description,
-        severity: reportForm.severity,
-        reported_date: reportForm.reported_date
-      };
+      await ppeService.reportPPEIssuanceEmployee(selectedIssuance.id, {
+        report_type: values.report_type,
+        description: values.description,
+        severity: values.severity,
+        reported_date: values.reported_date.format('YYYY-MM-DD')
+      });
       
-      await ppeService.reportPPEIssuanceEmployee(selectedIssuance.id, reportData);
       await loadUserPPE(); // Reload data
       setShowReportModal(false);
       setSelectedIssuance(null);
-      setReportForm({
-        report_type: 'damage' as 'damage' | 'replacement' | 'lost',
-        description: '',
-        severity: 'low' as 'low' | 'medium' | 'high',
-        reported_date: new Date().toISOString().split('T')[0]
-      });
-      message.success('Báo cáo PPE thành công!');
-    } catch (err) {
+      reportForm.resetFields();
+      message.success('Báo cáo sự cố thành công!');
+    } catch (err: any) {
       console.error('Error reporting PPE:', err);
-      message.error('Có lỗi khi báo cáo PPE');
+      message.error(err.response?.data?.message || 'Có lỗi xảy ra khi báo cáo sự cố');
     } finally {
       setLoading(false);
     }
@@ -170,21 +194,122 @@ const EmployeePPE: React.FC = () => {
     return ppeIssuances.filter(issuance => issuance.status === 'returned');
   };
 
+  const handleViewDetail = (issuance: PPEIssuance) => {
+    setSelectedIssuance(issuance);
+    setShowDetailModal(true);
+  };
+
+  const handleReturnClick = (issuance: PPEIssuance) => {
+    setSelectedIssuance(issuance);
+    returnForm.setFieldsValue({
+      actual_return_date: dayjs(),
+      return_condition: 'good',
+      notes: ''
+    });
+    setShowReturnModal(true);
+  };
+
+  const handleReportClick = (issuance: PPEIssuance) => {
+    setSelectedIssuance(issuance);
+    reportForm.setFieldsValue({
+      report_type: 'damage',
+      description: '',
+      severity: 'medium',
+      reported_date: dayjs()
+    });
+    setShowReportModal(true);
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: { [key: string]: string } = {
+      'issued': 'blue',
+      'returned': 'green',
+      'overdue': 'red',
+      'damaged': 'orange',
+      'replacement_needed': 'purple'
+    };
+    return colors[status] || 'default';
+  };
+
+  const getStatusIcon = (status: string) => {
+    const icons: { [key: string]: React.ReactNode } = {
+      'issued': <CheckCircleOutlined />,
+      'returned': <UndoOutlined />,
+      'overdue': <ExclamationCircleOutlined />,
+      'damaged': <WarningOutlined />,
+      'replacement_needed': <ToolOutlined />
+    };
+    return icons[status] || <InfoCircleOutlined />;
+  };
+
   return (
     <EmployeeLayout
       title="Quản lý PPE cá nhân"
       icon={<SafetyOutlined />}
       headerExtra={
-        <Button 
-          type="primary"
-          icon={<ReloadOutlined />}
-          onClick={loadUserPPE}
-          loading={loading}
-        >
-          Làm mới
-        </Button>
+        <Space>
+          <Badge 
+            status={isConnected ? 'success' : 'error'} 
+            text={isConnected ? 'Realtime' : 'Offline'}
+          />
+          <Button 
+            type="primary"
+            icon={<ReloadOutlined />}
+            onClick={loadUserPPE}
+            loading={loading}
+          >
+            Làm mới
+          </Button>
+        </Space>
       }
     >
+      {/* Statistics Cards */}
+      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+        <Col xs={24} sm={6}>
+          <Card>
+            <Statistic
+              title="Đang sử dụng"
+              value={getActiveIssuances().length}
+              prefix={<SafetyOutlined style={{ color: '#1890ff' }} />}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={6}>
+          <Card>
+            <Statistic
+              title="Đã trả"
+              value={getReturnedIssuances().length}
+              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+              valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={6}>
+          <Card>
+            <Statistic
+              title="Quá hạn"
+              value={ppeIssuances.filter(issuance => 
+                issuance.status === 'overdue' || 
+                isOverdue(issuance.expected_return_date)
+              ).length}
+              prefix={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
+              valueStyle={{ color: '#ff4d4f' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={6}>
+          <Card>
+            <Statistic
+              title="Tổng PPE"
+              value={ppeIssuances.length}
+              prefix={<InboxOutlined style={{ color: '#722ed1' }} />}
+              valueStyle={{ color: '#722ed1' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
       {/* Tabs */}
       <Card>
         <Tabs activeKey={activeTab} onChange={setActiveTab}>
@@ -192,51 +317,135 @@ const EmployeePPE: React.FC = () => {
             tab={
               <span>
                 <SafetyOutlined />
-                Xem PPE
+                PPE hiện tại
               </span>
             } 
-            key="view"
+            key="current"
           >
             <div>
-              <Title level={3} style={{ marginBottom: '24px' }}>PPE đang sử dụng</Title>
 
-              {/* Statistics */}
-              <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-                <Col xs={24} sm={8}>
-                    <Card>
-                      <Statistic
-                        title="Đang sử dụng"
-                        value={getActiveIssuances().length}
-                        prefix={<SafetyOutlined style={{ color: '#3498db' }} />}
-                        valueStyle={{ color: '#2c3e50' }}
-                      />
-                    </Card>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
+              </div>
+            ) : (
+              <Row gutter={[16, 16]}>
+                {getActiveIssuances().map(issuance => {
+                  const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
+                    issuance.item_id : null;
+                  const isOverdueItem = isOverdue(issuance.expected_return_date);
+                  
+                  return (
+                    <Col xs={24} sm={12} lg={8} key={issuance.id}>
+                      <Card
+                        hoverable
+                        title={
+                          <Space>
+                            <SafetyOutlined style={{ color: '#1890ff' }} />
+                            <span style={{ fontWeight: 'bold' }}>
+                              {item?.item_name || 'Không xác định'}
+                            </span>
+                          </Space>
+                        }
+                        extra={
+                          <Tag 
+                            color={getStatusColor(issuance.status)} 
+                            icon={getStatusIcon(issuance.status)}
+                          >
+                            {getStatusLabel(issuance.status)}
+                          </Tag>
+                        }
+                        actions={[
+                          <Tooltip title="Xem chi tiết">
+                            <Button 
+                              type="text"
+                              icon={<EyeOutlined />}
+                              onClick={() => handleViewDetail(issuance)}
+                            />
+                          </Tooltip>,
+                          <Tooltip title="Trả PPE">
+                            <Button 
+                              type="primary"
+                              icon={<UndoOutlined />}
+                              onClick={() => handleReturnClick(issuance)}
+                            />
+                          </Tooltip>,
+                          <Tooltip title="Báo cáo sự cố">
+                            <Button 
+                              type="primary"
+                              danger
+                              icon={<ExclamationCircleOutlined />}
+                              onClick={() => handleReportClick(issuance)}
+                            />
+                          </Tooltip>
+                        ]}
+                      >
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                          <div>
+                            <BarcodeOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
+                            <Text strong>Mã: </Text>
+                            <Text>{item?.item_code || 'N/A'}</Text>
+                          </div>
+                          <div>
+                            <NumberOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
+                            <Text strong>Số lượng: </Text>
+                            <Badge count={issuance.quantity} style={{ backgroundColor: '#52c41a' }} />
+                          </div>
+                          <div>
+                            <CalendarOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
+                            <Text strong>Ngày phát: </Text>
+                            <Text>{formatDateTime(issuance.issued_date)}</Text>
+                          </div>
+                          <div>
+                            <ClockCircleOutlined style={{ 
+                              marginRight: '8px', 
+                              color: isOverdueItem ? '#ff4d4f' : '#1890ff' 
+                            }} />
+                            <Text strong>Hạn trả: </Text>
+                            <Text style={{ color: isOverdueItem ? '#ff4d4f' : 'inherit' }}>
+                              {formatDateTime(issuance.expected_return_date)}
+                            </Text>
+                            {isOverdueItem && (
+                              <Tag color="red" style={{ marginLeft: '8px' }}>
+                                QUÁ HẠN
+                              </Tag>
+                            )}
+                          </div>
+                        </Space>
+                      </Card>
+                    </Col>
+                  );
+                })}
+                
+                {getActiveIssuances().length === 0 && (
+                  <Col span={24}>
+                    <Empty
+                      image={<InboxOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                      description={
+                        <div>
+                          <Title level={4} style={{ color: '#8c8c8c' }}>Chưa có PPE</Title>
+                          <Text type="secondary">Bạn chưa được phát PPE nào</Text>
+                        </div>
+                      }
+                    />
                   </Col>
-                  <Col xs={24} sm={8}>
-                    <Card>
-                      <Statistic
-                        title="Đã trả"
-                        value={getReturnedIssuances().length}
-                        prefix={<CheckCircleOutlined style={{ color: '#27ae60' }} />}
-                        valueStyle={{ color: '#2c3e50' }}
-                      />
-                    </Card>
-                  </Col>
-                  <Col xs={24} sm={8}>
-                    <Card>
-                      <Statistic
-                        title="Quá hạn"
-                        value={ppeIssuances.filter(issuance => 
-                          issuance.status === 'overdue' || 
-                          isOverdue(issuance.expected_return_date)
-                        ).length}
-                        prefix={<ExclamationCircleOutlined style={{ color: '#e74c3c' }} />}
-                        valueStyle={{ color: '#2c3e50' }}
-                      />
-                    </Card>
-                  </Col>
-                </Row>
-
+                )}
+              </Row>
+            )}
+              </div>
+            </TabPane>
+            
+            <TabPane 
+              tab={
+                <span>
+                  <HistoryOutlined />
+                  Lịch sử PPE
+                </span>
+              } 
+              key="history"
+            >
+              <div>
                 {loading ? (
                   <div style={{ textAlign: 'center', padding: '40px' }}>
                     <Spin size="large" />
@@ -244,83 +453,88 @@ const EmployeePPE: React.FC = () => {
                   </div>
                 ) : (
                   <Row gutter={[16, 16]}>
-                    {getActiveIssuances().map(issuance => {
+                    {getReturnedIssuances().map(issuance => {
                       const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
                         issuance.item_id : null;
-                      const isOverdueItem = isOverdue(issuance.expected_return_date);
                       
                       return (
                         <Col xs={24} sm={12} lg={8} key={issuance.id}>
                           <Card
+                            hoverable
                             title={
                               <Space>
-                                <SafetyOutlined style={{ color: '#3498db' }} />
-                                {item?.item_name || 'Không xác định'}
+                                <SafetyOutlined style={{ color: '#52c41a' }} />
+                                <span style={{ fontWeight: 'bold' }}>
+                                  {item?.item_name || 'Không xác định'}
+                                </span>
                               </Space>
                             }
                             extra={
-                              <Badge 
-                                status={isOverdueItem ? 'error' : 'success'} 
-                                text={getStatusLabel(issuance.status)}
-                              />
+                              <Tag 
+                                color="green" 
+                                icon={<CheckCircleOutlined />}
+                              >
+                                Đã trả
+                              </Tag>
                             }
                             actions={[
-                              <Button 
-                                type="primary"
-                                size="small"
-                                icon={<UndoOutlined />}
-                                onClick={() => {
-                                  setSelectedIssuance(issuance);
-                                  setShowReturnModal(true);
-                                }}
-                              >
-                                Trả PPE
-                              </Button>,
-                              <Button 
-                                type="primary"
-                                danger
-                                size="small"
-                                icon={<ExclamationCircleOutlined />}
-                                onClick={() => {
-                                  setSelectedIssuance(issuance);
-                                  setShowReportModal(true);
-                                }}
-                              >
-                                Báo cáo
-                              </Button>
+                              <Tooltip title="Xem chi tiết">
+                                <Button 
+                                  type="text"
+                                  icon={<EyeOutlined />}
+                                  onClick={() => handleViewDetail(issuance)}
+                                />
+                              </Tooltip>
                             ]}
                           >
                             <Space direction="vertical" style={{ width: '100%' }}>
                               <div>
-                                <BarcodeOutlined style={{ marginRight: '8px', color: '#3498db' }} />
+                                <BarcodeOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
+                                <Text strong>Mã: </Text>
                                 <Text>{item?.item_code || 'N/A'}</Text>
                               </div>
                               <div>
-                                <NumberOutlined style={{ marginRight: '8px', color: '#3498db' }} />
-                                <Text>Số lượng: {issuance.quantity}</Text>
+                                <NumberOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
+                                <Text strong>Số lượng: </Text>
+                                <Badge count={issuance.quantity} style={{ backgroundColor: '#52c41a' }} />
                               </div>
                               <div>
-                                <CalendarOutlined style={{ marginRight: '8px', color: '#3498db' }} />
-                                <Text>Ngày phát: {formatDateTime(issuance.issued_date)}</Text>
+                                <CalendarOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
+                                <Text strong>Ngày phát: </Text>
+                                <Text>{formatDateTime(issuance.issued_date)}</Text>
                               </div>
                               <div>
-                                <ClockCircleOutlined style={{ marginRight: '8px', color: '#3498db' }} />
-                                <Text>Hạn trả: {formatDateTime(issuance.expected_return_date)}</Text>
+                                <ClockCircleOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
+                                <Text strong>Ngày trả: </Text>
+                                <Text>{issuance.actual_return_date ? formatDateTime(issuance.actual_return_date) : 'Chưa có'}</Text>
                               </div>
+                              {issuance.return_condition && (
+                                <div>
+                                  <CheckCircleOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
+                                  <Text strong>Tình trạng: </Text>
+                                  <Tag color={
+                                    issuance.return_condition === 'good' ? 'green' :
+                                    issuance.return_condition === 'damaged' ? 'orange' : 'red'
+                                  }>
+                                    {issuance.return_condition === 'good' ? 'Tốt' :
+                                     issuance.return_condition === 'damaged' ? 'Hư hỏng' : 'Mòn'}
+                                  </Tag>
+                                </div>
+                              )}
                             </Space>
                           </Card>
                         </Col>
                       );
                     })}
                     
-                    {getActiveIssuances().length === 0 && (
+                    {getReturnedIssuances().length === 0 && (
                       <Col span={24}>
                         <Empty
-                          image={<InboxOutlined style={{ fontSize: '48px', color: '#bdc3c7' }} />}
+                          image={<HistoryOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
                           description={
                             <div>
-                              <Title level={4}>Chưa có PPE</Title>
-                              <Text>Bạn chưa được phát PPE nào</Text>
+                              <Title level={4} style={{ color: '#8c8c8c' }}>Chưa có lịch sử</Title>
+                              <Text type="secondary">Bạn chưa trả PPE nào</Text>
                             </div>
                           }
                         />
@@ -521,6 +735,7 @@ const EmployeePPE: React.FC = () => {
         width={500}
       >
         <Form
+          form={returnForm}
           layout="vertical"
           onFinish={handleReturnPPE}
         >
@@ -532,32 +747,28 @@ const EmployeePPE: React.FC = () => {
             />
           </Form.Item>
           
-          <Form.Item label="Ngày trả" required>
-            <DatePicker
-              style={{ width: '100%' }}
-              value={returnForm.actual_return_date ? dayjs(returnForm.actual_return_date) : null}
-              onChange={(date) => setReturnForm(prev => ({ 
-                ...prev, 
-                actual_return_date: date ? date.format('YYYY-MM-DD') : '' 
-              }))}
-            />
+          <Form.Item 
+            label="Ngày trả" 
+            name="actual_return_date"
+            rules={[{ required: true, message: 'Vui lòng chọn ngày trả' }]}
+          >
+            <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           
-          <Form.Item label="Tình trạng khi trả" required>
-            <Select
-              value={returnForm.return_condition}
-              onChange={(value) => setReturnForm(prev => ({ ...prev, return_condition: value }))}
-            >
+          <Form.Item 
+            label="Tình trạng khi trả" 
+            name="return_condition"
+            rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
+          >
+            <Select>
               <Option value="good">Tốt</Option>
               <Option value="damaged">Hư hại</Option>
               <Option value="worn">Mòn</Option>
             </Select>
           </Form.Item>
           
-          <Form.Item label="Ghi chú">
+          <Form.Item label="Ghi chú" name="notes">
             <TextArea
-              value={returnForm.notes}
-              onChange={(e) => setReturnForm(prev => ({ ...prev, notes: e.target.value }))}
               placeholder="Ghi chú về tình trạng PPE khi trả..."
               rows={4}
             />
@@ -585,6 +796,7 @@ const EmployeePPE: React.FC = () => {
         width={500}
       >
         <Form
+          form={reportForm}
           layout="vertical"
           onFinish={handleReportPPE}
         >
@@ -596,46 +808,47 @@ const EmployeePPE: React.FC = () => {
             />
           </Form.Item>
           
-          <Form.Item label="Loại báo cáo" required>
-            <Select
-              value={reportForm.report_type}
-              onChange={(value) => setReportForm(prev => ({ ...prev, report_type: value }))}
-            >
+          <Form.Item 
+            label="Loại báo cáo" 
+            name="report_type"
+            rules={[{ required: true, message: 'Vui lòng chọn loại báo cáo' }]}
+          >
+            <Select>
               <Option value="damage">Hư hại</Option>
               <Option value="replacement">Cần thay thế</Option>
               <Option value="lost">Mất</Option>
             </Select>
           </Form.Item>
           
-          <Form.Item label="Mức độ nghiêm trọng" required>
-            <Select
-              value={reportForm.severity}
-              onChange={(value) => setReportForm(prev => ({ ...prev, severity: value }))}
-            >
+          <Form.Item 
+            label="Mức độ nghiêm trọng" 
+            name="severity"
+            rules={[{ required: true, message: 'Vui lòng chọn mức độ nghiêm trọng' }]}
+          >
+            <Select>
               <Option value="low">Thấp</Option>
               <Option value="medium">Trung bình</Option>
               <Option value="high">Cao</Option>
             </Select>
           </Form.Item>
           
-          <Form.Item label="Mô tả chi tiết" required>
+          <Form.Item 
+            label="Mô tả chi tiết" 
+            name="description"
+            rules={[{ required: true, message: 'Vui lòng nhập mô tả chi tiết' }]}
+          >
             <TextArea
-              value={reportForm.description}
-              onChange={(e) => setReportForm(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Mô tả chi tiết về vấn đề với PPE..."
               rows={4}
             />
           </Form.Item>
           
-          <Form.Item label="Ngày báo cáo" required>
-            <DatePicker
-              style={{ width: '100%' }}
-              value={reportForm.reported_date ? dayjs(reportForm.reported_date) : null}
-              onChange={(date) => setReportForm(prev => ({ 
-                ...prev, 
-                reported_date: date ? date.format('YYYY-MM-DD') : '' 
-              }))}
-            />
+          <Form.Item 
+            label="Ngày báo cáo" 
+            name="reported_date"
+            rules={[{ required: true, message: 'Vui lòng chọn ngày báo cáo' }]}
+          >
+            <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           
           <Form.Item>
@@ -650,8 +863,134 @@ const EmployeePPE: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Detail Modal */}
+      <Modal
+        title={
+          <Space>
+            <EyeOutlined />
+            <span>Chi tiết PPE</span>
+          </Space>
+        }
+        open={showDetailModal}
+        onCancel={() => setShowDetailModal(false)}
+        footer={null}
+        width={700}
+      >
+        {selectedIssuance && (
+          <div>
+            <Descriptions column={2} bordered>
+              <Descriptions.Item label="Thiết bị PPE" span={2}>
+                <Space>
+                  <SafetyOutlined />
+                  <div>
+                    <div style={{ fontWeight: 'bold' }}>
+                      {typeof selectedIssuance.item_id === 'object' && selectedIssuance.item_id
+                        ? selectedIssuance.item_id.item_name
+                        : 'Không xác định'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      Mã: {typeof selectedIssuance.item_id === 'object' && selectedIssuance.item_id
+                        ? selectedIssuance.item_id.item_code
+                        : 'N/A'}
+                    </div>
+                  </div>
+                </Space>
+              </Descriptions.Item>
+
+              <Descriptions.Item label="Số lượng">
+                <Badge count={selectedIssuance.quantity} style={{ backgroundColor: '#52c41a' }} />
+              </Descriptions.Item>
+              
+              <Descriptions.Item label="Trạng thái">
+                <Tag color={getStatusColor(selectedIssuance.status)} icon={getStatusIcon(selectedIssuance.status)}>
+                  {getStatusLabel(selectedIssuance.status)}
+                </Tag>
+              </Descriptions.Item>
+
+              <Descriptions.Item label="Ngày phát">
+                {formatDateTime(selectedIssuance.issued_date)}
+              </Descriptions.Item>
+              
+              <Descriptions.Item label="Ngày trả dự kiến">
+                {formatDateTime(selectedIssuance.expected_return_date)}
+              </Descriptions.Item>
+
+              {selectedIssuance.actual_return_date && (
+                <Descriptions.Item label="Ngày trả thực tế">
+                  {formatDateTime(selectedIssuance.actual_return_date)}
+                </Descriptions.Item>
+              )}
+
+              {selectedIssuance.return_condition && (
+                <Descriptions.Item label="Tình trạng trả">
+                  <Tag color={
+                    selectedIssuance.return_condition === 'good' ? 'green' :
+                    selectedIssuance.return_condition === 'damaged' ? 'orange' : 'red'
+                  }>
+                    {selectedIssuance.return_condition === 'good' ? 'Tốt' :
+                     selectedIssuance.return_condition === 'damaged' ? 'Hư hỏng' : 'Mòn'}
+                  </Tag>
+                </Descriptions.Item>
+              )}
+
+              {selectedIssuance.return_notes && (
+                <Descriptions.Item label="Ghi chú trả" span={2}>
+                  {selectedIssuance.return_notes}
+                </Descriptions.Item>
+              )}
+
+              {selectedIssuance.report_description && (
+                <Descriptions.Item label="Báo cáo sự cố" span={2}>
+                  <div>
+                    <div><strong>Loại:</strong> {selectedIssuance.report_type}</div>
+                    <div><strong>Mô tả:</strong> {selectedIssuance.report_description}</div>
+                    {selectedIssuance.report_severity && (
+                      <div><strong>Mức độ:</strong> {selectedIssuance.report_severity}</div>
+                    )}
+                  </div>
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+
+            <div style={{ marginTop: '16px', textAlign: 'right' }}>
+              <Space>
+                <Button onClick={() => setShowDetailModal(false)}>
+                  Đóng
+                </Button>
+                {selectedIssuance.status === 'issued' && (
+                  <>
+                    <Button 
+                      type="primary"
+                      icon={<UndoOutlined />}
+                      onClick={() => {
+                        handleReturnClick(selectedIssuance);
+                        setShowDetailModal(false);
+                      }}
+                    >
+                      Trả PPE
+                    </Button>
+                    <Button 
+                      type="primary"
+                      danger
+                      icon={<ExclamationCircleOutlined />}
+                      onClick={() => {
+                        handleReportClick(selectedIssuance);
+                        setShowDetailModal(false);
+                      }}
+                    >
+                      Báo cáo sự cố
+                    </Button>
+                  </>
+                )}
+              </Space>
+            </div>
+          </div>
+        )}
+      </Modal>
     </EmployeeLayout>
   );
 };
 
 export default EmployeePPE;
+

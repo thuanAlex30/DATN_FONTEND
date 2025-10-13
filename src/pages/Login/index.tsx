@@ -28,24 +28,33 @@ const LoginPage: React.FC = () => {
 
   const handleSubmit = async (values: LoginRequest) => {
     try {
+      console.log('🚀 Starting login process...');
       const resultAction = await dispatch(login(values));
+      console.log('🔍 Login result action:', resultAction);
       
       if (login.fulfilled.match(resultAction)) {
         const user = resultAction.payload.user;
+        console.log('✅ Login successful, user:', user);
+        console.log('🔍 User role:', user.role?.role_name);
         
-        // Check if user is admin
-        if (user.role?.role_name === 'admin') {
-          safeNavigate('/admin/dashboard', { replace: true });
-        } else {
-          // Handle non-admin users (redirect to appropriate page)
-          safeNavigate('/home', { replace: true });
-        }
+        // Small delay to ensure state is updated before redirect
+        setTimeout(() => {
+          // Check if user is admin
+          if (user.role?.role_name === 'admin') {
+            console.log('🔀 Redirecting to admin dashboard...');
+            safeNavigate('/admin/dashboard', { replace: true });
+          } else {
+            console.log('🔀 Redirecting to home page...');
+            // Handle non-admin users (redirect to appropriate page)
+            safeNavigate('/home', { replace: true });
+          }
+        }, 100);
       } else if (login.rejected.match(resultAction)) {
         // Error is already handled by the slice
-        console.error('Login failed:', resultAction.payload);
+        console.error('❌ Login failed:', resultAction.payload);
       }
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('❌ Login error:', err);
     }
   };
 

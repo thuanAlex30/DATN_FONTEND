@@ -1,4 +1,4 @@
-import api from './api';
+import { api } from '../config/axios';
 
 export interface Notification {
     _id: string;
@@ -30,6 +30,8 @@ export interface NotificationFilters {
     is_read?: boolean;
     priority?: string;
     search?: string;
+    sort?: string;
+    order?: string;
 }
 
 export interface NotificationStats {
@@ -79,13 +81,63 @@ class NotificationService {
     // Get notifications for current user
     static async getNotifications(filters: NotificationFilters = {}): Promise<NotificationResponse> {
         try {
-            const response = await api.get('/notifications', { 
-                params: filters,
-                timeout: 20000 // 20 seconds timeout
-            });
-            return response.data.data;
-        } catch (error) {
+            // Check if user is authenticated before making request
+            const token = localStorage.getItem('safety_management_token');
+            if (!token) {
+                console.log('No auth token found, returning empty notifications');
+                return {
+                    notifications: [],
+                    pagination: {
+                        current_page: 1,
+                        total_pages: 0,
+                        total_items: 0,
+                        items_per_page: 10
+                    }
+                };
+            }
+
+            // Try private notifications first, fallback to public if timeout
+            try {
+                const response = await api.get('/notifications', { 
+                    params: filters,
+                    timeout: 3000 // 3 seconds timeout
+                });
+                return response.data.data;
+            } catch (timeoutError: any) {
+                if (timeoutError.code === 'ECONNABORTED' || timeoutError.message?.includes('timeout')) {
+                    console.log('Private notifications timeout, trying public notifications...');
+                    // Fallback to public notifications
+                    const publicResponse = await api.get('/notifications/public', { 
+                        params: filters,
+                        timeout: 3000
+                    });
+                    return publicResponse.data.data;
+                }
+                throw timeoutError;
+            }
+        } catch (error: any) {
             console.error('Error fetching notifications:', error);
+            
+            // Handle specific error cases
+            if (error.response?.status === 401) {
+                console.log('Unauthorized - main interceptor will handle');
+                // Let main axios interceptor handle 401 errors
+                throw error;
+            }
+            
+            if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+                console.log('Request timeout - returning empty notifications');
+                return {
+                    notifications: [],
+                    pagination: {
+                        current_page: 1,
+                        total_pages: 0,
+                        total_items: 0,
+                        items_per_page: 10
+                    }
+                };
+            }
+            
             throw error;
         }
     }
@@ -93,7 +145,9 @@ class NotificationService {
     // Get notification by ID
     static async getNotificationById(id: string): Promise<Notification> {
         try {
-            const response = await api.get(`/notifications/${id}`);
+            const response = await api.get(`/notifications/${id}`, {
+                timeout: 5000
+            });
             return response.data.data;
         } catch (error) {
             console.error('Error fetching notification by ID:', error);

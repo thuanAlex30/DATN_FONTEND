@@ -863,7 +863,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
   }, [currentStep, dispatch]);
 
   const handleModalSubmit = useCallback(async (values: any) => {
-    // console.log('=== FORM SUBMIT DEBUG ==='); // Removed to prevent spam
+    // Form submit completed
     // console.log('Form submitted with values:', values);
     // console.log('Current step:', currentStep);
     // console.log('Current step data:', currentStepData);

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import type { RootState } from '../../store';
-// WebSocket notifications are handled by RealtimeNotifications component
+// WebSocket notifications are handled by NotificationPanel component
 import NotificationPanel from '../../components/NotificationPanel';
 import { projectRiskService } from '../../services/projectRiskService';
 import { projectMilestoneService } from '../../services/projectMilestoneService';
@@ -72,16 +72,6 @@ const Home: React.FC = () => {
       <header className={styles.header}>
         <h1>An toàn lao động</h1>
         <div className={styles.headerActions}>
-          <button 
-            className={styles.notificationBtn}
-            onClick={() => setIsNotificationPanelOpen(true)}
-            title="Thông báo"
-          >
-            <i className="fas fa-bell"></i>
-            {unreadCount > 0 && (
-              <span className={styles.notificationBadge}>{unreadCount}</span>
-            )}
-          </button>
           <div className={styles.userInfo}>
             <span>Xin chào, {user?.full_name || 'Người dùng'}</span>
           </div>

@@ -1,4 +1,4 @@
-import api from './api';
+import { api } from '../config/axios';
 
 // Types
 export interface PPECategory {
@@ -409,6 +409,17 @@ export const getUserAssignments = async (userId: string): Promise<any[]> => {
 
 export const returnAssignment = async (id: string, data: any): Promise<any> => {
   const response = await api.post(`/ppe/assignments/${id}/return`, data);
+  return response.data.data;
+};
+
+// PPE Issuance API
+export const createIssuance = async (data: any): Promise<any> => {
+  const response = await api.post('/ppe/issuances', data);
+  return response.data.data;
+};
+
+export const returnIssuance = async (id: string, data: any): Promise<any> => {
+  const response = await api.post(`/ppe/issuances/${id}/return`, data);
   return response.data.data;
 };
 

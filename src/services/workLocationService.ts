@@ -127,6 +127,12 @@ class WorkLocationService {
     const response = await api.get(`/work-locations/locations/${locationId}/stats`);
     return response.data.data;
   }
+
+  // Get work locations by project
+  async getWorkLocationsByProject(projectId: string): Promise<WorkLocation[]> {
+    const response = await api.get(`/work-locations/projects/${projectId}/locations`);
+    return response.data.data;
+  }
 }
 
 export default new WorkLocationService();

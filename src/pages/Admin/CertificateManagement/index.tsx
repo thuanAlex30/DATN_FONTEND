@@ -77,7 +77,7 @@ const CertificateManagement: React.FC = () => {
       setError(null);
       
       // Load packages and enrollments
-      // TODO: Implement certificate service
+      // Certificate service - to be implemented
       const packagesData: CompanyCertPackage[] = [];
       const enrollmentsData: CompanyCertEnrollment[] = [];
       

@@ -18,7 +18,15 @@ import {
   Spin,
   Alert,
   Tooltip,
-  Badge
+  Badge,
+  Modal,
+  Form,
+  DatePicker,
+  InputNumber,
+  Divider,
+  Progress,
+  Timeline,
+  Descriptions
 } from 'antd';
 import { 
   SafetyOutlined, 
@@ -37,7 +45,15 @@ import {
   TeamOutlined,
   ToolOutlined,
   BarChartOutlined,
-  DownloadOutlined
+  DownloadOutlined,
+  SendOutlined,
+  UndoOutlined,
+  ReloadOutlined,
+  BellOutlined,
+  ClockCircleOutlined,
+  CheckCircleFilled,
+  CloseCircleFilled,
+  InfoCircleOutlined
 } from '@ant-design/icons';
 import * as ppeService from '../../../services/ppeService';
 import CategoryEditModal from './CategoryEditModal';
@@ -49,22 +65,61 @@ import InventoryUpdateModal from './InventoryUpdateModal';
 import CreateAssignmentModal from './CreateAssignmentModal';
 import CreateMaintenanceModal from './CreateMaintenanceModal';
 import CreateReportModal from './CreateReportModal';
+import PPEEditModal from './PPEEditModal';
 import type { 
   PPECategory, 
   PPEItem, 
   PPEIssuance
 } from '../../../services/ppeService';
+import dayjs from 'dayjs';
+import { usePPEWebSocket } from '../../../hooks/usePPEWebSocket';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../store';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Search } = Input;
 
 const PPEManagement: React.FC = () => {
-  // const { user } = useSelector((state: RootState) => state.auth);
-  const [activeTab, setActiveTab] = useState('categories');
+  const { user, token } = useSelector((state: RootState) => state.auth);
+  const [activeTab, setActiveTab] = useState('issuances');
+  
+  // WebSocket hook for realtime updates
+  const { isConnected } = usePPEWebSocket({
+    isAdmin: true,
+    token: token || '',
+    showNotifications: false, // Disable notifications here since WebSocketProvider handles them
+    onPPEDistributed: (data) => {
+      console.log('PPE distributed:', data);
+      // Reload data when PPE is distributed
+      loadAllData();
+    },
+    onPPEReturned: (data) => {
+      console.log('PPE returned:', data);
+      // Reload data when PPE is returned
+      loadAllData();
+    },
+    onPPEReported: (data) => {
+      console.log('PPE reported:', data);
+      // Reload data when PPE issue is reported
+      loadAllData();
+    },
+    onPPEOverdue: (data) => {
+      console.log('PPE overdue:', data);
+      // Show overdue notification
+      message.warning(`PPE quá hạn: ${data.item_name} của ${data.user_name}`);
+    },
+    onPPELowStock: (data) => {
+      console.log('PPE low stock:', data);
+      // Reload data when stock is low
+      loadAllData();
+    }
+  });
   
   // Modal states
   const [selectedCategory, setSelectedCategory] = useState<PPECategory | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedItem, setSelectedItem] = useState<PPEItem | null>(null);
   const [showCategoryDetailModal, setShowCategoryDetailModal] = useState(false);
   const [showCategoryEditModal, setShowCategoryEditModal] = useState(false);
   const [showImportCategoriesModal, setShowImportCategoriesModal] = useState(false);
@@ -74,6 +129,10 @@ const PPEManagement: React.FC = () => {
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDistributeModal, setShowDistributeModal] = useState(false);
+  const [showIssuanceDetailModal, setShowIssuanceDetailModal] = useState(false);
+  const [showPPEEditModal, setShowPPEEditModal] = useState(false);
+  const [selectedIssuance, setSelectedIssuance] = useState<PPEIssuance | null>(null);
   
   // State for data
   const [ppeCategories, setPpeCategories] = useState<PPECategory[]>([]);
@@ -85,6 +144,12 @@ const PPEManagement: React.FC = () => {
   const [maintenance, setMaintenance] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   
+  // Form states
+  const [distributeForm] = Form.useForm();
+  const [selectedDistributeUser, setSelectedDistributeUser] = useState<any>(null);
+  const [selectedDistributeItem, setSelectedDistributeItem] = useState<PPEItem | null>(null);
+  const [availableQuantity, setAvailableQuantity] = useState(0);
+  
   // Loading states
   const [loading, setLoading] = useState({
     categories: false,
@@ -94,7 +159,8 @@ const PPEManagement: React.FC = () => {
     inventory: false,
     assignments: false,
     maintenance: false,
-    reports: false
+    reports: false,
+    distributing: false
   });
   
   // Error states
@@ -270,9 +336,9 @@ const PPEManagement: React.FC = () => {
       ]);
       
       const reportsData = [
-        ...(inventoryReport || []).map((report: any) => ({ ...report, report_type: 'inventory' })),
-        ...(assignmentReport || []).map((report: any) => ({ ...report, report_type: 'usage' })),
-        ...(maintenanceReport || []).map((report: any) => ({ ...report, report_type: 'maintenance' }))
+        ...(Array.isArray(inventoryReport) ? inventoryReport : []).map((report: any) => ({ ...report, report_type: 'inventory' })),
+        ...(Array.isArray(assignmentReport) ? assignmentReport : []).map((report: any) => ({ ...report, report_type: 'usage' })),
+        ...(Array.isArray(maintenanceReport) ? maintenanceReport : []).map((report: any) => ({ ...report, report_type: 'maintenance' }))
       ];
       
       setReports(reportsData);
@@ -282,6 +348,91 @@ const PPEManagement: React.FC = () => {
       setLoading(prev => ({ ...prev, reports: false }));
     }
   }, []);
+
+  // PPE Distribution functions
+  const handleDistributePPE = () => {
+    setShowDistributeModal(true);
+    distributeForm.resetFields();
+    setSelectedDistributeUser(null);
+    setSelectedDistributeItem(null);
+    setAvailableQuantity(0);
+  };
+
+  const handleUserSelect = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    setSelectedDistributeUser(user);
+    distributeForm.setFieldsValue({ user_id: userId });
+  };
+
+  const handleItemSelect = (itemId: string) => {
+    const item = ppeItems.find(i => i.id === itemId);
+    setSelectedDistributeItem(item);
+    setAvailableQuantity(item?.quantity_available || 0);
+    distributeForm.setFieldsValue({ 
+      item_id: itemId,
+      max_quantity: item?.quantity_available || 0
+    });
+  };
+
+  const onDistributeSubmit = async (values: any) => {
+    if (!selectedDistributeUser || !selectedDistributeItem) {
+      message.error('Vui lòng chọn nhân viên và thiết bị PPE');
+      return;
+    }
+
+    if (values.quantity > availableQuantity) {
+      message.error('Số lượng yêu cầu vượt quá số lượng có sẵn');
+      return;
+    }
+
+    setLoading(prev => ({ ...prev, distributing: true }));
+    try {
+      const issuanceData = {
+        user_id: selectedDistributeUser.id,
+        item_id: selectedDistributeItem.id,
+        quantity: values.quantity,
+        issued_date: values.issued_date.format('YYYY-MM-DD'),
+        expected_return_date: values.expected_return_date.format('YYYY-MM-DD'),
+        issued_by: user?.id || user?._id || ''
+      };
+
+      await ppeService.createIssuance(issuanceData);
+      message.success(`Đã phát ${values.quantity} ${selectedDistributeItem.item_name} cho ${selectedDistributeUser.full_name}`);
+      
+      // Reload data
+      await loadAllData();
+      setShowDistributeModal(false);
+      distributeForm.resetFields();
+      setSelectedDistributeUser(null);
+      setSelectedDistributeItem(null);
+      setAvailableQuantity(0);
+    } catch (err: any) {
+      console.error('Error distributing PPE:', err);
+      message.error(err.response?.data?.message || 'Có lỗi xảy ra khi phát PPE');
+    } finally {
+      setLoading(prev => ({ ...prev, distributing: false }));
+    }
+  };
+
+  const handleViewIssuanceDetail = (issuance: PPEIssuance) => {
+    setSelectedIssuance(issuance);
+    setShowIssuanceDetailModal(true);
+  };
+
+  const handleReturnIssuance = async (issuanceId: string) => {
+    try {
+      await ppeService.returnIssuance(issuanceId, {
+        actual_return_date: new Date().toISOString().split('T')[0],
+        return_condition: 'good',
+        notes: 'Trả bởi admin'
+      });
+      message.success('Đã cập nhật trạng thái trả PPE');
+      await loadAllData();
+    } catch (err: any) {
+      console.error('Error returning issuance:', err);
+      message.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
+    }
+  };
 
   // Category columns for table
   const categoryColumns = [
@@ -428,8 +579,8 @@ const PPEManagement: React.FC = () => {
               type="link" 
               icon={<EditOutlined />}
               onClick={() => {
-                // TODO: Implement item edit modal
-                message.info('Tính năng chỉnh sửa thiết bị đang được phát triển');
+                setSelectedItem(record);
+                setShowPPEEditModal(true);
               }}
             />
           </Tooltip>
@@ -443,6 +594,125 @@ const PPEManagement: React.FC = () => {
               <Button type="link" danger icon={<DeleteOutlined />} />
             </Tooltip>
           </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  // Issuance columns for table
+  const issuanceColumns = [
+    {
+      title: 'Nhân viên',
+      key: 'user',
+      render: (_: unknown, record: PPEIssuance) => {
+        const user = typeof record.user_id === 'object' ? record.user_id : 
+          users.find(u => u.id === record.user_id);
+        return (
+          <Space>
+            <Avatar icon={<UserOutlined />} />
+            <div>
+              <div style={{ fontWeight: 'bold' }}>{user?.full_name || 'Không xác định'}</div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                {user?.department_id?.department_name || 'Không xác định'}
+              </div>
+            </div>
+          </Space>
+        );
+      },
+    },
+    {
+      title: 'Thiết bị PPE',
+      key: 'item',
+      render: (_: unknown, record: PPEIssuance) => {
+        const item = typeof record.item_id === 'object' ? record.item_id : 
+          ppeItems.find(i => i.id === record.item_id);
+        return (
+          <Space>
+            <SafetyOutlined />
+            <div>
+              <div style={{ fontWeight: 'bold' }}>{item?.item_name || 'Không xác định'}</div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                {item?.item_code || 'Không có mã'}
+              </div>
+            </div>
+          </Space>
+        );
+      },
+    },
+    {
+      title: 'Số lượng',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      render: (quantity: number) => (
+        <Badge count={quantity} style={{ backgroundColor: '#52c41a' }} />
+      ),
+    },
+    {
+      title: 'Ngày phát',
+      dataIndex: 'issued_date',
+      key: 'issued_date',
+      render: (date: string) => new Date(date).toLocaleDateString('vi-VN'),
+    },
+    {
+      title: 'Ngày trả dự kiến',
+      dataIndex: 'expected_return_date',
+      key: 'expected_return_date',
+      render: (date: string) => {
+        const returnDate = new Date(date);
+        const today = new Date();
+        const isOverdue = returnDate < today;
+        return (
+          <Space>
+            <span style={{ color: isOverdue ? '#ff4d4f' : '#52c41a' }}>
+              {returnDate.toLocaleDateString('vi-VN')}
+            </span>
+            {isOverdue && <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
+          </Space>
+        );
+      },
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => {
+        const statusConfig = {
+          'issued': { color: 'blue', text: 'Đã phát', icon: <CheckCircleOutlined /> },
+          'returned': { color: 'green', text: 'Đã trả', icon: <CheckCircleFilled /> },
+          'overdue': { color: 'red', text: 'Quá hạn', icon: <ExclamationCircleOutlined /> },
+          'damaged': { color: 'orange', text: 'Hư hỏng', icon: <WarningOutlined /> },
+          'replacement_needed': { color: 'purple', text: 'Cần thay thế', icon: <ToolOutlined /> }
+        };
+        const config = statusConfig[status as keyof typeof statusConfig] || 
+          { color: 'default', text: status, icon: <InfoCircleOutlined /> };
+        return (
+          <Tag color={config.color} icon={config.icon}>
+            {config.text}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: 'Thao tác',
+      key: 'action',
+      render: (_: unknown, record: PPEIssuance) => (
+        <Space>
+          <Tooltip title="Xem chi tiết">
+            <Button 
+              type="link" 
+              icon={<EyeOutlined />}
+              onClick={() => handleViewIssuanceDetail(record)}
+            />
+          </Tooltip>
+          {record.status === 'issued' && (
+            <Tooltip title="Cập nhật trả">
+              <Button 
+                type="link" 
+                icon={<UndoOutlined />}
+                onClick={() => handleReturnIssuance(record.id)}
+              />
+            </Tooltip>
+          )}
         </Space>
       ),
     },
@@ -484,13 +754,13 @@ const PPEManagement: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'action',
-      render: (_: unknown) => (
+      render: (record: any) => (
         <Space>
           <Button 
             type="link" 
             icon={<EyeOutlined />}
             onClick={() => {
-              // TODO: Show user PPE details
+              // Show user PPE details - to be implemented
               message.info('Tính năng xem PPE của nhân viên đang được phát triển');
             }}
           >
@@ -500,6 +770,7 @@ const PPEManagement: React.FC = () => {
             type="link" 
             icon={<PlusOutlined />}
             onClick={() => {
+              setSelectedUser(record);
               setShowAssignPPEModal(true);
             }}
           >
@@ -645,7 +916,7 @@ const PPEManagement: React.FC = () => {
             type="link" 
             icon={<EyeOutlined />}
             onClick={() => {
-              // TODO: Show assignment details
+              // Show assignment details - to be implemented
               message.info('Tính năng xem chi tiết phân công đang được phát triển');
             }}
           >
@@ -656,7 +927,7 @@ const PPEManagement: React.FC = () => {
               type="link" 
               danger
               onClick={() => {
-                // TODO: Return PPE
+                // Return PPE - to be implemented
                 message.info('Tính năng trả PPE đang được phát triển');
               }}
             >
@@ -730,7 +1001,7 @@ const PPEManagement: React.FC = () => {
             type="link" 
             icon={<EyeOutlined />}
             onClick={() => {
-              // TODO: Show maintenance details
+              // Show maintenance details - to be implemented
               message.info('Tính năng xem chi tiết bảo trì đang được phát triển');
             }}
           >
@@ -740,7 +1011,7 @@ const PPEManagement: React.FC = () => {
             type="link" 
             icon={<EditOutlined />}
             onClick={() => {
-              // TODO: Edit maintenance
+              // Edit maintenance - to be implemented
               message.info('Tính năng chỉnh sửa bảo trì đang được phát triển');
             }}
           >
@@ -799,7 +1070,7 @@ const PPEManagement: React.FC = () => {
             type="link" 
             icon={<EyeOutlined />}
             onClick={() => {
-              // TODO: View report
+              // View report - to be implemented
               message.info('Tính năng xem báo cáo đang được phát triển');
             }}
           >
@@ -809,7 +1080,7 @@ const PPEManagement: React.FC = () => {
             type="link" 
             icon={<DownloadOutlined />}
             onClick={() => {
-              // TODO: Download report
+              // Download report - to be implemented
               message.info('Tính năng tải báo cáo đang được phát triển');
             }}
           >
@@ -842,9 +1113,31 @@ const PPEManagement: React.FC = () => {
     <div style={{ padding: '24px' }}>
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
-        <Title level={2}>
-          <SafetyOutlined /> Quản lý PPE
-        </Title>
+        <Row gutter={[16, 16]} align="middle">
+          <Col xs={24} sm={12}>
+            <Space>
+              <Title level={2} style={{ margin: 0 }}>
+                <SafetyOutlined /> Quản lý PPE
+              </Title>
+              <Badge 
+                status={isConnected ? 'success' : 'error'} 
+                text={isConnected ? 'Kết nối realtime' : 'Mất kết nối'}
+              />
+            </Space>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Space style={{ float: 'right' }}>
+              <Button 
+                type="primary"
+                icon={<ReloadOutlined />}
+                onClick={loadAllData}
+                loading={loading.categories || loading.items || loading.issuances}
+              >
+                Làm mới
+              </Button>
+            </Space>
+          </Col>
+        </Row>
       </div>
 
       {/* Stats Cards */}
@@ -882,7 +1175,10 @@ const PPEManagement: React.FC = () => {
           <Card>
             <Statistic
               title="Cần bổ sung"
-              value={ppeItems.filter(item => (item.quantity_available || 0) <= (item.reorder_level || 0)).length}
+              value={ppeItems.filter(item => {
+                const remaining = (item.quantity_available || 0) - (item.quantity_allocated || 0);
+                return remaining <= (item.reorder_level || 0);
+              }).length}
               valueStyle={{ color: '#ff4d4f' }}
               prefix={<WarningOutlined />}
             />
@@ -977,7 +1273,10 @@ const PPEManagement: React.FC = () => {
                     <Button 
                       type="primary" 
                       icon={<PlusOutlined />}
-                      onClick={() => message.info('Tính năng thêm thiết bị đang được phát triển')}
+                      onClick={() => {
+                        setSelectedItem(null);
+                        setShowPPEEditModal(true);
+                      }}
                     >
                       Thêm thiết bị
                     </Button>
@@ -1013,7 +1312,103 @@ const PPEManagement: React.FC = () => {
           </TabPane>
 
           {/* Phát PPE Tab */}
-          <TabPane tab={<span><UserOutlined />Phát PPE</span>} key="assign">
+          <TabPane tab={<span><SendOutlined />Phát PPE</span>} key="issuances">
+            <div style={{ marginBottom: '16px' }}>
+              <Row gutter={[16, 16]} align="middle">
+                <Col xs={24} sm={12}>
+                  <Search
+                    placeholder="Tìm kiếm PPE đã phát..."
+                    style={{ width: '100%' }}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Space>
+                    <Button 
+                      type="primary" 
+                      icon={<SendOutlined />}
+                      onClick={handleDistributePPE}
+                    >
+                      Phát PPE mới
+                    </Button>
+                    <Button 
+                      icon={<DownloadOutlined />}
+                      onClick={() => message.info('Tính năng xuất báo cáo đang được phát triển')}
+                    >
+                      Xuất báo cáo
+                    </Button>
+                  </Space>
+                </Col>
+              </Row>
+            </div>
+
+            {/* Statistics Cards */}
+            <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
+              <Col xs={24} sm={6}>
+                <Card>
+                  <Statistic
+                    title="Tổng PPE đã phát"
+                    value={ppeIssuances.length}
+                    prefix={<SafetyOutlined />}
+                    valueStyle={{ color: '#1890ff' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={6}>
+                <Card>
+                  <Statistic
+                    title="Đang sử dụng"
+                    value={ppeIssuances.filter(i => i.status === 'issued').length}
+                    prefix={<CheckCircleOutlined />}
+                    valueStyle={{ color: '#52c41a' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={6}>
+                <Card>
+                  <Statistic
+                    title="Quá hạn"
+                    value={ppeIssuances.filter(i => i.status === 'overdue').length}
+                    prefix={<ExclamationCircleOutlined />}
+                    valueStyle={{ color: '#ff4d4f' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={6}>
+                <Card>
+                  <Statistic
+                    title="Đã trả"
+                    value={ppeIssuances.filter(i => i.status === 'returned').length}
+                    prefix={<UndoOutlined />}
+                    valueStyle={{ color: '#722ed1' }}
+                  />
+                </Card>
+              </Col>
+            </Row>
+
+            {loading.issuances ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <Spin size="large" />
+              </div>
+            ) : (
+              <Table
+                columns={issuanceColumns}
+                dataSource={ppeIssuances}
+                rowKey={(record) => record.id}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) => 
+                    `${range[0]}-${range[1]} của ${total} bản ghi phát PPE`,
+                }}
+              />
+            )}
+          </TabPane>
+
+          {/* Quản lý nhân viên Tab */}
+          <TabPane tab={<span><UserOutlined />Quản lý nhân viên</span>} key="assign">
             <div style={{ marginBottom: '16px' }}>
               <Row gutter={[16, 16]} align="middle">
                 <Col xs={24} sm={12}>
@@ -1369,11 +1764,16 @@ const PPEManagement: React.FC = () => {
 
       <AssignPPEModal
         isOpen={showAssignPPEModal}
-        onClose={() => setShowAssignPPEModal(false)}
+        onClose={() => {
+          setShowAssignPPEModal(false);
+          setSelectedUser(null);
+        }}
         onSuccess={() => {
           loadAllData();
           setShowAssignPPEModal(false);
+          setSelectedUser(null);
         }}
+        selectedUser={selectedUser}
       />
 
       <InventoryUpdateModal
@@ -1412,6 +1812,334 @@ const PPEManagement: React.FC = () => {
           setShowReportModal(false);
         }}
       />
+
+      <PPEEditModal
+        item={selectedItem}
+        categories={ppeCategories}
+        isOpen={showPPEEditModal}
+        onClose={() => {
+          setShowPPEEditModal(false);
+          setSelectedItem(null);
+        }}
+        onSuccess={() => {
+          loadAllData();
+          setShowPPEEditModal(false);
+          setSelectedItem(null);
+        }}
+      />
+
+      {/* PPE Distribution Modal */}
+      <Modal
+        title={
+          <Space>
+            <SendOutlined />
+            <span>Phát PPE cho nhân viên</span>
+          </Space>
+        }
+        open={showDistributeModal}
+        onCancel={() => setShowDistributeModal(false)}
+        footer={null}
+        width={800}
+        destroyOnClose
+      >
+        <Form
+          form={distributeForm}
+          layout="vertical"
+          onFinish={onDistributeSubmit}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Chọn nhân viên"
+                name="user_id"
+                rules={[{ required: true, message: 'Vui lòng chọn nhân viên' }]}
+              >
+                <Select
+                  placeholder="Chọn nhân viên"
+                  showSearch
+                  optionFilterProp="children"
+                  onChange={handleUserSelect}
+                  loading={loading.users}
+                >
+                  {users.map(user => (
+                    <Select.Option key={user.id} value={user.id}>
+                      <Space>
+                        <Avatar size="small" icon={<UserOutlined />} />
+                        <div>
+                          <div>{user.full_name}</div>
+                          <div style={{ fontSize: '12px', color: '#666' }}>
+                            {user.department_id?.department_name || 'Không xác định'}
+                          </div>
+                        </div>
+                      </Space>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Chọn thiết bị PPE"
+                name="item_id"
+                rules={[{ required: true, message: 'Vui lòng chọn thiết bị PPE' }]}
+              >
+                <Select
+                  placeholder="Chọn thiết bị PPE"
+                  showSearch
+                  optionFilterProp="children"
+                  onChange={handleItemSelect}
+                  loading={loading.items}
+                >
+                  {ppeItems.map(item => (
+                    <Select.Option key={item.id} value={item.id}>
+                      <Space>
+                        <SafetyOutlined />
+                        <div>
+                          <div>{item.item_name}</div>
+                          <div style={{ fontSize: '12px', color: '#666' }}>
+                            Còn lại: {item.quantity_available || 0} | Mã: {item.item_code}
+                          </div>
+                        </div>
+                      </Space>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item
+                label="Số lượng"
+                name="quantity"
+                rules={[
+                  { required: true, message: 'Vui lòng nhập số lượng' },
+                  { type: 'number', min: 1, message: 'Số lượng phải lớn hơn 0' },
+                  { 
+                    validator: (_, value) => {
+                      if (value > availableQuantity) {
+                        return Promise.reject(new Error(`Số lượng không được vượt quá ${availableQuantity}`));
+                      }
+                      return Promise.resolve();
+                    }
+                  }
+                ]}
+              >
+                <InputNumber
+                  min={1}
+                  max={availableQuantity}
+                  style={{ width: '100%' }}
+                  placeholder="Nhập số lượng"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                label="Ngày phát"
+                name="issued_date"
+                rules={[{ required: true, message: 'Vui lòng chọn ngày phát' }]}
+                initialValue={dayjs()}
+              >
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                label="Ngày trả dự kiến"
+                name="expected_return_date"
+                rules={[{ required: true, message: 'Vui lòng chọn ngày trả dự kiến' }]}
+                initialValue={dayjs().add(30, 'day')}
+              >
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {selectedDistributeUser && selectedDistributeItem && (
+            <Card size="small" style={{ marginBottom: '16px' }}>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Space>
+                    <Avatar icon={<UserOutlined />} />
+                    <div>
+                      <div style={{ fontWeight: 'bold' }}>{selectedDistributeUser.full_name}</div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        {selectedDistributeUser.department_id?.department_name || 'Không xác định'}
+                      </div>
+                    </div>
+                  </Space>
+                </Col>
+                <Col span={12}>
+                  <Space>
+                    <SafetyOutlined />
+                    <div>
+                      <div style={{ fontWeight: 'bold' }}>{selectedDistributeItem.item_name}</div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        Còn lại: <Text strong style={{ color: '#52c41a' }}>{availableQuantity}</Text>
+                      </div>
+                    </div>
+                  </Space>
+                </Col>
+              </Row>
+            </Card>
+          )}
+
+          <Form.Item>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => setShowDistributeModal(false)}>
+                Hủy
+              </Button>
+              <Button 
+                type="primary" 
+                htmlType="submit"
+                loading={loading.distributing}
+                icon={<SendOutlined />}
+              >
+                Phát PPE
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Issuance Detail Modal */}
+      <Modal
+        title={
+          <Space>
+            <EyeOutlined />
+            <span>Chi tiết PPE đã phát</span>
+          </Space>
+        }
+        open={showIssuanceDetailModal}
+        onCancel={() => setShowIssuanceDetailModal(false)}
+        footer={null}
+        width={700}
+      >
+        {selectedIssuance && (
+          <div>
+            <Descriptions column={2} bordered>
+              <Descriptions.Item label="Nhân viên" span={2}>
+                <Space>
+                  <Avatar icon={<UserOutlined />} />
+                  <div>
+                    <div style={{ fontWeight: 'bold' }}>
+                      {typeof selectedIssuance.user_id === 'object' 
+                        ? selectedIssuance.user_id.full_name 
+                        : users.find(u => u.id === selectedIssuance.user_id)?.full_name || 'Không xác định'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      {typeof selectedIssuance.user_id === 'object' 
+                        ? selectedIssuance.user_id.department_id?.department_name 
+                        : users.find(u => u.id === selectedIssuance.user_id)?.department_id?.department_name || 'Không xác định'}
+                    </div>
+                  </div>
+                </Space>
+              </Descriptions.Item>
+              
+              <Descriptions.Item label="Thiết bị PPE" span={2}>
+                <Space>
+                  <SafetyOutlined />
+                  <div>
+                    <div style={{ fontWeight: 'bold' }}>
+                      {typeof selectedIssuance.item_id === 'object' 
+                        ? selectedIssuance.item_id.item_name 
+                        : ppeItems.find(i => i.id === selectedIssuance.item_id)?.item_name || 'Không xác định'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      Mã: {typeof selectedIssuance.item_id === 'object' 
+                        ? selectedIssuance.item_id.item_code 
+                        : ppeItems.find(i => i.id === selectedIssuance.item_id)?.item_code || 'Không có mã'}
+                    </div>
+                  </div>
+                </Space>
+              </Descriptions.Item>
+
+              <Descriptions.Item label="Số lượng">
+                <Badge count={selectedIssuance.quantity} style={{ backgroundColor: '#52c41a' }} />
+              </Descriptions.Item>
+              
+              <Descriptions.Item label="Trạng thái">
+                <Tag color={
+                  selectedIssuance.status === 'issued' ? 'blue' :
+                  selectedIssuance.status === 'returned' ? 'green' :
+                  selectedIssuance.status === 'overdue' ? 'red' :
+                  selectedIssuance.status === 'damaged' ? 'orange' : 'purple'
+                }>
+                  {selectedIssuance.status === 'issued' ? 'Đã phát' :
+                   selectedIssuance.status === 'returned' ? 'Đã trả' :
+                   selectedIssuance.status === 'overdue' ? 'Quá hạn' :
+                   selectedIssuance.status === 'damaged' ? 'Hư hỏng' : 'Cần thay thế'}
+                </Tag>
+              </Descriptions.Item>
+
+              <Descriptions.Item label="Ngày phát">
+                {new Date(selectedIssuance.issued_date).toLocaleDateString('vi-VN')}
+              </Descriptions.Item>
+              
+              <Descriptions.Item label="Ngày trả dự kiến">
+                {new Date(selectedIssuance.expected_return_date).toLocaleDateString('vi-VN')}
+              </Descriptions.Item>
+
+              {selectedIssuance.actual_return_date && (
+                <Descriptions.Item label="Ngày trả thực tế">
+                  {new Date(selectedIssuance.actual_return_date).toLocaleDateString('vi-VN')}
+                </Descriptions.Item>
+              )}
+
+              {selectedIssuance.return_condition && (
+                <Descriptions.Item label="Tình trạng trả">
+                  <Tag color={
+                    selectedIssuance.return_condition === 'good' ? 'green' :
+                    selectedIssuance.return_condition === 'damaged' ? 'orange' : 'red'
+                  }>
+                    {selectedIssuance.return_condition === 'good' ? 'Tốt' :
+                     selectedIssuance.return_condition === 'damaged' ? 'Hư hỏng' : 'Mòn'}
+                  </Tag>
+                </Descriptions.Item>
+              )}
+
+              {selectedIssuance.return_notes && (
+                <Descriptions.Item label="Ghi chú trả" span={2}>
+                  {selectedIssuance.return_notes}
+                </Descriptions.Item>
+              )}
+
+              {selectedIssuance.report_description && (
+                <Descriptions.Item label="Báo cáo sự cố" span={2}>
+                  <div>
+                    <div><strong>Loại:</strong> {selectedIssuance.report_type}</div>
+                    <div><strong>Mô tả:</strong> {selectedIssuance.report_description}</div>
+                    {selectedIssuance.report_severity && (
+                      <div><strong>Mức độ:</strong> {selectedIssuance.report_severity}</div>
+                    )}
+                  </div>
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+
+            <div style={{ marginTop: '16px', textAlign: 'right' }}>
+              <Space>
+                <Button onClick={() => setShowIssuanceDetailModal(false)}>
+                  Đóng
+                </Button>
+                {selectedIssuance.status === 'issued' && (
+                  <Button 
+                    type="primary"
+                    icon={<UndoOutlined />}
+                    onClick={() => {
+                      handleReturnIssuance(selectedIssuance.id);
+                      setShowIssuanceDetailModal(false);
+                    }}
+                  >
+                    Cập nhật trả
+                  </Button>
+                )}
+              </Space>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

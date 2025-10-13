@@ -265,7 +265,7 @@ const TrainingManagement: React.FC = () => {
       }
 
       // Debug: Log current state before validation
-      console.log('=== FINAL VALIDATION DEBUG ===');
+      // Final validation completed
       console.log('Current sessionForm.course_id:', sessionForm.course_id);
       console.log('All courses available:', allCourses);
       console.log('All courses length:', allCourses?.length);

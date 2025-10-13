@@ -243,7 +243,7 @@ const TrainingSession: React.FC = () => {
     const currentTrainingData = trainingData || trainingDataRef.current;
     
     // Debug: Check if trainingData and session._id exist
-    console.log('=== SUBMIT DEBUG ===');
+    // Submit debug completed
     console.log('TrainingData (state):', trainingData);
     console.log('TrainingData (ref):', trainingDataRef.current);
     console.log('Current TrainingData:', currentTrainingData);

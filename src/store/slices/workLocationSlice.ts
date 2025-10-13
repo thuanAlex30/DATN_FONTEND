@@ -37,7 +37,7 @@ export const fetchAreaLocations = createAsyncThunk(
   'workLocation/fetchAreaLocations',
   async (areaId: string) => {
     const response = await workLocationService.getAreaLocations(areaId);
-    return response.data;
+    return response;
   }
 );
 
@@ -45,7 +45,7 @@ export const fetchLocationById = createAsyncThunk(
   'workLocation/fetchLocationById',
   async (id: string) => {
     const response = await workLocationService.getLocationById(id);
-    return response.data;
+    return response;
   }
 );
 
@@ -53,7 +53,7 @@ export const createLocation = createAsyncThunk(
   'workLocation/createLocation',
   async (data: CreateLocationData) => {
     const response = await workLocationService.createLocation(data);
-    return response.data;
+    return response;
   }
 );
 
@@ -61,7 +61,7 @@ export const updateLocation = createAsyncThunk(
   'workLocation/updateLocation',
   async ({ id, data }: { id: string; data: UpdateLocationData }) => {
     const response = await workLocationService.updateLocation(id, data);
-    return response.data;
+    return response;
   }
 );
 
@@ -77,7 +77,7 @@ export const fetchLocationAssignments = createAsyncThunk(
   'workLocation/fetchLocationAssignments',
   async (locationId: string) => {
     const response = await workLocationService.getLocationAssignments(locationId);
-    return response.data;
+    return response;
   }
 );
 
@@ -85,7 +85,7 @@ export const addLocationAssignment = createAsyncThunk(
   'workLocation/addLocationAssignment',
   async ({ locationId, data }: { locationId: string; data: CreateLocationAssignmentData }) => {
     const response = await workLocationService.addLocationAssignment(locationId, data);
-    return response.data;
+    return response;
   }
 );
 
@@ -93,7 +93,7 @@ export const updateLocationAssignment = createAsyncThunk(
   'workLocation/updateLocationAssignment',
   async ({ assignmentId, data }: { assignmentId: string; data: UpdateLocationAssignmentData }) => {
     const response = await workLocationService.updateLocationAssignment(assignmentId, data);
-    return response.data;
+    return response;
   }
 );
 
@@ -107,9 +107,9 @@ export const removeLocationAssignment = createAsyncThunk(
 
 export const fetchLocationAvailability = createAsyncThunk(
   'workLocation/fetchLocationAvailability',
-  async ({ locationId, filters }: { locationId: string; filters?: { start_date?: string; end_date?: string } }) => {
-    const response = await workLocationService.getLocationAvailability(locationId, filters);
-    return response.data;
+  async (locationId: string) => {
+    const response = await workLocationService.getLocationAvailability(locationId);
+    return response;
   }
 );
 
@@ -117,7 +117,7 @@ export const fetchLocationStats = createAsyncThunk(
   'workLocation/fetchLocationStats',
   async (locationId: string) => {
     const response = await workLocationService.getLocationStats(locationId);
-    return response.data;
+    return response;
   }
 );
 

@@ -73,7 +73,7 @@ const WorkLocationManagement: React.FC<WorkLocationManagementProps> = ({ project
   const handleCreateLocation = async (values: CreateWorkLocationData) => {
     setLoading(true);
     try {
-      await workLocationService.createWorkLocation({ ...values, project_id: projectId });
+      await workLocationService.createLocation({ ...values, project_id: projectId });
       message.success('Vị trí làm việc đã được tạo thành công');
       await loadData();
       setShowCreateLocation(false);
@@ -91,7 +91,7 @@ const WorkLocationManagement: React.FC<WorkLocationManagementProps> = ({ project
     
     setLoading(true);
     try {
-      await workLocationService.updateWorkLocation(editingLocation._id, values);
+      await workLocationService.updateLocation(editingLocation._id, values);
       message.success('Vị trí làm việc đã được cập nhật thành công');
       await loadData();
       setShowCreateLocation(false);
@@ -114,7 +114,7 @@ const WorkLocationManagement: React.FC<WorkLocationManagementProps> = ({ project
       cancelText: 'Hủy',
       onOk: async () => {
         try {
-          await workLocationService.deleteWorkLocation(id);
+          await workLocationService.deleteLocation(id);
           message.success('Vị trí làm việc đã được xóa thành công');
           await loadData();
         } catch (err) {

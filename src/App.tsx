@@ -1,28 +1,39 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter } from 'react-router-dom'
-import { Provider } from 'react-redux'
-import { PersistGate } from 'redux-persist/integration/react'
 import { Layout, Spin, Typography } from 'antd'
-import { store, persistor } from './store'
 import type { RootState } from './store'
+import { useDispatch } from 'react-redux'
+import type { AppDispatch } from './store'
+import { initializeAuth } from './store/slices/authSlice'
 import AppRoutes from './routes'
 import ErrorBoundary from './components/ErrorBoundary'
-import RealtimeNotifications from './components/RealtimeNotifications'
+import WebSocketStatus from './components/WebSocketStatus'
 import { useSelector } from 'react-redux'
 
 function AppContent() {
   const [loading, setLoading] = useState<boolean>(true);
-  const authToken = useSelector((state: RootState) => state.auth.accessToken);
+  const dispatch = useDispatch<AppDispatch>();
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
-    // Check if user is authenticated
-    const checkAuth = () => {
-      // Authentication logic can be added here if needed
-      setLoading(false);
+    // Initialize authentication state from localStorage
+    const initializeApp = async () => {
+      try {
+        // Dispatch initializeAuth action to restore state from localStorage
+        dispatch(initializeAuth());
+        
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          setLoading(false);
+        }, 100);
+      } catch (error) {
+        console.error('Error initializing app:', error);
+        setLoading(false);
+      }
     };
 
-    checkAuth();
-  }, []);
+    initializeApp();
+  }, [dispatch]);
 
   if (loading) {
     return (
@@ -50,31 +61,30 @@ function AppContent() {
             <AppRoutes />
           </Layout.Content>
         </Layout>
-        {/* WebSocket Realtime Notifications */}
-        {authToken && (
+        
+        {/* WebSocket Status */}
+        {isAuthenticated && (
           <div style={{ 
             position: 'fixed', 
             top: 20, 
-            right: 20, 
-            zIndex: 9999, 
-            maxWidth: 400 
+            left: 20, 
+            zIndex: 9999,
+            background: 'rgba(255, 255, 255, 0.9)',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
           }}>
-            <RealtimeNotifications authToken={authToken} />
+            <WebSocketStatus />
           </div>
         )}
+        
       </BrowserRouter>
     </ErrorBoundary>
   );
 }
 
 function App() {
-  return (
-    <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <AppContent />
-      </PersistGate>
-    </Provider>
-  )
+  return <AppContent />
 }
 
 export default App

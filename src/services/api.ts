@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { apiCache } from '../utils/apiCache';
+import { ENV } from '../config/env';
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -11,8 +12,8 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Tạo instance axios
 const api: AxiosInstance = axios.create({
-  baseURL: 'http://localhost:3000/api',
-  timeout: 60000, // Increased to 60 seconds
+  baseURL: ENV.API_BASE_URL,
+  timeout: ENV.API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -22,7 +23,7 @@ const api: AxiosInstance = axios.create({
 // Request interceptor - Thêm token vào header và check cache
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem(ENV.JWT_STORAGE_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -89,35 +90,11 @@ api.interceptors.response.use(
       }
     }
     
-    // Handle 401 (Unauthorized) with token refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (refreshToken) {
-          const response = await axios.post(
-            'http://localhost:3000/api/auth/refresh-token',
-            { refreshToken },
-            { withCredentials: true }
-          );
-          
-          const { data } = response.data;
-          const { data: innerData } = data;
-          const { accessToken } = innerData.tokens;
-          localStorage.setItem('accessToken', accessToken);
-          
-          // Retry request với token mới
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
-        }
-      } catch (refreshError) {
-        // Refresh token hết hạn, đăng xuất user
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-      }
+    // Handle 401 (Unauthorized) - let main axios interceptor handle this
+    // This prevents duplicate handling and conflicts
+    if (error.response?.status === 401) {
+      console.log('401 error detected - main interceptor will handle');
+      return Promise.reject(error);
     }
     
     // Handle timeout errors specifically

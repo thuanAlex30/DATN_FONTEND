@@ -4,7 +4,7 @@ export interface WorkLocation {
   location_code: string;
   location_name: string;
   location_type: 'WORKSTATION' | 'EQUIPMENT_AREA' | 'MEETING_POINT' | 'STORAGE' | 'SAFETY_ZONE' | 'ACCESS_POINT';
-  coordinates_within_area?: string;
+  coordinates_within_area?: { x: number; y: number; z: number };
   access_requirements: string[];
   capacity?: number;
   safety_equipment_required: string[];
@@ -33,7 +33,7 @@ export interface CreateLocationData {
   location_code: string;
   location_name: string;
   location_type: 'WORKSTATION' | 'EQUIPMENT_AREA' | 'MEETING_POINT' | 'STORAGE' | 'SAFETY_ZONE' | 'ACCESS_POINT';
-  coordinates_within_area?: string;
+  coordinates_within_area?: { x: number; y: number; z: number };
   access_requirements: string[];
   capacity?: number;
   safety_equipment_required: string[];
@@ -44,7 +44,7 @@ export interface UpdateLocationData {
   location_code?: string;
   location_name?: string;
   location_type?: 'WORKSTATION' | 'EQUIPMENT_AREA' | 'MEETING_POINT' | 'STORAGE' | 'SAFETY_ZONE' | 'ACCESS_POINT';
-  coordinates_within_area?: string;
+  coordinates_within_area?: { x: number; y: number; z: number };
   access_requirements?: string[];
   capacity?: number;
   safety_equipment_required?: string[];

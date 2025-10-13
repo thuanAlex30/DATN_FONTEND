@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { ENV } from '../config/env';
 
 interface EventData {
   [key: string]: any;
@@ -26,10 +27,13 @@ class WebSocketClient {
    * @param serverUrl - WebSocket server URL
    * @param authToken - JWT authentication token
    */
-  connect(serverUrl: string = 'http://localhost:3000', authToken: string): void {
-    if (this.socket && this.isConnected) {
-      console.log('WebSocket already connected');
-      return;
+  connect(serverUrl: string = ENV.WS_BASE_URL, authToken: string): void {
+    // Disconnect existing connection first
+    if (this.socket) {
+      console.log('🔌 Disconnecting existing WebSocket connection...');
+      this.socket.disconnect();
+      this.socket = null;
+      this.isConnected = false;
     }
 
     console.log(`🔌 Connecting to WebSocket server: ${serverUrl}`);
@@ -234,6 +238,7 @@ class WebSocketClient {
    */
   disconnect(): void {
     if (this.socket) {
+      console.log('🔌 Disconnecting WebSocket...');
       this.socket.disconnect();
       this.socket = null;
       this.isConnected = false;

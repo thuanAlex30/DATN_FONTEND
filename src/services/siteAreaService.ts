@@ -141,6 +141,12 @@ class SiteAreaService {
     const response = await api.get(`/site-areas/site/${siteId}/stats`);
     return response.data.data;
   }
+
+  // Get areas by project
+  async getAreasByProject(projectId: string): Promise<SiteArea[]> {
+    const response = await api.get(`/site-areas/projects/${projectId}/areas`);
+    return response.data.data;
+  }
 }
 
 export default new SiteAreaService();

@@ -79,8 +79,7 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
     
     try {
       await dispatch(updateAreaForProject({ 
-        projectId, 
-        areaId: editingArea._id, 
+        id: editingArea._id, 
         data: values 
       })).unwrap();
       message.success('Khu vực đã được cập nhật thành công');
@@ -102,7 +101,7 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
       cancelText: 'Hủy',
       onOk: async () => {
         try {
-          await dispatch(deleteAreaForProject({ projectId, areaId })).unwrap();
+          await dispatch(deleteAreaForProject(areaId)).unwrap();
           message.success('Khu vực đã được xóa thành công');
         } catch (err) {
           message.error('Không thể xóa khu vực');
@@ -118,7 +117,7 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
       area_name: area.area_name,
       description: area.description,
       area_type: area.area_type,
-      status: area.status
+      is_active: area.is_active
     });
     setShowCreateArea(true);
   };
@@ -270,7 +269,7 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
                         <Button 
                           type="text" 
                           icon={<EditOutlined />}
-                          onClick={() => handleEditArea(area)}
+                          onClick={() => handleEditArea(area as any)}
                         />
                       </Tooltip>,
                       <Tooltip key="delete" title="Xóa">
@@ -287,8 +286,8 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
                         <Tag color={getAreaTypeColor(area.area_type)}>
                           {getAreaTypeLabel(area.area_type)}
                         </Tag>
-                        <Tag color={getStatusColor(area.status)}>
-                          {getStatusLabel(area.status)}
+                        <Tag color={getStatusColor(area.is_active ? 'ACTIVE' : 'INACTIVE')}>
+                          {getStatusLabel(area.is_active ? 'ACTIVE' : 'INACTIVE')}
                         </Tag>
                       </Space>
                     }
@@ -330,8 +329,8 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
                             </Space>
                             
                             <Space>
-                              <Tag color={getStatusColor(area.status)} style={{ fontSize: '12px' }}>
-                                {getStatusLabel(area.status)}
+                              <Tag color={getStatusColor(area.is_active ? 'ACTIVE' : 'INACTIVE')} style={{ fontSize: '12px' }}>
+                                {getStatusLabel(area.is_active ? 'ACTIVE' : 'INACTIVE')}
                               </Tag>
                             </Space>
                           </Space>
@@ -381,14 +380,13 @@ const SiteManagement: React.FC<SiteManagementProps> = ({ projectId, onComplete }
           </Form.Item>
 
           <Form.Item
-            name="status"
+            name="is_active"
             label="Trạng thái"
             rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
           >
             <Select placeholder="Chọn trạng thái">
-              <Option value="ACTIVE">Hoạt động</Option>
-              <Option value="INACTIVE">Không hoạt động</Option>
-              <Option value="MAINTENANCE">Bảo trì</Option>
+              <Option value={true}>Hoạt động</Option>
+              <Option value={false}>Không hoạt động</Option>
             </Select>
           </Form.Item>
 

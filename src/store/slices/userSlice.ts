@@ -94,7 +94,7 @@ const userSlice = createSlice({
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loading = false;
-        state.users = action.payload;
+        state.users = action.payload.data?.users || action.payload.data || [];
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
@@ -102,18 +102,18 @@ const userSlice = createSlice({
       })
       // fetch user by id
       .addCase(fetchUserById.fulfilled, (state, action) => {
-        state.selectedUser = action.payload;
+        state.selectedUser = action.payload as any;
       })
       // create user
       .addCase(createUser.fulfilled, (state, action) => {
-        state.users.push(action.payload);
+        state.users.push(action.payload as any);
       })
       // update user
       .addCase(updateUser.fulfilled, (state, action) => {
         const idx = state.users.findIndex((u) => u.id === action.payload.id);
-        if (idx !== -1) state.users[idx] = action.payload;
+        if (idx !== -1) state.users[idx] = action.payload as any;
         if (state.selectedUser?.id === action.payload.id) {
-          state.selectedUser = action.payload;
+          state.selectedUser = action.payload as any;
         }
       })
       // delete user

@@ -138,7 +138,7 @@ const InventoryUpdateModal: React.FC<InventoryUpdateModalProps> = ({
     const remaining = item.new_quantity - item.allocated_quantity;
     if (remaining <= 0) {
       return <Tag color="red">Hết hàng</Tag>;
-    } else if (remaining <= item.reorder_level) {
+    } else if (remaining <= (item.reorder_level || 0)) {
       return <Tag color="orange">Cần bổ sung</Tag>;
     } else {
       return <Tag color="green">Còn hàng</Tag>;

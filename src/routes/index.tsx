@@ -46,7 +46,7 @@ const AppRoutes = () => {
             <Route 
                 path="/home" 
                 element={
-                    <AuthGuard requiredRole="">
+                    <AuthGuard>
                         <HomePage />
                     </AuthGuard>
                 } 
