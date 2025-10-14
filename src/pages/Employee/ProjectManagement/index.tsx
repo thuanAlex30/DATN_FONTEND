@@ -390,7 +390,7 @@ const EmployeeProjectManagement: React.FC = () => {
       }
     >
       <Spin spinning={loading}>
-        <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key as 'risks' | 'milestones')}>
           <TabPane 
             tab={
               <span>
