@@ -21,6 +21,7 @@ import InvestigateIncident from '../pages/Admin/IncidentManagement/InvestigateIn
 import UpdateProgress from '../pages/Admin/IncidentManagement/UpdateProgress';
 import CloseIncident from '../pages/Admin/IncidentManagement/CloseIncident';
 import ProgressHistory from '../pages/Admin/IncidentManagement/ProgressHistory';
+import UpdateEmployeeIncident from '../pages/Admin/IncidentManagement/UpdateEmployeeIncident';
 import ReportIncident from '../pages/Employee/ReportIncident';
 import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
@@ -270,6 +271,16 @@ const AppRoutes = () => {
                     <AuthGuard requiredRole="admin">
                         <AdminLayout>
                             <CloseIncident />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/incidents/:id/update-employee" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <UpdateEmployeeIncident />
                         </AdminLayout>
                     </AuthGuard>
                 } 

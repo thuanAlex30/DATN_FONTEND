@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -21,10 +21,17 @@ import {
   ExclamationCircleOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
+import userService from '../../../services/userService';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
+
+interface User {
+  id: string;
+  full_name: string;
+  username?: string;
+}
 
 const ReportIncident: React.FC = () => {
   const navigate = useNavigate();
@@ -34,6 +41,28 @@ const ReportIncident: React.FC = () => {
   const [severity, setSeverity] = useState<'nhẹ' | 'nặng' | 'rất nghiêm trọng'>('nhẹ');
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Thêm các state mới cho Update Employee Incident
+  const [affectedEmployeeId, setAffectedEmployeeId] = useState<string>('');
+  const [employeeStatus, setEmployeeStatus] = useState<string>('Không bị thương');
+  const [incidentType, setIncidentType] = useState<string>('Tai nạn lao động');
+  const [witnesses, setWitnesses] = useState<string>('');
+  const [medicalReport, setMedicalReport] = useState<string>('');
+  const [users, setUsers] = useState<User[]>([]);
+
+  // Load users khi component mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const usersData = await userService.getAllUsers();
+        setUsers(usersData);
+      } catch (err) {
+        console.error('Failed to load users:', err);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   const handleFilesSelected = async (files: FileList | null) => {
     if (!files) return;
@@ -61,13 +90,30 @@ const ReportIncident: React.FC = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      await incidentService.reportIncident({ title, description, location, severity, images });
+      await incidentService.reportIncident({ 
+        title, 
+        description, 
+        location, 
+        severity, 
+        images,
+        affectedEmployeeId,
+        employeeStatus,
+        incidentType,
+        witnesses: witnesses ? witnesses.split(',').map(w => w.trim()) : [],
+        medicalReport
+      });
       message.success('Ghi nhận sự cố thành công!');
+      // Reset form
       setTitle('');
       setDescription('');
       setLocation('');
       setSeverity('nhẹ');
       setImages([]);
+      setAffectedEmployeeId('');
+      setEmployeeStatus('Không bị thương');
+      setIncidentType('Tai nạn lao động');
+      setWitnesses('');
+      setMedicalReport('');
     } catch (err: any) {
       message.error(err?.response?.data?.message || 'Không thể ghi nhận sự cố');
     } finally {
@@ -141,6 +187,81 @@ const ReportIncident: React.FC = () => {
                 <Option value="nặng">Nặng</Option>
                 <Option value="rất nghiêm trọng">Rất nghiêm trọng</Option>
               </Select>
+            </Form.Item>
+
+            {/* Thêm các trường mới cho Update Employee Incident */}
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={12}>
+                <Form.Item label="ID Người gặp sự cố" required>
+                  <Select
+                    value={affectedEmployeeId}
+                    onChange={(value) => setAffectedEmployeeId(value)}
+                    placeholder="Chọn nhân viên gặp sự cố"
+                    showSearch
+                    optionFilterProp="children"
+                    filterOption={(input, option) =>
+                      (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
+                    }
+                  >
+                    {users.map(user => (
+                      <Option key={user.id} value={user.id}>
+                        {user.full_name} {user.username && `(${user.username})`}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item label="Tình trạng nhân viên" required>
+                  <Select
+                    value={employeeStatus}
+                    onChange={(value) => setEmployeeStatus(value)}
+                    style={{ width: '100%' }}
+                  >
+                    <Option value="Không bị thương">Không bị thương</Option>
+                    <Option value="Bị thương nhẹ">Bị thương nhẹ</Option>
+                    <Option value="Bị thương nặng">Bị thương nặng</Option>
+                    <Option value="Cần cấp cứu">Cần cấp cứu</Option>
+                    <Option value="Tử vong">Tử vong</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={12}>
+                <Form.Item label="Loại sự cố">
+                  <Select
+                    value={incidentType}
+                    onChange={(value) => setIncidentType(value)}
+                    style={{ width: '100%' }}
+                  >
+                    <Option value="Tai nạn lao động">Tai nạn lao động</Option>
+                    <Option value="Sự cố thiết bị">Sự cố thiết bị</Option>
+                    <Option value="Sự cố môi trường">Sự cố môi trường</Option>
+                    <Option value="Sự cố an toàn">Sự cố an toàn</Option>
+                    <Option value="Khác">Khác</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item label="Người chứng kiến">
+                  <Input
+                    value={witnesses}
+                    onChange={(e) => setWitnesses(e.target.value)}
+                    placeholder="VD: Nguyễn Văn A, Trần Thị B"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Form.Item label="Báo cáo y tế">
+              <TextArea
+                value={medicalReport}
+                onChange={(e) => setMedicalReport(e.target.value)}
+                rows={3}
+                placeholder="Nhập báo cáo y tế chi tiết (nếu có)..."
+              />
             </Form.Item>
 
             <Form.Item label="Mô tả chi tiết">
@@ -221,6 +342,11 @@ const ReportIncident: React.FC = () => {
                     setLocation('');
                     setSeverity('nhẹ');
                     setImages([]);
+                    setAffectedEmployeeId('');
+                    setEmployeeStatus('Không bị thương');
+                    setIncidentType('Tai nạn lao động');
+                    setWitnesses('');
+                    setMedicalReport('');
                   }}
                   size="large"
                 >

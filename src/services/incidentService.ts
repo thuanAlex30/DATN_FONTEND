@@ -14,6 +14,11 @@ const incidentService = {
     images?: string[];
     location?: string;
     severity?: 'nhẹ' | 'nặng' | 'rất nghiêm trọng';
+    affectedEmployeeId?: string;
+    employeeStatus?: string;
+    incidentType?: string;
+    witnesses?: string[];
+    medicalReport?: string;
   }) => api.post('/incidents/report', data),
 
   // Admin - classify incident
@@ -34,6 +39,16 @@ const incidentService = {
 
   // Admin - close incident
   closeIncident: (id: string) => api.put(`/incidents/close/${id}`),
+
+  // Admin - update employee incident information
+  updateEmployeeIncident: (id: string, data: {
+    affectedEmployeeId: string;
+    employeeStatus: string;
+    medicalReport?: string;
+    witnesses?: string[];
+    incidentType?: string;
+    additionalNotes?: string;
+  }) => api.put(`/incidents/update-employee/${id}`, data),
 };
 
 export default incidentService;
