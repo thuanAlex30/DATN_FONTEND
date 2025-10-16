@@ -121,27 +121,23 @@ class UserService {
   }
 
   // Get potential managers
-  async getPotentialManagers(): Promise<{
-    success: boolean;
-    message: string;
-    data: {
-      managers: User[];
-    };
-  }> {
+  async getPotentialManagers(): Promise<User[]> {
     try {
       const response = await api.get<{
         success: boolean;
         message: string;
-        data: {
-          managers: User[];
-        };
+        data: User[];
       }>(
-        `/users/managers`
+        `/ppe/users`
       );
 
-      return response.data;
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch users');
+      }
     } catch (error: any) {
-      console.error('Error fetching potential managers:', error);
+      console.error('Error fetching users:', error);
       // Let main axios interceptor handle 401 errors
       throw error;
     }

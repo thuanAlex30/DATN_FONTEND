@@ -34,8 +34,8 @@ const AssignIncident: React.FC = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await userService.getUsers();
-        setUsers(response.data);
+        const users = await userService.getAllUsers();
+        setUsers(users);
       } catch (err) {
         console.error('Error fetching users:', err);
       }

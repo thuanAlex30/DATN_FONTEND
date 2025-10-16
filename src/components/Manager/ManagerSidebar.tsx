@@ -18,16 +18,16 @@ import {
   LogoutOutlined,
   ProjectOutlined
 } from '@ant-design/icons';
-import styles from './EmployeeSidebar.module.css';
+import styles from './ManagerSidebar.module.css';
 
 const { Sider } = Layout;
 const { Title } = Typography;
 
-interface EmployeeSidebarProps {
+interface ManagerSidebarProps {
   onLogout?: () => void;
 }
 
-const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
+const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -45,9 +45,14 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
       label: 'Trang chủ',
     },
     {
-      key: '/employee/profile',
+      key: '/manager/profile',
       icon: <UserOutlined />,
       label: 'Thông tin cá nhân',
+    },
+    {
+      key: '/manager/incidents/report',
+      icon: <ExclamationCircleOutlined />,
+      label: 'Báo cáo sự cố',
     },
     {
       key: '/employee/training',
@@ -87,7 +92,7 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
             <SafetyOutlined /> An toàn lao động
           </Title>
           <div style={{ fontSize: '12px', color: '#666' }}>
-            Employee Dashboard
+            Manager Dashboard
           </div>
         </Space>
       </div>
@@ -120,4 +125,4 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
   );
 };
 
-export default EmployeeSidebar;
+export default ManagerSidebar;

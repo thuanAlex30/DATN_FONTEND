@@ -21,7 +21,7 @@ import InvestigateIncident from '../pages/Admin/IncidentManagement/InvestigateIn
 import UpdateProgress from '../pages/Admin/IncidentManagement/UpdateProgress';
 import CloseIncident from '../pages/Admin/IncidentManagement/CloseIncident';
 import ProgressHistory from '../pages/Admin/IncidentManagement/ProgressHistory';
-import ReportIncident from '../pages/Employee/ReportIncident';
+import ReportIncident from '../pages/Manager/ReportIncident';
 import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
 import EmployeePPE from '../pages/Employee/PPE';
@@ -52,11 +52,11 @@ const AppRoutes = () => {
                 } 
             />
 
-            {/* Employee routes */}
+            {/* Manager routes */}
             <Route 
-                path="/employee/incidents/report" 
+                path="/manager/incidents/report" 
                 element={
-                    <AuthGuard requiredRole="employee">
+                    <AuthGuard requiredRole="manager">
                         <ReportIncident />
                     </AuthGuard>
                 } 

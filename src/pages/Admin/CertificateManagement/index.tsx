@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import './index.css';
 // import * as certificateService from '../../../services/certificateService';
 
 // Types

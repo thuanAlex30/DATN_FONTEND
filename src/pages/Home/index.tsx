@@ -91,8 +91,8 @@ const Home: React.FC = () => {
             <Link to="#" className={styles.homeNavItem}>
               <i className="fas fa-id-card"></i> Thông tin cá nhân
             </Link>
-            {user?.role?.role_name === 'employee' && (
-              <Link to="/employee/incidents/report" className={styles.homeNavItem}>
+            {user?.role?.role_name === 'manager' && (
+              <Link to="/manager/incidents/report" className={styles.homeNavItem}>
                 <i className="fas fa-exclamation-circle"></i> Báo cáo sự cố
               </Link>
             )}

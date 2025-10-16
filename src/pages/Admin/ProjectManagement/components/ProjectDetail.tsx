@@ -32,6 +32,7 @@ import ProjectResources from './ProjectResources';
 import ProjectWorkLocations from './ProjectWorkLocations';
 import ProjectRisks from './ProjectRisks';
 import ProgressTrackingDashboard from './ProgressTrackingDashboard';
+import ProjectIncidents from './ProjectIncidents';
 import EditProjectModal from './EditProjectModal';
 
 interface ProjectDetailProps {
@@ -561,6 +562,23 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                   } catch (error) {
                     console.error('Error rendering ProjectResources:', error);
                     return <div>Lỗi tải tab Tài nguyên</div>;
+                  }
+                })()
+              },
+              {
+                key: 'incidents',
+                label: (
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
+                    <ExclamationCircleOutlined />
+                    <span>Sự cố</span>
+                  </span>
+                ),
+                children: (() => {
+                  try {
+                    return <ProjectIncidents projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ProjectIncidents:', error);
+                    return <div>Lỗi tải tab Sự cố</div>;
                   }
                 })()
               }
