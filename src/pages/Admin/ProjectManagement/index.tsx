@@ -35,6 +35,11 @@ import ProjectDetail from './components/ProjectDetail';
 import ProjectFormModal from './components/ProjectFormModal';
 import ProjectFiltersPanel from './components/ProjectFiltersPanel';
 import ProjectCreationWizard from './components/ProjectCreationWizard';
+import TaskManagement from './components/TaskManagement';
+import ResourceManagement from './components/ResourceManagement';
+import ProjectCommunication from './components/ProjectCommunication';
+import ChangeRequestManagement from './components/ChangeRequestManagement';
+import StatusReportManagement from './components/StatusReportManagement';
 import type { RootState } from '../../../store';
 import type { Project, ProjectFilters } from '../../../types/project';
 

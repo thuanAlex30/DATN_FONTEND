@@ -63,6 +63,11 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
     }
   };
 
+  const handleEditResource = (resource: any) => {
+    // TODO: Implement edit resource functionality
+    console.log('Edit resource:', resource);
+  };
+
   const handleCreateSuccess = () => {
     // Refresh the resources list
     dispatch(fetchProjectResources(projectId));
@@ -280,7 +285,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               type="text"
               icon={<EditOutlined />}
               size="small"
-              disabled
+              onClick={() => handleEditResource(resource)}
               className="text-blue-500 hover:text-blue-600"
             />
           </Tooltip>

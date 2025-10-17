@@ -70,10 +70,14 @@ export const projectMilestoneService = {
     }
   },
 
-  // Get milestones assigned to a specific user (manager)
-  getAssignedMilestones: async (userId: string): Promise<{ data: ProjectMilestone[]; success: boolean; message?: string }> => {
+  // Get milestones assigned to a specific user (manager) - Updated to use projectId parameter
+  getAssignedMilestones: async (userId: string, projectId?: string): Promise<{ data: ProjectMilestone[]; success: boolean; message?: string }> => {
     try {
-      const response = await api.get<ProjectMilestonesResponse>(`${API_BASE}/milestones/assigned/${userId}`);
+      let endpoint = `${API_BASE}/milestones/assigned/${userId}`;
+      if (projectId) {
+        endpoint = `${API_BASE}/project/${projectId}/milestones/assigned/${userId}`;
+      }
+      const response = await api.get<ProjectMilestonesResponse>(endpoint);
       return { 
         data: response.data.data || [], 
         success: true 
@@ -172,6 +176,61 @@ export const projectMilestoneService = {
       return { 
         success: false, 
         message: 'Failed to delete milestone' 
+      };
+    }
+  },
+
+  // Get all milestones (for admin/manager overview)
+  getAllMilestones: async (): Promise<{ data: ProjectMilestone[]; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get(`${API_BASE}/milestones`);
+      return { 
+        data: response.data.data || [], 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching all milestones:', error);
+      return { 
+        data: [], 
+        success: false, 
+        message: 'Failed to fetch all milestones' 
+      };
+    }
+  },
+
+
+  // Assign milestone responsible
+  assignMilestoneResponsible: async (milestoneId: string, responsibleId: string): Promise<{ data: ProjectMilestone | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.put(`${API_BASE}/milestones/${milestoneId}/responsible`, { responsible_id: responsibleId });
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error assigning milestone responsible:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to assign milestone responsible' 
+      };
+    }
+  },
+
+  // Remove milestone responsible
+  removeMilestoneResponsible: async (milestoneId: string): Promise<{ data: ProjectMilestone | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.put(`${API_BASE}/milestones/${milestoneId}/responsible`, { responsible_id: null });
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error removing milestone responsible:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to remove milestone responsible' 
       };
     }
   }

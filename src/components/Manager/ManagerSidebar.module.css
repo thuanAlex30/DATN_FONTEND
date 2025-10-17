@@ -1,0 +1,69 @@
+.sider {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  border-bottom: 1px solid #f0f0f0;
+  background-color: #1890ff;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.logoIcon {
+  font-size: 24px;
+  margin-right: 8px;
+}
+
+.logoText {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.menu {
+  border-right: none;
+  height: calc(100vh - 128px);
+  overflow-y: auto;
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-top: 1px solid #f0f0f0;
+}
+
+.footerMenu {
+  border-right: none;
+}
+
+.footerMenu .ant-menu-item {
+  color: #ff4d4f;
+}
+
+.footerMenu .ant-menu-item:hover {
+  background-color: #fff2f0;
+  color: #ff4d4f;
+}
+
+@media (max-width: 768px) {
+  .sider {
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+  }
+  
+  .sider.mobileOpen {
+    transform: translateX(0);
+  }
+}

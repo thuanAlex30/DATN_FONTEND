@@ -80,9 +80,10 @@ const ProjectStatusReports: React.FC<ProjectStatusReportsProps> = ({ projectId }
         <h2>Báo cáo Tình trạng Dự án</h2>
         <button 
           className="btn btn-primary"
-          onClick={() => {}}
-          disabled
-          title="Sắp ra mắt"
+          onClick={() => {
+            // TODO: Implement create status report functionality
+            console.log('Create status report clicked');
+          }}
         >
           <i className="fas fa-plus"></i>
           Tạo báo cáo
@@ -97,9 +98,10 @@ const ProjectStatusReports: React.FC<ProjectStatusReportsProps> = ({ projectId }
             <p>Dự án này chưa có báo cáo tình trạng nào được tạo.</p>
             <button 
               className="btn btn-primary"
-              onClick={() => {}}
-              disabled
-              title="Sắp ra mắt"
+              onClick={() => {
+                // TODO: Implement create status report functionality
+                console.log('Create first status report clicked');
+              }}
             >
               Tạo báo cáo đầu tiên
             </button>
@@ -119,9 +121,11 @@ const ProjectStatusReports: React.FC<ProjectStatusReportsProps> = ({ projectId }
                 <div className="status-report-actions">
                   <button
                     className="btn btn-sm btn-outline"
-                    onClick={() => {}}
-                    disabled
-                    title="Sắp ra mắt"
+                    onClick={() => {
+                      // TODO: Implement edit status report functionality
+                      console.log('Edit status report clicked', report.id);
+                    }}
+                    title="Chỉnh sửa báo cáo"
                   >
                     <i className="fas fa-edit"></i>
                   </button>

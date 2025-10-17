@@ -90,13 +90,6 @@ const ProjectList: React.FC<ProjectListProps> = ({
     }
   };
 
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return 'N/A';
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
-  };
 
   if (loading) {
     return (
@@ -308,12 +301,6 @@ const ProjectList: React.FC<ProjectListProps> = ({
                   <span>Site: {typeof project.site_id === 'string' ? project.site_id : project.site_id?.site_name || 'N/A'}</span>
                 </div>
                 
-                {project.budget && (
-                  <div className="flex items-center space-x-1 text-xs text-gray-500">
-                    <DollarOutlined />
-                    <span>{formatCurrency(project.budget)}</span>
-                  </div>
-                )}
               </div>
             </Card>
                 </motion.div>
@@ -451,23 +438,6 @@ const ProjectList: React.FC<ProjectListProps> = ({
             }}
             trailColor="#e5e7eb"
           />
-        </motion.div>
-      ),
-    },
-    {
-      title: 'Ngân sách',
-      dataIndex: 'budget',
-      key: 'budget',
-      render: (budget: number) => (
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          transition={{ duration: 0.2 }}
-          className="flex items-center space-x-1"
-        >
-          <DollarOutlined className="text-green-500" />
-          <Typography.Text className="font-medium text-green-600">
-            {formatCurrency(budget)}
-          </Typography.Text>
         </motion.div>
       ),
     },
