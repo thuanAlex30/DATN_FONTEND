@@ -5,15 +5,20 @@ const API_BASE = '/ppe/assignments';
 export interface PPEAssignment {
   _id: string;
   id: string;
-  user_id: string;
-  ppe_item_id: string;
-  assignment_date: string;
+  user_id: string | { _id: string; full_name: string; email: string; employee_id: string };
+  item_id: string | { _id: string; item_name: string; category_id: string };
+  issued_date: string;
+  expected_return_date?: string;
+  actual_return_date?: string;
   return_date?: string;
-  status: 'ASSIGNED' | 'ISSUED' | 'RETURNED' | 'LOST' | 'DAMAGED';
+  status: 'issued' | 'returned' | 'overdue' | 'damaged' | 'replacement_needed' | 'pending_manager_return';
   quantity: number;
-  condition: 'NEW' | 'GOOD' | 'FAIR' | 'POOR';
+  return_condition?: 'good' | 'damaged' | 'worn';
+  condition?: 'NEW' | 'GOOD' | 'FAIR' | 'POOR';
   notes?: string;
-  assigned_by: string;
+  issued_by: string;
+  issuance_level: 'admin_to_manager' | 'manager_to_employee';
+  manager_id?: string;
   created_at: string;
   updated_at: string;
 }

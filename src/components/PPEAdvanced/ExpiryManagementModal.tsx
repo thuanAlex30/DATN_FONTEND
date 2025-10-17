@@ -12,24 +12,19 @@ import {
   Col,
   Card,
   Typography,
-  Divider,
   Alert,
   Spin,
   Tag,
-  Tooltip,
   Select,
   Statistic,
-  Tabs,
-  Progress
+  Tabs
 } from 'antd';
 import {
-  CalendarOutlined,
   WarningOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   ReloadOutlined,
   InfoCircleOutlined,
-  ToolOutlined,
   DeleteOutlined,
   SwapOutlined
 } from '@ant-design/icons';
@@ -37,7 +32,7 @@ import dayjs from 'dayjs';
 import * as ppeService from '../../services/ppeService';
 import type { PPEExpiryTracking, ExpiryReport } from '../../services/ppeService';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 const { TabPane } = Tabs;

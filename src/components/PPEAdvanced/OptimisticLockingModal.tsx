@@ -2,23 +2,18 @@ import React, { useState, useEffect } from 'react';
 import {
   Modal,
   Form,
-  Input,
   Button,
   Table,
-  Space,
   message,
   Row,
   Col,
   Card,
   Typography,
-  Divider,
   Alert,
   Spin,
   Tag,
-  Tooltip,
   Select,
-  InputNumber,
-  Progress
+  InputNumber
 } from 'antd';
 import {
   LockOutlined,

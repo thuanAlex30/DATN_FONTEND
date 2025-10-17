@@ -98,28 +98,33 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ASSIGNED': return 'blue';
-      case 'ISSUED': return 'green';
-      case 'RETURNED': return 'default';
-      case 'LOST': return 'red';
-      case 'DAMAGED': return 'orange';
+      case 'issued': return 'green';
+      case 'returned': return 'blue';
+      case 'overdue': return 'red';
+      case 'damaged': return 'orange';
+      case 'replacement_needed': return 'purple';
+      case 'pending_manager_return': return 'yellow';
       default: return 'default';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'ASSIGNED': return 'Đã phân công';
-      case 'ISSUED': return 'Đã cấp phát';
-      case 'RETURNED': return 'Đã trả';
-      case 'LOST': return 'Bị mất';
-      case 'DAMAGED': return 'Bị hỏng';
+      case 'issued': return 'Đã cấp phát';
+      case 'returned': return 'Đã trả';
+      case 'overdue': return 'Quá hạn';
+      case 'damaged': return 'Bị hỏng';
+      case 'replacement_needed': return 'Cần thay thế';
+      case 'pending_manager_return': return 'Chờ trả';
       default: return status;
     }
   };
 
   const getConditionColor = (condition: string) => {
     switch (condition) {
+      case 'good': return 'green';
+      case 'damaged': return 'red';
+      case 'worn': return 'orange';
       case 'NEW': return 'green';
       case 'GOOD': return 'blue';
       case 'FAIR': return 'orange';
@@ -130,11 +135,14 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
 
   const getConditionText = (condition: string) => {
     switch (condition) {
+      case 'good': return 'Tốt';
+      case 'damaged': return 'Hỏng';
+      case 'worn': return 'Mòn';
       case 'NEW': return 'Mới';
       case 'GOOD': return 'Tốt';
       case 'FAIR': return 'Khá';
       case 'POOR': return 'Kém';
-      default: return condition;
+      default: return condition || '-';
     }
   };
 
@@ -157,17 +165,7 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
         <Button key="close" onClick={onCancel}>
           Đóng
         </Button>,
-        assignment.status === 'ASSIGNED' && (
-          <Button 
-            key="issue" 
-            type="primary" 
-            loading={updating}
-            onClick={handleIssuePPE}
-          >
-            Cấp phát PPE
-          </Button>
-        ),
-        assignment.status === 'ISSUED' && (
+        assignment.status === 'issued' && (
           <Button 
             key="return" 
             type="default"
@@ -180,7 +178,15 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
     >
       <Descriptions bordered column={2}>
         <Descriptions.Item label="Mã phân công" span={2}>
-          {assignment.id}
+          {assignment._id || assignment.id}
+        </Descriptions.Item>
+        
+        <Descriptions.Item label="Nhân viên">
+          {typeof assignment.user_id === 'object' ? assignment.user_id.full_name : 'Không xác định'}
+        </Descriptions.Item>
+        
+        <Descriptions.Item label="Thiết bị">
+          {typeof assignment.item_id === 'object' ? assignment.item_id.item_name : 'Không xác định'}
         </Descriptions.Item>
         
         <Descriptions.Item label="Trạng thái">
@@ -190,8 +196,8 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
         </Descriptions.Item>
         
         <Descriptions.Item label="Tình trạng">
-          <Tag color={getConditionColor(assignment.condition)}>
-            {getConditionText(assignment.condition)}
+          <Tag color={getConditionColor(assignment.return_condition || assignment.condition)}>
+            {getConditionText(assignment.return_condition || assignment.condition)}
           </Tag>
         </Descriptions.Item>
         
@@ -200,12 +206,18 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
         </Descriptions.Item>
         
         <Descriptions.Item label="Ngày phân công">
-          {new Date(assignment.assignment_date).toLocaleDateString('vi-VN')}
+          {assignment.issued_date ? new Date(assignment.issued_date).toLocaleDateString('vi-VN') : 'Chưa cấp phát'}
         </Descriptions.Item>
         
-        {assignment.return_date && (
-          <Descriptions.Item label="Ngày trả">
-            {new Date(assignment.return_date).toLocaleDateString('vi-VN')}
+        {assignment.expected_return_date && (
+          <Descriptions.Item label="Ngày trả dự kiến">
+            {new Date(assignment.expected_return_date).toLocaleDateString('vi-VN')}
+          </Descriptions.Item>
+        )}
+        
+        {assignment.actual_return_date && (
+          <Descriptions.Item label="Ngày trả thực tế">
+            {new Date(assignment.actual_return_date).toLocaleDateString('vi-VN')}
           </Descriptions.Item>
         )}
         
@@ -230,10 +242,9 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
               rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
             >
               <Select placeholder="Chọn tình trạng">
-                <Option value="NEW">Mới</Option>
-                <Option value="GOOD">Tốt</Option>
-                <Option value="FAIR">Khá</Option>
-                <Option value="POOR">Kém</Option>
+                <Option value="good">Tốt</Option>
+                <Option value="damaged">Hỏng</Option>
+                <Option value="worn">Mòn</Option>
               </Select>
             </Form.Item>
 

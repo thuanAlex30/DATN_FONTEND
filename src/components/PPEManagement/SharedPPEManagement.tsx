@@ -17,15 +17,11 @@ import {
   Empty,
   Space,
   Typography,
-  Descriptions,
   Tag,
   Tooltip,
   Table,
   Alert,
-  Divider,
-  Progress,
-  Timeline,
-  InputNumber
+  Progress
 } from 'antd';
 import {
   SafetyOutlined,
@@ -46,16 +42,10 @@ import {
   TeamOutlined,
   SendOutlined,
   UserOutlined,
-  CheckSquareOutlined,
-  BorderOutlined,
   PlusOutlined,
-  FileTextOutlined,
-  BarChartOutlined,
-  AuditOutlined
+  BarChartOutlined
 } from '@ant-design/icons';
 import * as ppeService from '../../services/ppeService';
-import userService, { type User } from '../../services/userService';
-import departmentService from '../../services/departmentService';
 import type { PPEIssuance } from '../../services/ppeService';
 import dayjs from 'dayjs';
 import { usePPEWebSocket } from '../../hooks/usePPEWebSocket';
@@ -80,8 +70,10 @@ interface ManagerPPE {
     quantity_available: number;
   };
   total_received: number;
+  total_issued_to_employees: number;
   total_returned: number;
   remaining: number;
+  remaining_in_hand?: number;
   issuances: PPEIssuance[];
 }
 
@@ -100,9 +92,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
   const [managerPPE, setManagerPPE] = useState<ManagerPPE[]>([]);
   const [employeePPE, setEmployeePPE] = useState<PPEIssuance[]>([]);
   const [ppeHistory, setPpeHistory] = useState<PPEIssuance[]>([]);
-  const [availableEmployees, setAvailableEmployees] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [issueModalVisible, setIssueModalVisible] = useState(false);
   const [returnModalVisible, setReturnModalVisible] = useState(false);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
@@ -111,6 +101,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
   const [ppeStats, setPpeStats] = useState({
     totalItems: 0,
     totalReceived: 0,
+    totalIssuedToEmployees: 0,
     totalReturned: 0,
     totalRemaining: 0,
     overdueCount: 0
@@ -161,7 +152,6 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       loadManagerPPE();
       loadEmployeePPE();
       loadPPEHistory();
-      loadAvailableEmployees();
     }
   }, [isManager]);
 
@@ -182,8 +172,18 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     try {
       const response = await ppeService.getManagerPPE();
       if (response.success) {
-        setManagerPPE(response.data.ppe_summary);
-        calculateStats(response.data.ppe_summary);
+        // Gán remaining_quantity, remaining_in_hand, total_issued_to_employees cho từng issuance từ ppe_summary
+        const ppeSummaryWithRemaining = response.data.ppe_summary.map((ppe: ManagerPPE) => ({
+          ...ppe,
+          issuances: ppe.issuances.map(issuance => ({
+            ...issuance,
+            remaining_quantity: ppe.remaining, // Gán remaining từ summary vào từng issuance
+            remaining_in_hand: ppe.remaining_in_hand, // Số PPE Manager đang giữ (sau khi trừ đã trả Admin)
+            total_issued_to_employees: ppe.total_issued_to_employees // Số PPE đã phát cho employee
+          }))
+        }));
+        setManagerPPE(ppeSummaryWithRemaining);
+        calculateStats(ppeSummaryWithRemaining);
       }
     } catch (error) {
       console.error('Error loading manager PPE:', error);
@@ -204,11 +204,6 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       
       if (response.success) {
         setEmployeePPE(response.data.issuances);
-        // Calculate stats for employee PPE tab
-        if (isManager) {
-          const employeeStats = calculateEmployeeStats(response.data.issuances);
-          setPpeStats(employeeStats);
-        }
       }
     } catch (error) {
       console.error('Error loading employee PPE:', error);
@@ -230,34 +225,18 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     }
   };
 
-  const loadAvailableEmployees = async () => {
-    try {
-      setLoadingEmployees(true);
-      const managerResponse = await userService.getUserById(user?.id || '');
-      if (managerResponse && managerResponse.department_id) {
-        const response = await departmentService.getDepartmentEmployees(managerResponse.department_id);
-        if (response.success) {
-          setAvailableEmployees(response.data.employees as unknown as User[]);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading employees:', error);
-      message.error('Không thể tải danh sách nhân viên');
-    } finally {
-      setLoadingEmployees(false);
-    }
-  };
-
   const calculateStats = (ppeData: ManagerPPE[]) => {
     const stats = ppeData.reduce((acc, ppe) => {
       acc.totalItems += 1;
       acc.totalReceived += ppe.total_received;
+      acc.totalIssuedToEmployees += ppe.total_issued_to_employees || 0;
       acc.totalReturned += ppe.total_returned;
       acc.totalRemaining += ppe.remaining;
       return acc;
     }, {
       totalItems: 0,
       totalReceived: 0,
+      totalIssuedToEmployees: 0,
       totalReturned: 0,
       totalRemaining: 0,
       overdueCount: 0
@@ -265,30 +244,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     setPpeStats(stats);
   };
 
-  const calculateEmployeeStats = (employeeData: PPEIssuance[]) => {
-    const stats = employeeData.reduce((acc, issuance) => {
-      acc.totalItems += 1;
-      acc.totalReceived += issuance.quantity;
-      if (issuance.status === 'returned') {
-        acc.totalReturned += issuance.quantity;
-      }
-      if (issuance.status === 'issued') {
-        acc.totalRemaining += issuance.quantity;
-      }
-      // Check if overdue
-      if (issuance.status === 'issued' && new Date(issuance.expected_return_date) < new Date()) {
-        acc.overdueCount += 1;
-      }
-      return acc;
-    }, {
-      totalItems: 0,
-      totalReceived: 0,
-      totalReturned: 0,
-      totalRemaining: 0,
-      overdueCount: 0
-    });
-    return stats;
-  };
+  // Removed unused employee stats calculation
 
   const handleReturnToAdmin = (issuance: PPEIssuance) => {
     setSelectedIssuance(issuance);
@@ -352,17 +308,58 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     setSelectedIssuance(null);
   };
 
+  // Manager xác nhận nhận PPE từ Employee
+  const handleConfirmEmployeeReturn = async (issuance: PPEIssuance) => {
+    Modal.confirm({
+      title: 'Xác nhận nhận PPE từ Employee',
+      content: `Bạn xác nhận đã nhận PPE "${typeof issuance.item_id === 'object' ? issuance.item_id.item_name : ''}" từ ${typeof issuance.user_id === 'object' ? issuance.user_id.full_name : ''}?`,
+      okText: 'Xác nhận',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          await ppeService.confirmEmployeeReturn(issuance.id);
+          message.success('Xác nhận nhận PPE thành công!');
+          loadManagerPPE();
+          loadEmployeePPE();
+        } catch (error: any) {
+          console.error('Error confirming employee return:', error);
+          message.error(error.message || 'Có lỗi xảy ra khi xác nhận nhận PPE');
+        }
+      }
+    });
+  };
+
   const getActiveIssuances = () => {
+    // Nếu là Manager, lấy từ managerPPE (có remaining_quantity)
+    if (isManager && managerPPE.length > 0) {
+      const allIssuances = managerPPE.flatMap(ppe => ppe.issuances || []);
+      return allIssuances.filter(issuance => 
+        issuance.status === 'issued' || 
+        issuance.status === 'overdue' ||
+        issuance.status === 'damaged' ||
+        issuance.status === 'replacement_needed' ||
+        issuance.status === 'pending_manager_return'
+      );
+    }
+    
+    // Nếu là Employee, lấy từ ppeIssuances
     return ppeIssuances.filter(issuance => 
       issuance.status === 'issued' || 
       issuance.status === 'overdue' ||
       issuance.status === 'damaged' ||
-      issuance.status === 'replacement_needed'
+      issuance.status === 'replacement_needed' ||
+      issuance.status === 'pending_manager_return'
     );
   };
 
   const getReturnedIssuances = () => {
-    return ppeIssuances.filter(issuance => issuance.status === 'returned');
+    if (isManager && managerPPE.length > 0) {
+      // Manager: tính số PPE đã trả từ managerPPE stats
+      return managerPPE.reduce((total, ppe) => total + ppe.total_returned, 0);
+    }
+    
+    // Employee: đếm issuances có status 'returned'
+    return ppeIssuances.filter(issuance => issuance.status === 'returned').length;
   };
 
   const getStatusLabel = (status: string): string => {
@@ -371,7 +368,8 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       'returned': 'Đã trả',
       'overdue': 'Quá hạn',
       'damaged': 'Hư hại',
-      'replacement_needed': 'Cần thay thế'
+      'replacement_needed': 'Cần thay thế',
+      'pending_manager_return': 'Chờ Manager xác nhận'
     };
     return labels[status] || 'Không xác định';
   };
@@ -382,7 +380,8 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       'returned': 'green',
       'overdue': 'red',
       'damaged': 'orange',
-      'replacement_needed': 'purple'
+      'replacement_needed': 'purple',
+      'pending_manager_return': 'gold'
     };
     return colors[status] || 'default';
   };
@@ -430,6 +429,16 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       key: 'total_received',
       render: (value: number) => (
         <Tag color="blue" icon={<InboxOutlined />}>
+          {value}
+        </Tag>
+      )
+    },
+    {
+      title: 'Đã phát cho Employee',
+      dataIndex: 'total_issued_to_employees',
+      key: 'total_issued_to_employees',
+      render: (value: number) => (
+        <Tag color="purple" icon={<SendOutlined />}>
           {value}
         </Tag>
       )
@@ -531,10 +540,17 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       title: 'Số lượng',
       dataIndex: 'quantity',
       key: 'quantity',
-      render: (value: number) => (
-        <Tag color="blue" icon={<NumberOutlined />}>
-          {value}
-        </Tag>
+      render: (value: number, record: PPEIssuance) => (
+        <Space>
+          <Tag color="blue" icon={<NumberOutlined />}>
+            Tổng: {value}
+          </Tag>
+          {record.remaining_quantity !== undefined && (
+            <Tag color={record.remaining_quantity > 0 ? 'green' : 'red'}>
+              Còn: {record.remaining_quantity}
+            </Tag>
+          )}
+        </Space>
       )
     },
     {
@@ -582,15 +598,32 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       key: 'action',
       render: (record: PPEIssuance) => (
         <Space>
-          <Button
-            type="primary"
-            size="small"
-            icon={<UndoOutlined />}
-            onClick={() => handleReturnToAdmin(record)}
-            disabled={record.status === 'returned'}
-          >
-            Trả cho Admin
-          </Button>
+          {record.status === 'pending_manager_return' ? (
+            <Button
+              type="primary"
+              size="small"
+              icon={<CheckCircleOutlined />}
+              onClick={() => handleConfirmEmployeeReturn(record)}
+            >
+              Xác nhận nhận
+            </Button>
+          ) : (
+            <Tooltip title={
+              record.status === 'returned' ? 'Đã trả' :
+              (record.remaining_quantity || record.quantity) <= 0 ? 'Không còn PPE để trả' :
+              'Trả cho Admin'
+            }>
+              <Button
+                type="primary"
+                size="small"
+                icon={<UndoOutlined />}
+                onClick={() => handleReturnToAdmin(record)}
+                disabled={record.status === 'returned' || (record.remaining_quantity || record.quantity) <= 0}
+              >
+                Trả cho Admin
+              </Button>
+            </Tooltip>
+          )}
           <Button
             size="small"
             icon={<EyeOutlined />}
@@ -643,7 +676,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
             <Card>
               <Statistic
                 title="Đã trả"
-                value={getReturnedIssuances().length}
+                value={getReturnedIssuances()}
                 prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
                 valueStyle={{ color: '#52c41a' }}
               />
@@ -674,10 +707,26 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
           </Col>
         </Row>
 
+        {/* Employee-specific statistics */}
+        {!isManager && (
+          <Row gutter={16} style={{ marginBottom: '24px' }}>
+            <Col span={24}>
+              <Card>
+                <Statistic
+                  title="Chờ Manager xác nhận"
+                  value={ppeIssuances.filter(issuance => issuance.status === 'pending_manager_return').length}
+                  prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
+                  valueStyle={{ color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        )}
+
         {/* Manager-specific statistics */}
         {isManager && (
           <Row gutter={16} style={{ marginBottom: '24px' }}>
-            <Col span={6}>
+            <Col xs={12} sm={8} md={6}>
               <Card>
                 <Statistic
                   title="Tổng thiết bị"
@@ -687,7 +736,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col xs={12} sm={8} md={6}>
               <Card>
                 <Statistic
                   title="Đã nhận từ Admin"
@@ -697,7 +746,17 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col xs={12} sm={8} md={6}>
+              <Card>
+                <Statistic
+                  title="Đã phát cho Employee"
+                  value={ppeStats.totalIssuedToEmployees}
+                  prefix={<SendOutlined style={{ color: '#722ed1' }} />}
+                  valueStyle={{ color: '#722ed1' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
               <Card>
                 <Statistic
                   title="Đã trả cho Admin"
@@ -707,13 +766,23 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col xs={12} sm={8} md={6}>
               <Card>
                 <Statistic
                   title="Còn lại"
                   value={ppeStats.totalRemaining}
                   prefix={<NumberOutlined style={{ color: ppeStats.totalRemaining > 0 ? '#faad14' : '#ff4d4f' }} />}
                   valueStyle={{ color: ppeStats.totalRemaining > 0 ? '#faad14' : '#ff4d4f' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card>
+                <Statistic
+                  title="Chờ xác nhận"
+                  value={employeePPE.filter((issuance: PPEIssuance) => issuance.status === 'pending_manager_return').length}
+                  prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
+                  valueStyle={{ color: '#faad14' }}
                 />
               </Card>
             </Col>
@@ -775,11 +844,12 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                       onClick={() => handleViewHistory(issuance)}
                                     />
                                   </Tooltip>,
-                                  <Tooltip title="Trả PPE">
+                                  <Tooltip title={issuance.status === 'pending_manager_return' ? 'Đã trả, chờ Manager xác nhận' : issuance.status === 'returned' ? 'Đã trả' : 'Trả PPE'}>
                                     <Button 
                                       type="primary"
                                       icon={<UndoOutlined />}
                                       onClick={() => handleReturnToAdmin(issuance)}
+                                      disabled={issuance.status === 'pending_manager_return' || issuance.status === 'returned'}
                                     />
                                   </Tooltip>,
                                   <Tooltip title="Báo cáo sự cố">
@@ -964,19 +1034,22 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                   issuance.status === 'returned' ? 'green' :
                                   issuance.status === 'issued' ? 'blue' :
                                   issuance.status === 'overdue' ? 'red' :
-                                  issuance.status === 'damaged' ? 'orange' : 'default'
+                                  issuance.status === 'damaged' ? 'orange' :
+                                  issuance.status === 'pending_manager_return' ? 'gold' : 'default'
                                 }
                                 icon={
                                   issuance.status === 'returned' ? <CheckCircleOutlined /> :
                                   issuance.status === 'issued' ? <ClockCircleOutlined /> :
                                   issuance.status === 'overdue' ? <ExclamationCircleOutlined /> :
-                                  issuance.status === 'damaged' ? <WarningOutlined /> : <InfoCircleOutlined />
+                                  issuance.status === 'damaged' ? <WarningOutlined /> :
+                                  issuance.status === 'pending_manager_return' ? <ClockCircleOutlined /> : <InfoCircleOutlined />
                                 }
                               >
                                 {issuance.status === 'returned' ? 'Đã trả' :
                                  issuance.status === 'issued' ? 'Đang sử dụng' :
                                  issuance.status === 'overdue' ? 'Quá hạn' :
-                                 issuance.status === 'damaged' ? 'Hỏng' : issuance.status}
+                                 issuance.status === 'damaged' ? 'Hỏng' :
+                                 issuance.status === 'pending_manager_return' ? 'Chờ Manager xác nhận' : issuance.status}
                               </Tag>
                             }
                             actions={[
@@ -1079,6 +1152,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
           }}
           onSuccess={handleReturnSuccess}
           issuance={selectedIssuance}
+          userRole={userRole}
         />
 
         <PPEAssignmentHistoryModal

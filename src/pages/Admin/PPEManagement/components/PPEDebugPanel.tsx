@@ -110,7 +110,6 @@ const PPEDebugPanel: React.FC<PPEDebugPanelProps> = ({ onDataLoaded }) => {
                 message="PPE Service Error"
                 description={debugData.ppeService.error.message || 'Unknown error'}
                 type="error"
-                size="small"
                 style={{ marginBottom: 8 }}
               />
             )}
@@ -120,7 +119,6 @@ const PPEDebugPanel: React.FC<PPEDebugPanelProps> = ({ onDataLoaded }) => {
                 message="User Service Error"
                 description={debugData.userService.error.message || 'Unknown error'}
                 type="error"
-                size="small"
                 style={{ marginBottom: 8 }}
               />
             )}

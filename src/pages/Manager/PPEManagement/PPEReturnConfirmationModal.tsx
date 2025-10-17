@@ -12,7 +12,8 @@ import {
   Descriptions,
   Tag,
   Alert,
-  Divider
+  Divider,
+  InputNumber
 } from 'antd';
 import {
   UndoOutlined,
@@ -26,7 +27,7 @@ import * as ppeService from '../../../services/ppeService';
 import type { PPEIssuance } from '../../../services/ppeService';
 import dayjs from 'dayjs';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
@@ -35,13 +36,15 @@ interface PPEReturnConfirmationModalProps {
   onCancel: () => void;
   onSuccess: () => void;
   issuance: PPEIssuance | null;
+  userRole?: 'employee' | 'manager'; // Add userRole prop
 }
 
 const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
   visible,
   onCancel,
   onSuccess,
-  issuance
+  issuance,
+  userRole = 'manager' // Default to manager for backward compatibility
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -51,17 +54,26 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
 
     setLoading(true);
     try {
-      await ppeService.returnToAdmin(issuance.id, {
+      const returnData = {
         actual_return_date: values.actual_return_date.format('YYYY-MM-DD'),
         return_condition: values.return_condition,
-        notes: values.notes || ''
-      });
+        notes: values.notes || '',
+        ...(userRole === 'manager' && { quantity: values.quantity })
+      };
 
-      message.success('Trả PPE cho Admin thành công!');
+      // Use different API based on user role
+      if (userRole === 'employee') {
+        await ppeService.returnPPEIssuanceEmployee(issuance.id, returnData);
+        message.success('Trả PPE cho Manager thành công!');
+      } else {
+        await ppeService.returnToAdmin(issuance.id, returnData);
+        message.success('Trả PPE cho Admin thành công!');
+      }
+
       form.resetFields();
       onSuccess();
     } catch (error: any) {
-      console.error('Error returning PPE to admin:', error);
+      console.error('Error returning PPE:', error);
       message.error(error.response?.data?.message || 'Có lỗi xảy ra khi trả PPE');
     } finally {
       setLoading(false);
@@ -77,13 +89,27 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
 
   const item = typeof issuance.item_id === 'object' && issuance.item_id ? issuance.item_id : null;
   const isOverdue = dayjs().isAfter(dayjs(issuance.expected_return_date));
+  
+  // For manager returning to admin: use remaining_in_hand - total_issued_to_employees
+  // This is the actual quantity manager can return (excluding what's with employees)
+  const aggregatedInHand = (issuance as any).remaining_in_hand;
+  const totalIssuedToEmployees = (issuance as any).total_issued_to_employees;
+  
+  // Manager can only return what they have in hand (not with employees)
+  const availableToReturn = typeof aggregatedInHand === 'number' && typeof totalIssuedToEmployees === 'number'
+    ? Math.max(0, aggregatedInHand - totalIssuedToEmployees)
+    : (issuance.remaining_quantity !== undefined ? issuance.remaining_quantity : issuance.quantity);
+  
+  const remainingQuantity = userRole === 'manager' 
+    ? availableToReturn 
+    : (issuance.remaining_quantity || issuance.quantity);
 
   return (
     <Modal
       title={
         <Space>
           <UndoOutlined style={{ color: '#1890ff' }} />
-          <span>Trả PPE cho Admin</span>
+          <span>{userRole === 'employee' ? 'Trả PPE cho Manager' : 'Trả PPE cho Admin'}</span>
         </Space>
       }
       open={visible}
@@ -93,13 +119,23 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
       destroyOnClose
     >
       <div style={{ marginBottom: '16px' }}>
-        <Alert
-          message="Xác nhận trả PPE"
-          description="Bạn đang trả PPE này cho Admin. Vui lòng kiểm tra kỹ tình trạng thiết bị trước khi trả."
-          type="info"
-          showIcon
-          icon={<InfoCircleOutlined />}
-        />
+        {userRole === 'manager' && remainingQuantity <= 0 ? (
+          <Alert
+            message="Không thể trả PPE"
+            description={`Bạn không có PPE nào để trả. Số PPE đang giữ (${aggregatedInHand || 0}) đã được phát hết cho nhân viên (${totalIssuedToEmployees || 0}). Vui lòng thu hồi PPE từ nhân viên trước khi trả về Admin.`}
+            type="warning"
+            showIcon
+            icon={<ExclamationCircleOutlined />}
+          />
+        ) : (
+          <Alert
+            message="Xác nhận trả PPE"
+            description={`Bạn đang trả PPE này cho ${userRole === 'employee' ? 'Manager' : 'Admin'}. Vui lòng kiểm tra kỹ tình trạng thiết bị trước khi trả.`}
+            type="info"
+            showIcon
+            icon={<InfoCircleOutlined />}
+          />
+        )}
       </div>
 
       <Descriptions
@@ -121,7 +157,20 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
           </Space>
         </Descriptions.Item>
         <Descriptions.Item label="Số lượng">
-          <Tag color="blue">{issuance.quantity}</Tag>
+          <Space direction="vertical" size={0}>
+            <Space>
+              <Tag color="blue">Tổng nhận: {issuance.quantity}</Tag>
+              {userRole === 'manager' && typeof aggregatedInHand === 'number' && (
+                <Tag color="cyan">Còn giữ: {aggregatedInHand}</Tag>
+              )}
+            </Space>
+            {userRole === 'manager' && typeof totalIssuedToEmployees === 'number' && (
+              <Space>
+                <Tag color="orange">Đã phát cho NV: {totalIssuedToEmployees}</Tag>
+                <Tag color="green">Có thể trả: {remainingQuantity}</Tag>
+              </Space>
+            )}
+          </Space>
         </Descriptions.Item>
         <Descriptions.Item label="Ngày phát">
           <Space>
@@ -149,9 +198,34 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
         initialValues={{
           actual_return_date: dayjs(),
           return_condition: 'good',
-          notes: ''
+          notes: '',
+          quantity: remainingQuantity
         }}
       >
+        {userRole === 'manager' && (
+          <Form.Item
+            label="Số lượng trả"
+            name="quantity"
+            rules={[
+              { required: true, message: 'Vui lòng nhập số lượng' },
+              { type: 'number', min: 1, message: 'Số lượng phải lớn hơn 0' },
+              { 
+                type: 'number', 
+                max: remainingQuantity, 
+                message: `Số lượng không được vượt quá ${remainingQuantity}` 
+              }
+            ]}
+            extra={`Số lượng PPE còn lại: ${remainingQuantity}`}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              min={1}
+              max={remainingQuantity}
+              placeholder="Nhập số lượng trả"
+            />
+          </Form.Item>
+        )}
+
         <Form.Item
           label="Ngày trả thực tế"
           name="actual_return_date"
@@ -213,6 +287,7 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
               htmlType="submit"
               loading={loading}
               icon={<UndoOutlined />}
+              disabled={userRole === 'manager' && remainingQuantity <= 0}
             >
               {loading ? 'Đang trả...' : 'Xác nhận trả PPE'}
             </Button>

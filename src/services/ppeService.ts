@@ -46,13 +46,14 @@ export interface PPEIssuance {
     category_id: PPECategory;
   };
   quantity: number;
+  remaining_quantity?: number;
   issued_date: string;
   expected_return_date: string;
   issued_by: string | {
     id: string;
     full_name: string;
   };
-  status: 'issued' | 'returned' | 'overdue' | 'damaged' | 'replacement_needed';
+  status: 'issued' | 'returned' | 'overdue' | 'damaged' | 'replacement_needed' | 'pending_manager_return';
   actual_return_date?: string;
   return_condition?: 'good' | 'damaged' | 'worn';
   return_notes?: string;
@@ -533,11 +534,24 @@ export const returnToManager = async (issuanceId: string, returnData: {
 };
 
 /**
+ * Manager xác nhận nhận PPE từ Employee
+ */
+export const confirmEmployeeReturn = async (issuanceId: string) => {
+  try {
+    const response = await api.post(`/ppe/issuances/${issuanceId}/confirm-employee-return`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Lỗi khi xác nhận nhận PPE từ Employee');
+  }
+};
+
+/**
  * Manager trả PPE cho Admin
  */
 export const returnToAdmin = async (issuanceId: string, returnData: {
   actual_return_date: string;
   return_condition: 'good' | 'damaged' | 'worn';
+  quantity?: number;
   notes?: string;
 }) => {
   try {

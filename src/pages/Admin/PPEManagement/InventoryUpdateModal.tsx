@@ -76,12 +76,12 @@ const InventoryUpdateModal: React.FC<InventoryUpdateModalProps> = ({
     }
 
     const newItem: InventoryItem = {
-      id: selectedItem.id,
+      id: selectedItem.id ?? selectedItem._id,
       item_name: selectedItem.item_name,
       item_code: selectedItem.item_code,
-      current_quantity: selectedItem.quantity_available || 0,
-      new_quantity: selectedItem.quantity_available || 0,
-      allocated_quantity: selectedItem.quantity_allocated || 0,
+      current_quantity: (selectedItem.remaining_quantity ?? selectedItem.quantity_available ?? 0),
+      new_quantity: (selectedItem.remaining_quantity ?? selectedItem.quantity_available ?? 0),
+      allocated_quantity: (selectedItem.quantity_allocated ?? selectedItem.actual_allocated_quantity ?? 0),
       reorder_level: selectedItem.reorder_level || 0
     };
 
@@ -238,18 +238,18 @@ const InventoryUpdateModal: React.FC<InventoryUpdateModalProps> = ({
                   optionFilterProp="children"
                   value={selectedItem?.id}
                   onChange={(value) => {
-                    const item = ppeItems.find(i => i.id === value);
+                    const item = ppeItems.find(i => (i.id ?? i._id) === value);
                     setSelectedItem(item);
                   }}
                 >
                   {ppeItems.map(item => (
-                    <Option key={item.id} value={item.id}>
+                    <Option key={item.id ?? item._id} value={item.id ?? item._id}>
                       <Space>
                         <SafetyOutlined />
                         <div>
                           <div>{item.item_name}</div>
                           <Text type="secondary" style={{ fontSize: '12px' }}>
-                            {item.item_code} - Hiện tại: {item.quantity_available || 0}
+                            {item.item_code} - Hiện tại: {(item.remaining_quantity ?? item.quantity_available ?? 0)}
                           </Text>
                         </div>
                       </Space>

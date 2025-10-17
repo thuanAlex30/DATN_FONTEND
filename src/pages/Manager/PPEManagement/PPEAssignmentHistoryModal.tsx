@@ -14,8 +14,7 @@ import {
   Empty,
   Spin,
   message,
-  Button,
-  Tooltip
+  Button
 } from 'antd';
 import {
   HistoryOutlined,
@@ -25,10 +24,8 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   InfoCircleOutlined,
-  EyeOutlined,
   ReloadOutlined
 } from '@ant-design/icons';
-import * as ppeService from '../../../services/ppeService';
 import type { PPEIssuance } from '../../../services/ppeService';
 import dayjs from 'dayjs';
 
@@ -94,9 +91,9 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           action: 'distributed',
           action_date: dayjs().subtract(1, 'day').format('YYYY-MM-DD'),
           performed_by: {
-            id: issuance.user_id?.id || 'manager-1',
-            full_name: issuance.user_id?.full_name || 'Manager',
-            email: issuance.user_id?.email || 'manager@company.com'
+            id: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.id : 'manager-1',
+            full_name: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.full_name : 'Manager',
+            email: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.email : 'manager@company.com'
           },
           details: {
             distributed_to: 'Employee',
@@ -106,21 +103,43 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
         }
       ];
 
+      // Thêm lịch sử trả PPE (toàn bộ hoặc một phần)
       if (issuance.status === 'returned' && issuance.actual_return_date) {
         mockHistory.push({
           id: '3',
           action: 'returned',
           action_date: issuance.actual_return_date,
           performed_by: {
-            id: issuance.user_id?.id || 'employee-1',
-            full_name: issuance.user_id?.full_name || 'Employee',
-            email: issuance.user_id?.email || 'employee@company.com'
+            id: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.id : 'employee-1',
+            full_name: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.full_name : 'Employee',
+            email: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.email : 'employee@company.com'
           },
           details: {
             return_condition: issuance.return_condition,
-            actual_return_date: issuance.actual_return_date
+            actual_return_date: issuance.actual_return_date,
+            quantity_returned: issuance.quantity
           },
           notes: issuance.return_notes || 'Trả PPE'
+        });
+      } else if (issuance.remaining_quantity !== undefined && issuance.remaining_quantity < issuance.quantity) {
+        // Partial return - thêm lịch sử trả một phần
+        const returnedQuantity = issuance.quantity - issuance.remaining_quantity;
+        mockHistory.push({
+          id: '3',
+          action: 'partial_return',
+          action_date: issuance.actual_return_date || dayjs().format('YYYY-MM-DD'),
+          performed_by: {
+            id: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.id : 'manager-1',
+            full_name: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.full_name : 'Manager',
+            email: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.email : 'manager@company.com'
+          },
+          details: {
+            return_condition: issuance.return_condition || 'good',
+            actual_return_date: issuance.actual_return_date || dayjs().format('YYYY-MM-DD'),
+            quantity_returned: returnedQuantity,
+            quantity_remaining: issuance.remaining_quantity
+          },
+          notes: issuance.return_notes || `Trả một phần: ${returnedQuantity}/${issuance.quantity}`
         });
       }
 
@@ -138,6 +157,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
       'issued': 'Phát PPE',
       'distributed': 'Phân phối',
       'returned': 'Trả PPE',
+      'partial_return': 'Trả một phần',
       'reported': 'Báo cáo sự cố',
       'replaced': 'Thay thế'
     };
@@ -149,6 +169,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
       'issued': 'blue',
       'distributed': 'green',
       'returned': 'orange',
+      'partial_return': 'gold',
       'reported': 'red',
       'replaced': 'purple'
     };
@@ -160,6 +181,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
       'issued': <SafetyOutlined />,
       'distributed': <UserOutlined />,
       'returned': <CheckCircleOutlined />,
+      'partial_return': <ExclamationCircleOutlined />,
       'reported': <ExclamationCircleOutlined />,
       'replaced': <SafetyOutlined />
     };
@@ -228,6 +250,19 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
               <Text>Tình trạng: {record.details.return_condition}</Text>
               <br />
               <Text>Ngày trả: {dayjs(record.details.actual_return_date).format('DD/MM/YYYY')}</Text>
+              <br />
+              <Text>Số lượng trả: {record.details.quantity_returned}</Text>
+            </div>
+          )}
+          {record.action === 'partial_return' && (
+            <div>
+              <Text>Tình trạng: {record.details.return_condition}</Text>
+              <br />
+              <Text>Ngày trả: {dayjs(record.details.actual_return_date).format('DD/MM/YYYY')}</Text>
+              <br />
+              <Text>Số lượng trả: {record.details.quantity_returned}</Text>
+              <br />
+              <Text>Còn lại: {record.details.quantity_remaining}</Text>
             </div>
           )}
         </div>
@@ -278,44 +313,88 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
             </Space>
           </Descriptions.Item>
           <Descriptions.Item label="Số lượng">
-            <Tag color="blue">{issuance.quantity}</Tag>
+            <Space direction="vertical" size="small">
+              <Space>
+                <Tag color="blue">Tổng: {issuance.quantity}</Tag>
+                {issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity && (
+                  <>
+                    <Tag color="orange">Đã trả: {issuance.quantity - issuance.remaining_quantity}</Tag>
+                    <Tag color={issuance.remaining_quantity > 0 ? 'green' : 'red'}>
+                      Còn: {issuance.remaining_quantity}
+                    </Tag>
+                  </>
+                )}
+              </Space>
+              {issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity && (
+                <div style={{ fontSize: '12px', color: '#666' }}>
+                  Tỷ lệ trả: {Math.round(((issuance.quantity - issuance.remaining_quantity) / issuance.quantity) * 100)}%
+                </div>
+              )}
+            </Space>
           </Descriptions.Item>
           <Descriptions.Item label="Trạng thái">
-            <Tag color={issuance.status === 'returned' ? 'green' : 'blue'}>
-              {issuance.status === 'returned' ? 'Đã trả' : 'Đang sử dụng'}
+            <Tag color={
+              issuance.status === 'returned' ? 'green' : 
+              issuance.remaining_quantity !== undefined && issuance.remaining_quantity < issuance.quantity ? 'orange' : 'blue'
+            }>
+              {issuance.status === 'returned' ? 'Đã trả' : 
+               issuance.remaining_quantity !== undefined && issuance.remaining_quantity < issuance.quantity ? 'Đã trả một phần' : 'Đang sử dụng'}
             </Tag>
           </Descriptions.Item>
         </Descriptions>
       </div>
 
       <Row gutter={16} style={{ marginBottom: '16px' }}>
-        <Col span={8}>
+        <Col span={6}>
           <Card size="small">
             <Statistic
-              title="Tổng hoạt động"
-              value={history.length}
-              prefix={<HistoryOutlined />}
+              title="Tổng số lượng"
+              value={issuance.quantity}
+              prefix={<SafetyOutlined />}
               valueStyle={{ color: '#1890ff' }}
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col span={6}>
           <Card size="small">
             <Statistic
-              title="Ngày phát"
-              value={dayjs(issuance.issued_date).format('DD/MM/YYYY')}
-              prefix={<CalendarOutlined />}
+              title="Đã trả"
+              value={
+                issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity 
+                  ? issuance.quantity - issuance.remaining_quantity 
+                  : issuance.status === 'returned' ? issuance.quantity : 0
+              }
+              prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#52c41a' }}
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col span={6}>
           <Card size="small">
             <Statistic
-              title="Trạng thái"
-              value={issuance.status === 'returned' ? 'Đã trả' : 'Đang sử dụng'}
-              prefix={<CheckCircleOutlined />}
-              valueStyle={{ color: issuance.status === 'returned' ? '#52c41a' : '#1890ff' }}
+              title="Còn lại"
+              value={issuance.remaining_quantity !== undefined ? issuance.remaining_quantity : issuance.quantity}
+              prefix={<ExclamationCircleOutlined />}
+              valueStyle={{ 
+                color: issuance.remaining_quantity !== undefined && issuance.remaining_quantity > 0 ? '#faad14' : '#ff4d4f' 
+              }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card size="small">
+            <Statistic
+              title="Tỷ lệ trả"
+              value={
+                issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity 
+                  ? `${Math.round(((issuance.quantity - issuance.remaining_quantity) / issuance.quantity) * 100)}%`
+                  : issuance.status === 'returned' ? '100%' : '0%'
+              }
+              prefix={<HistoryOutlined />}
+              valueStyle={{ 
+                color: issuance.status === 'returned' ? '#52c41a' : 
+                       issuance.remaining_quantity !== undefined && issuance.remaining_quantity < issuance.quantity ? '#faad14' : '#1890ff' 
+              }}
             />
           </Card>
         </Col>

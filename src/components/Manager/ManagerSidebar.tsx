@@ -3,15 +3,9 @@ import { Layout, Menu } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   DashboardOutlined,
-  TeamOutlined,
   SafetyOutlined,
-  FileTextOutlined,
-  UserOutlined,
   LogoutOutlined,
-  SettingOutlined,
-  BarChartOutlined,
   ProjectOutlined,
-  CalendarOutlined,
   BookOutlined
 } from '@ant-design/icons';
 import styles from './ManagerSidebar.module.css';
