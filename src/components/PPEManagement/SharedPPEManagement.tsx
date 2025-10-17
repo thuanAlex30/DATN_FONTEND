@@ -130,17 +130,24 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       if (isManager) {
         loadManagerPPE();
         loadEmployeePPE();
+      } else {
+        loadEmployeePPEHistory();
       }
     },
     onPPEReported: (data) => {
       console.log('PPE reported:', data);
       loadUserPPE();
+      if (!isManager) {
+        loadEmployeePPEHistory();
+      }
     },
     onPPEQuantityUpdate: (data) => {
       console.log('PPE quantity updated:', data);
       if (isManager) {
         loadManagerPPE();
         loadEmployeePPE();
+      } else {
+        loadEmployeePPEHistory();
       }
       loadUserPPE();
     }
@@ -152,6 +159,9 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       loadManagerPPE();
       loadEmployeePPE();
       loadPPEHistory();
+    } else {
+      // Load PPE history for employee
+      loadEmployeePPEHistory();
     }
   }, [isManager]);
 
@@ -221,6 +231,18 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       }
     } catch (error) {
       console.error('Error loading PPE history:', error);
+      message.error('Lỗi khi tải lịch sử PPE');
+    }
+  };
+
+  const loadEmployeePPEHistory = async () => {
+    if (isManager) return;
+    
+    try {
+      const data = await ppeService.getMyPPEIssuances();
+      setPpeHistory(data);
+    } catch (error) {
+      console.error('Error loading employee PPE history:', error);
       message.error('Lỗi khi tải lịch sử PPE');
     }
   };
@@ -1114,7 +1136,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                       );
                     })}
                     
-                    {getReturnedIssuances().length === 0 && (
+                    {getReturnedIssuances() === 0 && (
                       <Col span={24}>
                         <Empty
                           image={<HistoryOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
