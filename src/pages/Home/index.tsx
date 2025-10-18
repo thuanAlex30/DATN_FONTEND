@@ -96,6 +96,11 @@ const Home: React.FC = () => {
                 <i className="fas fa-exclamation-circle"></i> Báo cáo sự cố
               </Link>
             )}
+            {user?.role?.role_name === 'manager' && (
+              <Link to="/manager/incident-handling" className={styles.homeNavItem}>
+                <i className="fas fa-tools"></i> Xử lý sự cố
+              </Link>
+            )}
             <Link to="/employee/training" className={styles.homeNavItem}>
               <i className="fas fa-book"></i> Đào tạo
             </Link>

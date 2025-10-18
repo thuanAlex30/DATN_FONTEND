@@ -15,6 +15,7 @@ import CertificateManagementPage from '../pages/Admin/CertificateManagement';
 import PPEManagementPage from '../pages/Admin/PPEManagement';
 import RoleManagementPage from '../pages/Admin/RoleManagement';
 import IncidentManagementPage from '../pages/Admin/IncidentManagement';
+import ManagerIncidentHandling from '../pages/Manager/IncidentHandling';
 import ClassifyIncident from '../pages/Admin/IncidentManagement/ClassifyIncident';
 import AssignIncident from '../pages/Admin/IncidentManagement/AssignIncident';
 import InvestigateIncident from '../pages/Admin/IncidentManagement/InvestigateIncident';
@@ -58,6 +59,14 @@ const AppRoutes = () => {
                 element={
                     <AuthGuard requiredRole="manager">
                         <ReportIncident />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/incident-handling" 
+                element={
+                    <AuthGuard requiredRole="manager">
+                        <ManagerIncidentHandling />
                     </AuthGuard>
                 } 
             />
