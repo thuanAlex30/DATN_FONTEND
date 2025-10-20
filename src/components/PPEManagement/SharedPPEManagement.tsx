@@ -97,6 +97,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
   const [returnModalVisible, setReturnModalVisible] = useState(false);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [selectedIssuance, setSelectedIssuance] = useState<PPEIssuance | null>(null);
   const [ppeStats, setPpeStats] = useState({
     totalItems: 0,
@@ -104,11 +105,13 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     totalIssuedToEmployees: 0,
     totalReturned: 0,
     totalRemaining: 0,
-    overdueCount: 0
+    overdueCount: 0,
+    pendingConfirmationCount: 0
   });
 
   // Form instances
   const [reportForm] = Form.useForm();
+  const [confirmForm] = Form.useForm();
 
   const isManager = userRole === 'manager';
 
@@ -254,6 +257,13 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       acc.totalIssuedToEmployees += ppe.total_issued_to_employees || 0;
       acc.totalReturned += ppe.total_returned;
       acc.totalRemaining += ppe.remaining;
+      
+      // Đếm PPE chờ Employee xác nhận
+      const pendingConfirmations = ppe.issuances.filter(issuance => 
+        issuance.status === 'pending_confirmation'
+      ).length;
+      acc.pendingConfirmationCount += pendingConfirmations;
+      
       return acc;
     }, {
       totalItems: 0,
@@ -261,7 +271,8 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       totalIssuedToEmployees: 0,
       totalReturned: 0,
       totalRemaining: 0,
-      overdueCount: 0
+      overdueCount: 0,
+      pendingConfirmationCount: 0
     });
     setPpeStats(stats);
   };
@@ -309,6 +320,40 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     } catch (error: any) {
       console.error('Error reporting PPE:', error);
       message.error(error.response?.data?.message || 'Có lỗi xảy ra khi báo cáo sự cố');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Employee xác nhận nhận PPE từ Manager
+  const handleConfirmReceived = (issuance: PPEIssuance) => {
+    setSelectedIssuance(issuance);
+    confirmForm.setFieldsValue({
+      confirmation_notes: ''
+    });
+    setConfirmModalVisible(true);
+  };
+
+  const handleConfirmSubmit = async (values: any) => {
+    if (!selectedIssuance) return;
+
+    setLoading(true);
+    try {
+      await ppeService.confirmReceivedPPE(selectedIssuance.id, {
+        confirmation_notes: values.confirmation_notes || ''
+      });
+
+      message.success('Xác nhận nhận PPE thành công!');
+      confirmForm.resetFields();
+      setConfirmModalVisible(false);
+      setSelectedIssuance(null);
+      loadUserPPE();
+      if (!isManager) {
+        loadEmployeePPEHistory();
+      }
+    } catch (error: any) {
+      console.error('Error confirming PPE:', error);
+      message.error(error.response?.data?.message || 'Có lỗi xảy ra khi xác nhận nhận PPE');
     } finally {
       setLoading(false);
     }
@@ -366,6 +411,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     
     // Nếu là Employee, lấy từ ppeIssuances
     return ppeIssuances.filter(issuance => 
+      issuance.status === 'pending_confirmation' || // hiển thị để Employee có thể xác nhận
       issuance.status === 'issued' || 
       issuance.status === 'overdue' ||
       issuance.status === 'damaged' ||
@@ -386,6 +432,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
 
   const getStatusLabel = (status: string): string => {
     const labels: { [key: string]: string } = {
+      'pending_confirmation': 'Chờ xác nhận',
       'issued': 'Đang sử dụng',
       'returned': 'Đã trả',
       'overdue': 'Quá hạn',
@@ -398,6 +445,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
 
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
+      'pending_confirmation': 'orange',
       'issued': 'blue',
       'returned': 'green',
       'overdue': 'red',
@@ -410,6 +458,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
 
   const getStatusIcon = (status: string) => {
     const icons: { [key: string]: React.ReactNode } = {
+      'pending_confirmation': <ClockCircleOutlined />,
       'issued': <CheckCircleOutlined />,
       'returned': <UndoOutlined />,
       'overdue': <ExclamationCircleOutlined />,
@@ -732,13 +781,33 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
         {/* Employee-specific statistics */}
         {!isManager && (
           <Row gutter={16} style={{ marginBottom: '24px' }}>
-            <Col span={24}>
+            <Col span={8}>
+              <Card>
+                <Statistic
+                  title="Chờ xác nhận"
+                  value={ppeIssuances.filter(issuance => issuance.status === 'pending_confirmation').length}
+                  prefix={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
+                  valueStyle={{ color: '#fa8c16' }}
+                />
+              </Card>
+            </Col>
+            <Col span={8}>
               <Card>
                 <Statistic
                   title="Chờ Manager xác nhận"
                   value={ppeIssuances.filter(issuance => issuance.status === 'pending_manager_return').length}
                   prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
                   valueStyle={{ color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+            <Col span={8}>
+              <Card>
+                <Statistic
+                  title="Tổng PPE"
+                  value={ppeIssuances.length}
+                  prefix={<InboxOutlined style={{ color: '#722ed1' }} />}
+                  valueStyle={{ color: '#722ed1' }}
                 />
               </Card>
             </Col>
@@ -795,6 +864,16 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                   value={ppeStats.totalRemaining}
                   prefix={<NumberOutlined style={{ color: ppeStats.totalRemaining > 0 ? '#faad14' : '#ff4d4f' }} />}
                   valueStyle={{ color: ppeStats.totalRemaining > 0 ? '#faad14' : '#ff4d4f' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card>
+                <Statistic
+                  title="Chờ Employee xác nhận"
+                  value={ppeStats.pendingConfirmationCount}
+                  prefix={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
+                  valueStyle={{ color: '#fa8c16' }}
                 />
               </Card>
             </Col>
@@ -866,20 +945,32 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                       onClick={() => handleViewHistory(issuance)}
                                     />
                                   </Tooltip>,
-                                  <Tooltip title={issuance.status === 'pending_manager_return' ? 'Đã trả, chờ Manager xác nhận' : issuance.status === 'returned' ? 'Đã trả' : 'Trả PPE'}>
-                                    <Button 
-                                      type="primary"
-                                      icon={<UndoOutlined />}
-                                      onClick={() => handleReturnToAdmin(issuance)}
-                                      disabled={issuance.status === 'pending_manager_return' || issuance.status === 'returned'}
-                                    />
-                                  </Tooltip>,
+                                  issuance.status === 'pending_confirmation' ? (
+                                    <Tooltip title="Xác nhận nhận PPE">
+                                      <Button 
+                                        type="primary"
+                                        icon={<CheckCircleOutlined />}
+                                        onClick={() => handleConfirmReceived(issuance)}
+                                        style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                                      />
+                                    </Tooltip>
+                                  ) : (
+                                    <Tooltip title={issuance.status === 'pending_manager_return' ? 'Đã trả, chờ Manager xác nhận' : issuance.status === 'returned' ? 'Đã trả' : 'Trả PPE'}>
+                                      <Button 
+                                        type="primary"
+                                        icon={<UndoOutlined />}
+                                        onClick={() => handleReturnToAdmin(issuance)}
+                                        disabled={issuance.status === 'pending_manager_return' || issuance.status === 'returned'}
+                                      />
+                                    </Tooltip>
+                                  ),
                                   <Tooltip title="Báo cáo sự cố">
                                     <Button 
                                       type="primary"
                                       danger
                                       icon={<ExclamationCircleOutlined />}
                                       onClick={() => handleReportPPE(issuance)}
+                                      disabled={issuance.status === 'pending_confirmation'}
                                     />
                                   </Tooltip>
                                 ]}
@@ -1265,6 +1356,80 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                 </Button>
                 <Button type="primary" danger htmlType="submit" loading={loading}>
                   {loading ? 'Đang báo cáo...' : 'Gửi báo cáo'}
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Confirm PPE Modal */}
+        <Modal
+          title="Xác nhận nhận PPE"
+          open={confirmModalVisible}
+          onCancel={() => {
+            setConfirmModalVisible(false);
+            setSelectedIssuance(null);
+            confirmForm.resetFields();
+          }}
+          footer={null}
+          width={500}
+        >
+          <Form
+            form={confirmForm}
+            layout="vertical"
+            onFinish={handleConfirmSubmit}
+          >
+            <Form.Item label="Thiết bị">
+              <Input
+                value={typeof selectedIssuance?.item_id === 'object' && selectedIssuance?.item_id ? 
+                  selectedIssuance.item_id.item_name : 'Không xác định'}
+                disabled
+              />
+            </Form.Item>
+            
+            <Form.Item label="Số lượng">
+              <Input
+                value={selectedIssuance?.quantity || 0}
+                disabled
+              />
+            </Form.Item>
+            
+            <Form.Item label="Ngày phát">
+              <Input
+                value={selectedIssuance?.issued_date ? formatDateTime(selectedIssuance.issued_date) : 'N/A'}
+                disabled
+              />
+            </Form.Item>
+            
+            <Form.Item 
+              label="Ghi chú xác nhận" 
+              name="confirmation_notes"
+            >
+              <TextArea
+                placeholder="Ghi chú khi xác nhận nhận PPE (tùy chọn)..."
+                rows={3}
+              />
+            </Form.Item>
+            
+            <Alert
+              message="Xác nhận nhận PPE"
+              description="Bạn có chắc chắn đã nhận PPE này từ Manager? Sau khi xác nhận, PPE sẽ được chuyển sang trạng thái 'Đang sử dụng'."
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+            
+            <Form.Item>
+              <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                <Button onClick={() => {
+                  setConfirmModalVisible(false);
+                  setSelectedIssuance(null);
+                  confirmForm.resetFields();
+                }}>
+                  Hủy
+                </Button>
+                <Button type="primary" htmlType="submit" loading={loading} style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}>
+                  {loading ? 'Đang xác nhận...' : 'Xác nhận nhận PPE'}
                 </Button>
               </Space>
             </Form.Item>

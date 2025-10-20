@@ -41,6 +41,14 @@ export interface UserProfile {
     permissions: Record<string, boolean>;
     is_active: boolean;
   };
+  department?: {
+    id: string;
+    department_name: string;
+  };
+  department_id?: {
+    id: string;
+    department_name: string;
+  };
   is_active: boolean;
   last_login: string;
 }
