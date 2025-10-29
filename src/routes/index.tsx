@@ -11,10 +11,10 @@ import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
 import ProjectManagement from '../pages/Admin/ProjectManagement';
 import TrainingManagementPage from '../pages/Admin/TrainingManagement';
-import CertificateManagementPage from '../pages/Admin/CertificateManagement';
 import PPEManagementPage from '../pages/Admin/PPEManagement';
 import RoleManagementPage from '../pages/Admin/RoleManagement';
 import IncidentManagementPage from '../pages/Admin/IncidentManagement';
+import CertificateManagementPage from '../pages/Admin/CertificateManagement';
 import ManagerIncidentHandling from '../pages/Manager/IncidentHandling';
 import ClassifyIncident from '../pages/Admin/IncidentManagement/ClassifyIncident';
 import AssignIncident from '../pages/Admin/IncidentManagement/AssignIncident';
@@ -193,21 +193,21 @@ const AppRoutes = () => {
                 } 
             />
             <Route 
-                path="/admin/certificate-management" 
-                element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
-                            <CertificateManagementPage />
-                        </AdminLayout>
-                    </AuthGuard>
-                } 
-            />
-            <Route 
                 path="/admin/ppe-management" 
                 element={
                     <AuthGuard requiredRole="admin">
                         <AdminLayout>
                             <PPEManagementPage />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/certificate-management" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <CertificateManagementPage />
                         </AdminLayout>
                     </AuthGuard>
                 } 

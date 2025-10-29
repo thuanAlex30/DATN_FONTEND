@@ -175,7 +175,7 @@ const EditProjectOverviewModal: React.FC<EditProjectOverviewModalProps> = ({
       onCancel={handleCancel}
       footer={null}
       width={900}
-      destroyOnClose
+      destroyOnHidden
     >
       <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
         {/* Project Info Card */}

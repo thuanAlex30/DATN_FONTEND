@@ -1159,7 +1159,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
       footer={null}
       width="90%"
       style={{ top: 20 }}
-      destroyOnClose
+      destroyOnHidden
       className="project-creation-modal"
     >
       <motion.div
@@ -1599,7 +1599,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
           onCancel={() => setBasicInfoModalVisible(false)}
           footer={null}
           width={900}
-          destroyOnClose
+          destroyOnHidden
         >
           <Form
             form={basicInfoForm}
@@ -1646,7 +1646,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
           }}
           footer={null}
           width={800}
-          destroyOnClose
+          destroyOnHidden
         >
           <Form
             form={form}

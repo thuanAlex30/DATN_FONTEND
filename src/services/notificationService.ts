@@ -100,7 +100,7 @@ class NotificationService {
             try {
                 const response = await api.get('/notifications', { 
                     params: filters,
-                    timeout: 10000 // 10 seconds timeout
+                    timeout: 3000 // 3 seconds timeout (shorter than backend's 5s)
                 });
                 return response.data.data;
             } catch (timeoutError: any) {

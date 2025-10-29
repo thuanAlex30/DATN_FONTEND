@@ -14,7 +14,6 @@ import {
   ExclamationCircleOutlined,
   BookOutlined,
   SafetyOutlined,
-  SafetyCertificateOutlined,
   LogoutOutlined,
   ProjectOutlined
 } from '@ant-design/icons';
@@ -68,11 +67,6 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
       key: '/employee/project-management',
       icon: <ProjectOutlined />,
       label: 'Quản lý dự án',
-    },
-    {
-      key: '/employee/certificates',
-      icon: <SafetyCertificateOutlined />,
-      label: 'Chứng chỉ',
     },
   ];
 

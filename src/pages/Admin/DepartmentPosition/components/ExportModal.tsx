@@ -128,7 +128,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
       onCancel={onCancel}
       footer={null}
       width={600}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}

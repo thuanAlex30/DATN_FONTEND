@@ -93,11 +93,6 @@ const Sidebar = () => {
                     label: 'Quản lý đào tạo',
                 },
                 {
-                    key: '/admin/certificate-management',
-                    icon: <SafetyCertificateOutlined />,
-                    label: 'Gói chứng chỉ',
-                },
-                {
                     key: '/admin/incident-management',
                     icon: <ExclamationCircleOutlined />,
                     label: 'Quản lý sự cố',
@@ -113,6 +108,11 @@ const Sidebar = () => {
                     key: '/admin/ppe-management',
                     icon: <SafetyCertificateOutlined />,
                     label: 'Quản lý PPE',
+                },
+                {
+                    key: '/admin/certificate-management',
+                    icon: <SafetyCertificateOutlined />,
+                    label: 'Gói chứng chỉ',
                 },
             ],
         },

@@ -23,9 +23,6 @@ import {
   Form,
   DatePicker,
   InputNumber,
-  Divider,
-  Progress,
-  Timeline,
   Descriptions
 } from 'antd';
 import { 
@@ -49,10 +46,6 @@ import {
   SendOutlined,
   UndoOutlined,
   ReloadOutlined,
-  BellOutlined,
-  ClockCircleOutlined,
-  CheckCircleFilled,
-  CloseCircleFilled,
   InfoCircleOutlined
 } from '@ant-design/icons';
 import * as ppeService from '../../../services/ppeService';
@@ -366,7 +359,7 @@ const PPEManagement: React.FC = () => {
 
   const handleItemSelect = (itemId: string) => {
     const item = ppeItems.find(i => i.id === itemId);
-    setSelectedDistributeItem(item);
+    setSelectedDistributeItem(item || null);
     setAvailableQuantity(item?.quantity_available || 0);
     distributeForm.setFieldsValue({ 
       item_id: itemId,
@@ -393,7 +386,7 @@ const PPEManagement: React.FC = () => {
         quantity: values.quantity,
         issued_date: values.issued_date.format('YYYY-MM-DD'),
         expected_return_date: values.expected_return_date.format('YYYY-MM-DD'),
-        issued_by: user?.id || user?._id || ''
+        issued_by: user?.id || ''
       };
 
       await ppeService.createIssuance(issuanceData);
@@ -678,7 +671,7 @@ const PPEManagement: React.FC = () => {
       render: (status: string) => {
         const statusConfig = {
           'issued': { color: 'blue', text: 'Đã phát', icon: <CheckCircleOutlined /> },
-          'returned': { color: 'green', text: 'Đã trả', icon: <CheckCircleFilled /> },
+          'returned': { color: 'green', text: 'Đã trả', icon: <CheckCircleOutlined /> },
           'overdue': { color: 'red', text: 'Quá hạn', icon: <ExclamationCircleOutlined /> },
           'damaged': { color: 'orange', text: 'Hư hỏng', icon: <WarningOutlined /> },
           'replacement_needed': { color: 'purple', text: 'Cần thay thế', icon: <ToolOutlined /> }
@@ -1840,7 +1833,7 @@ const PPEManagement: React.FC = () => {
         onCancel={() => setShowDistributeModal(false)}
         footer={null}
         width={800}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={distributeForm}
