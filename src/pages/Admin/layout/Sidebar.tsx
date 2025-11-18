@@ -15,10 +15,6 @@ import {
   SafetyOutlined,
   BankOutlined,
   FileTextOutlined,
-  ProjectOutlined,
-  BookOutlined,
-  SafetyCertificateOutlined,
-  ExclamationCircleOutlined,
   LogoutOutlined
 } from '@ant-design/icons'; 
 
@@ -64,52 +60,6 @@ const Sidebar = () => {
                     key: '/admin/system-logs',
                     icon: <FileTextOutlined />,
                     label: 'Nhật ký hệ thống',
-                },
-            ],
-        },
-        {
-            key: 'project-management',
-            label: 'Quản lý dự án',
-            type: 'group',
-            children: [
-                {
-                    key: '/admin/project-management',
-                    icon: <ProjectOutlined />,
-                    label: 'Dự án',
-                },
-            ],
-        },
-        {
-            key: 'training-incident',
-            label: 'Đào tạo & Sự cố',
-            type: 'group',
-            children: [
-                {
-                    key: '/admin/training-management',
-                    icon: <BookOutlined />,
-                    label: 'Quản lý đào tạo',
-                },
-                {
-                    key: '/admin/certificate-management',
-                    icon: <SafetyCertificateOutlined />,
-                    label: 'Gói chứng chỉ',
-                },
-                {
-                    key: '/admin/incident-management',
-                    icon: <ExclamationCircleOutlined />,
-                    label: 'Quản lý sự cố',
-                },
-            ],
-        },
-        {
-            key: 'ppe-management',
-            label: 'Thiết bị bảo hộ',
-            type: 'group',
-            children: [
-                {
-                    key: '/admin/ppe-management',
-                    icon: <SafetyCertificateOutlined />,
-                    label: 'Quản lý PPE',
                 },
             ],
         },
@@ -159,7 +109,7 @@ const Sidebar = () => {
                         border: 'none',
                         background: 'transparent'
                     }}
-                    defaultOpenKeys={['system-management', 'project-management', 'training-incident', 'ppe-management']}
+                    defaultOpenKeys={['system-management']}
                 />
             </div>
 

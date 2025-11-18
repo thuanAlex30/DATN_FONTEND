@@ -662,7 +662,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
             bodyStyle={{ padding: '24px' }}
           >
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <Link to={`/admin/project-management/${projectId}/tasks`} style={{ width: '100%' }}>
+              <Link to={`/header-department/project-management/${projectId}/tasks`} style={{ width: '100%' }}>
                 <Card 
                   size="small" 
                   hoverable
@@ -695,7 +695,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
                 </Card>
               </Link>
               
-              <Link to={`/admin/project-management/${projectId}/milestones`} style={{ width: '100%' }}>
+              <Link to={`/header-department/project-management/${projectId}/milestones`} style={{ width: '100%' }}>
                 <Card 
                   size="small" 
                   hoverable
@@ -728,7 +728,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
                 </Card>
               </Link>
               
-              <Link to={`/admin/project-management/${projectId}/resources`} style={{ width: '100%' }}>
+              <Link to={`/header-department/project-management/${projectId}/resources`} style={{ width: '100%' }}>
                 <Card 
                   size="small" 
                   hoverable
@@ -789,7 +789,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
             styles={{ header: { backgroundColor: '#fef2f2', borderBottom: '1px solid #fecaca' } }}
             bodyStyle={{ padding: '24px' }}
           >
-            <Link to={`/admin/project-management/${projectId}/risks`} style={{ width: '100%' }}>
+            <Link to={`/header-department/project-management/${projectId}/risks`} style={{ width: '100%' }}>
               <Card 
                 size="small" 
                 hoverable 

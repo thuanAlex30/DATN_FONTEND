@@ -51,7 +51,7 @@ import dayjs from 'dayjs';
 import { usePPEWebSocket } from '../../hooks/usePPEWebSocket';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
-import IssueToEmployeeModal from '../../pages/Admin/PPEManagement/IssueToEmployeeModal';
+import IssueToEmployeeModal from '../../pages/header_department/PPEManagement/IssueToEmployeeModal';
 import PPEReturnConfirmationModal from '../../pages/Manager/PPEManagement/PPEReturnConfirmationModal';
 import PPEAssignmentHistoryModal from '../../pages/Manager/PPEManagement/PPEAssignmentHistoryModal';
 

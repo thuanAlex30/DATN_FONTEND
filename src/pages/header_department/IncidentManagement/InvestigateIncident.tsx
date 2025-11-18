@@ -39,7 +39,7 @@ const InvestigateIncident: React.FC = () => {
         solution: values.recommendations
       });
       message.success('Cập nhật kết quả điều tra thành công');
-      navigate('/admin/incident-management');
+      navigate('/header-department/incident-management');
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || 'Không thể cập nhật kết quả điều tra';
       setError(errorMessage);

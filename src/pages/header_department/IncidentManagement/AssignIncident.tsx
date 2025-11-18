@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Card, 
@@ -7,37 +7,52 @@ import {
   Space,
   Form,
   Input,
+  Select,
   message,
   Alert,
   Row,
   Col
 } from 'antd';
 import { 
-  CloseCircleOutlined, 
+  UserOutlined, 
   ArrowLeftOutlined,
   CheckCircleOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
+import userService from '../../../services/userService';
 
 const { Title } = Typography;
 
-const CloseIncident: React.FC = () => {
+const AssignIncident: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<any[]>([]);
   const [form] = Form.useForm();
 
-  const handleSubmit = async () => {
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await userService.getUsers();
+        setUsers(response.data);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const handleSubmit = async (values: any) => {
     if (!id) return;
     try {
       setLoading(true);
       setError(null);
-      await incidentService.closeIncident(id);
-      message.success('Đóng sự cố thành công');
-      navigate('/admin/incident-management');
+      await incidentService.assignIncident(id, { assignedTo: values.assignedTo });
+      message.success('Phân công thành công');
+      navigate('/header-department/incident-management');
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || 'Không thể đóng sự cố';
+      const errorMessage = err?.response?.data?.message || 'Không thể phân công';
       setError(errorMessage);
       message.error(errorMessage);
     } finally {
@@ -55,7 +70,7 @@ const CloseIncident: React.FC = () => {
           </Button>
         </Space>
         <Title level={2}>
-          <CloseCircleOutlined /> Đóng sự cố
+          <UserOutlined /> Phân công người phụ trách
         </Title>
       </div>
 
@@ -68,23 +83,33 @@ const CloseIncident: React.FC = () => {
               onFinish={handleSubmit}
             >
               <Form.Item
-                name="resolution"
-                label="Giải pháp khắc phục"
-                rules={[{ required: true, message: 'Vui lòng nhập giải pháp khắc phục!' }]}
+                name="assignedTo"
+                label="Người phụ trách"
+                rules={[{ required: true, message: 'Vui lòng chọn người phụ trách!' }]}
               >
-                <Input.TextArea 
-                  rows={6} 
-                  placeholder="Mô tả chi tiết giải pháp đã thực hiện để khắc phục sự cố..." 
-                />
+                <Select
+                  placeholder="Chọn người phụ trách"
+                  showSearch
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
+                  }
+                >
+                  {users.map(user => (
+                    <Select.Option key={user.id} value={user.id}>
+                      {user.full_name} ({user.username})
+                    </Select.Option>
+                  ))}
+                </Select>
               </Form.Item>
 
               <Form.Item
-                name="notes"
-                label="Ghi chú bổ sung"
+                name="note"
+                label="Ghi chú"
               >
                 <Input.TextArea 
                   rows={3} 
-                  placeholder="Ghi chú bổ sung (nếu có)..." 
+                  placeholder="Nhập ghi chú về việc phân công..." 
                 />
               </Form.Item>
 
@@ -108,9 +133,8 @@ const CloseIncident: React.FC = () => {
                     htmlType="submit" 
                     loading={loading}
                     icon={<CheckCircleOutlined />}
-                    danger
                   >
-                    Đóng sự cố
+                    Phân công
                   </Button>
                 </Space>
               </Form.Item>
@@ -122,4 +146,4 @@ const CloseIncident: React.FC = () => {
   );
 };
 
-export default CloseIncident;
+export default AssignIncident;

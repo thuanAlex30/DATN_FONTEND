@@ -41,7 +41,7 @@ const UpdateProgress: React.FC = () => {
       // });
       console.log('Update progress:', values);
       message.success('Cập nhật tiến độ thành công');
-      navigate('/admin/incident-management');
+      navigate('/header-department/incident-management');
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || 'Không thể cập nhật tiến độ';
       setError(errorMessage);

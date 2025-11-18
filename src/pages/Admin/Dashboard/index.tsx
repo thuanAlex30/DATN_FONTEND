@@ -17,10 +17,8 @@ import {
   BookOutlined,
   ExclamationCircleOutlined,
   UserAddOutlined,
-  FileAddOutlined,
   SafetyOutlined,
-  TrophyOutlined,
-  BarChartOutlined,
+  FileTextOutlined,
   BellOutlined,
   CalendarOutlined,
   SyncOutlined
@@ -275,28 +273,13 @@ const DashboardPage: React.FC = () => {
                             type="dashed"
                             size="large"
                             block
-                            icon={<FileAddOutlined />}
-                            href="/admin/project-management"
+                            icon={<UserOutlined />}
+                            href="/admin/user-management"
                             style={{ height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                         >
                             <div style={{ marginTop: '8px' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Tạo dự án mới</div>
-                                <div style={{ fontSize: '12px', color: '#666' }}>Khởi tạo dự án và phân công nhân viên</div>
-            </div>
-                        </Button>
-                    </Col>
-                    <Col xs={24} sm={12} md={8} lg={6}>
-                        <Button
-                            type="dashed"
-                            size="large"
-                            block
-                            icon={<BookOutlined />}
-                            href="/admin/training-management"
-                            style={{ height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                            <div style={{ marginTop: '8px' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Lên lịch đào tạo</div>
-                                <div style={{ fontSize: '12px', color: '#666' }}>Tạo buổi đào tạo an toàn lao động</div>
+                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Quản lý người dùng</div>
+                                <div style={{ fontSize: '12px', color: '#666' }}>Xem và cập nhật tài khoản</div>
                     </div>
                         </Button>
                     </Col>
@@ -306,12 +289,12 @@ const DashboardPage: React.FC = () => {
                             size="large"
                             block
                             icon={<SafetyOutlined />}
-                            href="/admin/ppe-management"
+                            href="/admin/role-management"
                             style={{ height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                         >
                             <div style={{ marginTop: '8px' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Nhập PPE</div>
-                                <div style={{ fontSize: '12px', color: '#666' }}>Cập nhật kho thiết bị bảo hộ</div>
+                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Vai trò & quyền hạn</div>
+                                <div style={{ fontSize: '12px', color: '#666' }}>Quản lý phân quyền hệ thống</div>
                             </div>
                         </Button>
                     </Col>
@@ -320,13 +303,13 @@ const DashboardPage: React.FC = () => {
                             type="dashed"
                             size="large"
                             block
-                            icon={<TrophyOutlined />}
-                            href="/admin/certificate-management"
+                            icon={<ProjectOutlined />}
+                            href="/admin/department-position"
                             style={{ height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                         >
                             <div style={{ marginTop: '8px' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Tạo chứng chỉ</div>
-                                <div style={{ fontSize: '12px', color: '#666' }}>Định nghĩa gói chứng chỉ mới</div>
+                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Phòng ban & vị trí</div>
+                                <div style={{ fontSize: '12px', color: '#666' }}>Cập nhật cơ cấu tổ chức</div>
                             </div>
                         </Button>
                     </Col>
@@ -335,13 +318,13 @@ const DashboardPage: React.FC = () => {
                             type="dashed"
                             size="large"
                             block
-                            icon={<BarChartOutlined />}
-                            href="/admin/reports"
+                            icon={<FileTextOutlined />}
+                            href="/admin/system-logs"
                             style={{ height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                         >
                             <div style={{ marginTop: '8px' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Xem báo cáo</div>
-                                <div style={{ fontSize: '12px', color: '#666' }}>Phân tích hiệu suất và an toàn</div>
+                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Nhật ký hệ thống</div>
+                                <div style={{ fontSize: '12px', color: '#666' }}>Theo dõi hoạt động gần đây</div>
                         </div>
                         </Button>
                     </Col>

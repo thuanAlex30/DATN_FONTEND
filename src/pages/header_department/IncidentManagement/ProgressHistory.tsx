@@ -153,7 +153,7 @@ const ProgressHistory: React.FC = () => {
           showIcon
           action={
             <Button size="small" danger>
-              <Link to="/admin/incidents">Quay lại danh sách</Link>
+              <Link to="/header-department/incident-management">Quay lại danh sách</Link>
             </Button>
           }
         />
@@ -180,7 +180,7 @@ const ProgressHistory: React.FC = () => {
       <div style={{ marginBottom: '24px' }}>
         <Space style={{ marginBottom: '16px' }}>
           <Button icon={<ArrowLeftOutlined />}>
-            <Link to="/admin/incidents">Quay lại</Link>
+            <Link to="/header-department/incident-management">Quay lại</Link>
           </Button>
         </Space>
         <Title level={2}>

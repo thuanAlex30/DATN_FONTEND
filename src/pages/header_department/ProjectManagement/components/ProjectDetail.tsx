@@ -100,7 +100,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
 
   const getCurrentPath = () => {
     const path = location.pathname;
-    const projectPath = `/admin/project-management/${projectId}`;
+    const projectPath = `/header-department/project-management/${projectId}`;
     const currentPath = path.replace(projectPath, '') || '';
     const result = currentPath === '' ? 'overview' : currentPath.replace('/', '');
     console.log('ProjectDetail getCurrentPath:', { path, projectPath, currentPath, result, projectId });
@@ -147,7 +147,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
         <Typography.Text className="text-gray-400 mb-4">
           {error}
         </Typography.Text>
-        <Link to="/admin/project-management">
+        <Link to="/header-department/project-management">
           <Button 
             type="primary" 
             className="bg-gradient-to-r from-blue-500 to-purple-600 border-0"
@@ -181,7 +181,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
         <Typography.Text className="text-gray-400 mb-4 text-center max-w-md">
           Dự án bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.
         </Typography.Text>
-        <Link to="/admin/project-management">
+        <Link to="/header-department/project-management">
           <Button 
             type="primary" 
             className="bg-gradient-to-r from-blue-500 to-purple-600 border-0"
@@ -272,7 +272,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <Link to="/admin/project-management">
+                <Link to="/header-department/project-management">
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button 
                       icon={<ArrowLeftOutlined />}
@@ -450,7 +450,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
               setActiveTab(key);
               // Cập nhật URL để đồng bộ với state
               const path = key === 'overview' ? '' : `/${key}`;
-              window.history.replaceState(null, '', `/admin/project-management/${projectId}${path}`);
+              window.history.replaceState(null, '', `/header-department/project-management/${projectId}${path}`);
             }}
             items={[
               {

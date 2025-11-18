@@ -52,6 +52,9 @@ const LoginPage: React.FC = () => {
           } else if (roleName === 'manager') {
             console.log('🔀 Redirecting to manager dashboard...');
             safeNavigate('/manager/dashboard', { replace: true });
+          } else if (roleName === 'header_department') {
+            console.log('🔀 Redirecting to header department dashboard...');
+            safeNavigate('/header-department/dashboard', { replace: true });
           } else if (roleName === 'employee') {
             console.log('🔀 Redirecting to employee dashboard...');
             safeNavigate('/employee/dashboard', { replace: true });

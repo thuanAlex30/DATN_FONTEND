@@ -226,7 +226,7 @@ const IncidentList: React.FC = () => {
               type="link" 
               size="small" 
               icon={<WarningOutlined />}
-              href={`/admin/incidents/${record._id}/classify`}
+              href={`/header-department/incident-management/${record._id}/classify`}
             >
               Phân loại
             </Button>
@@ -236,7 +236,7 @@ const IncidentList: React.FC = () => {
               type="link" 
               size="small" 
               icon={<InfoCircleOutlined />}
-              href={`/admin/incidents/${record._id}/assign`}
+              href={`/header-department/incident-management/${record._id}/assign`}
             >
               Phân công
             </Button>
@@ -246,7 +246,7 @@ const IncidentList: React.FC = () => {
               type="link" 
               size="small" 
               icon={<SearchOutlined />}
-              href={`/admin/incidents/${record._id}/investigate`}
+              href={`/header-department/incident-management/${record._id}/investigate`}
             >
               Điều tra
             </Button>
@@ -256,7 +256,7 @@ const IncidentList: React.FC = () => {
               type="link" 
               size="small" 
               icon={<ClockCircleOutlined />}
-              href={`/admin/incidents/${record._id}/progress-history`}
+              href={`/header-department/incident-management/${record._id}/progress-history`}
             >
               Tiến độ
             </Button>
@@ -267,7 +267,7 @@ const IncidentList: React.FC = () => {
               size="small" 
               danger
               icon={<CloseCircleOutlined />}
-              href={`/admin/incidents/${record._id}/close`}
+              href={`/header-department/incident-management/${record._id}/close`}
             >
               Đóng
             </Button>

@@ -584,7 +584,7 @@ const TrainingManagement: React.FC = () => {
                 </Typography.Title>
                 <Breadcrumb style={{ marginTop: '8px' }}>
                   <Breadcrumb.Item>
-                    <a href="/admin/dashboard">Dashboard</a>
+                    <a href="/header-department/dashboard">Dashboard</a>
                   </Breadcrumb.Item>
                   <Breadcrumb.Item>Quản lý đào tạo</Breadcrumb.Item>
                 </Breadcrumb>
@@ -594,7 +594,7 @@ const TrainingManagement: React.FC = () => {
               <Button 
                 type="default" 
                 icon={<ArrowLeftOutlined />}
-                href="/admin/dashboard"
+                href="/header-department/dashboard"
               >
                 Quay lại
               </Button>
