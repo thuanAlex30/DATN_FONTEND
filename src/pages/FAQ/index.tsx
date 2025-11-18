@@ -4,16 +4,17 @@ import {
   Layout,
   Button,
   Typography,
+  Collapse,
+  Space,
   Row,
   Col,
-  Space,
   Divider
 } from 'antd';
 import {
   SafetyOutlined,
   LoginOutlined,
   ArrowLeftOutlined,
-  CheckCircleOutlined,
+  QuestionCircleOutlined,
   PhoneOutlined,
   MailOutlined,
   EnvironmentOutlined,
@@ -21,17 +22,50 @@ import {
   InstagramOutlined,
   TwitterOutlined
 } from '@ant-design/icons';
-import styles from './About.module.css';
+import styles from './FAQ.module.css';
 
 const { Header, Content, Footer } = Layout;
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
-const AboutPage: React.FC = () => {
+const FAQPage: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLogin = () => {
     navigate('/login');
   };
+
+  const faqData = [
+    {
+      key: '1',
+      label: 'Hệ thống quản lý an toàn lao động là gì?',
+      children: 'Hệ thống quản lý an toàn lao động là một nền tảng tích hợp giúp quản lý toàn diện các hoạt động an toàn, đào tạo, thiết bị bảo hộ cá nhân (PPE), sự cố và dự án trong tổ chức.'
+    },
+    {
+      key: '2',
+      label: 'Ai có thể sử dụng hệ thống này?',
+      children: 'Hệ thống được thiết kế cho tất cả các thành viên trong tổ chức, bao gồm: Quản trị viên, Quản lý, Trưởng nhóm, Nhân viên, Giảng viên và Nhân viên an toàn. Mỗi vai trò có quyền truy cập và chức năng phù hợp.'
+    },
+    {
+      key: '3',
+      label: 'Làm thế nào để đăng nhập vào hệ thống?',
+      children: 'Bạn cần có tài khoản được cấp bởi quản trị viên. Nhấn nút "Đăng nhập" ở góc trên bên phải và nhập tên đăng nhập cùng mật khẩu của bạn.'
+    },
+    {
+      key: '4',
+      label: 'Tôi quên mật khẩu, phải làm sao?',
+      children: 'Nếu bạn quên mật khẩu, vui lòng liên hệ với quản trị viên hệ thống hoặc bộ phận IT để được hỗ trợ đặt lại mật khẩu.'
+    },
+    {
+      key: '5',
+      label: 'Hệ thống có hỗ trợ trên mobile không?',
+      children: 'Có, hệ thống được thiết kế responsive và có thể truy cập trên các thiết bị di động, máy tính bảng và máy tính để bàn.'
+    },
+    {
+      key: '6',
+      label: 'Làm thế nào để báo cáo sự cố?',
+      children: 'Sau khi đăng nhập, người dùng có quyền báo cáo sự cố có thể truy cập vào mục "Báo cáo sự cố" trong menu và điền thông tin chi tiết về sự cố.'
+    }
+  ];
 
   return (
     <Layout className={styles.layout}>
@@ -65,7 +99,8 @@ const AboutPage: React.FC = () => {
             </Button>
             <Button
               type="link"
-              className={styles.navLinkActive}
+              className={styles.navLink}
+              onClick={() => navigate('/about')}
             >
               Giới thiệu
             </Button>
@@ -78,8 +113,7 @@ const AboutPage: React.FC = () => {
             </Button>
             <Button
               type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/faq')}
+              className={styles.navLinkActive}
             >
               FAQ
             </Button>
@@ -98,51 +132,17 @@ const AboutPage: React.FC = () => {
             Quay lại trang chủ
           </Button>
 
-          <section className={styles.aboutSection}>
+          <section className={styles.faqSection}>
             <Title level={1} className={styles.pageTitle}>
-              Giới thiệu về hệ thống
+              Câu hỏi thường gặp
             </Title>
-            
-            <Row gutter={[48, 48]} align="middle" className={styles.aboutRow}>
-              <Col xs={24} lg={12}>
-                <Paragraph className={styles.aboutText}>
-                  Hệ thống Quản lý An toàn Lao động được phát triển nhằm hỗ trợ các tổ chức
-                  quản lý toàn diện các hoạt động liên quan đến an toàn lao động. Với giao diện
-                  thân thiện và các tính năng mạnh mẽ, hệ thống giúp:
-                </Paragraph>
-                <ul className={styles.aboutList}>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Nâng cao hiệu quả quản lý an toàn lao động
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Giảm thiểu rủi ro và sự cố tại nơi làm việc
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Theo dõi và quản lý đào tạo an toàn
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Quản lý thiết bị bảo hộ cá nhân (PPE)
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Tạo báo cáo và thống kê chi tiết
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Xử lý sự cố nhanh chóng và hiệu quả
-                  </li>
-                </ul>
-              </Col>
-              <Col xs={24} lg={12}>
-                <div className={styles.aboutImage}>
-                  <SafetyOutlined className={styles.aboutIcon} />
-                </div>
-              </Col>
-            </Row>
+            <Collapse
+              items={faqData}
+              className={styles.faqCollapse}
+              expandIcon={({ isActive }) => (
+                <QuestionCircleOutlined rotate={isActive ? 90 : 0} />
+              )}
+            />
           </section>
         </div>
       </Content>
@@ -316,5 +316,5 @@ const AboutPage: React.FC = () => {
   );
 };
 
-export default AboutPage;
+export default FAQPage;
 

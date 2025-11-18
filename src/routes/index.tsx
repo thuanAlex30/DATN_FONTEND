@@ -4,7 +4,12 @@ import AuthGuard from '../components/AuthGuard';
 import AdminLayout from '../pages/Admin/layout/AdminLayout';
 import LoginPage from '../pages/Login';
 import UnauthorizedPage from '../pages/Unauthorized';
+import LandingPage from '../pages/Landing';
+import AboutPage from '../pages/About';
+import ContactPage from '../pages/Contact';
+import FAQPage from '../pages/FAQ';
 import HomePage from '../pages/Home';
+import Homepage from '../pages/Homepage';
 import DashboardPage from '../pages/Admin/Dashboard';
 import UserManagementPage from '../pages/Admin/UserManagement';
 import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
@@ -39,11 +44,27 @@ interface ProjectManagementRoute {
 const AppRoutes = () => {
     return (
         <Routes>
+            {/* Landing page - trang công khai */}
+            <Route path="/" element={<LandingPage />} />
+            
             {/* Public routes */}
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/faq" element={<FAQPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             
-            {/* Home route for non-admin users */}
+            {/* Homepage chung cho tất cả users */}
+            <Route 
+                path="/homepage" 
+                element={
+                    <AuthGuard>
+                        <Homepage />
+                    </AuthGuard>
+                } 
+            />
+            
+            {/* Home route for non-admin users (legacy - giữ lại để tương thích) */}
             <Route 
                 path="/home" 
                 element={
@@ -108,8 +129,6 @@ const AppRoutes = () => {
                 element={<WebSocketTest />} 
             />
             
-            {/* Redirect root to login */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
             
             {/* Protected admin routes */}
             <Route 
@@ -302,7 +321,7 @@ const AppRoutes = () => {
             ))}
             
             {/* Fallback for non-existent routes */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
 };
