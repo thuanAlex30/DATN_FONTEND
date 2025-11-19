@@ -23,7 +23,6 @@ import {
   SearchOutlined,
   PlusOutlined,
   PlayCircleOutlined,
-  SafetyCertificateOutlined,
   RedoOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
@@ -319,14 +318,6 @@ const EmployeeTraining: React.FC = () => {
                 onClick={() => handleStartTraining(course._id)}
               >
                 Vào học
-              </Button>
-            ),
-            enrollmentStatus === 'completed' && (
-              <Button 
-                type="default"
-                icon={<SafetyCertificateOutlined />}
-              >
-                Xem chứng chỉ
               </Button>
             ),
             enrollmentStatus === 'failed' && (

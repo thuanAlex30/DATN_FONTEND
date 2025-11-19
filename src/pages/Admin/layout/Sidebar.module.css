@@ -1,0 +1,303 @@
+/* Modern Admin Sidebar Styles */
+.sidebar {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar:hover {
+  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.12);
+}
+
+.sidebarHeader {
+  padding: 28px 20px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.05) 0%, rgba(24, 144, 255, 0.02) 100%);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebarHeader::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #1890ff 0%, #40a9ff 50%, #1890ff 100%);
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.logoContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.logoTitle {
+  margin: 0;
+  color: #1890ff;
+  font-weight: 700;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.logoTitle:hover {
+  transform: scale(1.02);
+  color: #40a9ff;
+}
+
+.logoSubtitle {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.connectionStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 12px;
+  font-size: 11px;
+  color: #16a34a;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.connectionStatus:hover {
+  background: rgba(34, 197, 94, 0.15);
+  transform: translateY(-1px);
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.sidebarNav {
+  flex: 1;
+  padding: 20px 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.sidebarNav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebarNav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebarNav::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+  transition: background 0.3s ease;
+}
+
+.sidebarNav::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.menu {
+  border: none !important;
+  background: transparent !important;
+}
+
+.menu .ant-menu-item-group-title {
+  color: #64748b !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  margin: 16px 16px 8px !important;
+  padding: 0 !important;
+  position: relative;
+}
+
+.menu .ant-menu-item-group-title::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, #e2e8f0 0%, transparent 100%);
+}
+
+.menu .ant-menu-item {
+  margin: 4px 12px !important;
+  border-radius: 12px !important;
+  height: 48px !important;
+  line-height: 48px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.menu .ant-menu-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #1890ff;
+  transform: scaleY(0);
+  transition: transform 0.3s ease;
+}
+
+.menu .ant-menu-item:hover {
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(24, 144, 255, 0.04) 100%) !important;
+  color: #1890ff !important;
+  transform: translateX(4px) !important;
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15) !important;
+}
+
+.menu .ant-menu-item:hover::before {
+  transform: scaleY(1);
+}
+
+.menu .ant-menu-item-selected {
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%) !important;
+  color: white !important;
+  box-shadow: 0 6px 20px rgba(24, 144, 255, 0.4) !important;
+  transform: translateX(4px) !important;
+}
+
+.menu .ant-menu-item-selected::before {
+  transform: scaleY(1);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.menu .ant-menu-item-selected .ant-menu-item-icon {
+  color: white !important;
+  transform: scale(1.1);
+}
+
+.menu .ant-menu-item-icon {
+  font-size: 16px;
+  margin-right: 12px;
+  transition: all 0.3s ease;
+}
+
+.menu .ant-menu-item:hover .ant-menu-item-icon {
+  transform: scale(1.05);
+}
+
+.sidebarFooter {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  border-top: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
+  backdrop-filter: blur(10px);
+}
+
+.logoutButton {
+  height: 48px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(255, 77, 79, 0.2);
+  border: 1px solid rgba(255, 77, 79, 0.2);
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+}
+
+.logoutButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 77, 79, 0.4);
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff6b6b 100%);
+}
+
+.logoutButton:active {
+  transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .sidebar {
+    width: 260px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 240px !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .sidebarHeader {
+    padding: 20px 16px 16px;
+  }
+  
+  .logoTitle {
+    font-size: 18px;
+  }
+  
+  .menu .ant-menu-item {
+    margin: 3px 8px !important;
+    height: 44px !important;
+    line-height: 44px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 100vw !important;
+  }
+  
+  .sidebarHeader {
+    padding: 16px;
+  }
+  
+  .logoTitle {
+    font-size: 16px;
+  }
+  
+  .menu .ant-menu-item {
+    margin: 2px 4px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+  }
+}
+

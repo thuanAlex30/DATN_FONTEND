@@ -39,15 +39,9 @@ const LoginPage: React.FC = () => {
         
         // Small delay to ensure state is updated before redirect
         setTimeout(() => {
-          // Check if user is admin
-          if (user.role?.role_name === 'admin') {
-            console.log('🔀 Redirecting to admin dashboard...');
-            safeNavigate('/admin/dashboard', { replace: true });
-          } else {
-            console.log('🔀 Redirecting to home page...');
-            // Handle non-admin users (redirect to appropriate page)
-            safeNavigate('/home', { replace: true });
-          }
+          // Redirect tất cả users về homepage chung
+          console.log('🔀 Redirecting to homepage...');
+          safeNavigate('/homepage', { replace: true });
         }, 100);
       } else if (login.rejected.match(resultAction)) {
         // Error is already handled by the slice

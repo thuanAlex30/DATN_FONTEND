@@ -6,7 +6,8 @@ import {
   Menu, 
   Typography, 
   Button, 
-  Space
+  Space,
+  Badge
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -19,8 +20,10 @@ import {
   BookOutlined,
   SafetyCertificateOutlined,
   ExclamationCircleOutlined,
-  LogoutOutlined
-} from '@ant-design/icons'; 
+  LogoutOutlined,
+  WifiOutlined
+} from '@ant-design/icons';
+import styles from './Sidebar.module.css'; 
 
 const { Sider } = Layout;
 const { Title, Text } = Typography;
@@ -90,11 +93,6 @@ const Sidebar = () => {
                     label: 'Quản lý đào tạo',
                 },
                 {
-                    key: '/admin/certificate-management',
-                    icon: <SafetyCertificateOutlined />,
-                    label: 'Gói chứng chỉ',
-                },
-                {
                     key: '/admin/incident-management',
                     icon: <ExclamationCircleOutlined />,
                     label: 'Quản lý sự cố',
@@ -111,6 +109,11 @@ const Sidebar = () => {
                     icon: <SafetyCertificateOutlined />,
                     label: 'Quản lý PPE',
                 },
+                {
+                    key: '/admin/certificate-management',
+                    icon: <SafetyCertificateOutlined />,
+                    label: 'Gói chứng chỉ',
+                },
             ],
         },
     ];
@@ -122,69 +125,45 @@ const Sidebar = () => {
     return (
         <Sider 
             width={280} 
-            style={{
-                background: '#fff',
-                borderRight: '1px solid #f0f0f0',
-                height: '100vh',
-                position: 'fixed',
-                left: 0,
-                top: 0,
-                zIndex: 1000,
-                overflow: 'auto'
-            }}
+            className={styles.sidebar}
         >
             {/* Header */}
-            <div style={{ 
-                padding: '24px 16px 16px', 
-                borderBottom: '1px solid #f0f0f0',
-                textAlign: 'center'
-            }}>
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                    <Title level={3} style={{ margin: 0, color: '#1890ff' }}>
+            <div className={styles.sidebarHeader}>
+                <div className={styles.logoContainer}>
+                    <Title level={3} className={styles.logoTitle}>
                         <SafetyOutlined /> SafetyPro
                     </Title>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                    <Text className={styles.logoSubtitle}>
                         Administrator Dashboard
                     </Text>
-                </Space>
+                    <div className={styles.connectionStatus}>
+                        <div className={styles.statusDot}></div>
+                        <WifiOutlined style={{ fontSize: '10px' }} />
+                        <span>Đã kết nối</span>
+                    </div>
+                </div>
             </div>
 
             {/* Navigation Menu */}
-            <div style={{ padding: '16px 0' }}>
+            <div className={styles.sidebarNav}>
                 <Menu
                     mode="inline"
                     items={menuItems}
                     onClick={handleMenuClick}
-                    style={{ 
-                        border: 'none',
-                        background: 'transparent'
-                    }}
+                    className={styles.menu}
                     defaultOpenKeys={['system-management', 'project-management', 'training-incident', 'ppe-management']}
                 />
             </div>
 
             {/* Footer with Logout */}
-            <div style={{ 
-                position: 'absolute', 
-                bottom: 0, 
-                left: 0, 
-                right: 0, 
-                padding: '16px',
-                borderTop: '1px solid #f0f0f0',
-                background: '#fff'
-            }}>
+            <div className={styles.sidebarFooter}>
                 <Button 
-                    type="text" 
+                    type="primary"
                     danger
                     icon={<LogoutOutlined />}
                     onClick={handleLogout}
-                    style={{ 
-                        width: '100%',
-                        height: '40px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'flex-start'
-                    }}
+                    className={styles.logoutButton}
+                    block
                 >
                     Đăng xuất
                 </Button>

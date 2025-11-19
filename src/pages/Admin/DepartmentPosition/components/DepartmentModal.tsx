@@ -202,7 +202,7 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({
       onCancel={handleCancel}
       footer={null}
       width={600}
-      destroyOnClose
+      destroyOnHidden
       zIndex={10000}
       style={{ top: 20 }}
       maskClosable={false}

@@ -4,17 +4,22 @@ import AuthGuard from '../components/AuthGuard';
 import AdminLayout from '../pages/Admin/layout/AdminLayout';
 import LoginPage from '../pages/Login';
 import UnauthorizedPage from '../pages/Unauthorized';
+import LandingPage from '../pages/Landing';
+import AboutPage from '../pages/About';
+import ContactPage from '../pages/Contact';
+import FAQPage from '../pages/FAQ';
 import HomePage from '../pages/Home';
+import Homepage from '../pages/Homepage';
 import DashboardPage from '../pages/Admin/Dashboard';
 import UserManagementPage from '../pages/Admin/UserManagement';
 import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
 import ProjectManagement from '../pages/Admin/ProjectManagement';
 import TrainingManagementPage from '../pages/Admin/TrainingManagement';
-import CertificateManagementPage from '../pages/Admin/CertificateManagement';
 import PPEManagementPage from '../pages/Admin/PPEManagement';
 import RoleManagementPage from '../pages/Admin/RoleManagement';
 import IncidentManagementPage from '../pages/Admin/IncidentManagement';
+import CertificateManagementPage from '../pages/Admin/CertificateManagement';
 import ManagerIncidentHandling from '../pages/Manager/IncidentHandling';
 import ClassifyIncident from '../pages/Admin/IncidentManagement/ClassifyIncident';
 import AssignIncident from '../pages/Admin/IncidentManagement/AssignIncident';
@@ -39,11 +44,27 @@ interface ProjectManagementRoute {
 const AppRoutes = () => {
     return (
         <Routes>
+            {/* Landing page - trang công khai */}
+            <Route path="/" element={<LandingPage />} />
+            
             {/* Public routes */}
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/faq" element={<FAQPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             
-            {/* Home route for non-admin users */}
+            {/* Homepage chung cho tất cả users */}
+            <Route 
+                path="/homepage" 
+                element={
+                    <AuthGuard>
+                        <Homepage />
+                    </AuthGuard>
+                } 
+            />
+            
+            {/* Home route for non-admin users (legacy - giữ lại để tương thích) */}
             <Route 
                 path="/home" 
                 element={
@@ -108,8 +129,6 @@ const AppRoutes = () => {
                 element={<WebSocketTest />} 
             />
             
-            {/* Redirect root to login */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
             
             {/* Protected admin routes */}
             <Route 
@@ -193,21 +212,21 @@ const AppRoutes = () => {
                 } 
             />
             <Route 
-                path="/admin/certificate-management" 
-                element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
-                            <CertificateManagementPage />
-                        </AdminLayout>
-                    </AuthGuard>
-                } 
-            />
-            <Route 
                 path="/admin/ppe-management" 
                 element={
                     <AuthGuard requiredRole="admin">
                         <AdminLayout>
                             <PPEManagementPage />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/certificate-management" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <CertificateManagementPage />
                         </AdminLayout>
                     </AuthGuard>
                 } 
@@ -302,7 +321,7 @@ const AppRoutes = () => {
             ))}
             
             {/* Fallback for non-existent routes */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
 };

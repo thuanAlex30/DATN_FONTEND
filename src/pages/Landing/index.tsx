@@ -4,6 +4,7 @@ import {
   Layout,
   Button,
   Typography,
+  Card,
   Row,
   Col,
   Space,
@@ -12,26 +13,64 @@ import {
 import {
   SafetyOutlined,
   LoginOutlined,
-  ArrowLeftOutlined,
-  CheckCircleOutlined,
   PhoneOutlined,
   MailOutlined,
   EnvironmentOutlined,
+  TeamOutlined,
+  CheckCircleOutlined,
+  ArrowRightOutlined,
+  InfoCircleOutlined,
+  BarChartOutlined,
+  BookOutlined,
   FacebookOutlined,
   InstagramOutlined,
   TwitterOutlined
 } from '@ant-design/icons';
-import styles from './About.module.css';
+import styles from './Landing.module.css';
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
-const AboutPage: React.FC = () => {
+const LandingPage: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLogin = () => {
     navigate('/login');
   };
+
+
+  const features = [
+    {
+      icon: <SafetyOutlined />,
+      title: 'Quản lý An toàn',
+      description: 'Theo dõi và quản lý các hoạt động an toàn lao động, sự cố và rủi ro'
+    },
+    {
+      icon: <BookOutlined />,
+      title: 'Đào tạo & Chứng chỉ',
+      description: 'Quản lý các khóa đào tạo an toàn và theo dõi chứng chỉ của nhân viên'
+    },
+    {
+      icon: <TeamOutlined />,
+      title: 'Quản lý Nhân sự',
+      description: 'Quản lý thông tin nhân viên, phòng ban, chức vụ và vai trò'
+    },
+    {
+      icon: <BarChartOutlined />,
+      title: 'Báo cáo & Thống kê',
+      description: 'Tạo báo cáo chi tiết và xem thống kê về an toàn lao động'
+    },
+    {
+      icon: <CheckCircleOutlined />,
+      title: 'Quản lý PPE',
+      description: 'Theo dõi và quản lý thiết bị bảo hộ cá nhân cho nhân viên'
+    },
+    {
+      icon: <InfoCircleOutlined />,
+      title: 'Quản lý Dự án',
+      description: 'Quản lý các dự án, cột mốc, tài nguyên và rủi ro dự án'
+    }
+  ];
 
   return (
     <Layout className={styles.layout}>
@@ -58,14 +97,14 @@ const AboutPage: React.FC = () => {
           <Space size="large" className={styles.navLinks}>
             <Button
               type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/')}
+              className={styles.navLinkActive}
             >
               Trang chủ
             </Button>
             <Button
               type="link"
-              className={styles.navLinkActive}
+              className={styles.navLink}
+              onClick={() => navigate('/about')}
             >
               Giới thiệu
             </Button>
@@ -87,64 +126,73 @@ const AboutPage: React.FC = () => {
         </div>
       </Header>
 
+      {/* Hero Section */}
       <Content className={styles.content}>
-        <div className={styles.pageContainer}>
-          <Button
-            type="link"
-            icon={<ArrowLeftOutlined />}
-            onClick={() => navigate('/')}
-            className={styles.backButton}
-          >
-            Quay lại trang chủ
-          </Button>
-
-          <section className={styles.aboutSection}>
-            <Title level={1} className={styles.pageTitle}>
-              Giới thiệu về hệ thống
-            </Title>
-            
-            <Row gutter={[48, 48]} align="middle" className={styles.aboutRow}>
+        <section className={styles.heroSection}>
+          <div className={styles.heroContainer}>
+            <Row gutter={[48, 32]} align="middle">
+              {/* Left Side - Text Content */}
               <Col xs={24} lg={12}>
-                <Paragraph className={styles.aboutText}>
-                  Hệ thống Quản lý An toàn Lao động được phát triển nhằm hỗ trợ các tổ chức
-                  quản lý toàn diện các hoạt động liên quan đến an toàn lao động. Với giao diện
-                  thân thiện và các tính năng mạnh mẽ, hệ thống giúp:
-                </Paragraph>
-                <ul className={styles.aboutList}>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Nâng cao hiệu quả quản lý an toàn lao động
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Giảm thiểu rủi ro và sự cố tại nơi làm việc
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Theo dõi và quản lý đào tạo an toàn
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Quản lý thiết bị bảo hộ cá nhân (PPE)
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Tạo báo cáo và thống kê chi tiết
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Xử lý sự cố nhanh chóng và hiệu quả
-                  </li>
-                </ul>
+                <div className={styles.heroContent}>
+                  <Title level={1} className={styles.heroTitle}>
+                    Quản Lý An Toàn Lao Động
+                  </Title>
+                  <Title level={2} className={styles.heroSubtitle}>
+                    Chuyên nghiệp & Hiệu quả
+                  </Title>
+                  <Paragraph className={styles.heroDescription}>
+                    Khám phá hệ thống quản lý toàn diện giúp tổ chức của bạn đảm bảo an toàn lao động,
+                    quản lý đào tạo, theo dõi thiết bị bảo hộ và xử lý sự cố một cách hiệu quả.
+                  </Paragraph>
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<ArrowRightOutlined />}
+                    className={styles.ctaButton}
+                    disabled
+                    title="Chức năng đang phát triển"
+                  >
+                    Tham gia hệ thống của chúng tôi
+                  </Button>
+                </div>
               </Col>
+              
+              {/* Right Side - Image/Illustration */}
               <Col xs={24} lg={12}>
-                <div className={styles.aboutImage}>
-                  <SafetyOutlined className={styles.aboutIcon} />
+                <div className={styles.heroImage}>
+                  <div className={styles.heroImagePlaceholder}>
+                    <SafetyOutlined className={styles.heroImageIcon} />
+                  </div>
                 </div>
               </Col>
             </Row>
-          </section>
-        </div>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section id="features" className={styles.featuresSection}>
+          <div className={styles.sectionContainer}>
+            <Title level={2} className={styles.sectionTitle}>
+              Tính năng nổi bật
+            </Title>
+            <Row gutter={[24, 24]}>
+              {features.map((feature, index) => (
+                <Col xs={24} sm={12} md={8} key={index}>
+                  <Card className={styles.featureCard} hoverable>
+                    <div className={styles.featureIcon}>{feature.icon}</div>
+                    <Title level={4} className={styles.featureTitle}>
+                      {feature.title}
+                    </Title>
+                    <Text className={styles.featureDescription}>
+                      {feature.description}
+                    </Text>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          </div>
+        </section>
+
       </Content>
 
       {/* Footer */}
@@ -252,7 +300,9 @@ const AboutPage: React.FC = () => {
                 <Button
                   type="link"
                   className={styles.footerLink}
-                  onClick={() => navigate('/')}
+                  onClick={() => {
+                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
                 >
                   Tính năng hệ thống
                 </Button>
@@ -316,5 +366,4 @@ const AboutPage: React.FC = () => {
   );
 };
 
-export default AboutPage;
-
+export default LandingPage;
