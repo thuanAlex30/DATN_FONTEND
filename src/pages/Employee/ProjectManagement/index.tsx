@@ -13,25 +13,18 @@ import {
   message,
   Spin,
   Empty,
-  Space,
   Typography,
   Badge,
-  Tooltip,
   Modal,
-  Form,
-  Select,
-  Input,
-  DatePicker
+  Select
 } from 'antd';
 import {
   ProjectOutlined,
   ReloadOutlined,
   ExclamationCircleOutlined,
   FlagOutlined,
-  CalendarOutlined,
   DollarOutlined,
   ClockCircleOutlined,
-  CheckCircleOutlined,
   WarningOutlined,
   SafetyOutlined,
   EnvironmentOutlined,
@@ -47,7 +40,6 @@ import dayjs from 'dayjs';
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
-const { TextArea } = Input;
 
 const EmployeeProjectManagement: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -59,8 +51,6 @@ const EmployeeProjectManagement: React.FC = () => {
   const [selectedMilestone, setSelectedMilestone] = useState<ProjectMilestone | null>(null);
   const [riskModalVisible, setRiskModalVisible] = useState(false);
   const [milestoneModalVisible, setMilestoneModalVisible] = useState(false);
-  const [riskForm] = Form.useForm();
-  const [milestoneForm] = Form.useForm();
 
   // Load data
   const loadData = async () => {
@@ -119,27 +109,6 @@ const EmployeeProjectManagement: React.FC = () => {
     return icons[category] || <ExclamationCircleOutlined />;
   };
 
-  // Risk status colors
-  const getRiskStatusColor = (status: ProjectRisk['status']) => {
-    const colors = {
-      IDENTIFIED: 'orange',
-      IN_PROGRESS: 'blue',
-      RESOLVED: 'green',
-      CLOSED: 'gray'
-    };
-    return colors[status] || 'default';
-  };
-
-  // Milestone status colors
-  const getMilestoneStatusColor = (status: ProjectMilestone['status']) => {
-    const colors = {
-      PENDING: 'orange',
-      IN_PROGRESS: 'blue',
-      COMPLETED: 'green',
-      DELAYED: 'red'
-    };
-    return colors[status] || 'default';
-  };
 
   // Handle risk status update
   const handleRiskStatusUpdate = async (riskId: string, status: ProjectRisk['status']) => {
@@ -390,7 +359,7 @@ const EmployeeProjectManagement: React.FC = () => {
       }
     >
       <Spin spinning={loading}>
-        <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key as 'risks' | 'milestones')}>
           <TabPane 
             tab={
               <span>
