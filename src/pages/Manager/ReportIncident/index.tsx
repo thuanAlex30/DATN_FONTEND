@@ -22,7 +22,7 @@ import {
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
@@ -57,8 +57,7 @@ const ReportIncident: React.FC = () => {
     setImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     try {
       setLoading(true);
       await incidentService.reportIncident({ title, description, location, severity, images });
@@ -111,17 +110,26 @@ const ReportIncident: React.FC = () => {
           >
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
-                <Form.Item label="Tiêu đề" required>
+                <Form.Item 
+                  name="title"
+                  label="Tiêu đề" 
+                  required
+                  rules={[{ required: true, message: 'Vui lòng nhập tiêu đề sự cố!' }]}
+                >
                   <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Nhập tiêu đề sự cố"
-                    required
                   />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item label="Vị trí">
+                <Form.Item 
+                  name="location"
+                  label="Vị trí" 
+                  required
+                  rules={[{ required: true, message: 'Vui lòng nhập vị trí xảy ra sự cố!' }]}
+                >
                   <Input
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
@@ -131,7 +139,12 @@ const ReportIncident: React.FC = () => {
               </Col>
             </Row>
 
-            <Form.Item label="Mức độ nghiêm trọng" required>
+            <Form.Item 
+              name="severity"
+              label="Mức độ nghiêm trọng" 
+              required
+              rules={[{ required: true, message: 'Vui lòng chọn mức độ nghiêm trọng!' }]}
+            >
               <Select
                 value={severity}
                 onChange={(value) => setSeverity(value)}
@@ -143,7 +156,12 @@ const ReportIncident: React.FC = () => {
               </Select>
             </Form.Item>
 
-            <Form.Item label="Mô tả chi tiết">
+            <Form.Item 
+              name="description"
+              label="Mô tả chi tiết" 
+              required
+              rules={[{ required: true, message: 'Vui lòng nhập mô tả chi tiết về sự cố!' }]}
+            >
               <TextArea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

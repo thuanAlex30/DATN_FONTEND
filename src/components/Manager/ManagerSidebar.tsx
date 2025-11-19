@@ -16,7 +16,8 @@ import {
   SafetyOutlined,
   SafetyCertificateOutlined,
   LogoutOutlined,
-  ProjectOutlined
+  ProjectOutlined,
+  ToolOutlined
 } from '@ant-design/icons';
 import styles from './ManagerSidebar.module.css';
 
@@ -53,6 +54,11 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
       key: '/manager/incidents/report',
       icon: <ExclamationCircleOutlined />,
       label: 'Báo cáo sự cố',
+    },
+    {
+      key: '/manager/incident-handling',
+      icon: <ToolOutlined />,
+      label: 'Xử lý sự cố',
     },
     {
       key: '/employee/training',
