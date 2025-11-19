@@ -50,7 +50,6 @@ import AddMilestoneModal from './components/AddMilestoneModal';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
 const { Option } = Select;
 
 const EmployeeProjectManagement: React.FC = () => {
@@ -556,8 +555,8 @@ const EmployeeProjectManagement: React.FC = () => {
       }
     >
       <Spin spinning={loading}>
-        <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key as typeof activeTab)}>
-          <TabPane 
+        <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key as any)}>
+          <Tabs.TabPane 
             tab={
               <span>
                 <ExclamationCircleOutlined />
@@ -626,9 +625,9 @@ const EmployeeProjectManagement: React.FC = () => {
                 }}
               />
             </Card>
-          </TabPane>
+          </Tabs.TabPane>
 
-          <TabPane 
+          <Tabs.TabPane 
             tab={
               <span>
                 <FlagOutlined />
@@ -697,12 +696,12 @@ const EmployeeProjectManagement: React.FC = () => {
                 }}
               />
             </Card>
-          </TabPane>
+          </Tabs.TabPane>
 
           {/* Manager-only tabs */}
           {user?.role?.role_name === 'manager' && (
             <>
-              <TabPane 
+              <Tabs.TabPane 
                 tab={
                   <span>
                     <CrownOutlined />
@@ -712,9 +711,9 @@ const EmployeeProjectManagement: React.FC = () => {
                 key="project-leaders"
               >
                 <ProjectLeaderManagement />
-              </TabPane>
+              </Tabs.TabPane>
 
-              <TabPane 
+              <Tabs.TabPane 
                 tab={
                   <span>
                     <UserOutlined />
@@ -724,9 +723,9 @@ const EmployeeProjectManagement: React.FC = () => {
                 key="task-responsibles"
               >
                 <TaskResponsibleManagement projectId={selectedProjectId} />
-              </TabPane>
+              </Tabs.TabPane>
 
-              <TabPane 
+              <Tabs.TabPane 
                 tab={
                   <span>
                     <FlagOutlined />
@@ -736,9 +735,9 @@ const EmployeeProjectManagement: React.FC = () => {
                 key="milestone-responsibles"
               >
                 <MilestoneResponsibleManagement projectId={selectedProjectId} />
-              </TabPane>
+              </Tabs.TabPane>
 
-              <TabPane 
+              <Tabs.TabPane 
                 tab={
                   <span>
                     <ExclamationCircleOutlined />
@@ -748,9 +747,9 @@ const EmployeeProjectManagement: React.FC = () => {
                 key="risk-owners"
               >
                 <RiskOwnerManagement projectId={selectedProjectId} />
-              </TabPane>
+              </Tabs.TabPane>
 
-              <TabPane 
+              <Tabs.TabPane 
                 tab={
                   <span>
                     <TeamOutlined />
@@ -760,7 +759,7 @@ const EmployeeProjectManagement: React.FC = () => {
                 key="project-members"
               >
                 <ProjectMemberManagement projectId={selectedProjectId} />
-              </TabPane>
+              </Tabs.TabPane>
             </>
           )}
         </Tabs>
