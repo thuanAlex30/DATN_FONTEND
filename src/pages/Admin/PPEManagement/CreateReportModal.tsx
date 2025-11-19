@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Modal, 
   Form, 
@@ -10,12 +10,11 @@ import {
   Space,
   Row,
   Col,
-  Typography,
   Alert,
   Checkbox
 } from 'antd';
 import { BarChartOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
-import * as ReportExportService from '../../../services/ReportExportService';
+import * as ppeService from '../../../services/ppeService';
 
 interface CreateReportModalProps {
   isOpen: boolean;
@@ -39,26 +38,53 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
     try {
       setLoading(true);
       
+      let reportData;
+      
       // Generate report based on type
-      const reportData = {
-        title: `Báo cáo ${getReportTypeLabel(values.reportType)}`,
-        subtitle: `Từ ${values.startDate?.format('DD/MM/YYYY')} đến ${values.endDate?.format('DD/MM/YYYY')}`,
+      switch (values.report_type) {
+        case 'inventory':
+          reportData = await ppeService.getInventoryReport();
+          break;
+        case 'usage':
+          reportData = await ppeService.getAssignmentReport();
+          break;
+        case 'maintenance':
+          reportData = await ppeService.getMaintenanceReport();
+          break;
+        case 'expiry':
+          reportData = await ppeService.getExpiryReport({
+            days: 30,
+            status: 'all'
+          });
+          break;
+        default:
+          throw new Error('Loại báo cáo không được hỗ trợ');
+      }
+
+      // Create report object for export
+      const report = {
+        title: `Báo cáo ${getReportTypeLabel(values.report_type)}`,
+        subtitle: `Từ ${values.start_date?.format('DD/MM/YYYY')} đến ${values.end_date?.format('DD/MM/YYYY')}`,
         dateRange: {
-          start: values.startDate?.format('YYYY-MM-DD'),
-          end: values.endDate?.format('YYYY-MM-DD')
+          start: values.start_date?.format('YYYY-MM-DD'),
+          end: values.end_date?.format('YYYY-MM-DD')
         },
+        data: reportData,
         filters: {
-          reportType: values.reportType,
-          includeCharts: values.includeCharts,
-          includeAnalytics: values.includeAnalytics
+          reportType: values.report_type,
+          includeCharts: values.include_charts,
+          includeDetails: values.include_details,
+          filters: values.filters || []
         }
       };
 
       // Export report based on format
       if (values.format === 'pdf') {
-        // await ReportExportService.exportToPDF(reportData);
+        await exportToPDF(report);
       } else if (values.format === 'excel') {
-        // await ReportExportService.exportToExcel(reportData);
+        await exportToExcel(report);
+      } else if (values.format === 'csv') {
+        await exportToCSV(report);
       }
       
       message.success('Báo cáo đã được tạo thành công');
@@ -66,7 +92,8 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
       onSuccess();
       onClose();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể tạo báo cáo');
+      console.error('Error creating report:', err);
+      message.error(err.response?.data?.message || err.message || 'Không thể tạo báo cáo');
     } finally {
       setLoading(false);
     }
@@ -94,6 +121,25 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
       'damage': 'Báo cáo về thiết bị PPE bị hư hỏng, mất mát và cần thay thế.'
     };
     return descriptions[type] || '';
+  };
+
+  // Simple export functions
+  const exportToPDF = async (report: any) => {
+    // For now, just show a message - can be implemented later with proper PDF generation
+    message.info('Tính năng xuất PDF đang được phát triển. Dữ liệu báo cáo đã được tải về.');
+    console.log('PDF Export Data:', report);
+  };
+
+  const exportToExcel = async (report: any) => {
+    // For now, just show a message - can be implemented later with proper Excel generation
+    message.info('Tính năng xuất Excel đang được phát triển. Dữ liệu báo cáo đã được tải về.');
+    console.log('Excel Export Data:', report);
+  };
+
+  const exportToCSV = async (report: any) => {
+    // For now, just show a message - can be implemented later with proper CSV generation
+    message.info('Tính năng xuất CSV đang được phát triển. Dữ liệu báo cáo đã được tải về.');
+    console.log('CSV Export Data:', report);
   };
 
   return (

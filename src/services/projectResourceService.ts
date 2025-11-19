@@ -8,7 +8,6 @@ export interface ProjectResource {
   description?: string;
   planned_quantity: number;
   actual_quantity: number;
-  unit_cost: number;
   unit_measure: string;
   supplier_id?: string;
   supplier?: {
@@ -32,7 +31,6 @@ export interface CreateProjectResourceData {
   resource_name: string;
   description?: string;
   planned_quantity: number;
-  unit_cost: number;
   unit_measure: string;
   supplier_id?: string;
   supplier_name?: string;

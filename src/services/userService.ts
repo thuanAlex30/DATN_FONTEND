@@ -14,9 +14,11 @@ export interface User {
     role_name: string;
   };
   department?: {
-    id: string;
+    id?: string;
+    _id?: string;
     department_name: string;
   };
+  department_id?: string;
   position?: {
     id: string;
     position_name: string;

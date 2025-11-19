@@ -71,11 +71,10 @@ const EditProjectOverviewModal: React.FC<EditProjectOverviewModalProps> = ({
         description: currentProject.description,
         status: currentProject.status,
         priority: currentProject.priority,
-        budget: currentProject.budget,
         progress: currentProject.progress,
         start_date: currentProject.start_date ? dayjs(currentProject.start_date) : null,
         end_date: currentProject.end_date ? dayjs(currentProject.end_date) : null,
-        site_id: currentProject.site_id?._id || currentProject.site_id
+        site_id: currentProject.site_id?.id || currentProject.site_id
       });
     }
   }, [currentProject]);
@@ -113,7 +112,6 @@ const EditProjectOverviewModal: React.FC<EditProjectOverviewModalProps> = ({
         description: values.description,
         status: values.status,
         priority: values.priority,
-        budget: values.budget,
         progress: values.progress,
         start_date: values.start_date?.format('YYYY-MM-DD'),
         end_date: values.end_date?.format('YYYY-MM-DD'),
@@ -245,10 +243,6 @@ const EditProjectOverviewModal: React.FC<EditProjectOverviewModalProps> = ({
                     <Text strong>Ngân sách</Text>
                     <br />
                     <Text type="secondary" style={{ fontSize: '12px' }}>
-                      {currentProject.budget ? new Intl.NumberFormat('vi-VN', {
-                        style: 'currency',
-                        currency: 'VND',
-                      }).format(currentProject.budget) : 'Chưa xác định'}
                     </Text>
                   </div>
                 </div>
@@ -394,7 +388,7 @@ const EditProjectOverviewModal: React.FC<EditProjectOverviewModalProps> = ({
             <Col span={12}>
               <Form.Item
                 name="budget"
-                label="Ngân sách (VNĐ)"
+                label="Ngân sách"
               >
                 <InputNumber
                   style={{ width: '100%', borderRadius: '8px' }}
@@ -419,8 +413,8 @@ const EditProjectOverviewModal: React.FC<EditProjectOverviewModalProps> = ({
                   showSearch
                   optionFilterProp="children"
                 >
-                  {sites.filter(site => site._id).map(site => (
-                    <Option key={site._id} value={site._id}>
+                  {sites.filter(site => site.id).map(site => (
+                    <Option key={site.id} value={site.id}>
                       <div>
                         <div>{site.site_name}</div>
                         <Text type="secondary" style={{ fontSize: '12px' }}>

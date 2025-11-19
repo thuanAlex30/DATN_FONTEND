@@ -7,7 +7,7 @@ export interface ProjectLeader {
 }
 
 export interface ProjectSite {
-  _id: string;
+  id: string;
   site_name: string;
   address: string;
   coordinates?: {
@@ -38,11 +38,20 @@ export interface Project {
   status: 'PLANNING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'ON_HOLD';
   start_date: string;
   end_date: string;
+  actual_start_date?: string;
+  actual_end_date?: string;
   progress: number;
-  budget?: number;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  project_type: 'CONSTRUCTION' | 'MAINTENANCE' | 'RENOVATION' | 'INSPECTION' | 'SAFETY' | 'TRAINING';
   leader_id: ProjectLeader;
   site_id: ProjectSite;
+  created_by: ProjectLeader;
+  client_name?: string;
+  client_contact?: {
+    name: string;
+    email: string;
+    phone: string;
+  };
   assignments?: TeamMember[];
   created_at: string;
   updated_at: string;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Layout,
@@ -20,6 +20,7 @@ import {
   PhoneOutlined,
   MailOutlined,
   EnvironmentOutlined,
+  ClockCircleOutlined,
   FacebookOutlined,
   InstagramOutlined,
   TwitterOutlined
@@ -143,6 +144,18 @@ const ContactPage: React.FC = () => {
                       <Text strong>Địa chỉ</Text>
                       <br />
                       <Text>123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh</Text>
+                    </div>
+                  </div>
+                  <div className={styles.contactItem}>
+                    <ClockCircleOutlined className={styles.contactIcon} />
+                    <div>
+                      <Text strong>Giờ làm việc</Text>
+                      <br />
+                      <Text>Thứ 2 - Thứ 6: 8:00 - 17:30</Text>
+                      <br />
+                      <Text>Thứ 7: 8:00 - 12:00</Text>
+                      <br />
+                      <Text>Chủ nhật: Nghỉ</Text>
                     </div>
                   </div>
                 </Space>

@@ -253,7 +253,7 @@ const departmentService = {
       const url = `/departments/${departmentId}/employees${queryString ? `?${queryString}` : ''}`;
       
       console.log('Making request to:', url);
-      console.log('Full URL:', `http://localhost:3000/api/v1${url}`);
+      console.log('Full URL:', `http://localhost:3000/api${url}`);
       
       const response = await api.get(url);
       console.log('API response:', response);

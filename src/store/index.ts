@@ -15,6 +15,9 @@ import projectRiskReducer from './slices/projectRiskSlice';
 import projectStatusReportReducer from './slices/projectStatusReportSlice';
 import projectResourceReducer from './slices/projectResourceSlice';
 import projectMilestoneReducer from './slices/projectMilestoneSlice';
+import projectAssignmentReducer from './slices/projectAssignmentSlice';
+import projectTimelineReducer from './slices/projectTimelineSlice';
+import projectCommunicationReducer from './slices/projectCommunicationSlice';
 import siteReducer from './slices/siteSlice';
 import siteAreaReducer from './slices/siteAreaSlice';
 import workLocationReducer from './slices/workLocationSlice';
@@ -34,6 +37,9 @@ const rootReducer = combineReducers({
   projectStatusReport: projectStatusReportReducer,
   projectResource: projectResourceReducer,
   projectMilestone: projectMilestoneReducer,
+  projectAssignment: projectAssignmentReducer,
+  projectTimeline: projectTimelineReducer,
+  projectCommunication: projectCommunicationReducer,
   site: siteReducer,
   siteArea: siteAreaReducer,
   workLocation: workLocationReducer,

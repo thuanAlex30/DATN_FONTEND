@@ -10,7 +10,7 @@ export interface ProjectRisk {
   };
   risk_name: string;
   description: string;
-  risk_category: 'SAFETY' | 'FINANCIAL' | 'SCHEDULE' | 'TECHNICAL' | 'ENVIRONMENTAL';
+  risk_category: 'SAFETY' | 'SCHEDULE' | 'TECHNICAL' | 'ENVIRONMENTAL';
   probability: number;
   impact_score: number;
   risk_score: number;
@@ -25,7 +25,6 @@ export interface ProjectRisk {
   status: 'IDENTIFIED' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   identified_date: string;
   target_resolution_date: string;
-  cost_impact: number;
   schedule_impact_days: number;
   created_at: string;
   updated_at: string;
@@ -42,10 +41,14 @@ export interface ProjectRisksResponse {
 }
 
 export const projectRiskService = {
-  // Get risks assigned to a specific user (manager)
-  getAssignedRisks: async (userId: string): Promise<{ data: ProjectRisk[]; success: boolean; message?: string }> => {
+  // Get risks assigned to a specific user (manager) - Updated to use projectId parameter
+  getAssignedRisks: async (userId: string, projectId?: string): Promise<{ data: ProjectRisk[]; success: boolean; message?: string }> => {
     try {
-      const response = await api.get<ProjectRisksResponse>(`${API_BASE}/risks/assigned/${userId}`);
+      let endpoint = `${API_BASE}/risks/assigned/${userId}`;
+      if (projectId) {
+        endpoint = `${API_BASE}/project/${projectId}/risks/assigned/${userId}`;
+      }
+      const response = await api.get<ProjectRisksResponse>(endpoint);
       return { 
         data: response.data.data || [], 
         success: true 
@@ -216,6 +219,61 @@ export const projectRiskService = {
         data: [], 
         success: false, 
         message: 'Failed to fetch risks by category' 
+      };
+    }
+  },
+
+  // Get all risks (for admin/manager overview)
+  getAllRisks: async (): Promise<{ data: ProjectRisk[]; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get<ProjectRisksResponse>(`${API_BASE}/risks`);
+      return { 
+        data: response.data.data || [], 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching all risks:', error);
+      return { 
+        data: [], 
+        success: false, 
+        message: 'Failed to fetch all risks' 
+      };
+    }
+  },
+
+
+  // Assign risk owner
+  assignRiskOwner: async (riskId: string, ownerId: string): Promise<{ data: ProjectRisk | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.put<{ success: boolean; data: ProjectRisk }>(`${API_BASE}/risks/${riskId}/owner`, { owner_id: ownerId });
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error assigning risk owner:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to assign risk owner' 
+      };
+    }
+  },
+
+  // Remove risk owner
+  removeRiskOwner: async (riskId: string): Promise<{ data: ProjectRisk | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.put<{ success: boolean; data: ProjectRisk }>(`${API_BASE}/risks/${riskId}/owner`, { owner_id: null });
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error removing risk owner:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to remove risk owner' 
       };
     }
   }

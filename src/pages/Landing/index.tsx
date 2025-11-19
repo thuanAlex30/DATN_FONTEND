@@ -18,7 +18,6 @@ import {
   EnvironmentOutlined,
   TeamOutlined,
   CheckCircleOutlined,
-  ArrowRightOutlined,
   InfoCircleOutlined,
   BarChartOutlined,
   BookOutlined,
@@ -147,7 +146,6 @@ const LandingPage: React.FC = () => {
                   <Button
                     type="primary"
                     size="large"
-                    icon={<ArrowRightOutlined />}
                     className={styles.ctaButton}
                     disabled
                     title="Chức năng đang phát triển"
@@ -160,6 +158,19 @@ const LandingPage: React.FC = () => {
               {/* Right Side - Image/Illustration */}
               <Col xs={24} lg={12}>
                 <div className={styles.heroImage}>
+                  <img 
+                    src="/hero-image.jpg" 
+                    alt="Quản lý an toàn lao động"
+                    className={styles.heroImageImg}
+                    onError={(e) => {
+                      // Fallback nếu ảnh không tồn tại
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const placeholder = target.nextElementSibling as HTMLElement;
+                      if (placeholder) placeholder.style.display = 'flex';
+                    }}
+                  />
+                  {/* Fallback placeholder nếu ảnh không tồn tại */}
                   <div className={styles.heroImagePlaceholder}>
                     <SafetyOutlined className={styles.heroImageIcon} />
                   </div>

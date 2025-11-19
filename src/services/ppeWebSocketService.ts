@@ -57,6 +57,43 @@ class PPEWebSocketService {
     this.socket.on('ppe_low_stock', (data) => {
       this.handlePPELowStock(data);
     });
+
+    // Advanced Features Events
+    this.socket.on('ppe_quantity_update', (data) => {
+      this.handlePPEQuantityUpdate(data);
+    });
+
+    this.socket.on('ppe_condition_update', (data) => {
+      this.handlePPEConditionUpdate(data);
+    });
+
+    this.socket.on('ppe_expiry_warning', (data) => {
+      this.handlePPEExpiryWarning(data);
+    });
+
+    this.socket.on('ppe_expired', (data) => {
+      this.handlePPEExpired(data);
+    });
+
+    this.socket.on('ppe_replaced', (data) => {
+      this.handlePPEReplaced(data);
+    });
+
+    this.socket.on('ppe_disposed', (data) => {
+      this.handlePPEDisposed(data);
+    });
+
+    this.socket.on('batch_processing_started', (data) => {
+      this.handleBatchProcessingStarted(data);
+    });
+
+    this.socket.on('batch_processing_progress', (data) => {
+      this.handleBatchProcessingProgress(data);
+    });
+
+    this.socket.on('batch_processing_complete', (data) => {
+      this.handleBatchProcessingComplete(data);
+    });
   }
 
   private handleReconnect() {
@@ -98,6 +135,52 @@ class PPEWebSocketService {
     window.dispatchEvent(event);
   }
 
+  // Advanced Features Event Handlers
+  private handlePPEQuantityUpdate(data: any) {
+    const event = new CustomEvent('ppe-quantity-update', { detail: data });
+    window.dispatchEvent(event);
+  }
+
+  private handlePPEConditionUpdate(data: any) {
+    const event = new CustomEvent('ppe-condition-update', { detail: data });
+    window.dispatchEvent(event);
+  }
+
+  private handlePPEExpiryWarning(data: any) {
+    const event = new CustomEvent('ppe-expiry-warning', { detail: data });
+    window.dispatchEvent(event);
+  }
+
+  private handlePPEExpired(data: any) {
+    const event = new CustomEvent('ppe-expired', { detail: data });
+    window.dispatchEvent(event);
+  }
+
+  private handlePPEReplaced(data: any) {
+    const event = new CustomEvent('ppe-replaced', { detail: data });
+    window.dispatchEvent(event);
+  }
+
+  private handlePPEDisposed(data: any) {
+    const event = new CustomEvent('ppe-disposed', { detail: data });
+    window.dispatchEvent(event);
+  }
+
+  private handleBatchProcessingStarted(data: any) {
+    const event = new CustomEvent('batch-processing-started', { detail: data });
+    window.dispatchEvent(event);
+  }
+
+  private handleBatchProcessingProgress(data: any) {
+    const event = new CustomEvent('batch-processing-progress', { detail: data });
+    window.dispatchEvent(event);
+  }
+
+  private handleBatchProcessingComplete(data: any) {
+    const event = new CustomEvent('batch-processing-complete', { detail: data });
+    window.dispatchEvent(event);
+  }
+
   // Subscribe to PPE events
   subscribeToPPEDistributed(callback: (data: any) => void) {
     window.addEventListener('ppe-distributed', (event: any) => {
@@ -129,6 +212,61 @@ class PPEWebSocketService {
     });
   }
 
+  // Advanced Features Subscribe Methods
+  subscribeToPPEQuantityUpdate(callback: (data: any) => void) {
+    window.addEventListener('ppe-quantity-update', (event: any) => {
+      callback(event.detail);
+    });
+  }
+
+  subscribeToPPEConditionUpdate(callback: (data: any) => void) {
+    window.addEventListener('ppe-condition-update', (event: any) => {
+      callback(event.detail);
+    });
+  }
+
+  subscribeToPPEExpiryWarning(callback: (data: any) => void) {
+    window.addEventListener('ppe-expiry-warning', (event: any) => {
+      callback(event.detail);
+    });
+  }
+
+  subscribeToPPEExpired(callback: (data: any) => void) {
+    window.addEventListener('ppe-expired', (event: any) => {
+      callback(event.detail);
+    });
+  }
+
+  subscribeToPPEReplaced(callback: (data: any) => void) {
+    window.addEventListener('ppe-replaced', (event: any) => {
+      callback(event.detail);
+    });
+  }
+
+  subscribeToPPEDisposed(callback: (data: any) => void) {
+    window.addEventListener('ppe-disposed', (event: any) => {
+      callback(event.detail);
+    });
+  }
+
+  subscribeToBatchProcessingStarted(callback: (data: any) => void) {
+    window.addEventListener('batch-processing-started', (event: any) => {
+      callback(event.detail);
+    });
+  }
+
+  subscribeToBatchProcessingProgress(callback: (data: any) => void) {
+    window.addEventListener('batch-processing-progress', (event: any) => {
+      callback(event.detail);
+    });
+  }
+
+  subscribeToBatchProcessingComplete(callback: (data: any) => void) {
+    window.addEventListener('batch-processing-complete', (event: any) => {
+      callback(event.detail);
+    });
+  }
+
   // Unsubscribe from events
   unsubscribeFromPPEDistributed(callback: (data: any) => void) {
     window.removeEventListener('ppe-distributed', callback);
@@ -148,6 +286,43 @@ class PPEWebSocketService {
 
   unsubscribeFromPPELowStock(callback: (data: any) => void) {
     window.removeEventListener('ppe-low-stock', callback);
+  }
+
+  // Advanced Features Unsubscribe Methods
+  unsubscribeFromPPEQuantityUpdate(callback: (data: any) => void) {
+    window.removeEventListener('ppe-quantity-update', callback);
+  }
+
+  unsubscribeFromPPEConditionUpdate(callback: (data: any) => void) {
+    window.removeEventListener('ppe-condition-update', callback);
+  }
+
+  unsubscribeFromPPEExpiryWarning(callback: (data: any) => void) {
+    window.removeEventListener('ppe-expiry-warning', callback);
+  }
+
+  unsubscribeFromPPEExpired(callback: (data: any) => void) {
+    window.removeEventListener('ppe-expired', callback);
+  }
+
+  unsubscribeFromPPEReplaced(callback: (data: any) => void) {
+    window.removeEventListener('ppe-replaced', callback);
+  }
+
+  unsubscribeFromPPEDisposed(callback: (data: any) => void) {
+    window.removeEventListener('ppe-disposed', callback);
+  }
+
+  unsubscribeFromBatchProcessingStarted(callback: (data: any) => void) {
+    window.removeEventListener('batch-processing-started', callback);
+  }
+
+  unsubscribeFromBatchProcessingProgress(callback: (data: any) => void) {
+    window.removeEventListener('batch-processing-progress', callback);
+  }
+
+  unsubscribeFromBatchProcessingComplete(callback: (data: any) => void) {
+    window.removeEventListener('batch-processing-complete', callback);
   }
 
   // Join PPE rooms

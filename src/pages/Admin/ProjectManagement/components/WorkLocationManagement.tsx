@@ -27,8 +27,10 @@ import {
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import type { RootState } from '../../../../store';
-import workLocationService, { type WorkLocation, type CreateWorkLocationData } from '../../../../services/workLocationService';
-import siteAreaService, { type SiteArea } from '../../../../services/siteAreaService';
+import workLocationService from '../../../../services/workLocationService';
+import siteAreaService from '../../../../services/siteAreaService';
+import type { WorkLocation, CreateWorkLocationData } from '../../../../services/workLocationService';
+import type { SiteArea } from '../../../../services/siteAreaService';
 
 interface WorkLocationManagementProps {
   projectId: string;

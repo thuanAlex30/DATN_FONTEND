@@ -42,6 +42,8 @@ import { fetchProjectTasks } from '../../../../store/slices/projectTaskSlice';
 import { fetchProjectMilestones } from '../../../../store/slices/projectMilestoneSlice';
 import { fetchProjectRisks } from '../../../../store/slices/projectRiskSlice';
 import { fetchProjectResources, setCurrentProjectId } from '../../../../store/slices/projectResourceSlice';
+import { fetchProjectAssignments } from '../../../../store/slices/projectAssignmentSlice';
+import { fetchProjectTimeline } from '../../../../store/slices/projectTimelineSlice';
 import { clearProjectResourceCache } from '../../../../utils/apiCache';
 import EditProjectOverviewModal from './EditProjectOverviewModal';
 
@@ -51,11 +53,13 @@ interface ProjectOverviewProps {
 
 const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { selectedProject, assignments, projects } = useSelector((state: RootState) => state.project);
+  const { selectedProject, projects } = useSelector((state: RootState) => state.project);
   const { tasks } = useSelector((state: RootState) => state.projectTask);
   const { milestones } = useSelector((state: RootState) => state.projectMilestone);
   const { risks } = useSelector((state: RootState) => state.projectRisk);
   const { resources } = useSelector((state: RootState) => state.projectResource);
+  const { assignments } = useSelector((state: RootState) => state.projectAssignment);
+  const { timeline } = useSelector((state: RootState) => state.projectTimeline);
   const [isEditOverviewModalOpen, setIsEditOverviewModalOpen] = useState(false);
   
   const [projectFlow] = useState({
@@ -79,9 +83,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
       dispatch(fetchProjectMilestones(projectId));
       dispatch(fetchProjectRisks(projectId));
       dispatch(fetchProjectResources(projectId));
-      
-      // Note: fetchProjectAssignments and fetchProjectTimeline are not available yet
-      // They will be implemented when backend adds these endpoints
+      dispatch(fetchProjectAssignments(projectId));
+      dispatch(fetchProjectTimeline(projectId));
     }
   }, [dispatch, projectId]);
 
@@ -99,13 +102,6 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
     );
   }
 
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return 'N/A';
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN');
@@ -531,7 +527,6 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
                     <Space>
                       <DollarOutlined style={{ color: '#16a34a' }} />
                       <Text style={{ fontSize: '16px', fontWeight: 600, color: '#16a34a' }}>
-                        {formatCurrency(project.budget)}
                       </Text>
                     </Space>
                   </div>

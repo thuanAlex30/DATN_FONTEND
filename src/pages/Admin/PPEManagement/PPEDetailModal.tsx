@@ -20,7 +20,7 @@ const PPEDetailModal: React.FC<PPEDetailModalProps> = ({
 }) => {
   if (!isOpen || !item) return null;
 
-  const remaining = (item.quantity_available || 0) - (item.quantity_allocated || 0);
+  const remaining = (item.remaining_quantity ?? ((item.quantity_available || 0) - (item.quantity_allocated || 0)));
   const reorderLevel = item.reorder_level || 0;
   
   const getStatusInfo = () => {
@@ -80,7 +80,7 @@ const PPEDetailModal: React.FC<PPEDetailModalProps> = ({
           <Card>
             <Statistic
               title="Tổng số lượng"
-              value={item.quantity_available || 0}
+              value={item.total_quantity ?? ((item.quantity_available || 0) + (item.quantity_allocated || 0))}
               prefix={<ShoppingCartOutlined />}
             />
           </Card>

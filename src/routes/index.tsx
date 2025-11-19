@@ -32,6 +32,11 @@ import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
 import EmployeePPE from '../pages/Employee/PPE';
 import EmployeeProjectManagement from '../pages/Employee/ProjectManagement';
+import EmployeeDashboard from '../pages/Employee/Dashboard';
+import ManagerDashboard from '../pages/Manager/Dashboard';
+import ManagerPPEManagement from '../pages/Manager/PPEManagement';
+import ManagerProjectManagement from '../pages/Manager/ProjectManagement';
+import ManagerTraining from '../pages/Manager/Training';
 import WebSocketTest from '../pages/WebSocketTest';
 import { projectManagementRoutes } from './projectManagementRoutes';
 import ProjectManagementRouteWrapper from './ProjectManagementRouteWrapper';
@@ -74,7 +79,53 @@ const AppRoutes = () => {
                 } 
             />
 
+            {/* Employee Dashboard */}
+            <Route 
+                path="/employee/dashboard" 
+                element={
+                    <AuthGuard requiredRole="employee">
+                        <EmployeeDashboard />
+                    </AuthGuard>
+                } 
+            />
+
+            {/* Manager Dashboard */}
+            <Route 
+                path="/manager/dashboard" 
+                element={
+                    <AuthGuard requiredRole="manager">
+                        <ManagerDashboard />
+                    </AuthGuard>
+                } 
+            />
+
             {/* Manager routes */}
+            <Route 
+                path="/manager/ppe" 
+                element={
+                    <AuthGuard requiredRole="manager">
+                        <ManagerPPEManagement />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/project-management" 
+                element={
+                    <AuthGuard requiredRole="manager">
+                        <ManagerProjectManagement />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/training" 
+                element={
+                    <AuthGuard requiredRole="manager">
+                        <ManagerTraining />
+                    </AuthGuard>
+                } 
+            />
+
+            {/* Employee routes */}
             <Route 
                 path="/manager/incidents/report" 
                 element={
@@ -110,7 +161,7 @@ const AppRoutes = () => {
             <Route 
                 path="/employee/ppe" 
                 element={
-                    <AuthGuard requiredRole="employee">
+                    <AuthGuard requiredRole={["employee", "manager"]}>
                         <EmployeePPE />
                     </AuthGuard>
                 } 
@@ -118,7 +169,7 @@ const AppRoutes = () => {
             <Route 
                 path="/employee/project-management" 
                 element={
-                    <AuthGuard requiredRole="manager">
+                    <AuthGuard requiredRole={["manager", "leader"]}>
                         <EmployeeProjectManagement />
                     </AuthGuard>
                 } 

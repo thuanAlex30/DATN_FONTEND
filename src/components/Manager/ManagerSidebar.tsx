@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Layout, 
   Menu, 
@@ -15,7 +15,8 @@ import {
   BookOutlined,
   SafetyOutlined,
   LogoutOutlined,
-  ProjectOutlined
+  ProjectOutlined,
+  DashboardOutlined
 } from '@ant-design/icons';
 import styles from './ManagerSidebar.module.css';
 
@@ -28,6 +29,7 @@ interface ManagerSidebarProps {
 
 const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     if (onLogout) {
@@ -44,6 +46,11 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
       label: 'Trang chủ',
     },
     {
+      key: '/manager/dashboard',
+      icon: <DashboardOutlined />,
+      label: 'Dashboard',
+    },
+    {
       key: '/manager/profile',
       icon: <UserOutlined />,
       label: 'Thông tin cá nhân',
@@ -54,14 +61,29 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
       label: 'Báo cáo sự cố',
     },
     {
+      key: '/manager/training',
+      icon: <BookOutlined />,
+      label: 'Quản lý đào tạo',
+    },
+    {
       key: '/employee/training',
       icon: <BookOutlined />,
       label: 'Đào tạo',
     },
     {
+      key: '/manager/ppe',
+      icon: <SafetyOutlined />,
+      label: 'Quản lý PPE',
+    },
+    {
       key: '/employee/ppe',
       icon: <SafetyOutlined />,
       label: 'PPE cá nhân',
+    },
+    {
+      key: '/manager/project-management',
+      icon: <ProjectOutlined />,
+      label: 'Quản lý dự án',
     },
     {
       key: '/employee/project-management',
@@ -71,7 +93,7 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
   ];
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
-    navigate(key);
+    navigate(key as string);
   };
 
   return (
@@ -98,7 +120,7 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
           items={menuItems}
           onClick={handleMenuClick}
           className={styles.menu}
-          defaultSelectedKeys={[window.location.pathname]}
+          selectedKeys={[location.pathname]}
         />
       </div>
 

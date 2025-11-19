@@ -272,7 +272,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
       // If we have a createdProjectId, load project-specific risks
       if (createdProjectId) {
         const risks = await projectRiskService.getProjectRisks(createdProjectId);
-        setProjectRisks(risks);
+        setProjectRisks(risks.data || []);
       }
       // Otherwise, risks will be loaded when project is created
     } catch (error: any) {
@@ -311,7 +311,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
       if (createdProjectId) {
         const { default: projectMilestoneService } = await import('../../../../services/projectMilestoneService');
         const milestones = await projectMilestoneService.getProjectMilestones(createdProjectId);
-        setProjectMilestones(milestones);
+        setProjectMilestones(milestones.data || []);
       }
       // Otherwise, milestones will be loaded when project is created
     } catch (error: any) {
@@ -730,7 +730,6 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                   mitigation_plan: risk.mitigation_plan || '',
                   owner_id: risk.owner_id || availableEmployees[0]?._id || availableEmployees[0]?.id || null,
                   target_resolution_date: risk.target_resolution_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                  cost_impact: risk.cost_impact || 0,
                   schedule_impact_days: risk.schedule_impact_days || 0
                 };
                 await projectRiskService.createRisk(riskData);
@@ -758,16 +757,16 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
           if (projectMilestones.length > 0) {
             const { default: projectMilestoneService } = await import('../../../../services/projectMilestoneService');
             for (const milestone of projectMilestones) {
-              if (milestone._id && milestone._id.startsWith('temp_')) {
+              if (milestone.id && milestone.id.startsWith('temp_')) {
                 const milestoneData = {
                   project_id: projectId,
-                  phase_id: milestone.phase_id || 'default',
+                  phase_id: 'default',
                   milestone_name: milestone.milestone_name,
                   description: milestone.description || '',
                   planned_date: milestone.planned_date,
                   milestone_type: milestone.milestone_type || 'CHECKPOINT',
                   completion_criteria: milestone.completion_criteria || '',
-                  responsible_user_id: milestone.responsible_user_id || availableEmployees[0]?._id || availableEmployees[0]?.id || null,
+                  responsible_user_id: typeof milestone.responsible_user_id === 'string' ? milestone.responsible_user_id : availableEmployees[0]?.id || null,
                   is_critical: milestone.is_critical || false
                 };
                 await projectMilestoneService.createMilestone(milestoneData);
@@ -851,7 +850,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
           break;
         case 4: // Project Milestones
           // console.log('Deleting project milestone:', item._id); // Removed to prevent spam
-          setProjectMilestones(prev => prev.filter(m => m._id !== item._id));
+          setProjectMilestones(prev => prev.filter(m => m.id !== item.id));
           break;
       }
       message.success('Xóa thành công!');
@@ -904,7 +903,7 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
             break;
           case 4: // Project Milestones
             // console.log('Updating project milestone:', editingItem._id, values); // Removed to prevent spam
-            setProjectMilestones(prev => prev.map(m => m._id === editingItem._id ? { ...m, ...values } : m));
+            setProjectMilestones(prev => prev.map(m => m.id === editingItem.id ? { ...m, ...values } : m));
             break;
         }
       } else {
@@ -972,7 +971,6 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
                 mitigation_plan: values.mitigation_plan || values.mitigation || 'Chưa có biện pháp giảm thiểu cụ thể',
                 owner_id: values.owner_id || availableEmployees[0]?._id || availableEmployees[0]?.id || null,
                 target_resolution_date: values.target_resolution_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                cost_impact: values.cost_impact || 0,
                 schedule_impact_days: values.schedule_impact_days || 0
               };
               
@@ -1046,7 +1044,9 @@ const ProjectCreationWizard: React.FC<ProjectCreationWizardProps> = ({
               };
               
               const newMilestone = await projectMilestoneService.createMilestone(milestoneData);
-              setProjectMilestones(prev => [...prev, newMilestone]);
+              if (newMilestone.data && typeof newMilestone.data === 'object' && 'id' in newMilestone.data && newMilestone.data !== null) {
+                setProjectMilestones(prev => [...prev, newMilestone.data as ProjectMilestone]);
+              }
               // Reload project milestones to ensure consistency
               await loadProjectMilestones();
               message.success('Tạo milestone thành công');

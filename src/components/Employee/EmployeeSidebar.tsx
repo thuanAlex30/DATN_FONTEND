@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { 
   Layout, 
   Menu, 
@@ -8,6 +9,7 @@ import {
   Space
 } from 'antd';
 import type { MenuProps } from 'antd';
+import type { RootState } from '../../store';
 import {
   HomeOutlined,
   UserOutlined,
@@ -15,7 +17,8 @@ import {
   BookOutlined,
   SafetyOutlined,
   LogoutOutlined,
-  ProjectOutlined
+  ProjectOutlined,
+  SafetyCertificateOutlined
 } from '@ant-design/icons';
 import styles from './EmployeeSidebar.module.css';
 
@@ -28,6 +31,7 @@ interface EmployeeSidebarProps {
 
 const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
   const navigate = useNavigate();
+  const { user } = useSelector((state: RootState) => state.auth);
 
   const handleLogout = () => {
     if (onLogout) {
@@ -56,12 +60,18 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
     {
       key: '/employee/ppe',
       icon: <SafetyOutlined />,
-      label: 'PPE cá nhân',
+      label: user?.role?.role_name === 'manager' ? 'Quản lý PPE' : 'PPE cá nhân',
     },
-    {
+    // Only show project management for managers
+    ...(user?.role?.role_name === 'manager' ? [{
       key: '/employee/project-management',
       icon: <ProjectOutlined />,
       label: 'Quản lý dự án',
+    }] : []),
+    {
+      key: '/employee/certificates',
+      icon: <SafetyCertificateOutlined />,
+      label: 'Chứng chỉ',
     },
   ];
 

@@ -13,45 +13,51 @@ import {
   message,
   Spin,
   Empty,
-  Space,
   Typography,
   Badge,
-  Tooltip,
   Modal,
-  Form,
-  Select,
-  Input,
-  DatePicker
+  Select
 } from 'antd';
 import {
   ProjectOutlined,
   ReloadOutlined,
   ExclamationCircleOutlined,
   FlagOutlined,
-  CalendarOutlined,
   DollarOutlined,
   ClockCircleOutlined,
-  CheckCircleOutlined,
   WarningOutlined,
   SafetyOutlined,
   EnvironmentOutlined,
   ToolOutlined,
-  BankOutlined
+  CrownOutlined,
+  UserOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
 import type { RootState } from '../../../store';
 import { EmployeeLayout } from '../../../components/Employee';
 import { projectRiskService, type ProjectRisk } from '../../../services/projectRiskService';
 import { projectMilestoneService, type ProjectMilestone } from '../../../services/projectMilestoneService';
+// import { projectTaskService } from '../../../services/projectTaskService';
+// import { projectCommunicationService } from '../../../services/projectCommunicationService';
+import projectService from '../../../services/projectService';
+import ProjectLeaderManagement from './components/ProjectLeaderManagement';
+import TaskResponsibleManagement from './components/TaskResponsibleManagement';
+import MilestoneResponsibleManagement from './components/MilestoneResponsibleManagement';
+import RiskOwnerManagement from './components/RiskOwnerManagement';
+import ProjectMemberManagement from './components/ProjectMemberManagement';
+import AddRiskModal from './components/AddRiskModal';
+import AddMilestoneModal from './components/AddMilestoneModal';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
-const { TextArea } = Input;
 
 const EmployeeProjectManagement: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
-  const [activeTab, setActiveTab] = useState<'risks' | 'milestones'>('risks');
+  
+  console.log('🔍 EmployeeProjectManagement - User role:', user?.role?.role_name);
+  const [activeTab, setActiveTab] = useState<'risks' | 'milestones' | 'project-leaders' | 'task-responsibles' | 'milestone-responsibles' | 'risk-owners' | 'project-members'>('risks');
   const [loading, setLoading] = useState(false);
   const [risks, setRisks] = useState<ProjectRisk[]>([]);
   const [milestones, setMilestones] = useState<ProjectMilestone[]>([]);
@@ -59,30 +65,78 @@ const EmployeeProjectManagement: React.FC = () => {
   const [selectedMilestone, setSelectedMilestone] = useState<ProjectMilestone | null>(null);
   const [riskModalVisible, setRiskModalVisible] = useState(false);
   const [milestoneModalVisible, setMilestoneModalVisible] = useState(false);
-  const [riskForm] = Form.useForm();
-  const [milestoneForm] = Form.useForm();
+  const [addRiskModalVisible, setAddRiskModalVisible] = useState(false);
+  const [addMilestoneModalVisible, setAddMilestoneModalVisible] = useState(false);
+  
+  // Project selection state
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [projectLoading, setProjectLoading] = useState(false);
+
+  // Load projects
+  const loadProjects = async () => {
+    setProjectLoading(true);
+    try {
+      const result = await projectService.getAllProjects();
+      if (result.success) {
+        setProjects(result.data || []);
+        // Auto-select first project if available
+        if (result.data && result.data.length > 0) {
+          setSelectedProjectId(result.data[0].id);
+        }
+      } else {
+        message.error(result.message || 'Failed to load projects');
+      }
+    } catch (error) {
+      message.error('Failed to load projects');
+    } finally {
+      setProjectLoading(false);
+    }
+  };
 
   // Load data
   const loadData = async () => {
-    if (!user?.id) return;
+    if (!user?.id || !selectedProjectId) return;
     
     setLoading(true);
     try {
-      const [risksResult, milestonesResult] = await Promise.all([
-        projectRiskService.getAssignedRisks(user.id),
-        projectMilestoneService.getAssignedMilestones(user.id)
-      ]);
+      // For employee: load assigned risks and milestones for selected project
+      if (user.role?.role_name === 'employee') {
+        const [risksResult, milestonesResult] = await Promise.all([
+          projectRiskService.getAssignedRisks(user.id, selectedProjectId),
+          projectMilestoneService.getAssignedMilestones(user.id, selectedProjectId)
+        ]);
 
-      if (risksResult.success) {
-        setRisks(risksResult.data);
-      } else {
-        message.error(risksResult.message || 'Failed to load risks');
+        if (risksResult.success) {
+          setRisks(risksResult.data);
+        } else {
+          message.error(risksResult.message || 'Failed to load risks');
+        }
+
+        if (milestonesResult.success) {
+          setMilestones(milestonesResult.data);
+        } else {
+          message.error(milestonesResult.message || 'Failed to load milestones');
+        }
       }
+      // For manager: load all risks and milestones for full management access
+      else if (user.role?.role_name === 'manager') {
+        const [risksResult, milestonesResult] = await Promise.all([
+          projectRiskService.getProjectRisks(selectedProjectId), // Get risks for selected project
+          projectMilestoneService.getProjectMilestones(selectedProjectId) // Get milestones for selected project
+        ]);
 
-      if (milestonesResult.success) {
-        setMilestones(milestonesResult.data);
-      } else {
-        message.error(milestonesResult.message || 'Failed to load milestones');
+        if (risksResult.success) {
+          setRisks(risksResult.data);
+        } else {
+          message.error(risksResult.message || 'Failed to load risks');
+        }
+
+        if (milestonesResult.success) {
+          setMilestones(milestonesResult.data);
+        } else {
+          message.error(milestonesResult.message || 'Failed to load milestones');
+        }
       }
     } catch (error) {
       message.error('Failed to load data');
@@ -92,14 +146,19 @@ const EmployeeProjectManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
-  }, [user?.id]);
+    loadProjects();
+  }, []);
+
+  useEffect(() => {
+    if (selectedProjectId) {
+      loadData();
+    }
+  }, [user?.id, selectedProjectId]);
 
   // Risk category colors
   const getRiskCategoryColor = (category: ProjectRisk['risk_category']) => {
     const colors = {
       SAFETY: 'red',
-      FINANCIAL: 'orange',
       SCHEDULE: 'blue',
       TECHNICAL: 'purple',
       ENVIRONMENTAL: 'green'
@@ -111,7 +170,6 @@ const EmployeeProjectManagement: React.FC = () => {
   const getRiskCategoryIcon = (category: ProjectRisk['risk_category']) => {
     const icons = {
       SAFETY: <SafetyOutlined />,
-      FINANCIAL: <BankOutlined />,
       SCHEDULE: <ClockCircleOutlined />,
       TECHNICAL: <ToolOutlined />,
       ENVIRONMENTAL: <EnvironmentOutlined />
@@ -119,27 +177,6 @@ const EmployeeProjectManagement: React.FC = () => {
     return icons[category] || <ExclamationCircleOutlined />;
   };
 
-  // Risk status colors
-  const getRiskStatusColor = (status: ProjectRisk['status']) => {
-    const colors = {
-      IDENTIFIED: 'orange',
-      IN_PROGRESS: 'blue',
-      RESOLVED: 'green',
-      CLOSED: 'gray'
-    };
-    return colors[status] || 'default';
-  };
-
-  // Milestone status colors
-  const getMilestoneStatusColor = (status: ProjectMilestone['status']) => {
-    const colors = {
-      PENDING: 'orange',
-      IN_PROGRESS: 'blue',
-      COMPLETED: 'green',
-      DELAYED: 'red'
-    };
-    return colors[status] || 'default';
-  };
 
   // Handle risk status update
   const handleRiskStatusUpdate = async (riskId: string, status: ProjectRisk['status']) => {
@@ -169,6 +206,47 @@ const EmployeeProjectManagement: React.FC = () => {
     } catch (error) {
       message.error('Failed to update milestone status');
     }
+  };
+
+  // Manager functions
+  const handleDeleteRisk = async (riskId: string) => {
+    Modal.confirm({
+      title: 'Xác nhận xóa rủi ro',
+      content: 'Bạn có chắc chắn muốn xóa rủi ro này?',
+      onOk: async () => {
+        try {
+          const result = await projectRiskService.deleteRisk(riskId);
+          if (result.success) {
+            message.success('Risk deleted successfully');
+            loadData();
+          } else {
+            message.error(result.message || 'Failed to delete risk');
+          }
+        } catch (error) {
+          message.error('Failed to delete risk');
+        }
+      },
+    });
+  };
+
+  const handleDeleteMilestone = async (milestoneId: string) => {
+    Modal.confirm({
+      title: 'Xác nhận xóa cột mốc',
+      content: 'Bạn có chắc chắn muốn xóa cột mốc này?',
+      onOk: async () => {
+        try {
+          const result = await projectMilestoneService.deleteMilestone(milestoneId);
+          if (result.success) {
+            message.success('Milestone deleted successfully');
+            loadData();
+          } else {
+            message.error(result.message || 'Failed to delete milestone');
+          }
+        } catch (error) {
+          message.error('Failed to delete milestone');
+        }
+      },
+    });
   };
 
   // Risk columns
@@ -235,7 +313,6 @@ const EmployeeProjectManagement: React.FC = () => {
           <div>
             <DollarOutlined style={{ color: '#ff4d4f' }} />
             <Text style={{ marginLeft: 4 }}>
-              {record.cost_impact.toLocaleString('vi-VN')} VNĐ
             </Text>
           </div>
           <div style={{ marginTop: 4 }}>
@@ -261,15 +338,28 @@ const EmployeeProjectManagement: React.FC = () => {
       title: 'Hành động',
       key: 'actions',
       render: (record: ProjectRisk) => (
-        <Button
-          type="link"
-          onClick={() => {
-            setSelectedRisk(record);
-            setRiskModalVisible(true);
-          }}
-        >
-          Xem chi tiết
-        </Button>
+        <div>
+          <Button
+            type="link"
+            onClick={() => {
+              setSelectedRisk(record);
+              setRiskModalVisible(true);
+            }}
+          >
+            Xem chi tiết
+          </Button>
+          {user?.role?.role_name === 'manager' && (
+            <>
+              <Button
+                type="link"
+                danger
+                onClick={() => handleDeleteRisk(record._id)}
+              >
+                Xóa
+              </Button>
+            </>
+          )}
+        </div>
       ),
     },
   ];
@@ -344,15 +434,28 @@ const EmployeeProjectManagement: React.FC = () => {
       title: 'Hành động',
       key: 'actions',
       render: (record: ProjectMilestone) => (
-        <Button
-          type="link"
-          onClick={() => {
-            setSelectedMilestone(record);
-            setMilestoneModalVisible(true);
-          }}
-        >
-          Xem chi tiết
-        </Button>
+        <div>
+          <Button
+            type="link"
+            onClick={() => {
+              setSelectedMilestone(record);
+              setMilestoneModalVisible(true);
+            }}
+          >
+            Xem chi tiết
+          </Button>
+          {user?.role?.role_name === 'manager' && (
+            <>
+              <Button
+                type="link"
+                danger
+                onClick={() => handleDeleteMilestone(record.id)}
+              >
+                Xóa
+              </Button>
+            </>
+          )}
+        </div>
       ),
     },
   ];
@@ -374,23 +477,86 @@ const EmployeeProjectManagement: React.FC = () => {
     critical: milestones.filter(m => m.is_critical).length,
   };
 
+  // Test simple render first
+  if (!user) {
+    return <div>Loading user...</div>;
+  }
+
+  // Debug: Show user info
+  console.log('🔍 User info:', {
+    id: user.id,
+    username: user.username,
+    role: user.role?.role_name,
+    isActive: user.is_active
+  });
+
+  // Allow access for manager, leader, and employee roles
+  if (!user.role?.role_name || !['manager', 'leader', 'employee'].includes(user.role.role_name)) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <h2>Không có quyền truy cập</h2>
+        <p>Bạn cần có quyền manager, leader hoặc employee để truy cập trang này.</p>
+        <p>Role hiện tại: {user.role?.role_name}</p>
+        <p>User ID: {user.id}</p>
+        <p>Username: {user.username}</p>
+      </div>
+    );
+  }
+
   return (
     <EmployeeLayout
       title="Quản lý dự án"
       icon={<ProjectOutlined />}
       headerExtra={
-        <Button 
-          type="primary"
-          icon={<ReloadOutlined />}
-          onClick={loadData}
-          loading={loading}
-        >
-          Làm mới
-        </Button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <Select
+            placeholder="Chọn dự án"
+            value={selectedProjectId}
+            onChange={setSelectedProjectId}
+            loading={projectLoading}
+            style={{ minWidth: 200 }}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
+            }
+          >
+            {projects.map(project => (
+              <Option key={project.id} value={project.id}>
+                {project.project_name}
+              </Option>
+            ))}
+          </Select>
+          {user?.role?.role_name === 'manager' && (
+            <>
+              <Button 
+                type="primary"
+                icon={<ExclamationCircleOutlined />}
+                onClick={() => setAddRiskModalVisible(true)}
+              >
+                Thêm rủi ro
+              </Button>
+              <Button 
+                type="primary"
+                icon={<FlagOutlined />}
+                onClick={() => setAddMilestoneModalVisible(true)}
+              >
+                Thêm cột mốc
+              </Button>
+            </>
+          )}
+          <Button 
+            type="default"
+            icon={<ReloadOutlined />}
+            onClick={loadData}
+            loading={loading}
+          >
+            Làm mới
+          </Button>
+        </div>
       }
     >
       <Spin spinning={loading}>
-        <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key as typeof activeTab)}>
           <TabPane 
             tab={
               <span>
@@ -532,6 +698,71 @@ const EmployeeProjectManagement: React.FC = () => {
               />
             </Card>
           </TabPane>
+
+          {/* Manager-only tabs */}
+          {user?.role?.role_name === 'manager' && (
+            <>
+              <TabPane 
+                tab={
+                  <span>
+                    <CrownOutlined />
+                    Trưởng dự án
+                  </span>
+                } 
+                key="project-leaders"
+              >
+                <ProjectLeaderManagement />
+              </TabPane>
+
+              <TabPane 
+                tab={
+                  <span>
+                    <UserOutlined />
+                    Người phụ trách Task
+                  </span>
+                } 
+                key="task-responsibles"
+              >
+                <TaskResponsibleManagement projectId={selectedProjectId} />
+              </TabPane>
+
+              <TabPane 
+                tab={
+                  <span>
+                    <FlagOutlined />
+                    Người phụ trách Cột mốc
+                  </span>
+                } 
+                key="milestone-responsibles"
+              >
+                <MilestoneResponsibleManagement projectId={selectedProjectId} />
+              </TabPane>
+
+              <TabPane 
+                tab={
+                  <span>
+                    <ExclamationCircleOutlined />
+                    Người phụ trách Rủi ro
+                  </span>
+                } 
+                key="risk-owners"
+              >
+                <RiskOwnerManagement projectId={selectedProjectId} />
+              </TabPane>
+
+              <TabPane 
+                tab={
+                  <span>
+                    <TeamOutlined />
+                    Thành viên dự án
+                  </span>
+                } 
+                key="project-members"
+              >
+                <ProjectMemberManagement projectId={selectedProjectId} />
+              </TabPane>
+            </>
+          )}
         </Tabs>
       </Spin>
 
@@ -579,7 +810,6 @@ const EmployeeProjectManagement: React.FC = () => {
               <Col span={12}>
                 <Text strong>Tác động chi phí:</Text>
                 <br />
-                <Text>{selectedRisk.cost_impact.toLocaleString('vi-VN')} VNĐ</Text>
               </Col>
               <Col span={12}>
                 <Text strong>Tác động tiến độ:</Text>
@@ -661,6 +891,28 @@ const EmployeeProjectManagement: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      {/* Add Risk Modal */}
+      <AddRiskModal
+        visible={addRiskModalVisible}
+        onCancel={() => setAddRiskModalVisible(false)}
+        onSuccess={() => {
+          setAddRiskModalVisible(false);
+          loadData();
+        }}
+        projectId={selectedProjectId}
+      />
+
+      {/* Add Milestone Modal */}
+      <AddMilestoneModal
+        visible={addMilestoneModalVisible}
+        onCancel={() => setAddMilestoneModalVisible(false)}
+        onSuccess={() => {
+          setAddMilestoneModalVisible(false);
+          loadData();
+        }}
+        projectId={selectedProjectId}
+      />
     </EmployeeLayout>
   );
 };

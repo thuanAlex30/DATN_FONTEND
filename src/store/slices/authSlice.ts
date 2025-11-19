@@ -104,16 +104,31 @@ const authSlice = createSlice({
       const refreshToken = localStorage.getItem(ENV.REFRESH_TOKEN_KEY);
       const user = getUserFromStorage();
       
+      console.log('🔍 initializeAuth debug:', {
+        token: token ? 'exists' : 'missing',
+        refreshToken: refreshToken ? 'exists' : 'missing',
+        user: user ? {
+          id: user.id,
+          username: user.username,
+          role: user.role?.role_name,
+          is_active: user.is_active
+        } : null
+      });
+      
       if (token && user) {
         state.user = user;
         state.token = token;
         state.refreshToken = refreshToken;
         state.isAuthenticated = true;
         
+        console.log('✅ Auth initialized successfully');
+        
         // Connect WebSocket if enabled
         if (ENV.ENABLE_WEBSOCKET) {
           websocketClient.connect(ENV.WS_BASE_URL, token);
         }
+      } else {
+        console.log('❌ Auth initialization failed - missing token or user');
       }
     },
     logout: (state) => {

@@ -39,9 +39,21 @@ const LoginPage: React.FC = () => {
         
         // Small delay to ensure state is updated before redirect
         setTimeout(() => {
-          // Redirect tất cả users về homepage chung
-          console.log('🔀 Redirecting to homepage...');
-          safeNavigate('/homepage', { replace: true });
+          // Check user role and redirect accordingly
+          if (user.role?.role_name === 'admin') {
+            console.log('🔀 Redirecting to admin dashboard...');
+            safeNavigate('/admin/dashboard', { replace: true });
+          } else if (user.role?.role_name === 'manager') {
+            console.log('🔀 Redirecting to manager dashboard...');
+            safeNavigate('/manager/dashboard', { replace: true });
+          } else if (user.role?.role_name === 'employee') {
+            console.log('🔀 Redirecting to employee dashboard...');
+            safeNavigate('/employee/dashboard', { replace: true });
+          } else {
+            console.log('🔀 Redirecting to home page...');
+            // Fallback for other roles
+            safeNavigate('/home', { replace: true });
+          }
         }, 100);
       } else if (login.rejected.match(resultAction)) {
         // Error is already handled by the slice

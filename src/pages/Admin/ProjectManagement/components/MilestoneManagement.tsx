@@ -31,8 +31,10 @@ import {
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import type { RootState } from '../../../../store';
-import projectMilestoneService, { type ProjectMilestone, type CreateProjectMilestoneData } from '../../../../services/projectMilestoneService';
-import projectPhaseService, { type ProjectPhase } from '../../../../services/projectPhaseService';
+import projectMilestoneService from '../../../../services/projectMilestoneService';
+import projectPhaseService from '../../../../services/projectPhaseService';
+import type { ProjectMilestone, CreateProjectMilestoneData } from '../../../../services/projectMilestoneService';
+import type { ProjectPhase } from '../../../../services/projectPhaseService';
 import userService from '../../../../services/userService';
 
 interface MilestoneManagementProps {

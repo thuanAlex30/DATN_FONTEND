@@ -6,6 +6,7 @@ import type { AppDispatch, RootState } from '../../../../store';
 import { createRisk, updateRisk } from '../../../../store/slices/projectRiskSlice';
 import type { CreateRiskData, UpdateRiskData } from '../../../../types/projectRisk';
 import userService from '../../../../services/userService';
+import dayjs from 'dayjs';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -50,7 +51,7 @@ const RiskFormModal: React.FC<RiskFormModalProps> = ({
           impact_score: editingRisk.impact_score,
           mitigation_plan: editingRisk.mitigation_plan,
           owner_id: editingRisk.owner_id,
-          target_resolution_date: editingRisk.target_resolution_date ? new Date(editingRisk.target_resolution_date) : null,
+          target_resolution_date: editingRisk.target_resolution_date ? dayjs(editingRisk.target_resolution_date) : null,
           schedule_impact_days: editingRisk.schedule_impact_days,
         });
       } else {
@@ -100,8 +101,6 @@ const RiskFormModal: React.FC<RiskFormModalProps> = ({
         project_id: projectId,
         target_resolution_date: values.target_resolution_date?.toISOString(),
         risk_score: values.probability * values.impact_score,
-        // Remove cost_impact from the data
-        cost_impact: undefined,
       };
 
       if (mode === 'create') {
@@ -174,7 +173,6 @@ const RiskFormModal: React.FC<RiskFormModalProps> = ({
             >
               <Select placeholder="Chọn danh mục rủi ro">
                 <Option value="TECHNICAL">Kỹ thuật</Option>
-                <Option value="FINANCIAL">Tài chính</Option>
                 <Option value="SCHEDULE">Tiến độ</Option>
                 <Option value="SAFETY">An toàn</Option>
                 <Option value="ENVIRONMENTAL">Môi trường</Option>

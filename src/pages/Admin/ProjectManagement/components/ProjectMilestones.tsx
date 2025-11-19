@@ -197,7 +197,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
       key: 'edit',
       label: 'Chỉnh sửa',
       icon: <EditOutlined />,
-      disabled: true,
+      onClick: () => handleEditMilestone(milestone),
     },
     {
       key: 'delete',
@@ -305,12 +305,11 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                 <Text type="secondary">
                   Dự án này chưa có milestone nào được tạo. Hãy tạo milestone đầu tiên để bắt đầu theo dõi tiến độ.
                 </Text>
-                <Button 
-                  type="primary" 
+                <Button
+                  type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => {}}
-                  disabled
-                  title="Sắp ra mắt"
+                  onClick={() => setCreateModalVisible(true)}
+                  title="Tạo milestone mới"
                 >
                   Tạo milestone đầu tiên
                 </Button>
@@ -341,8 +340,8 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                       <Button 
                         type="text" 
                         icon={<EditOutlined />} 
-                        disabled
-                        title="Sắp ra mắt"
+                        onClick={() => handleEditMilestone(milestone)}
+                        title="Chỉnh sửa milestone"
                       />
                     </Tooltip>,
                     <Dropdown key="more" menu={{ items: menu(milestone._id) }} trigger={['click']}>
