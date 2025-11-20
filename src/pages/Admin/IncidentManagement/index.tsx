@@ -34,8 +34,25 @@ const IncidentManagement: React.FC = () => {
       setLoading(true);
       setError(null);
       
+      // Try to get stats from dedicated API first
+      try {
+        const statsResponse = await incidentService.getIncidentStats();
+        if (statsResponse.data && statsResponse.data.success) {
+          setStats({
+            total: statsResponse.data.data.total || 0,
+            inProgress: statsResponse.data.data.inProgress || 0,
+            resolved: statsResponse.data.data.resolved || 0,
+            critical: statsResponse.data.data.critical || 0
+          });
+          return;
+        }
+      } catch (statsError) {
+        console.log('Stats API failed, falling back to incidents list');
+      }
+      
+      // Fallback to incidents list
       const response = await incidentService.getIncidents();
-      const incidents = response.data || [];
+      const incidents = Array.isArray(response.data) ? response.data : [];
       
       const total = incidents.length;
       const inProgress = incidents.filter((incident: any) => 
@@ -93,18 +110,34 @@ const IncidentManagement: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ 
+      padding: '24px', 
+      background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
+      minHeight: '100vh'
+    }}>
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <Title level={2}>
-          <ExclamationCircleOutlined /> Quản lý sự cố
+      <Card
+        styles={{ body: { padding: '20px 24px' } }}
+        style={{
+          marginBottom: 24,
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.9)',
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 10px 30px rgba(24, 144, 255, 0.08)'
+        }}
+      >
+        <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ExclamationCircleOutlined style={{ color: '#1677ff' }} /> Quản lý sự cố
         </Title>
-      </div>
+      </Card>
 
       {/* Stats Overview */}
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
         <Col xs={24} sm={6}>
-          <Card>
+          <Card
+            styles={{ body: { padding: 16 } }}
+            style={{ borderRadius: 14, boxShadow: '0 6px 18px rgba(22,119,255,0.06)' }}
+          >
             <Statistic
               title="Tổng sự cố"
               value={stats.total}
@@ -113,7 +146,10 @@ const IncidentManagement: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={6}>
-          <Card>
+          <Card
+            styles={{ body: { padding: 16 } }}
+            style={{ borderRadius: 14, boxShadow: '0 6px 18px rgba(24,144,255,0.06)' }}
+          >
             <Statistic
               title="Đang xử lý"
               value={stats.inProgress}
@@ -123,7 +159,10 @@ const IncidentManagement: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={6}>
-          <Card>
+          <Card
+            styles={{ body: { padding: 16 } }}
+            style={{ borderRadius: 14, boxShadow: '0 6px 18px rgba(82,196,26,0.06)' }}
+          >
             <Statistic
               title="Đã giải quyết"
               value={stats.resolved}
@@ -133,7 +172,10 @@ const IncidentManagement: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={6}>
-          <Card>
+          <Card
+            styles={{ body: { padding: 16 } }}
+            style={{ borderRadius: 14, boxShadow: '0 6px 18px rgba(255,77,79,0.06)' }}
+          >
             <Statistic
               title="Nghiêm trọng"
               value={stats.critical}

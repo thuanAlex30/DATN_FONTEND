@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { VALIDATION_RULES } from '../../../../constants/project';
 import type { RootState, AppDispatch } from '../../../../store';
 import { createProject, updateProject } from '../../../../store/slices/projectSlice';
 import type { Project, CreateProjectData, UpdateProjectData } from '../../../../types/project';
@@ -51,12 +52,12 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
         // Load users (managers)
         const { default: userService } = await import('../../../../services/userService');
         const usersResponse = await userService.getUsers({ 
-          role: 'manager',
+          role_id: 'manager',
           is_active: true 
         });
         
         if (usersResponse.success && usersResponse.data) {
-          setUsers(usersResponse.data);
+          setUsers(usersResponse.data.users);
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -103,41 +104,84 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    // Validate project name
     if (!formData.project_name.trim()) {
       newErrors.project_name = 'Tên dự án là bắt buộc';
+    } else if (formData.project_name.trim().length < VALIDATION_RULES.PROJECT_NAME_MIN_LENGTH) {
+      newErrors.project_name = `Tên dự án phải có ít nhất ${VALIDATION_RULES.PROJECT_NAME_MIN_LENGTH} ký tự`;
+    } else if (formData.project_name.trim().length > VALIDATION_RULES.PROJECT_NAME_MAX_LENGTH) {
+      newErrors.project_name = `Tên dự án không được vượt quá ${VALIDATION_RULES.PROJECT_NAME_MAX_LENGTH} ký tự`;
     }
 
+    // Validate description
     if (!formData.description.trim()) {
       newErrors.description = 'Mô tả dự án là bắt buộc';
+    } else if (formData.description.trim().length < VALIDATION_RULES.DESCRIPTION_MIN_LENGTH) {
+      newErrors.description = `Mô tả dự án phải có ít nhất ${VALIDATION_RULES.DESCRIPTION_MIN_LENGTH} ký tự`;
+    } else if (formData.description.trim().length > VALIDATION_RULES.DESCRIPTION_MAX_LENGTH) {
+      newErrors.description = `Mô tả dự án không được vượt quá ${VALIDATION_RULES.DESCRIPTION_MAX_LENGTH} ký tự`;
     }
 
+    // Validate dates
     if (!formData.start_date) {
       newErrors.start_date = 'Ngày bắt đầu là bắt buộc';
+    } else {
+      const startDate = new Date(formData.start_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (startDate < today) {
+        newErrors.start_date = 'Ngày bắt đầu không được là ngày trong quá khứ';
+      }
     }
 
     if (!formData.end_date) {
       newErrors.end_date = 'Ngày kết thúc là bắt buộc';
+    } else {
+      const endDate = new Date(formData.end_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (endDate < today) {
+        newErrors.end_date = 'Ngày kết thúc không được là ngày trong quá khứ';
+      }
     }
 
+    // Validate date relationship
+    if (formData.start_date && formData.end_date) {
+      const startDate = new Date(formData.start_date);
+      const endDate = new Date(formData.end_date);
+      
+      if (startDate >= endDate) {
+        newErrors.end_date = 'Ngày kết thúc phải sau ngày bắt đầu';
+      }
+      
+      // Check if project duration is reasonable (not more than 5 years)
+      const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > VALIDATION_RULES.MAX_PROJECT_DURATION_DAYS) {
+        newErrors.end_date = `Thời gian dự án không được vượt quá ${Math.floor(VALIDATION_RULES.MAX_PROJECT_DURATION_DAYS / 365)} năm`;
+      }
+    }
+
+    // Validate leader
     if (!formData.leader_id) {
       newErrors.leader_id = 'Trưởng dự án là bắt buộc';
     }
 
-    if (!formData.site_id) {
-      newErrors.site_id = 'Địa điểm dự án là bắt buộc';
+    // Validate site (optional but if provided, should be valid)
+    if (formData.site_id && formData.site_id === '') {
+      newErrors.site_id = 'Vui lòng chọn địa điểm dự án hoặc để trống';
     }
 
+    // Validate project type
     if (!formData.project_type) {
       newErrors.project_type = 'Loại dự án là bắt buộc';
     }
 
-
-    if (formData.start_date && formData.end_date) {
-      const startDate = new Date(formData.start_date);
-      const endDate = new Date(formData.end_date);
-      if (startDate >= endDate) {
-        newErrors.end_date = 'Ngày kết thúc phải sau ngày bắt đầu';
-      }
+    // Validate priority
+    if (!formData.priority) {
+      newErrors.priority = 'Mức độ ưu tiên là bắt buộc';
     }
 
     setErrors(newErrors);
@@ -159,7 +203,8 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
           start_date: formData.start_date,
           end_date: formData.end_date,
           leader_id: formData.leader_id,
-          site_id: formData.site_id,
+          
+          site_id: formData.site_id || undefined,
           project_type: formData.project_type,
           priority: formData.priority,
         };
@@ -272,7 +317,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
               <select
                 id="site_id"
                 name="site_id"
-                value={formData.site_id}
+                value={formData.site_id || ''}
                 onChange={handleInputChange}
                 className={errors.site_id ? 'error' : ''}
                 disabled={loadingData}

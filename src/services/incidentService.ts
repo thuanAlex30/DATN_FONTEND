@@ -2,10 +2,34 @@ import { api } from '../config/axios';
 
 const incidentService = {
   // List incidents
-  getIncidents: () => api.get('/incidents'),
+  getIncidents: (project_id?: string) => {
+    const params = project_id ? { project_id } : {};
+    return api.get('/incidents', { params });
+  },
+
+  // Get incidents by project
+  getIncidentsByProject: (project_id: string) => api.get('/incidents', { params: { project_id } }),
 
   // Get incident details
   getIncidentById: (id: string) => api.get(`/incidents/${id}`),
+
+  // Get incident statistics
+  getIncidentStats: () => api.get('/incidents/stats/overview'),
+
+  // Search incidents
+  searchIncidents: (query: string) => api.get('/incidents/search/query', { params: { q: query } }),
+
+  // Get incidents by user
+  getIncidentsByUser: (userId: string) => api.get(`/incidents/user/${userId}`),
+
+  // Get incidents by project ID
+  getIncidentsByProjectId: (projectId: string) => api.get(`/incidents/project/${projectId}`),
+
+  // Get incidents by status
+  getIncidentsByStatus: (status: string) => api.get(`/incidents/status/${status}`),
+
+  // Get incidents by severity
+  getIncidentsBySeverity: (severity: string) => api.get(`/incidents/severity/${severity}`),
 
   // Employee - report new incident
   reportIncident: (data: {
@@ -14,11 +38,7 @@ const incidentService = {
     images?: string[];
     location?: string;
     severity?: 'nhẹ' | 'nặng' | 'rất nghiêm trọng';
-    affectedEmployeeId?: string;
-    employeeStatus?: string;
-    incidentType?: string;
-    witnesses?: string[];
-    medicalReport?: string;
+    project_id?: string;
   }) => api.post('/incidents/report', data),
 
   // Admin - classify incident
@@ -40,15 +60,11 @@ const incidentService = {
   // Admin - close incident
   closeIncident: (id: string) => api.put(`/incidents/close/${id}`),
 
-  // Admin - update employee incident information
-  updateEmployeeIncident: (id: string, data: {
-    affectedEmployeeId: string;
-    employeeStatus: string;
-    medicalReport?: string;
-    witnesses?: string[];
-    incidentType?: string;
-    additionalNotes?: string;
-  }) => api.put(`/incidents/update-employee/${id}`, data),
+  // Admin - update incident
+  updateIncident: (id: string, data: any) => api.put(`/incidents/${id}`, data),
+
+  // Admin - delete incident
+  deleteIncident: (id: string) => api.delete(`/incidents/${id}`),
 };
 
 export default incidentService;

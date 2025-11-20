@@ -5,7 +5,7 @@ import type { RootState } from '../../store';
 
 interface AuthGuardProps {
   children: React.ReactNode;
-  requiredRole?: string;
+  requiredRole?: string | string[];
 }
 
 const AuthGuard: React.FC<AuthGuardProps> = ({ 
@@ -36,9 +36,29 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   }
 
   // Check role-based access
-  if (requiredRole && requiredRole !== "" && user.role?.role_name !== requiredRole) {
-    console.log('❌ AuthGuard: Role mismatch, redirecting to unauthorized');
-    return <Navigate to="/unauthorized" replace />;
+  if (requiredRole && requiredRole !== "") {
+    const userRole = user.role?.role_name;
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    
+    console.log('🔍 AuthGuard: Role comparison details:', {
+      userRole,
+      userRoleType: typeof userRole,
+      allowedRoles,
+      allowedRolesType: typeof allowedRoles,
+      requiredRole,
+      requiredRoleType: typeof requiredRole,
+      includesResult: allowedRoles.includes(userRole),
+      strictComparison: allowedRoles.some(role => role === userRole)
+    });
+    
+    if (!allowedRoles.includes(userRole)) {
+      console.log('❌ AuthGuard: Role mismatch, redirecting to unauthorized', {
+        userRole,
+        allowedRoles,
+        requiredRole
+      });
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   console.log('✅ AuthGuard: Access granted');

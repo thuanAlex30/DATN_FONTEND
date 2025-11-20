@@ -4,7 +4,7 @@ export interface ProjectRisk {
   phase_id?: string;
   risk_name: string;
   description: string;
-  risk_category: 'TECHNICAL' | 'FINANCIAL' | 'SCHEDULE' | 'SAFETY' | 'ENVIRONMENTAL' | 'REGULATORY' | 'SUPPLIER' | 'PERSONNEL';
+  risk_category: 'TECHNICAL' | 'SCHEDULE' | 'SAFETY' | 'ENVIRONMENTAL' | 'REGULATORY' | 'SUPPLIER' | 'PERSONNEL';
   probability: number;
   impact_score: number;
   risk_score: number;
@@ -14,7 +14,6 @@ export interface ProjectRisk {
   identified_date: string;
   target_resolution_date: string;
   actual_resolution_date?: string;
-  cost_impact: number;
   schedule_impact_days: number;
   created_at: string;
   updated_at: string;
@@ -31,7 +30,6 @@ export interface CreateRiskData {
   mitigation_plan: string;
   owner_id: string;
   target_resolution_date: string;
-  cost_impact?: number;
   schedule_impact_days?: number;
 }
 
@@ -45,7 +43,6 @@ export interface UpdateRiskData {
   mitigation_plan?: string;
   owner_id?: string;
   actual_resolution_date?: string;
-  cost_impact?: number;
   schedule_impact_days?: number;
 }
 

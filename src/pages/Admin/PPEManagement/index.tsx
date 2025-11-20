@@ -23,9 +23,6 @@ import {
   Form,
   DatePicker,
   InputNumber,
-  Divider,
-  Progress,
-  Timeline,
   Descriptions
 } from 'antd';
 import { 
@@ -49,13 +46,13 @@ import {
   SendOutlined,
   UndoOutlined,
   ReloadOutlined,
-  BellOutlined,
-  ClockCircleOutlined,
-  CheckCircleFilled,
-  CloseCircleFilled,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  LockOutlined
 } from '@ant-design/icons';
+import PDFPreviewModal from '../../../components/PDFPreviewModal';
+import { generatePDF } from '../../../utils/pdfGenerator';
 import * as ppeService from '../../../services/ppeService';
+import departmentService from '../../../services/departmentService';
 import CategoryEditModal from './CategoryEditModal';
 import CategoryDetailModal from './CategoryDetailModal';
 import ImportCategoriesModal from './ImportCategoriesModal';
@@ -66,6 +63,8 @@ import CreateAssignmentModal from './CreateAssignmentModal';
 import CreateMaintenanceModal from './CreateMaintenanceModal';
 import CreateReportModal from './CreateReportModal';
 import PPEEditModal from './PPEEditModal';
+import IssueToManagerModal from './IssueToManagerModal';
+import IssueToEmployeeModal from './IssueToEmployeeModal';
 import type { 
   PPECategory, 
   PPEItem, 
@@ -75,6 +74,11 @@ import dayjs from 'dayjs';
 import { usePPEWebSocket } from '../../../hooks/usePPEWebSocket';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store';
+import PPEAssignmentDetailsModal from './components/PPEAssignmentDetailsModal';
+// Advanced Features Components
+import BatchIssuanceModal from '../../../components/PPEAdvanced/BatchIssuanceModal';
+import ExpiryManagementModal from '../../../components/PPEAdvanced/ExpiryManagementModal';
+import OptimisticLockingModal from '../../../components/PPEAdvanced/OptimisticLockingModal';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -83,6 +87,8 @@ const { Search } = Input;
 const PPEManagement: React.FC = () => {
   const { user, token } = useSelector((state: RootState) => state.auth);
   const [activeTab, setActiveTab] = useState('issuances');
+  const [assignmentDetailsVisible, setAssignmentDetailsVisible] = useState(false);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   
   // WebSocket hook for realtime updates
   const { isConnected } = usePPEWebSocket({
@@ -113,6 +119,46 @@ const PPEManagement: React.FC = () => {
       console.log('PPE low stock:', data);
       // Reload data when stock is low
       loadAllData();
+    },
+    // Advanced Features Events
+    onPPEQuantityUpdate: (data) => {
+      console.log('PPE quantity updated:', data);
+      loadAllData();
+    },
+    onPPEConditionUpdate: (data) => {
+      console.log('PPE condition updated:', data);
+      loadAllData();
+    },
+    onPPEExpiryWarning: (data) => {
+      console.log('PPE expiry warning:', data);
+      message.warning(`PPE sắp hết hạn: ${data.item_name} (còn ${data.days_until_expiry} ngày)`);
+    },
+    onPPEExpired: (data) => {
+      console.log('PPE expired:', data);
+      message.error(`PPE đã hết hạn: ${data.item_name}`);
+      loadAllData();
+    },
+    onPPEReplaced: (data) => {
+      console.log('PPE replaced:', data);
+      message.success(`PPE đã được thay thế: ${data.item_name}`);
+      loadAllData();
+    },
+    onPPEDisposed: (data) => {
+      console.log('PPE disposed:', data);
+      message.info(`PPE đã được xử lý: ${data.item_name}`);
+      loadAllData();
+    },
+    onBatchProcessingStarted: (data) => {
+      console.log('Batch processing started:', data);
+      message.info(`Bắt đầu xử lý batch: ${data.batch_name}`);
+    },
+    onBatchProcessingProgress: (data) => {
+      console.log('Batch processing progress:', data);
+    },
+    onBatchProcessingComplete: (data) => {
+      console.log('Batch processing complete:', data);
+      message.success(`Hoàn thành batch: ${data.batch_name}`);
+      loadAllData();
     }
   });
   
@@ -132,12 +178,27 @@ const PPEManagement: React.FC = () => {
   const [showDistributeModal, setShowDistributeModal] = useState(false);
   const [showIssuanceDetailModal, setShowIssuanceDetailModal] = useState(false);
   const [showPPEEditModal, setShowPPEEditModal] = useState(false);
+  const [showIssueToManagerModal, setShowIssueToManagerModal] = useState(false);
+  const [showIssueToEmployeeModal, setShowIssueToEmployeeModal] = useState(false);
   const [selectedIssuance, setSelectedIssuance] = useState<PPEIssuance | null>(null);
+  const [selectedManager, setSelectedManager] = useState<any>(null);
+  
+  // PDF Preview states
+  const [showPDFPreview, setShowPDFPreview] = useState(false);
+  const [previewReportData, setPreviewReportData] = useState<any>(null);
+  const [previewReportType, setPreviewReportType] = useState<string>('');
+  const [pdfLoading, setPdfLoading] = useState(false);
+  
+  // Advanced Features Modal States
+  const [showBatchIssuanceModal, setShowBatchIssuanceModal] = useState(false);
+  const [showExpiryManagementModal, setShowExpiryManagementModal] = useState(false);
+  const [showOptimisticLockingModal, setShowOptimisticLockingModal] = useState(false);
   
   // State for data
   const [ppeCategories, setPpeCategories] = useState<PPECategory[]>([]);
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
-  const [ppeIssuances, setPpeIssuances] = useState<PPEIssuance[]>([]);
+  const [ppeIssuances, setPpeIssuances] = useState<PPEIssuance[]>([]); // All issuances for "Lịch sử phát PPE"
+  const [adminIssuedPPE, setAdminIssuedPPE] = useState<PPEIssuance[]>([]); // Admin->Manager issuances for "Phát PPE" tab
   const [users, setUsers] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -182,7 +243,34 @@ const PPEManagement: React.FC = () => {
       
       setPpeCategories(categoriesRes || []);
       setPpeItems(itemsRes || []);
-      setPpeIssuances(issuancesRes || []);
+      
+      // Filter to show only Admin->Manager issuances in "Phát PPE" tab
+      const allIssuances = issuancesRes || [];
+
+      // Normalize data for "Lịch sử phát PPE" table so it always has display fields
+      const mappedHistory = allIssuances.map((issuance: any) => {
+        const userObj = typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id : null;
+        const itemObj = typeof issuance.item_id === 'object' && issuance.item_id ? issuance.item_id : null;
+
+        return {
+          ...issuance,
+          user_name: userObj?.full_name || issuance.user_name || 'Không xác định',
+          department_name: userObj?.department_id?.department_name || issuance.department_name,
+          item_name: itemObj?.item_name || issuance.item_name,
+          item_code: itemObj?.item_code || issuance.item_code,
+        };
+      });
+
+      setPpeIssuances(mappedHistory); // For "Lịch sử phát PPE"
+      
+      // Filter only Admin->Manager issuances for "Phát PPE" tab
+      const adminToManagerPPE = allIssuances.filter(
+        (issuance: any) => issuance.issuance_level === 'admin_to_manager'
+      );
+      setAdminIssuedPPE(adminToManagerPPE);
+      
+      console.log('[Admin PPE] Total issuances:', allIssuances.length);
+      console.log('[Admin PPE] Admin->Manager issuances:', adminToManagerPPE.length);
     } catch (err) {
       console.error('Error loading PPE data:', err);
       message.error('Không thể tải dữ liệu PPE');
@@ -280,10 +368,51 @@ const PPEManagement: React.FC = () => {
   const loadUsers = useCallback(async () => {
     try {
       setLoading(prev => ({ ...prev, users: true }));
-      const usersData = await ppeService.getAllUsers();
-      setUsers(usersData || []);
-    } catch (err) {
+      
+      // Chỉ hiển thị người dùng là quản lý phòng ban (managers)
+      const response = await departmentService.getDepartments();
+      if (!response.success || !response.data?.departments) {
+        message.error('Không thể tải danh sách phòng ban');
+        setUsers([]);
+        return;
+      }
+
+      const departments = response.data.departments || [];
+
+      // Lấy danh sách managers từ các phòng ban có gán manager
+      const managers = departments
+        .filter((dept: any) => !!dept.manager_id)
+        .map((dept: any) => {
+          const mgr: any = dept.manager_id;
+          return {
+            id: mgr.id || mgr._id,
+            username: mgr.username,
+            full_name: mgr.full_name || mgr.username,
+            email: mgr.email,
+            phone: mgr.phone,
+            role: { role_name: 'manager', id: mgr.role_id?.id || mgr.role_id?._id },
+            department_id: { id: dept.id || dept._id, department_name: dept.department_name },
+            // convenience fields for table renderers
+            department_name: dept.department_name,
+            position: mgr.position_id?.position_name || mgr.position || null,
+            position_id: mgr.position_id,
+            is_active: mgr.is_active ?? true,
+            created_at: mgr.created_at,
+          } as any;
+        });
+
+      // Loại trùng nếu có cùng manager xuất hiện ở nhiều phòng ban (trường hợp dữ liệu không chuẩn)
+      const uniqueManagersMap = new Map<string, any>();
+      managers.forEach((m: any) => {
+        if (!uniqueManagersMap.has(m.id)) uniqueManagersMap.set(m.id, m);
+      });
+
+      setUsers(Array.from(uniqueManagersMap.values()));
+    } catch (err: any) {
       console.error('Error loading users:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách người dùng';
+      message.error(errorMessage);
+      setUsers([]);
     } finally {
       setLoading(prev => ({ ...prev, users: false }));
     }
@@ -293,7 +422,23 @@ const PPEManagement: React.FC = () => {
     try {
       setLoading(prev => ({ ...prev, inventory: true }));
       const inventoryData = await ppeService.getAllInventory();
-      setInventory(inventoryData || []);
+      // Normalize different backend field names to a unified shape for UI
+      const normalized = (inventoryData || []).map((item: any) => {
+        const quantityAvailable = item.quantity_available ?? item.available_quantity ?? 0;
+        const quantityAllocated = item.quantity_allocated ?? item.allocated_quantity ?? item.actual_allocated_quantity ?? 0;
+        const totalQuantity = item.total_quantity ?? (quantityAvailable + (item.quantity_allocated ?? item.allocated_quantity ?? 0));
+        const remainingQuantity = item.remaining_quantity ?? quantityAvailable;
+
+        return {
+          ...item,
+          id: item.id ?? item._id,
+          quantity_available: quantityAvailable,
+          quantity_allocated: quantityAllocated,
+          total_quantity: totalQuantity,
+          remaining_quantity: remainingQuantity,
+        };
+      });
+      setInventory(normalized);
     } catch (err) {
       console.error('Error loading inventory:', err);
     } finally {
@@ -305,7 +450,19 @@ const PPEManagement: React.FC = () => {
     try {
       setLoading(prev => ({ ...prev, assignments: true }));
       const assignmentsData = await ppeService.getAllAssignments();
-      setAssignments(assignmentsData || []);
+      const normalized = (assignmentsData || []).map((assignment: any) => {
+        const userObj = typeof assignment.user_id === 'object' ? assignment.user_id : {};
+        const itemObj = typeof assignment.item_id === 'object' ? assignment.item_id : {};
+        return {
+          ...assignment,
+          id: assignment.id ?? assignment._id,
+          user_name: assignment.user_name ?? userObj.full_name ?? 'Không xác định',
+          department_name: assignment.department_name ?? userObj.department_id?.department_name ?? '',
+          item_name: assignment.item_name ?? itemObj.item_name ?? '',
+          item_code: assignment.item_code ?? itemObj.item_code ?? '',
+        };
+      });
+      setAssignments(normalized);
     } catch (err) {
       console.error('Error loading assignments:', err);
     } finally {
@@ -328,6 +485,7 @@ const PPEManagement: React.FC = () => {
   const loadReports = useCallback(async () => {
     try {
       setLoading(prev => ({ ...prev, reports: true }));
+      
       // Load different types of reports
       const [inventoryReport, assignmentReport, maintenanceReport] = await Promise.all([
         ppeService.getInventoryReport(),
@@ -335,19 +493,160 @@ const PPEManagement: React.FC = () => {
         ppeService.getMaintenanceReport()
       ]);
       
-      const reportsData = [
-        ...(Array.isArray(inventoryReport) ? inventoryReport : []).map((report: any) => ({ ...report, report_type: 'inventory' })),
-        ...(Array.isArray(assignmentReport) ? assignmentReport : []).map((report: any) => ({ ...report, report_type: 'usage' })),
-        ...(Array.isArray(maintenanceReport) ? maintenanceReport : []).map((report: any) => ({ ...report, report_type: 'maintenance' }))
-      ];
+      console.log('Raw API responses:', { inventoryReport, assignmentReport, maintenanceReport });
       
+      // Create report objects with proper structure for display
+      const reportsData = [];
+      
+      // Inventory Report
+      if (inventoryReport) {
+        // Calculate totals from the report data
+        const totalCategories = inventoryReport.categories?.length || 0;
+        const totalDevices = inventoryReport.items?.length || 0;
+        const availableDevices = inventoryReport.items?.reduce((sum: number, item: any) => 
+          sum + ((item.quantity_available || 0) - (item.quantity_allocated || 0)), 0) || 0;
+        const issuedDevices = inventoryReport.items?.reduce((sum: number, item: any) => 
+          sum + (item.quantity_allocated || 0), 0) || 0;
+
+        // Calculate additional statistics for charts
+        const maintenanceCount = inventoryReport.items?.reduce((sum: number, item: any) => 
+          sum + (item.quantity_maintenance || 0), 0) || 0;
+        const expiredCount = inventoryReport.items?.reduce((sum: number, item: any) => 
+          sum + (item.quantity_expired || 0), 0) || 0;
+
+        reportsData.push({
+          id: 'inventory-report',
+          report_name: 'Báo cáo tồn kho',
+          description: `Tổng số danh mục: ${totalCategories}, Tổng số thiết bị: ${totalDevices}`,
+          report_type: 'inventory',
+          created_at: new Date().toISOString(),
+          data: {
+            ...inventoryReport,
+            total_categories: totalCategories,
+            total_devices: totalDevices,
+            available_devices: availableDevices,
+            issued_devices: issuedDevices,
+            maintenance_count: maintenanceCount,
+            expired_count: expiredCount
+          }
+        });
+      }
+      
+      // Assignment Report
+      if (assignmentReport && assignmentReport.assignments) {
+        const assignments = assignmentReport.assignments;
+        const totalAssignments = assignments.length;
+        const activeAssignments = assignments.filter((a: any) => a.status === 'active' || a.status === 'assigned').length;
+        const completedAssignments = assignments.filter((a: any) => a.status === 'completed' || a.status === 'returned').length;
+        const overdueAssignments = assignments.filter((a: any) => {
+          if (!a.end_date) return false;
+          return new Date(a.end_date) < new Date() && (a.status === 'active' || a.status === 'assigned');
+        }).length;
+
+        reportsData.push({
+          id: 'assignment-report',
+          report_name: 'Báo cáo phân công',
+          description: `Tổng số phân công: ${totalAssignments}`,
+          report_type: 'usage',
+          created_at: assignmentReport.generated_at || new Date().toISOString(),
+          data: {
+            ...assignmentReport,
+            total_assignments: totalAssignments,
+            active_assignments: activeAssignments,
+            completed_assignments: completedAssignments,
+            overdue_assignments: overdueAssignments
+          }
+        });
+      }
+      
+      // Maintenance Report
+      if (maintenanceReport) {
+        const maintenanceRecords = maintenanceReport.maintenance_records || maintenanceReport.maintenance || [];
+        const totalMaintenance = maintenanceRecords.length;
+        const completedMaintenance = maintenanceRecords.filter((m: any) => m.status === 'completed').length;
+        const pendingMaintenance = maintenanceRecords.filter((m: any) => m.status === 'pending' || m.status === 'scheduled').length;
+        const overdueMaintenance = maintenanceRecords.filter((m: any) => {
+          if (!m.due_date) return false;
+          return new Date(m.due_date) < new Date() && (m.status === 'pending' || m.status === 'scheduled');
+        }).length;
+
+        reportsData.push({
+          id: 'maintenance-report',
+          report_name: 'Báo cáo bảo trì',
+          description: `Tổng số bảo trì: ${totalMaintenance}`,
+          report_type: 'maintenance',
+          created_at: maintenanceReport.generated_at || new Date().toISOString(),
+          data: {
+            ...maintenanceReport,
+            total_maintenance: totalMaintenance,
+            completed_maintenance: completedMaintenance,
+            pending_maintenance: pendingMaintenance,
+            overdue_maintenance: overdueMaintenance
+          }
+        });
+      }
+      
+      console.log('Processed reports data:', reportsData);
       setReports(reportsData);
     } catch (err) {
       console.error('Error loading reports:', err);
+      message.error('Không thể tải danh sách báo cáo');
     } finally {
       setLoading(prev => ({ ...prev, reports: false }));
     }
   }, []);
+
+  // Report handling functions
+  const handleViewReport = (record: any) => {
+    console.log('Viewing report:', record);
+    setPreviewReportData(record.data);
+    setPreviewReportType(record.report_type);
+    setShowPDFPreview(true);
+  };
+
+  const handleDownloadReport = async (record: any) => {
+    try {
+      setPdfLoading(true);
+      console.log('Downloading report:', record);
+      
+      const filename = `bao_cao_${record.report_type}_${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      await generatePDF({
+        reportData: record.data,
+        reportType: record.report_type,
+        filename: filename
+      });
+      
+      message.success(`Đã tải báo cáo PDF: ${record.report_name}`);
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      message.error('Không thể tải báo cáo PDF');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handleDownloadFromPreview = async () => {
+    if (!previewReportData || !previewReportType) return;
+    
+    try {
+      setPdfLoading(true);
+      const filename = `bao_cao_${previewReportType}_${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      await generatePDF({
+        reportData: previewReportData,
+        reportType: previewReportType,
+        filename: filename
+      });
+      
+      message.success('Đã tải báo cáo PDF');
+    } catch (error) {
+      console.error('Error downloading report from preview:', error);
+      message.error('Không thể tải báo cáo PDF');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   // PPE Distribution functions
   const handleDistributePPE = () => {
@@ -358,6 +657,15 @@ const PPEManagement: React.FC = () => {
     setAvailableQuantity(0);
   };
 
+  const handleIssueToManager = () => {
+    setShowIssueToManagerModal(true);
+  };
+
+  const handleIssueToEmployee = (manager: any) => {
+    setSelectedManager(manager);
+    setShowIssueToEmployeeModal(true);
+  };
+
   const handleUserSelect = (userId: string) => {
     const user = users.find(u => u.id === userId);
     setSelectedDistributeUser(user);
@@ -366,7 +674,7 @@ const PPEManagement: React.FC = () => {
 
   const handleItemSelect = (itemId: string) => {
     const item = ppeItems.find(i => i.id === itemId);
-    setSelectedDistributeItem(item);
+    setSelectedDistributeItem(item || null);
     setAvailableQuantity(item?.quantity_available || 0);
     distributeForm.setFieldsValue({ 
       item_id: itemId,
@@ -393,7 +701,7 @@ const PPEManagement: React.FC = () => {
         quantity: values.quantity,
         issued_date: values.issued_date.format('YYYY-MM-DD'),
         expected_return_date: values.expected_return_date.format('YYYY-MM-DD'),
-        issued_by: user?.id || user?._id || ''
+        issued_by: user?.id || ''
       };
 
       await ppeService.createIssuance(issuanceData);
@@ -602,7 +910,7 @@ const PPEManagement: React.FC = () => {
   // Issuance columns for table
   const issuanceColumns = [
     {
-      title: 'Nhân viên',
+      title: 'Manager',
       key: 'user',
       render: (_: unknown, record: PPEIssuance) => {
         const user = typeof record.user_id === 'object' ? record.user_id : 
@@ -678,7 +986,7 @@ const PPEManagement: React.FC = () => {
       render: (status: string) => {
         const statusConfig = {
           'issued': { color: 'blue', text: 'Đã phát', icon: <CheckCircleOutlined /> },
-          'returned': { color: 'green', text: 'Đã trả', icon: <CheckCircleFilled /> },
+          'returned': { color: 'green', text: 'Đã trả', icon: <CheckCircleOutlined /> },
           'overdue': { color: 'red', text: 'Quá hạn', icon: <ExclamationCircleOutlined /> },
           'damaged': { color: 'orange', text: 'Hư hỏng', icon: <WarningOutlined /> },
           'replacement_needed': { color: 'purple', text: 'Cần thay thế', icon: <ToolOutlined /> }
@@ -740,9 +1048,14 @@ const PPEManagement: React.FC = () => {
       title: 'PPE hiện tại',
       key: 'current_ppe',
       render: (_: unknown, record: any) => {
-        const userPPE = ppeIssuances.filter(issuance => 
-          issuance.user_id === record.id || issuance.user_id === record._id
-        );
+        // Chỉ tính bản ghi đang sử dụng, cấp bởi Admin cho Manager
+        const userPPE = ppeIssuances.filter((issuance) => {
+          const matchesUser = issuance.user_id === record.id ||
+            (typeof issuance.user_id === 'object' && (issuance.user_id as any).id === record.id);
+          const isActive = issuance.status === 'issued' || issuance.status === 'overdue' || issuance.status === 'replacement_needed';
+          const isLevel = (issuance as any).issuance_level === 'admin_to_manager';
+          return matchesUser && isActive && isLevel;
+        });
         return (
           <Space>
             <Badge count={userPPE.length} showZero />
@@ -760,8 +1073,19 @@ const PPEManagement: React.FC = () => {
             type="link" 
             icon={<EyeOutlined />}
             onClick={() => {
-              // Show user PPE details - to be implemented
-              message.info('Tính năng xem PPE của nhân viên đang được phát triển');
+              const userPPE = ppeIssuances.filter((issuance) => {
+                const matchesUser = issuance.user_id === record.id ||
+                  (typeof issuance.user_id === 'object' && (issuance.user_id as any).id === record.id);
+                const isActive = issuance.status === 'issued' || issuance.status === 'overdue' || issuance.status === 'replacement_needed';
+                const isLevel = (issuance as any).issuance_level === 'admin_to_manager';
+                return matchesUser && isActive && isLevel;
+              });
+              if (userPPE.length === 0) {
+                message.info('Quản lý hiện chưa có PPE đang sử dụng');
+                return;
+              }
+              setSelectedIssuance(userPPE[0]);
+              setShowIssuanceDetailModal(true);
             }}
           >
             Xem PPE
@@ -776,6 +1100,15 @@ const PPEManagement: React.FC = () => {
           >
             Phát PPE
           </Button>
+          {record.role?.role_name === 'manager' && (
+            <Button 
+              type="link" 
+              icon={<TeamOutlined />}
+              onClick={() => handleIssueToEmployee(record)}
+            >
+              Phát cho NV
+            </Button>
+          )}
         </Space>
       ),
     },
@@ -804,9 +1137,9 @@ const PPEManagement: React.FC = () => {
       key: 'stock',
       render: (_: unknown, record: any) => (
         <Space direction="vertical" size="small">
-          <div>Tổng: <Text strong>{record.total_quantity || 0}</Text></div>
-          <div>Còn lại: <Text strong style={{ color: '#52c41a' }}>{record.available_quantity || 0}</Text></div>
-          <div>Đã phát: <Text strong style={{ color: '#1890ff' }}>{record.allocated_quantity || 0}</Text></div>
+          <div>Tổng: <Text strong>{record.total_quantity ?? (record.quantity_available ?? 0) + (record.quantity_allocated ?? 0)}</Text></div>
+          <div>Còn lại: <Text strong style={{ color: '#52c41a' }}>{record.remaining_quantity ?? record.quantity_available ?? 0}</Text></div>
+          <div>Đã phát: <Text strong style={{ color: '#1890ff' }}>{record.quantity_allocated ?? record.actual_allocated_quantity ?? 0}</Text></div>
         </Space>
       ),
     },
@@ -814,7 +1147,7 @@ const PPEManagement: React.FC = () => {
       title: 'Trạng thái',
       key: 'status',
       render: (_: unknown, record: any) => {
-        const remaining = record.available_quantity || 0;
+        const remaining = record.remaining_quantity ?? record.quantity_available ?? 0;
         const reorderLevel = record.reorder_level || 0;
         
         if (remaining <= 0) {
@@ -916,8 +1249,8 @@ const PPEManagement: React.FC = () => {
             type="link" 
             icon={<EyeOutlined />}
             onClick={() => {
-              // Show assignment details - to be implemented
-              message.info('Tính năng xem chi tiết phân công đang được phát triển');
+              setSelectedAssignmentId(record.id || record._id);
+              setAssignmentDetailsVisible(true);
             }}
           >
             Chi tiết
@@ -927,8 +1260,8 @@ const PPEManagement: React.FC = () => {
               type="link" 
               danger
               onClick={() => {
-                // Return PPE - to be implemented
-                message.info('Tính năng trả PPE đang được phát triển');
+                setSelectedAssignmentId(record.id || record._id);
+                setAssignmentDetailsVisible(true);
               }}
             >
               Trả PPE
@@ -1057,32 +1390,26 @@ const PPEManagement: React.FC = () => {
     },
     {
       title: 'Ngày tạo',
-      dataIndex: 'created_date',
-      key: 'created_date',
+      dataIndex: 'created_at',
+      key: 'created_at',
       render: (date: string) => date ? new Date(date).toLocaleDateString('vi-VN') : '-',
     },
     {
       title: 'Thao tác',
       key: 'action',
-      render: (_: unknown) => (
+      render: (_: unknown, record: any) => (
         <Space>
           <Button 
             type="link" 
             icon={<EyeOutlined />}
-            onClick={() => {
-              // View report - to be implemented
-              message.info('Tính năng xem báo cáo đang được phát triển');
-            }}
+            onClick={() => handleViewReport(record)}
           >
             Xem
           </Button>
           <Button 
             type="link" 
             icon={<DownloadOutlined />}
-            onClick={() => {
-              // Download report - to be implemented
-              message.info('Tính năng tải báo cáo đang được phát triển');
-            }}
+            onClick={() => handleDownloadReport(record)}
           >
             Tải
           </Button>
@@ -1189,8 +1516,10 @@ const PPEManagement: React.FC = () => {
       {/* Main Content */}
       <Card>
         <Tabs activeKey={activeTab} onChange={setActiveTab}>
-          {/* Categories Tab */}
-          <TabPane tab="Danh mục" key="categories">
+          {/* Asset Management Tab - Gộp Danh mục + Thiết bị + Tồn kho */}
+          <TabPane tab={<span><DatabaseOutlined />Quản lý Tài sản</span>} key="assets">
+            <Tabs defaultActiveKey="categories" type="card">
+              <TabPane tab="Danh mục" key="categories">
             <div style={{ marginBottom: '16px' }}>
               <Row gutter={[16, 16]} align="middle">
                 <Col xs={24} sm={12}>
@@ -1239,10 +1568,10 @@ const PPEManagement: React.FC = () => {
                 }}
               />
             )}
-          </TabPane>
+              </TabPane>
 
-          {/* Items Tab */}
-          <TabPane tab="Thiết bị" key="items">
+              {/* Items Sub-tab */}
+              <TabPane tab="Thiết bị" key="items">
             <div style={{ marginBottom: '16px' }}>
               <Row gutter={[16, 16]} align="middle">
                 <Col xs={24} sm={8}>
@@ -1309,6 +1638,8 @@ const PPEManagement: React.FC = () => {
                 }}
               />
             )}
+              </TabPane>
+            </Tabs>
           </TabPane>
 
           {/* Phát PPE Tab */}
@@ -1328,9 +1659,15 @@ const PPEManagement: React.FC = () => {
                     <Button 
                       type="primary" 
                       icon={<SendOutlined />}
+                      onClick={handleIssueToManager}
+                    >
+                      Phát cho Manager
+                    </Button>
+                    <Button 
+                      icon={<TeamOutlined />}
                       onClick={handleDistributePPE}
                     >
-                      Phát PPE mới
+                      Phát trực tiếp
                     </Button>
                     <Button 
                       icon={<DownloadOutlined />}
@@ -1348,8 +1685,8 @@ const PPEManagement: React.FC = () => {
               <Col xs={24} sm={6}>
                 <Card>
                   <Statistic
-                    title="Tổng PPE đã phát"
-                    value={ppeIssuances.length}
+                    title="Tổng PPE đã phát cho Manager"
+                    value={adminIssuedPPE.length}
                     prefix={<SafetyOutlined />}
                     valueStyle={{ color: '#1890ff' }}
                   />
@@ -1358,8 +1695,8 @@ const PPEManagement: React.FC = () => {
               <Col xs={24} sm={6}>
                 <Card>
                   <Statistic
-                    title="Đang sử dụng"
-                    value={ppeIssuances.filter(i => i.status === 'issued').length}
+                    title="Đang giữ (Manager)"
+                    value={adminIssuedPPE.filter(i => i.status === 'issued').length}
                     prefix={<CheckCircleOutlined />}
                     valueStyle={{ color: '#52c41a' }}
                   />
@@ -1369,7 +1706,7 @@ const PPEManagement: React.FC = () => {
                 <Card>
                   <Statistic
                     title="Quá hạn"
-                    value={ppeIssuances.filter(i => i.status === 'overdue').length}
+                    value={adminIssuedPPE.filter(i => i.status === 'overdue').length}
                     prefix={<ExclamationCircleOutlined />}
                     valueStyle={{ color: '#ff4d4f' }}
                   />
@@ -1379,7 +1716,7 @@ const PPEManagement: React.FC = () => {
                 <Card>
                   <Statistic
                     title="Đã trả"
-                    value={ppeIssuances.filter(i => i.status === 'returned').length}
+                    value={adminIssuedPPE.filter(i => i.status === 'returned').length}
                     prefix={<UndoOutlined />}
                     valueStyle={{ color: '#722ed1' }}
                   />
@@ -1394,14 +1731,14 @@ const PPEManagement: React.FC = () => {
             ) : (
               <Table
                 columns={issuanceColumns}
-                dataSource={ppeIssuances}
+                dataSource={adminIssuedPPE}
                 rowKey={(record) => record.id}
                 pagination={{
                   pageSize: 10,
                   showSizeChanger: true,
                   showQuickJumper: true,
                   showTotal: (total, range) => 
-                    `${range[0]}-${range[1]} của ${total} bản ghi phát PPE`,
+                    `${range[0]}-${range[1]} của ${total} bản ghi phát cho Manager`,
                 }}
               />
             )}
@@ -1722,6 +2059,57 @@ const PPEManagement: React.FC = () => {
               />
             )}
           </TabPane>
+
+          {/* Advanced Features Tab */}
+          <TabPane tab={<span><ToolOutlined />Advanced Features</span>} key="advanced">
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Card title="PPE Advanced Features" size="small">
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={8}>
+                      <Card 
+                        hoverable
+                        onClick={() => setShowBatchIssuanceModal(true)}
+                        style={{ textAlign: 'center', cursor: 'pointer' }}
+                      >
+                        <TeamOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
+                        <Title level={4}>Batch Operations</Title>
+                        <Text type="secondary">
+                          Xử lý hàng loạt PPE issuance với progress tracking
+                        </Text>
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                      <Card 
+                        hoverable
+                        onClick={() => setShowExpiryManagementModal(true)}
+                        style={{ textAlign: 'center', cursor: 'pointer' }}
+                      >
+                        <WarningOutlined style={{ fontSize: '48px', color: '#faad14', marginBottom: '16px' }} />
+                        <Title level={4}>Expiry Management</Title>
+                        <Text type="secondary">
+                          Quản lý hạn sử dụng PPE và gửi thông báo
+                        </Text>
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                      <Card 
+                        hoverable
+                        onClick={() => setShowOptimisticLockingModal(true)}
+                        style={{ textAlign: 'center', cursor: 'pointer' }}
+                      >
+                        <LockOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
+                        <Title level={4}>Optimistic Locking</Title>
+                        <Text type="secondary">
+                          Cập nhật PPE items với version control
+                        </Text>
+                      </Card>
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
         </Tabs>
       </Card>
 
@@ -1840,7 +2228,7 @@ const PPEManagement: React.FC = () => {
         onCancel={() => setShowDistributeModal(false)}
         footer={null}
         width={800}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={distributeForm}
@@ -2055,9 +2443,27 @@ const PPEManagement: React.FC = () => {
                 </Space>
               </Descriptions.Item>
 
-              <Descriptions.Item label="Số lượng">
+              <Descriptions.Item label="Số lượng đã phát">
                 <Badge count={selectedIssuance.quantity} style={{ backgroundColor: '#52c41a' }} />
               </Descriptions.Item>
+              
+              {selectedIssuance.remaining_quantity !== undefined && (
+                <Descriptions.Item label="Số lượng đã trả">
+                  <Badge 
+                    count={selectedIssuance.quantity - (selectedIssuance.remaining_quantity || 0)} 
+                    style={{ backgroundColor: '#1890ff' }} 
+                  />
+                </Descriptions.Item>
+              )}
+              
+              {selectedIssuance.remaining_quantity !== undefined && (
+                <Descriptions.Item label="Số lượng còn lại">
+                  <Badge 
+                    count={selectedIssuance.remaining_quantity || 0} 
+                    style={{ backgroundColor: '#fa8c16' }} 
+                  />
+                </Descriptions.Item>
+              )}
               
               <Descriptions.Item label="Trạng thái">
                 <Tag color={
@@ -2140,6 +2546,84 @@ const PPEManagement: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      <PPEAssignmentDetailsModal
+        visible={assignmentDetailsVisible}
+        onCancel={() => {
+          setAssignmentDetailsVisible(false);
+          setSelectedAssignmentId(null);
+        }}
+        assignmentId={selectedAssignmentId}
+        onUpdate={() => {
+          // Reload assignments data
+          loadAllData();
+        }}
+      />
+
+      {/* Issue to Manager Modal */}
+      <IssueToManagerModal
+        visible={showIssueToManagerModal}
+        onCancel={() => setShowIssueToManagerModal(false)}
+        onSuccess={() => {
+          loadAllData();
+          setShowIssueToManagerModal(false);
+        }}
+      />
+
+      {/* Issue to Employee Modal */}
+      <IssueToEmployeeModal
+        visible={showIssueToEmployeeModal}
+        onCancel={() => {
+          setShowIssueToEmployeeModal(false);
+          setSelectedManager(null);
+        }}
+        onSuccess={() => {
+          loadAllData();
+          setShowIssueToEmployeeModal(false);
+          setSelectedManager(null);
+        }}
+        managerId={selectedManager?.id || selectedManager?._id || ''}
+      />
+
+      {/* Advanced Features Modals */}
+      <BatchIssuanceModal
+        visible={showBatchIssuanceModal}
+        onCancel={() => setShowBatchIssuanceModal(false)}
+        onSuccess={() => {
+          loadAllData();
+          setShowBatchIssuanceModal(false);
+        }}
+        issuanceLevel="admin"
+      />
+
+      <ExpiryManagementModal
+        visible={showExpiryManagementModal}
+        onCancel={() => setShowExpiryManagementModal(false)}
+        onSuccess={() => {
+          loadAllData();
+          setShowExpiryManagementModal(false);
+        }}
+      />
+
+      <OptimisticLockingModal
+        visible={showOptimisticLockingModal}
+        onCancel={() => setShowOptimisticLockingModal(false)}
+        onSuccess={() => {
+          loadAllData();
+          setShowOptimisticLockingModal(false);
+        }}
+        itemId={selectedItem?.id}
+      />
+
+      {/* PDF Preview Modal */}
+      <PDFPreviewModal
+        visible={showPDFPreview}
+        onClose={() => setShowPDFPreview(false)}
+        reportData={previewReportData}
+        reportType={previewReportType}
+        onDownload={handleDownloadFromPreview}
+        loading={pdfLoading}
+      />
     </div>
   );
 };

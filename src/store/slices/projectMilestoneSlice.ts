@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import projectMilestoneService, { type CreateMilestoneData } from '../../services/projectMilestoneService';
+import projectMilestoneService from '../../services/projectMilestoneService';
+import type { CreateMilestoneData } from '../../services/projectMilestoneService';
 import type { 
   ProjectMilestone
 } from '../../services/projectMilestoneService';

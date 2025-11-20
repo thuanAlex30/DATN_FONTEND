@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectChangeRequests, createChangeRequest, updateChangeRequest, deleteChangeRequest } from '../../../../store/slices/projectChangeRequestSlice';
 import type { ProjectChangeRequest, CreateChangeRequestData, UpdateChangeRequestData } from '../../../../types/projectChangeRequest';
+import CreateChangeRequestModal from './CreateChangeRequestModal';
 
 interface ProjectChangeRequestsProps {
   projectId: string;
@@ -11,6 +12,7 @@ interface ProjectChangeRequestsProps {
 const ProjectChangeRequests: React.FC<ProjectChangeRequestsProps> = ({ projectId }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { changeRequests, loading, error } = useSelector((state: RootState) => state.projectChangeRequest);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -95,9 +97,8 @@ const ProjectChangeRequests: React.FC<ProjectChangeRequestsProps> = ({ projectId
         <h2>Yêu cầu Thay đổi Dự án</h2>
         <button 
           className="btn btn-primary"
-          onClick={() => {}}
-          disabled
-          title="Sắp ra mắt"
+          onClick={() => setCreateModalVisible(true)}
+          title="Tạo yêu cầu thay đổi mới"
         >
           <i className="fas fa-plus"></i>
           Tạo yêu cầu
@@ -112,9 +113,8 @@ const ProjectChangeRequests: React.FC<ProjectChangeRequestsProps> = ({ projectId
             <p>Dự án này chưa có yêu cầu thay đổi nào được tạo.</p>
             <button 
               className="btn btn-primary"
-              onClick={() => {}}
-              disabled
-              title="Sắp ra mắt"
+              onClick={() => setCreateModalVisible(true)}
+              title="Tạo yêu cầu thay đổi đầu tiên"
             >
               Tạo yêu cầu đầu tiên
             </button>
@@ -139,9 +139,8 @@ const ProjectChangeRequests: React.FC<ProjectChangeRequestsProps> = ({ projectId
                 <div className="change-request-actions">
                   <button
                     className="btn btn-sm btn-outline"
-                    onClick={() => {}}
-                    disabled
-                    title="Sắp ra mắt"
+                    onClick={() => handleEditChangeRequest(changeRequest)}
+                    title="Chỉnh sửa yêu cầu thay đổi"
                   >
                     <i className="fas fa-edit"></i>
                   </button>
@@ -175,7 +174,6 @@ const ProjectChangeRequests: React.FC<ProjectChangeRequestsProps> = ({ projectId
                   </div>
                   <div className="detail-item">
                     <i className="fas fa-dollar-sign"></i>
-                    <span>Tác động chi phí: {request.estimated_cost || 'N/A'}</span>
                   </div>
                 </div>
                 
@@ -207,6 +205,13 @@ const ProjectChangeRequests: React.FC<ProjectChangeRequestsProps> = ({ projectId
           ))}
         </div>
       )}
+
+      <CreateChangeRequestModal
+        visible={createModalVisible}
+        onCancel={() => setCreateModalVisible(false)}
+        onSubmit={handleCreateChangeRequest}
+        projectId={projectId}
+      />
     </div>
   );
 };

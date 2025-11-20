@@ -4,17 +4,23 @@ import AuthGuard from '../components/AuthGuard';
 import AdminLayout from '../pages/Admin/layout/AdminLayout';
 import LoginPage from '../pages/Login';
 import UnauthorizedPage from '../pages/Unauthorized';
+import LandingPage from '../pages/Landing';
+import AboutPage from '../pages/About';
+import ContactPage from '../pages/Contact';
+import FAQPage from '../pages/FAQ';
 import HomePage from '../pages/Home';
+import Homepage from '../pages/Homepage';
 import DashboardPage from '../pages/Admin/Dashboard';
 import UserManagementPage from '../pages/Admin/UserManagement';
 import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
 import ProjectManagement from '../pages/Admin/ProjectManagement';
 import TrainingManagementPage from '../pages/Admin/TrainingManagement';
-import CertificateManagementPage from '../pages/Admin/CertificateManagement';
 import PPEManagementPage from '../pages/Admin/PPEManagement';
 import RoleManagementPage from '../pages/Admin/RoleManagement';
 import IncidentManagementPage from '../pages/Admin/IncidentManagement';
+import CertificateManagementPage from '../pages/Admin/CertificateManagement';
+import ManagerIncidentHandling from '../pages/Manager/IncidentHandling';
 import ClassifyIncident from '../pages/Admin/IncidentManagement/ClassifyIncident';
 import AssignIncident from '../pages/Admin/IncidentManagement/AssignIncident';
 import InvestigateIncident from '../pages/Admin/IncidentManagement/InvestigateIncident';
@@ -22,11 +28,16 @@ import UpdateProgress from '../pages/Admin/IncidentManagement/UpdateProgress';
 import CloseIncident from '../pages/Admin/IncidentManagement/CloseIncident';
 import ProgressHistory from '../pages/Admin/IncidentManagement/ProgressHistory';
 import UpdateEmployeeIncident from '../pages/Admin/IncidentManagement/UpdateEmployeeIncident';
-import ReportIncident from '../pages/Employee/ReportIncident';
+import ReportIncident from '../pages/Manager/ReportIncident';
 import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
 import EmployeePPE from '../pages/Employee/PPE';
 import EmployeeProjectManagement from '../pages/Employee/ProjectManagement';
+import EmployeeDashboard from '../pages/Employee/Dashboard';
+import ManagerDashboard from '../pages/Manager/Dashboard';
+import ManagerPPEManagement from '../pages/Manager/PPEManagement';
+import ManagerProjectManagement from '../pages/Manager/ProjectManagement';
+import ManagerTraining from '../pages/Manager/Training';
 import WebSocketTest from '../pages/WebSocketTest';
 import { projectManagementRoutes } from './projectManagementRoutes';
 import ProjectManagementRouteWrapper from './ProjectManagementRouteWrapper';
@@ -39,11 +50,27 @@ interface ProjectManagementRoute {
 const AppRoutes = () => {
     return (
         <Routes>
+            {/* Landing page - trang công khai */}
+            <Route path="/" element={<LandingPage />} />
+            
             {/* Public routes */}
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/faq" element={<FAQPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             
-            {/* Home route for non-admin users */}
+            {/* Homepage chung cho tất cả users */}
+            <Route 
+                path="/homepage" 
+                element={
+                    <AuthGuard>
+                        <Homepage />
+                    </AuthGuard>
+                } 
+            />
+            
+            {/* Home route for non-admin users (legacy - giữ lại để tương thích) */}
             <Route 
                 path="/home" 
                 element={
@@ -53,12 +80,66 @@ const AppRoutes = () => {
                 } 
             />
 
-            {/* Employee routes */}
+            {/* Employee Dashboard */}
             <Route 
-                path="/employee/incidents/report" 
+                path="/employee/dashboard" 
                 element={
                     <AuthGuard requiredRole="employee">
+                        <EmployeeDashboard />
+                    </AuthGuard>
+                } 
+            />
+
+            {/* Manager Dashboard */}
+            <Route 
+                path="/manager/dashboard" 
+                element={
+                    <AuthGuard requiredRole="manager">
+                        <ManagerDashboard />
+                    </AuthGuard>
+                } 
+            />
+
+            {/* Manager routes */}
+            <Route 
+                path="/manager/ppe" 
+                element={
+                    <AuthGuard requiredRole="manager">
+                        <ManagerPPEManagement />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/project-management" 
+                element={
+                    <AuthGuard requiredRole="manager">
+                        <ManagerProjectManagement />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/training" 
+                element={
+                    <AuthGuard requiredRole="manager">
+                        <ManagerTraining />
+                    </AuthGuard>
+                } 
+            />
+
+            {/* Employee routes */}
+            <Route 
+                path="/manager/incidents/report" 
+                element={
+                    <AuthGuard requiredRole="manager">
                         <ReportIncident />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/incident-handling" 
+                element={
+                    <AuthGuard requiredRole="manager">
+                        <ManagerIncidentHandling />
                     </AuthGuard>
                 } 
             />
@@ -81,7 +162,7 @@ const AppRoutes = () => {
             <Route 
                 path="/employee/ppe" 
                 element={
-                    <AuthGuard requiredRole="employee">
+                    <AuthGuard requiredRole={["employee", "manager"]}>
                         <EmployeePPE />
                     </AuthGuard>
                 } 
@@ -89,7 +170,7 @@ const AppRoutes = () => {
             <Route 
                 path="/employee/project-management" 
                 element={
-                    <AuthGuard requiredRole="manager">
+                    <AuthGuard requiredRole={["manager", "leader"]}>
                         <EmployeeProjectManagement />
                     </AuthGuard>
                 } 
@@ -100,8 +181,6 @@ const AppRoutes = () => {
                 element={<WebSocketTest />} 
             />
             
-            {/* Redirect root to login */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
             
             {/* Protected admin routes */}
             <Route 
@@ -185,21 +264,21 @@ const AppRoutes = () => {
                 } 
             />
             <Route 
-                path="/admin/certificate-management" 
-                element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
-                            <CertificateManagementPage />
-                        </AdminLayout>
-                    </AuthGuard>
-                } 
-            />
-            <Route 
                 path="/admin/ppe-management" 
                 element={
                     <AuthGuard requiredRole="admin">
                         <AdminLayout>
                             <PPEManagementPage />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/certificate-management" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <CertificateManagementPage />
                         </AdminLayout>
                     </AuthGuard>
                 } 
@@ -304,7 +383,7 @@ const AppRoutes = () => {
             ))}
             
             {/* Fallback for non-existent routes */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
 };

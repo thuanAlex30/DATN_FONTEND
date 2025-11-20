@@ -6,6 +6,7 @@ const Milestones = lazy(() => import('../pages/Admin/ProjectManagement/component
 const Tasks = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectTasks'));
 const Resources = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectResources'));
 const StatusReports = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectStatusReports'));
+const Incidents = lazy(() => import('../pages/Admin/ProjectManagement/components/ProjectIncidents'));
 
 export const projectManagementRoutes = [
   {
@@ -27,5 +28,9 @@ export const projectManagementRoutes = [
   {
     path: '/admin/project-management/:projectId/status-reports',
     component: StatusReports,
+  },
+  {
+    path: '/admin/project-management/:projectId/incidents',
+    component: Incidents,
   },
 ];

@@ -21,7 +21,11 @@ import {
   BarChartOutlined,
   TeamOutlined,
   AimOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  MessageOutlined,
+  FileTextOutlined,
+  ToolOutlined,
+  DollarOutlined
 } from '@ant-design/icons';
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectById, fetchProjectTimeline, fetchProjectAssignments } from '../../../../store/slices/projectSlice';
@@ -32,7 +36,13 @@ import ProjectResources from './ProjectResources';
 import ProjectWorkLocations from './ProjectWorkLocations';
 import ProjectRisks from './ProjectRisks';
 import ProgressTrackingDashboard from './ProgressTrackingDashboard';
+import ProjectIncidents from './ProjectIncidents';
 import EditProjectModal from './EditProjectModal';
+import TaskManagement from './TaskManagement';
+import ResourceManagement from './ResourceManagement';
+import ProjectCommunication from './ProjectCommunication';
+import ChangeRequestManagement from './ChangeRequestManagement';
+import StatusReportManagement from './StatusReportManagement';
 
 interface ProjectDetailProps {
   projectId: string;
@@ -68,7 +78,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
         start_date: project.start_date,
         end_date: project.end_date,
         progress: project.progress,
-        budget: project.budget
       } : null
     });
   }, [projectId, selectedProject, project, loading, error, projects.length]);
@@ -561,6 +570,108 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                   } catch (error) {
                     console.error('Error rendering ProjectResources:', error);
                     return <div>Lỗi tải tab Tài nguyên</div>;
+                  }
+                })()
+              },
+              {
+                key: 'incidents',
+                label: (
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
+                    <ExclamationCircleOutlined />
+                    <span>Sự cố</span>
+                  </span>
+                ),
+                children: (() => {
+                  try {
+                    return <ProjectIncidents projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ProjectIncidents:', error);
+                    return <div>Lỗi tải tab Sự cố</div>;
+                  }
+                })()
+              },
+              {
+                key: 'task-management',
+                label: (
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
+                    <TeamOutlined />
+                    <span>Quản lý Nhiệm vụ</span>
+                  </span>
+                ),
+                children: (() => {
+                  try {
+                    return <TaskManagement projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering TaskManagement:', error);
+                    return <div>Lỗi tải tab Quản lý Nhiệm vụ</div>;
+                  }
+                })()
+              },
+              {
+                key: 'resource-management',
+                label: (
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
+                    <ToolOutlined />
+                    <span>Quản lý Tài nguyên</span>
+                  </span>
+                ),
+                children: (() => {
+                  try {
+                    return <ResourceManagement projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ResourceManagement:', error);
+                    return <div>Lỗi tải tab Quản lý Tài nguyên</div>;
+                  }
+                })()
+              },
+              {
+                key: 'communication',
+                label: (
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
+                    <MessageOutlined />
+                    <span>Giao tiếp</span>
+                  </span>
+                ),
+                children: (() => {
+                  try {
+                    return <ProjectCommunication projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ProjectCommunication:', error);
+                    return <div>Lỗi tải tab Giao tiếp</div>;
+                  }
+                })()
+              },
+              {
+                key: 'change-requests',
+                label: (
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
+                    <FileTextOutlined />
+                    <span>Yêu cầu Thay đổi</span>
+                  </span>
+                ),
+                children: (() => {
+                  try {
+                    return <ChangeRequestManagement projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ChangeRequestManagement:', error);
+                    return <div>Lỗi tải tab Yêu cầu Thay đổi</div>;
+                  }
+                })()
+              },
+              {
+                key: 'status-reports',
+                label: (
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
+                    <DollarOutlined />
+                    <span>Báo cáo Trạng thái</span>
+                  </span>
+                ),
+                children: (() => {
+                  try {
+                    return <StatusReportManagement projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering StatusReportManagement:', error);
+                    return <div>Lỗi tải tab Báo cáo Trạng thái</div>;
                   }
                 })()
               }

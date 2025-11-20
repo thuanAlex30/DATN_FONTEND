@@ -5,7 +5,6 @@ import {
   Input, 
   Select, 
   DatePicker, 
-  InputNumber, 
   Button, 
   message, 
   Space,
@@ -15,7 +14,7 @@ import {
   Divider
 } from 'antd';
 import dayjs from 'dayjs';
-import { EditOutlined, CalendarOutlined, DollarOutlined, FlagOutlined } from '@ant-design/icons';
+import { EditOutlined } from '@ant-design/icons';
 import projectService from '../../../../services/projectService';
 import type { Project, UpdateProjectData } from '../../../../types/project';
 import type { Site } from '../../../../types/project';
@@ -27,7 +26,7 @@ interface EditProjectModalProps {
   project: Project | null;
 }
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
@@ -50,10 +49,9 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
           description: project.description,
           status: project.status,
           priority: project.priority,
-          budget: project.budget,
           start_date: project.start_date ? dayjs(project.start_date) : null,
           end_date: project.end_date ? dayjs(project.end_date) : null,
-          site_id: project.site_id?._id || project.site_id
+          site_id: project.site_id?.id || project.site_id
         });
       }
     }
@@ -81,7 +79,6 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
         description: values.description,
         status: values.status,
         priority: values.priority,
-        budget: values.budget,
         start_date: values.start_date?.format('YYYY-MM-DD'),
         end_date: values.end_date?.format('YYYY-MM-DD'),
         site_id: values.site_id
@@ -121,7 +118,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
       onCancel={handleCancel}
       footer={null}
       width={800}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}
@@ -149,7 +146,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
         </Row>
 
         <Row gutter={16}>
-          <Col span={24}>
+          <Col span={24}> 
             <Form.Item
               name="description"
               label="Mô tả dự án"
@@ -237,22 +234,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
         </Row>
 
         <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item
-              name="budget"
-              label="Ngân sách (VNĐ)"
-            >
-              <InputNumber
-                style={{ width: '100%', borderRadius: '8px' }}
-                size="large"
-                placeholder="Nhập ngân sách"
-                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
-                min={0}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
+          <Col span={24}>
             <Form.Item
               name="site_id"
               label="Công trường"
@@ -265,8 +247,8 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
                 showSearch
                 optionFilterProp="children"
               >
-                {sites.filter(site => site._id).map(site => (
-                  <Option key={site._id} value={site._id}>
+                {sites.filter(site => site.id).map(site => (
+                  <Option key={site.id} value={site.id}>
                     <div>
                       <div>{site.site_name}</div>
                       <Text type="secondary" style={{ fontSize: '12px' }}>

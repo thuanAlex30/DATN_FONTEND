@@ -32,8 +32,10 @@ import {
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import type { RootState } from '../../../../store';
-import projectResourceService, { type ProjectResource, type CreateProjectResourceData } from '../../../../services/projectResourceService';
-import projectPhaseService, { type ProjectPhase } from '../../../../services/projectPhaseService';
+import projectResourceService from '../../../../services/projectResourceService';
+import projectPhaseService from '../../../../services/projectPhaseService';
+import type { ProjectResource, CreateProjectResourceData } from '../../../../services/projectResourceService';
+import type { ProjectPhase } from '../../../../services/projectPhaseService';
 
 interface ResourceAllocationManagementProps {
   projectId: string;
@@ -136,8 +138,6 @@ const ResourceAllocationManagement: React.FC<ResourceAllocationManagementProps> 
       resource_name: resource.resource_name,
       resource_type: resource.resource_type,
       quantity: resource.quantity,
-      unit_cost: resource.unit_cost,
-      total_cost: resource.total_cost,
       phase_id: resource.phase_id,
       start_date: resource.start_date ? new Date(resource.start_date) : null,
       end_date: resource.end_date ? new Date(resource.end_date) : null,
@@ -158,7 +158,6 @@ const ResourceAllocationManagement: React.FC<ResourceAllocationManagementProps> 
       case 'HUMAN': return 'blue';
       case 'EQUIPMENT': return 'green';
       case 'MATERIAL': return 'orange';
-      case 'FINANCIAL': return 'purple';
       default: return 'default';
     }
   };
@@ -168,7 +167,6 @@ const ResourceAllocationManagement: React.FC<ResourceAllocationManagementProps> 
       case 'HUMAN': return 'Nhân lực';
       case 'EQUIPMENT': return 'Thiết bị';
       case 'MATERIAL': return 'Vật liệu';
-      case 'FINANCIAL': return 'Tài chính';
       default: return type;
     }
   };
@@ -197,12 +195,6 @@ const ResourceAllocationManagement: React.FC<ResourceAllocationManagementProps> 
     return new Date(dateString).toLocaleDateString('vi-VN');
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
-    }).format(amount);
-  };
 
   return (
     <motion.div 
@@ -366,15 +358,9 @@ const ResourceAllocationManagement: React.FC<ResourceAllocationManagementProps> 
                               </Text>
                             </Space>
                             
-                            <Space>
-                              <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Đơn giá: {formatCurrency(resource.unit_cost || 0)}
-                              </Text>
-                            </Space>
                             
                             <Space>
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Tổng chi phí: {formatCurrency(resource.total_cost || 0)}
                               </Text>
                             </Space>
                             
@@ -447,7 +433,6 @@ const ResourceAllocationManagement: React.FC<ResourceAllocationManagementProps> 
                   <Option value="HUMAN">Nhân lực</Option>
                   <Option value="EQUIPMENT">Thiết bị</Option>
                   <Option value="MATERIAL">Vật liệu</Option>
-                  <Option value="FINANCIAL">Tài chính</Option>
                 </Select>
               </Form.Item>
             </Col>
@@ -458,24 +443,6 @@ const ResourceAllocationManagement: React.FC<ResourceAllocationManagementProps> 
                 rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
               >
                 <InputNumber min={0} style={{ width: '100%' }} placeholder="Nhập số lượng" />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="unit_cost"
-                label="Đơn giá"
-                rules={[{ required: true, message: 'Vui lòng nhập đơn giá' }]}
-              >
-                <InputNumber min={0} style={{ width: '100%' }} placeholder="Nhập đơn giá" />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="total_cost"
-                label="Tổng chi phí"
-                rules={[{ required: true, message: 'Vui lòng nhập tổng chi phí' }]}
-              >
-                <InputNumber min={0} style={{ width: '100%' }} placeholder="Nhập tổng chi phí" />
               </Form.Item>
             </Col>
             <Col span={12}>

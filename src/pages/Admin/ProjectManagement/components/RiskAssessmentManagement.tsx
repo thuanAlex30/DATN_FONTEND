@@ -32,8 +32,10 @@ import {
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import type { RootState } from '../../../../store';
-import projectRiskService, { type ProjectRisk, type CreateProjectRiskData } from '../../../../services/projectRiskService';
-import projectPhaseService, { type ProjectPhase } from '../../../../services/projectPhaseService';
+import projectRiskService from '../../../../services/projectRiskService';
+import projectPhaseService from '../../../../services/projectPhaseService';
+import type { ProjectRisk, CreateProjectRiskData } from '../../../../services/projectRiskService';
+import type { ProjectPhase } from '../../../../services/projectPhaseService';
 import userService from '../../../../services/userService';
 
 interface RiskAssessmentManagementProps {

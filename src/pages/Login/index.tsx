@@ -39,13 +39,19 @@ const LoginPage: React.FC = () => {
         
         // Small delay to ensure state is updated before redirect
         setTimeout(() => {
-          // Check if user is admin
+          // Check user role and redirect accordingly
           if (user.role?.role_name === 'admin') {
             console.log('🔀 Redirecting to admin dashboard...');
             safeNavigate('/admin/dashboard', { replace: true });
+          } else if (user.role?.role_name === 'manager') {
+            console.log('🔀 Redirecting to manager dashboard...');
+            safeNavigate('/manager/dashboard', { replace: true });
+          } else if (user.role?.role_name === 'employee') {
+            console.log('🔀 Redirecting to employee dashboard...');
+            safeNavigate('/employee/dashboard', { replace: true });
           } else {
             console.log('🔀 Redirecting to home page...');
-            // Handle non-admin users (redirect to appropriate page)
+            // Fallback for other roles
             safeNavigate('/home', { replace: true });
           }
         }, 100);

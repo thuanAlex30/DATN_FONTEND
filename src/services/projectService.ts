@@ -319,6 +319,66 @@ class ProjectService {
       };
     }
   }
+
+  // Assign project leader
+  async assignProjectLeader(projectId: string, leaderId: string): Promise<ApiResponse<Project>> {
+    try {
+      const response = await api.put(`/projects/${projectId}/leader`, { leader_id: leaderId });
+      return response.data;
+    } catch (error: any) {
+      console.error('Error assigning project leader:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi gán trưởng dự án',
+        error: error.message
+      };
+    }
+  }
+
+  // Remove project leader
+  async removeProjectLeader(projectId: string): Promise<ApiResponse<Project>> {
+    try {
+      const response = await api.put(`/projects/${projectId}/leader`, { leader_id: null });
+      return response.data;
+    } catch (error: any) {
+      console.error('Error removing project leader:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi gỡ bỏ trưởng dự án',
+        error: error.message
+      };
+    }
+  }
+
+  // Add project member
+  async addProjectMember(projectId: string, userId: string, role: string): Promise<ApiResponse<ProjectAssignment>> {
+    try {
+      const response = await api.post(`/projects/${projectId}/members`, { user_id: userId, role });
+      return response.data;
+    } catch (error: any) {
+      console.error('Error adding project member:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi thêm thành viên dự án',
+        error: error.message
+      };
+    }
+  }
+
+  // Remove project member
+  async removeProjectMember(projectId: string, userId: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await api.delete(`/projects/${projectId}/members/${userId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error removing project member:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi gỡ bỏ thành viên dự án',
+        error: error.message
+      };
+    }
+  }
 }
 
 export default new ProjectService();

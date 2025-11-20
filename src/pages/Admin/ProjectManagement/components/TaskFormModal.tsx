@@ -14,7 +14,8 @@ import {
 } from 'antd';
 import { motion } from 'framer-motion';
 import projectTaskService from '../../../../services/projectTaskService';
-import userService, { type User } from '../../../../services/userService';
+import userService from '../../../../services/userService';
+import type { User } from '../../../../services/userService';
 // import projectPhaseService, { type ProjectPhase } from '../../../../services/projectPhaseService';
 import type { CreateTaskData, UpdateTaskData } from '../../../../types/projectTask';
 
@@ -72,7 +73,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
     try {
       setLoadingUsers(true);
       const usersData = await userService.getPotentialManagers();
-      setUsers(usersData);
+      setUsers(usersData.data.managers);
     } catch (error) {
       console.error('Error loading managers:', error);
       message.error('Không thể tải danh sách người phụ trách');
@@ -161,7 +162,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
       onCancel={handleCancel}
       footer={null}
       width={800}
-      destroyOnClose
+      destroyOnHidden
     >
       <motion.div
         initial={{ opacity: 0, y: 20 }}

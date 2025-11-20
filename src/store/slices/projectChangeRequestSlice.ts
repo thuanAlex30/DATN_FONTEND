@@ -4,24 +4,21 @@ import projectChangeRequestService from '../../services/projectChangeRequestServ
 import type { 
   ProjectChangeRequest, 
   CreateChangeRequestData, 
-  UpdateChangeRequestData,
-  ChangeRequestStats 
-} from '../../types/projectChangeRequest';
+  UpdateChangeRequestData 
+} from '../../services/projectChangeRequestService';
 
 interface ProjectChangeRequestState {
   changeRequests: ProjectChangeRequest[];
-  stats: ChangeRequestStats | null;
   loading: boolean;
   error: string | null;
-  selectedChangeRequest: ProjectChangeRequest | null;
+  stats: any;
 }
 
 const initialState: ProjectChangeRequestState = {
   changeRequests: [],
-  stats: null,
   loading: false,
   error: null,
-  selectedChangeRequest: null,
+  stats: null
 };
 
 // Async thunks
@@ -29,7 +26,10 @@ export const fetchProjectChangeRequests = createAsyncThunk(
   'projectChangeRequest/fetchProjectChangeRequests',
   async (projectId: string) => {
     const response = await projectChangeRequestService.getProjectChangeRequests(projectId);
-    return response.data;
+    if (response.success) {
+      return response.data;
+    }
+    throw new Error(response.message || 'Failed to fetch project change requests');
   }
 );
 
@@ -37,7 +37,10 @@ export const fetchChangeRequestById = createAsyncThunk(
   'projectChangeRequest/fetchChangeRequestById',
   async (id: string) => {
     const response = await projectChangeRequestService.getChangeRequestById(id);
-    return response.data;
+    if (response.success) {
+      return response.data;
+    }
+    throw new Error(response.message || 'Failed to fetch change request');
   }
 );
 
@@ -45,7 +48,10 @@ export const createChangeRequest = createAsyncThunk(
   'projectChangeRequest/createChangeRequest',
   async (data: CreateChangeRequestData) => {
     const response = await projectChangeRequestService.createChangeRequest(data);
-    return response.data;
+    if (response.success) {
+      return response.data;
+    }
+    throw new Error(response.message || 'Failed to create change request');
   }
 );
 
@@ -53,63 +59,54 @@ export const updateChangeRequest = createAsyncThunk(
   'projectChangeRequest/updateChangeRequest',
   async ({ id, data }: { id: string; data: UpdateChangeRequestData }) => {
     const response = await projectChangeRequestService.updateChangeRequest(id, data);
-    return response.data;
+    if (response.success) {
+      return response.data;
+    }
+    throw new Error(response.message || 'Failed to update change request');
   }
 );
 
 export const deleteChangeRequest = createAsyncThunk(
   'projectChangeRequest/deleteChangeRequest',
   async (id: string) => {
-    await projectChangeRequestService.deleteChangeRequest(id);
-    return id;
-  }
-);
-
-export const submitChangeRequest = createAsyncThunk(
-  'projectChangeRequest/submitChangeRequest',
-  async (id: string) => {
-    const response = await projectChangeRequestService.submitChangeRequest(id);
-    return response.data;
+    const response = await projectChangeRequestService.deleteChangeRequest(id);
+    if (response.success) {
+      return id;
+    }
+    throw new Error(response.message || 'Failed to delete change request');
   }
 );
 
 export const approveChangeRequest = createAsyncThunk(
   'projectChangeRequest/approveChangeRequest',
-  async (id: string) => {
-    const response = await projectChangeRequestService.approveChangeRequest(id);
-    return response.data;
+  async ({ id, approvedBy }: { id: string; approvedBy: string }) => {
+    const response = await projectChangeRequestService.approveChangeRequest(id, approvedBy);
+    if (response.success) {
+      return response.data;
+    }
+    throw new Error(response.message || 'Failed to approve change request');
   }
 );
 
 export const rejectChangeRequest = createAsyncThunk(
   'projectChangeRequest/rejectChangeRequest',
-  async (id: string) => {
-    const response = await projectChangeRequestService.rejectChangeRequest(id);
-    return response.data;
-  }
-);
-
-export const implementChangeRequest = createAsyncThunk(
-  'projectChangeRequest/implementChangeRequest',
-  async (id: string) => {
-    const response = await projectChangeRequestService.implementChangeRequest(id);
-    return response.data;
+  async ({ id, reason }: { id: string; reason: string }) => {
+    const response = await projectChangeRequestService.rejectChangeRequest(id, reason);
+    if (response.success) {
+      return response.data;
+    }
+    throw new Error(response.message || 'Failed to reject change request');
   }
 );
 
 export const fetchChangeRequestStats = createAsyncThunk(
   'projectChangeRequest/fetchChangeRequestStats',
-  async () => {
-    const response = await projectChangeRequestService.getChangeRequestStats();
-    return response.data;
-  }
-);
-
-export const fetchPendingChangeRequests = createAsyncThunk(
-  'projectChangeRequest/fetchPendingChangeRequests',
-  async () => {
-    const response = await projectChangeRequestService.getPendingChangeRequests();
-    return response.data;
+  async (projectId: string) => {
+    const response = await projectChangeRequestService.getChangeRequestStats(projectId);
+    if (response.success) {
+      return response.data;
+    }
+    throw new Error(response.message || 'Failed to fetch change request stats');
   }
 );
 
@@ -117,12 +114,13 @@ const projectChangeRequestSlice = createSlice({
   name: 'projectChangeRequest',
   initialState,
   reducers: {
-    setSelectedChangeRequest: (state, action: PayloadAction<ProjectChangeRequest | null>) => {
-      state.selectedChangeRequest = action.payload;
+    clearChangeRequests: (state) => {
+      state.changeRequests = [];
+      state.error = null;
     },
     clearError: (state) => {
       state.error = null;
-    },
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -137,9 +135,8 @@ const projectChangeRequestSlice = createSlice({
       })
       .addCase(fetchProjectChangeRequests.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch change requests';
+        state.error = action.error.message || 'Failed to fetch project change requests';
       })
-      
       // Fetch change request by ID
       .addCase(fetchChangeRequestById.pending, (state) => {
         state.loading = true;
@@ -147,13 +144,18 @@ const projectChangeRequestSlice = createSlice({
       })
       .addCase(fetchChangeRequestById.fulfilled, (state, action) => {
         state.loading = false;
-        state.selectedChangeRequest = action.payload;
+        // Update existing or add new
+        const index = state.changeRequests.findIndex(cr => cr.id === action.payload.id);
+        if (index !== -1) {
+          state.changeRequests[index] = action.payload;
+        } else {
+          state.changeRequests.push(action.payload);
+        }
       })
       .addCase(fetchChangeRequestById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch change request';
       })
-      
       // Create change request
       .addCase(createChangeRequest.pending, (state) => {
         state.loading = true;
@@ -167,7 +169,6 @@ const projectChangeRequestSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Failed to create change request';
       })
-      
       // Update change request
       .addCase(updateChangeRequest.pending, (state) => {
         state.loading = true;
@@ -179,15 +180,11 @@ const projectChangeRequestSlice = createSlice({
         if (index !== -1) {
           state.changeRequests[index] = action.payload;
         }
-        if (state.selectedChangeRequest?.id === action.payload.id) {
-          state.selectedChangeRequest = action.payload;
-        }
       })
       .addCase(updateChangeRequest.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to update change request';
       })
-      
       // Delete change request
       .addCase(deleteChangeRequest.pending, (state) => {
         state.loading = true;
@@ -196,70 +193,58 @@ const projectChangeRequestSlice = createSlice({
       .addCase(deleteChangeRequest.fulfilled, (state, action) => {
         state.loading = false;
         state.changeRequests = state.changeRequests.filter(cr => cr.id !== action.payload);
-        if (state.selectedChangeRequest?.id === action.payload) {
-          state.selectedChangeRequest = null;
-        }
       })
       .addCase(deleteChangeRequest.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to delete change request';
       })
-      
-      // Submit change request
-      .addCase(submitChangeRequest.fulfilled, (state, action) => {
-        const index = state.changeRequests.findIndex(cr => cr.id === action.payload.id);
-        if (index !== -1) {
-          state.changeRequests[index] = action.payload;
-        }
-        if (state.selectedChangeRequest?.id === action.payload.id) {
-          state.selectedChangeRequest = action.payload;
-        }
-      })
-      
       // Approve change request
+      .addCase(approveChangeRequest.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(approveChangeRequest.fulfilled, (state, action) => {
+        state.loading = false;
         const index = state.changeRequests.findIndex(cr => cr.id === action.payload.id);
         if (index !== -1) {
           state.changeRequests[index] = action.payload;
         }
-        if (state.selectedChangeRequest?.id === action.payload.id) {
-          state.selectedChangeRequest = action.payload;
-        }
       })
-      
+      .addCase(approveChangeRequest.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to approve change request';
+      })
       // Reject change request
+      .addCase(rejectChangeRequest.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(rejectChangeRequest.fulfilled, (state, action) => {
+        state.loading = false;
         const index = state.changeRequests.findIndex(cr => cr.id === action.payload.id);
         if (index !== -1) {
           state.changeRequests[index] = action.payload;
         }
-        if (state.selectedChangeRequest?.id === action.payload.id) {
-          state.selectedChangeRequest = action.payload;
-        }
       })
-      
-      // Implement change request
-      .addCase(implementChangeRequest.fulfilled, (state, action) => {
-        const index = state.changeRequests.findIndex(cr => cr.id === action.payload.id);
-        if (index !== -1) {
-          state.changeRequests[index] = action.payload;
-        }
-        if (state.selectedChangeRequest?.id === action.payload.id) {
-          state.selectedChangeRequest = action.payload;
-        }
+      .addCase(rejectChangeRequest.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to reject change request';
       })
-      
       // Fetch change request stats
+      .addCase(fetchChangeRequestStats.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchChangeRequestStats.fulfilled, (state, action) => {
+        state.loading = false;
         state.stats = action.payload;
       })
-      
-      // Fetch pending change requests
-      .addCase(fetchPendingChangeRequests.fulfilled, (state, action) => {
-        state.changeRequests = action.payload;
+      .addCase(fetchChangeRequestStats.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch change request stats';
       });
-  },
+  }
 });
 
-export const { setSelectedChangeRequest, clearError } = projectChangeRequestSlice.actions;
+export const { clearChangeRequests, clearError } = projectChangeRequestSlice.actions;
 export default projectChangeRequestSlice.reducer;
