@@ -9,6 +9,8 @@ import {
 } from '@ant-design/icons';
 import chatbotService, { type ChatMessage } from '../../services/chatbotService';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
 import './Chatbot.css';
 
 const { TextArea } = Input;
@@ -22,28 +24,50 @@ const Chatbot: React.FC = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+
+  // Hàm tạo UUID đơn giản (fallback nếu crypto.randomUUID không có)
+  const generateUUID = (): string => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    // Fallback: tạo UUID v4 đơn giản
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
 
   // Tạo session mới khi component mount
   useEffect(() => {
     const createSession = async () => {
+      // Tạo sessionId ngay lập tức (local) để input có thể hoạt động
+      const localSessionId = generateUUID();
+      setSessionId(localSessionId);
+      
+      // Thử tạo session trên server (không bắt buộc)
       try {
         const response = await chatbotService.createSession();
         if (response.data.success) {
+          // Nếu server trả về sessionId, dùng sessionId từ server
           setSessionId(response.data.data.sessionId);
         }
       } catch (error) {
-        console.error('Error creating session:', error);
+        // Lỗi không quan trọng, vẫn dùng localSessionId
+        // Khi chưa đăng nhập, API có thể trả về 401 nhưng không sao
+        console.log('Session creation on server failed (optional):', error);
       }
     };
     createSession();
   }, []);
 
-  // Load lịch sử chat khi mở chatbot
+  // Load lịch sử chat khi mở chatbot (chỉ khi đã đăng nhập)
   useEffect(() => {
-    if (isOpen && sessionId) {
+    if (isOpen && sessionId && isAuthenticated) {
       loadChatHistory();
     }
-  }, [isOpen, sessionId]);
+  }, [isOpen, sessionId, isAuthenticated]);
 
   // Auto scroll to bottom khi có tin nhắn mới
   useEffect(() => {
@@ -55,7 +79,7 @@ const Chatbot: React.FC = () => {
   };
 
   const loadChatHistory = async () => {
-    if (!sessionId) return;
+    if (!sessionId || !isAuthenticated) return;
     
     try {
       const response = await chatbotService.getChatHistory(sessionId);
@@ -68,6 +92,7 @@ const Chatbot: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading chat history:', error);
+      // Không hiển thị lỗi nếu chưa đăng nhập (đây là hành vi bình thường)
     }
   };
 
@@ -120,7 +145,7 @@ const Chatbot: React.FC = () => {
   };
 
   const handleClearHistory = async () => {
-    if (!sessionId) return;
+    if (!sessionId || !isAuthenticated) return;
     
     try {
       await chatbotService.clearChatHistory(sessionId);
@@ -166,18 +191,20 @@ const Chatbot: React.FC = () => {
               title={
                 <Space>
                   <RobotOutlined style={{ color: '#1890ff' }} />
-                  <Text strong>Trợ lý ảo An toàn Lao động</Text>
+                  <Text strong>CHMS AI - Trợ lý ảo</Text>
                 </Space>
               }
               extra={
                 <Space>
-                  <Button
-                    type="text"
-                    icon={<DeleteOutlined />}
-                    onClick={handleClearHistory}
-                    size="small"
-                    title="Xóa lịch sử"
-                  />
+                  {isAuthenticated && (
+                    <Button
+                      type="text"
+                      icon={<DeleteOutlined />}
+                      onClick={handleClearHistory}
+                      size="small"
+                      title="Xóa lịch sử"
+                    />
+                  )}
                   <Button
                     type="text"
                     icon={<CloseOutlined />}
@@ -218,7 +245,7 @@ const Chatbot: React.FC = () => {
                           <li>Tìm hiểu về các tính năng của hệ thống</li>
                           <li>Tư vấn về an toàn lao động</li>
                           <li>Hướng dẫn sử dụng các chức năng</li>
-                          <li>Tìm kiếm thông tin về PPE, sự cố, đào tạo</li>
+                          <li>Tìm kiếm thông tin liên quan đến an toàn lao động</li>
                         </ul>
                       </div>
                     }
