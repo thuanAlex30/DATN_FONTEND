@@ -39,19 +39,23 @@ const { Title, Text, Paragraph } = Typography;
 const heroImages = [
   {
     url: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200&q=80',
-    alt: 'Giám sát an toàn tại công trường'
+    alt: 'Giám sát an toàn tại công trường',
+    fallback: '🏗️'
   },
   {
     url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&q=80',
-    alt: 'Thiết bị bảo hộ lao động'
+    alt: 'Thiết bị bảo hộ lao động',
+    fallback: '🦺'
   },
   {
     url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&q=80',
-    alt: 'Điều phối quy trình làm việc'
+    alt: 'Điều phối quy trình làm việc',
+    fallback: '📊'
   },
   {
     url: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=1200&q=80',
-    alt: 'Đào tạo an toàn cho nhân viên'
+    alt: 'Đào tạo an toàn cho nhân viên',
+    fallback: '👷'
   }
 ];
 
@@ -71,16 +75,35 @@ const LandingPage: React.FC = () => {
     setImageLoaded({});
     setIsVisible(true);
 
+    // Preload images và đảm bảo hình ảnh luôn hiển thị
     const timeouts: Record<number, ReturnType<typeof setTimeout>> = {};
     heroImages.forEach((_, index) => {
+      // Preload images
+      const img = new Image();
+      img.src = heroImages[index].url;
+      img.onload = () => {
+        handleImageLoad(index);
+      };
+      img.onerror = () => {
+        handleImageError(index);
+      };
+      
+      // Timeout dài hơn để đợi hình ảnh load
       timeouts[index] = setTimeout(() => {
         setImageErrors(prev => {
           if (!prev[index]) {
+            // Chỉ set error nếu hình ảnh chưa load sau 10 giây
+            setImageLoaded(prevLoaded => {
+              if (!prevLoaded[index]) {
+                return { ...prevLoaded, [index]: true };
+              }
+              return prevLoaded;
+            });
             return { ...prev, [index]: true };
           }
           return prev;
         });
-      }, 5000);
+      }, 10000);
     });
     setImageTimeouts(timeouts);
 
@@ -235,17 +258,17 @@ const LandingPage: React.FC = () => {
                         <span className={styles.heroTitleLabel}>Giải pháp số 1</span>
                       </Badge.Ribbon>
                     </div>
-                    <Title level={1} className={styles.heroTitle}>
-                      Quản Lý An Toàn Lao Động
-                    </Title>
-                    <Title level={2} className={styles.heroSubtitle}>
+                  <Title level={1} className={styles.heroTitle}>
+                    <span className={styles.highlightText}>Quản Lý</span> An Toàn <span className={styles.highlightText}>Lao Động</span>
+                  </Title>
+                  <Title level={2} className={styles.heroSubtitle}>
                       <ThunderboltOutlined className={styles.subtitleIcon} />
-                      Chuyên nghiệp & Hiệu quả
-                    </Title>
+                    <span className={styles.highlightSubtitle}>Chuyên nghiệp</span> & <span className={styles.highlightSubtitle}>Hiệu quả</span>
+                  </Title>
                   </div>
                   <Paragraph className={styles.heroDescription}>
-                    Khám phá hệ thống quản lý toàn diện giúp tổ chức của bạn đảm bảo an toàn lao động,
-                    quản lý đào tạo, theo dõi thiết bị bảo hộ và xử lý sự cố một cách hiệu quả.
+                    Khám phá <span className={styles.highlightInline}>hệ thống quản lý toàn diện</span> giúp tổ chức của bạn đảm bảo <span className={styles.highlightInline}>an toàn lao động</span>,
+                    quản lý đào tạo, theo dõi <span className={styles.highlightInline}>thiết bị bảo hộ</span> và xử lý sự cố một cách <span className={styles.highlightInline}>hiệu quả</span>.
                   </Paragraph>
                   <div className={styles.heroStats}>
                     <div className={styles.heroStatItem}>
@@ -290,16 +313,11 @@ const LandingPage: React.FC = () => {
                         <div className={styles.heroCarouselImageWrapper}>
                           {imageErrors[index] ? (
                             <div className={styles.heroCarouselFallback}>
-                              <SafetyOutlined style={{ fontSize: '64px', color: '#fff', marginBottom: '16px' }} />
+                              <div style={{ fontSize: '80px', marginBottom: '16px' }}>{image.fallback}</div>
                               <div className={styles.heroCarouselFallbackText}>{image.alt}</div>
                             </div>
                           ) : (
                             <>
-                              {!imageLoaded[index] && (
-                                <div className={styles.heroCarouselPlaceholder}>
-                                  <SafetyOutlined className={styles.heroCarouselPlaceholderIcon} />
-                                </div>
-                              )}
                               <img
                                 src={image.url}
                                 alt={image.alt}
@@ -309,20 +327,28 @@ const LandingPage: React.FC = () => {
                                 loading="eager"
                                 style={{ 
                                   display: 'block',
-                                  opacity: imageLoaded[index] ? 1 : 0.3,
-                                  transition: 'opacity 0.5s ease',
-                                  visibility: 'visible'
+                                  opacity: imageLoaded[index] ? 1 : 0.7,
+                                  transition: 'opacity 0.6s ease-in-out',
+                                  visibility: 'visible',
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover'
                                 }}
                               />
+                              {!imageLoaded[index] && !imageErrors[index] && (
+                                <div className={styles.heroCarouselPlaceholder}>
+                                  <div style={{ fontSize: '64px', opacity: 0.5 }}>{image.fallback}</div>
+                                </div>
+                              )}
                             </>
                           )}
-                        </div>
+                  </div>
                       </div>
                     ))}
                   </Carousel>
                 </div>
               </Col>
-              </Row>
+            </Row>
             </div>
           </div>
         </section>
@@ -331,11 +357,11 @@ const LandingPage: React.FC = () => {
         <section id="features" className={styles.featuresSection}>
           <div className={styles.sectionContainer}>
             <div className={styles.sectionHeader}>
-              <Title level={2} className={styles.sectionTitle}>
-                Tính năng nổi bật
-              </Title>
+            <Title level={2} className={styles.sectionTitle}>
+              <span className={styles.highlightSection}>Tính năng</span> nổi bật
+            </Title>
               <Paragraph className={styles.sectionSubtitle}>
-                Khám phá những tính năng mạnh mẽ giúp doanh nghiệp của bạn quản lý an toàn lao động hiệu quả
+                Khám phá những <span className={styles.highlightInline}>tính năng mạnh mẽ</span> giúp doanh nghiệp của bạn <span className={styles.highlightInline}>quản lý an toàn lao động</span> hiệu quả
               </Paragraph>
             </div>
             <Row gutter={[24, 24]}>
@@ -343,11 +369,17 @@ const LandingPage: React.FC = () => {
                 <Col xs={24} sm={12} md={8} key={index}>
                   <Card className={`${styles.featureCard} ${styles.fadeInUp}`} hoverable>
                     <div className={styles.featureIconWrapper}>
-                      <div className={styles.featureIcon}>{feature.icon}</div>
+                    <div className={styles.featureIcon}>{feature.icon}</div>
                       <div className={styles.featureIconGlow}></div>
                     </div>
                     <Title level={4} className={styles.featureTitle}>
-                      {feature.title}
+                      {feature.title.includes('An toàn') ? (
+                        <>
+                          <span className={styles.highlightFeature}>{feature.title.split('An toàn')[0]}</span>
+                          <span className={styles.highlightText}>An toàn</span>
+                          {feature.title.split('An toàn')[1]}
+                        </>
+                      ) : feature.title}
                     </Title>
                     <Text className={styles.featureDescription}>
                       {feature.description}
@@ -407,9 +439,6 @@ const LandingPage: React.FC = () => {
                   Chính sách chất lượng
                 </Button>
                 <Button type="link" className={styles.footerLink}>
-                  Tuyển dụng
-                </Button>
-                <Button type="link" className={styles.footerLink}>
                   Quy chế hoạt động
                 </Button>
                 <Button type="link" className={styles.footerLink}>
@@ -433,9 +462,6 @@ const LandingPage: React.FC = () => {
                 </Button>
                 <Button type="link" className={styles.footerLink}>
                   Thông tin cá nhân
-                </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Lịch sử giao dịch
                 </Button>
               </Space>
             </Col>
@@ -488,9 +514,6 @@ const LandingPage: React.FC = () => {
                   onClick={() => navigate('/contact')}
                 >
                   Liên hệ
-                </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Tài liệu hướng dẫn
                 </Button>
               </Space>
             </Col>

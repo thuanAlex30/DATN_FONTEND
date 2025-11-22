@@ -7,8 +7,7 @@ import {
   Collapse,
   Space,
   Row,
-  Col,
-  Divider
+  Col
 } from 'antd';
 import {
   SafetyOutlined,
@@ -17,10 +16,7 @@ import {
   QuestionCircleOutlined,
   PhoneOutlined,
   MailOutlined,
-  EnvironmentOutlined,
-  FacebookOutlined,
-  InstagramOutlined,
-  TwitterOutlined
+  EnvironmentOutlined
 } from '@ant-design/icons';
 import styles from './FAQ.module.css';
 
@@ -284,9 +280,6 @@ const FAQPage: React.FC = () => {
                   Chính sách chất lượng
                 </Button>
                 <Button type="link" className={styles.footerLink}>
-                  Tuyển dụng
-                </Button>
-                <Button type="link" className={styles.footerLink}>
                   Quy chế hoạt động
                 </Button>
                 <Button type="link" className={styles.footerLink}>
@@ -310,9 +303,6 @@ const FAQPage: React.FC = () => {
                 </Button>
                 <Button type="link" className={styles.footerLink}>
                   Thông tin cá nhân
-                </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Lịch sử giao dịch
                 </Button>
               </Space>
             </Col>
@@ -364,45 +354,14 @@ const FAQPage: React.FC = () => {
                 >
                   Liên hệ
                 </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Tài liệu hướng dẫn
-                </Button>
               </Space>
             </Col>
           </Row>
-          
-          <Divider className={styles.footerDivider} />
           
           <div className={styles.footerBottom}>
             <Text className={styles.footerCopyright}>
               © {new Date().getFullYear()} Hệ Thống Quản Lý An Toàn Lao Động. Tất cả các quyền được bảo lưu.
             </Text>
-            <div className={styles.footerSocial}>
-              <Button
-                type="link"
-                icon={<FacebookOutlined />}
-                className={styles.socialButton}
-                href="https://facebook.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-              <Button
-                type="link"
-                icon={<InstagramOutlined />}
-                className={styles.socialButton}
-                href="https://instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-              <Button
-                type="link"
-                icon={<TwitterOutlined />}
-                className={styles.socialButton}
-                href="https://twitter.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-            </div>
           </div>
         </div>
       </Footer>

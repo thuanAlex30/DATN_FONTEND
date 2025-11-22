@@ -23,7 +23,13 @@ import {
   ClockCircleOutlined,
   FacebookOutlined,
   InstagramOutlined,
-  TwitterOutlined
+  TwitterOutlined,
+  MessageOutlined,
+  SendOutlined,
+  BulbOutlined,
+  LockOutlined,
+  CustomerServiceOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
 import styles from './Contact.module.css';
 
@@ -100,125 +106,224 @@ const ContactPage: React.FC = () => {
       </Header>
 
       <Content className={styles.content}>
-        <div className={styles.pageContainer}>
-          <Button
-            type="link"
-            icon={<ArrowLeftOutlined />}
-            onClick={() => navigate('/')}
-            className={styles.backButton}
-          >
-            Quay lại trang chủ
-          </Button>
-
-          <section className={styles.contactSection}>
-            <Title level={1} className={styles.pageTitle}>
+        {/* Hero Section with Green Background */}
+        <div className={styles.heroSection}>
+          <div className={styles.heroContent}>
+            <Title level={1} className={styles.heroTitle}>
               Liên hệ với chúng tôi
             </Title>
+            <Text className={styles.heroSubtitle}>
+              Chúng tôi luôn sẵn sàng lắng nghe và hỗ trợ bạn. Hãy để lại thông tin để được tư vấn tốt nhất!
+            </Text>
             
-            <Row gutter={[48, 48]}>
-              <Col xs={24} lg={12}>
-                <Paragraph className={styles.contactText}>
-                  Nếu bạn có bất kỳ câu hỏi hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi
-                  qua các kênh sau:
-                </Paragraph>
-                <Space direction="vertical" size="large" className={styles.contactInfo}>
-                  <div className={styles.contactItem}>
-                    <div className={styles.contactIconWrapper}>
-                      <PhoneOutlined className={styles.contactIcon} />
+            <Row gutter={[24, 24]} className={styles.heroCards}>
+              <Col xs={24} sm={8}>
+                <div className={styles.heroCard}>
+                  <CustomerServiceOutlined className={styles.heroCardIcon} />
+                  <Title level={2} className={styles.heroCardNumber}>24/7</Title>
+                  <Text className={styles.heroCardLabel}>Hỗ trợ</Text>
+                </div>
+              </Col>
+              <Col xs={24} sm={8}>
+                <div className={styles.heroCard}>
+                  <TeamOutlined className={styles.heroCardIcon} />
+                  <Title level={2} className={styles.heroCardNumber}>1000+</Title>
+                  <Text className={styles.heroCardLabel}>Khách hàng</Text>
+                </div>
+              </Col>
+              <Col xs={24} sm={8}>
+                <div className={styles.heroCard}>
+                  <MessageOutlined className={styles.heroCardIcon} />
+                  <Title level={2} className={styles.heroCardNumber}>&lt; 5 phút</Title>
+                  <Text className={styles.heroCardLabel}>Phản hồi</Text>
+                </div>
+              </Col>
+            </Row>
+          </div>
+        </div>
+
+        {/* Top Section - Primary Contact Methods */}
+        <div className={styles.topSection}>
+          <div className={styles.pageContainer}>
+            <Row gutter={[24, 24]}>
+              <Col xs={24} sm={8}>
+                <div className={styles.contactMethodCard}>
+                  <div className={`${styles.contactMethodIcon} ${styles.phoneIcon}`}>
+                    <PhoneOutlined />
+                  </div>
+                  <div className={styles.contactMethodContent}>
+                    <Text strong className={styles.contactMethodTitle}>Điện thoại</Text>
+                    <Text className={styles.contactMethodValue}>+84 (0) 123456789</Text>
+                    <Text className={styles.contactMethodNote}>Hotline hỗ trợ 24/7</Text>
+                  </div>
+                </div>
+              </Col>
+              <Col xs={24} sm={8}>
+                <div className={styles.contactMethodCard}>
+                  <div className={`${styles.contactMethodIcon} ${styles.emailIcon}`}>
+                    <MailOutlined />
+                  </div>
+                  <div className={styles.contactMethodContent}>
+                    <Text strong className={styles.contactMethodTitle}>Email</Text>
+                    <Text className={styles.contactMethodValue}>support@safety-system.com</Text>
+                    <Text className={styles.contactMethodNote}>Phản hồi trong 24h</Text>
+                  </div>
+                </div>
+              </Col>
+              <Col xs={24} sm={8}>
+                <div className={styles.contactMethodCard}>
+                  <div className={`${styles.contactMethodIcon} ${styles.chatIcon}`}>
+                    <MessageOutlined />
+                  </div>
+                  <div className={styles.contactMethodContent}>
+                    <Text strong className={styles.contactMethodTitle}>Live Chat</Text>
+                    <Text className={styles.contactMethodValue}>Chat trực tuyến</Text>
+                    <Text className={styles.contactMethodNote}>Hỗ trợ tức thì</Text>
+                  </div>
+                </div>
+              </Col>
+            </Row>
+          </div>
+        </div>
+
+        {/* Main Contact Section - 2 Columns */}
+        <div className={styles.pageContainer}>
+          <Row gutter={[24, 24]} style={{ marginTop: '2rem' }}>
+            {/* Left Column: Contact Info + Working Hours */}
+            <Col xs={24} lg={12}>
+              <Card className={styles.contactInfoCard}>
+                <Title level={4} className={styles.contactInfoTitle}>
+                  Thông tin liên hệ
+                </Title>
+                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                  <div className={styles.contactInfoItem}>
+                    <div className={`${styles.contactInfoIconWrapper} ${styles.phoneIconWrapper}`}>
+                      <PhoneOutlined className={styles.contactInfoIcon} />
                     </div>
-                    <div>
-                      <Text strong>Điện thoại</Text>
-                      <br />
-                      <Text>+84 (0) 123 456 789</Text>
+                    <div className={styles.contactInfoText}>
+                      <Text className={styles.contactInfoLabel}>Số điện thoại</Text>
+                      <Text className={styles.contactInfoValue}>+84 (0) 123456789</Text>
+                      <Text className={styles.contactInfoNote}>Hotline 24/7</Text>
                     </div>
                   </div>
-                  <div className={styles.contactItem}>
-                    <div className={styles.contactIconWrapper}>
-                      <MailOutlined className={styles.contactIcon} />
+                  <div className={styles.contactInfoItem}>
+                    <div className={`${styles.contactInfoIconWrapper} ${styles.emailIconWrapper}`}>
+                      <MailOutlined className={styles.contactInfoIcon} />
                     </div>
-                    <div>
-                      <Text strong>Email</Text>
-                      <br />
-                      <Text>support@safety-system.com</Text>
-                    </div>
-                  </div>
-                  <div className={styles.contactItem}>
-                    <div className={styles.contactIconWrapper}>
-                      <EnvironmentOutlined className={styles.contactIcon} />
-                    </div>
-                    <div>
-                      <Text strong>Địa chỉ</Text>
-                      <br />
-                      <Text>123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh</Text>
+                    <div className={styles.contactInfoText}>
+                      <Text className={styles.contactInfoLabel}>Email</Text>
+                      <Text className={styles.contactInfoValueEmail}>support@safety-system.com</Text>
+                      <Text className={styles.contactInfoNote}>Phản hồi trong 24h</Text>
                     </div>
                   </div>
-                  <div className={styles.contactItem}>
-                    <div className={styles.contactIconWrapper}>
-                      <ClockCircleOutlined className={styles.contactIcon} />
+                  <div className={styles.contactInfoItem}>
+                    <div className={`${styles.contactInfoIconWrapper} ${styles.addressIconWrapper}`}>
+                      <EnvironmentOutlined className={styles.contactInfoIcon} />
                     </div>
-                    <div>
-                      <Text strong>Giờ làm việc</Text>
-                      <br />
-                      <Text>Thứ 2 - Thứ 6: 8:00 - 17:30</Text>
-                      <br />
-                      <Text>Thứ 7: 8:00 - 12:00</Text>
-                      <br />
-                      <Text>Chủ nhật: Nghỉ</Text>
+                    <div className={styles.contactInfoText}>
+                      <Text className={styles.contactInfoLabel}>Địa chỉ</Text>
+                      <Text className={styles.contactInfoValue}>123 Đường ABC, Quận XYZ, TP.Hồ Chí Minh</Text>
+                      <Text className={styles.contactInfoNote}>Văn phòng chính</Text>
                     </div>
                   </div>
                 </Space>
-              </Col>
-              <Col xs={24} lg={12}>
-                <Card title="Gửi tin nhắn cho chúng tôi" className={styles.contactFormCard}>
-                  <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleContactSubmit}
+              </Card>
+
+              {/* Working Hours Card */}
+              <Card className={styles.workingHoursCard}>
+                <div className={styles.workingHoursHeader}>
+                  <ClockCircleOutlined className={styles.workingHoursIcon} />
+                  <Title level={4} className={styles.workingHoursTitle}>Giờ làm việc</Title>
+                </div>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div className={styles.workingHoursRow}>
+                    <Text className={styles.workingHoursText}>Thứ Hai - Thứ Sáu:</Text>
+                    <Text className={styles.workingHoursTime}>8:00 - 17:30</Text>
+                  </div>
+                  <div className={styles.workingHoursRow}>
+                    <Text className={styles.workingHoursText}>Thứ Bảy:</Text>
+                    <Text className={styles.workingHoursTime}>8:00 - 12:00</Text>
+                  </div>
+                  <div className={styles.workingHoursRow}>
+                    <Text className={styles.workingHoursText}>Chủ Nhật:</Text>
+                    <Text className={styles.workingHoursTime}>Nghỉ</Text>
+                  </div>
+                </Space>
+                <div className={styles.workingHoursTip}>
+                  <BulbOutlined className={styles.workingHoursTipIcon} />
+                  <Text className={styles.workingHoursTipText}>
+                    Tip: Gọi điện trước khi đến để được hỗ trợ tốt nhất!
+                  </Text>
+                </div>
+              </Card>
+            </Col>
+
+            {/* Right Column: Contact Form */}
+            <Col xs={24} lg={12}>
+              <Card className={styles.contactFormCard}>
+                <Title level={4} className={styles.contactFormTitle}>
+                  Gửi thông tin liên hệ
+                </Title>
+                <Form
+                  form={form}
+                  layout="vertical"
+                  onFinish={handleContactSubmit}
+                  className={styles.contactForm}
+                >
+                  <Form.Item
+                    name="name"
+                    label="Họ và tên *"
+                    rules={[{ required: true, message: 'Vui lòng nhập họ và tên!' }]}
                   >
-                    <Form.Item
-                      name="name"
-                      label="Họ và tên"
-                      rules={[{ required: true, message: 'Vui lòng nhập họ và tên!' }]}
+                    <Input placeholder="Nhập họ tên của bạn" />
+                  </Form.Item>
+                  <Form.Item
+                    name="email"
+                    label="Email *"
+                    rules={[
+                      { required: true, message: 'Vui lòng nhập email!' },
+                      { type: 'email', message: 'Email không hợp lệ!' }
+                    ]}
+                  >
+                    <Input placeholder="your.email@example.com" />
+                  </Form.Item>
+                  <Form.Item
+                    name="subject"
+                    label="Tiêu đề *"
+                    rules={[{ required: true, message: 'Vui lòng nhập tiêu đề!' }]}
+                  >
+                    <Input placeholder="Chủ đề bạn muốn trao đổi" />
+                  </Form.Item>
+                  <Form.Item
+                    name="message"
+                    label="Nội dung *"
+                    rules={[{ required: true, message: 'Vui lòng nhập nội dung!' }]}
+                  >
+                    <TextArea
+                      rows={6}
+                      placeholder="Mô tả chi tiết nội dung bạn muốn trao đổi..."
+                    />
+                  </Form.Item>
+                  <Form.Item>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      size="large"
+                      icon={<SendOutlined />}
+                      className={styles.submitButton}
+                      block
                     >
-                      <Input placeholder="Nhập họ và tên của bạn" />
-                    </Form.Item>
-                    <Form.Item
-                      name="email"
-                      label="Email"
-                      rules={[
-                        { required: true, message: 'Vui lòng nhập email!' },
-                        { type: 'email', message: 'Email không hợp lệ!' }
-                      ]}
-                    >
-                      <Input placeholder="Nhập email của bạn" />
-                    </Form.Item>
-                    <Form.Item
-                      name="subject"
-                      label="Chủ đề"
-                      rules={[{ required: true, message: 'Vui lòng nhập chủ đề!' }]}
-                    >
-                      <Input placeholder="Nhập chủ đề" />
-                    </Form.Item>
-                    <Form.Item
-                      name="message"
-                      label="Nội dung"
-                      rules={[{ required: true, message: 'Vui lòng nhập nội dung!' }]}
-                    >
-                      <TextArea
-                        rows={6}
-                        placeholder="Nhập nội dung tin nhắn của bạn"
-                      />
-                    </Form.Item>
-                    <Form.Item>
-                      <Button type="primary" htmlType="submit" size="large" block>
-                        Gửi tin nhắn
-                      </Button>
-                    </Form.Item>
-                  </Form>
-                </Card>
-              </Col>
-            </Row>
-          </section>
+                      Gửi tin nhắn
+                    </Button>
+                  </Form.Item>
+                  <div className={styles.privacyMessage}>
+                    <LockOutlined className={styles.privacyIcon} />
+                    <Text className={styles.privacyText}>Thông tin của bạn được bảo mật tuyệt đối</Text>
+                  </div>
+                </Form>
+              </Card>
+            </Col>
+          </Row>
         </div>
       </Content>
 
@@ -265,9 +370,6 @@ const ContactPage: React.FC = () => {
                   Chính sách chất lượng
                 </Button>
                 <Button type="link" className={styles.footerLink}>
-                  Tuyển dụng
-                </Button>
-                <Button type="link" className={styles.footerLink}>
                   Quy chế hoạt động
                 </Button>
                 <Button type="link" className={styles.footerLink}>
@@ -291,9 +393,6 @@ const ContactPage: React.FC = () => {
                 </Button>
                 <Button type="link" className={styles.footerLink}>
                   Thông tin cá nhân
-                </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Lịch sử giao dịch
                 </Button>
               </Space>
             </Col>
@@ -344,9 +443,6 @@ const ContactPage: React.FC = () => {
                   onClick={() => navigate('/contact')}
                 >
                   Liên hệ
-                </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Tài liệu hướng dẫn
                 </Button>
               </Space>
             </Col>
