@@ -72,6 +72,23 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
       }
       
+      // Các endpoint cho phép optional auth - không redirect về login
+      const optionalAuthEndpoints = [
+        '/chatbot/session',
+        '/chatbot/message',
+        '/chatbot/ai-status'
+      ];
+      
+      const isOptionalAuthEndpoint = optionalAuthEndpoints.some(endpoint => 
+        originalRequest.url?.includes(endpoint)
+      );
+      
+      if (isOptionalAuthEndpoint) {
+        // Đây là endpoint optional auth, chỉ reject error, không redirect
+        console.log('ℹ️ Optional auth endpoint - not redirecting to login');
+        return Promise.reject(error);
+      }
+      
       // Try to refresh token first
       const refreshToken = localStorage.getItem(ENV.REFRESH_TOKEN_KEY);
       if (refreshToken) {

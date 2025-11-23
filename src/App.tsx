@@ -79,8 +79,8 @@ function AppContent() {
           </div>
         )}
         
-        {/* Chatbot - Hiển thị khi đã đăng nhập */}
-        {isAuthenticated && <Chatbot />}
+        {/* Chatbot - Hiển thị luôn (cả landing page) */}
+        <Chatbot />
         
       </BrowserRouter>
     </ErrorBoundary>
