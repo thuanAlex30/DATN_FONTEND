@@ -52,11 +52,14 @@ const LoginPage: React.FC = () => {
           // Map role_code to dashboard routes
           let redirectPath = '/home'; // Default fallback
           
-          if (roleCode) {
+          // Normalize roleCode for comparison
+          const normalizedRoleCode = roleCode?.toLowerCase().trim();
+          
+          if (normalizedRoleCode) {
             // Use role_code for precise matching (from backend roleMatrix.js)
-            switch (roleCode.toLowerCase()) {
+            switch (normalizedRoleCode) {
               case 'system_admin':
-              case 'Company Admin':
+              case 'company_admin':
                 redirectPath = '/admin/dashboard';
                 console.log('🔀 Redirecting to admin dashboard (role_code:', roleCode, ')');
                 break;
