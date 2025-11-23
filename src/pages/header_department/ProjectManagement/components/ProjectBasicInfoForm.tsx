@@ -57,12 +57,12 @@ const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
           // Load managers (users with management roles)
           const { default: userService } = await import('../../../../services/userService');
           const managersResponse = await userService.getUsers({ 
-            role: 'manager',
+            role_id: 'manager',
             is_active: true 
           });
           
           if (managersResponse.success) {
-            setManagers(managersResponse.data.map((user: any) => ({
+            setManagers(managersResponse.data.users.map((user: any) => ({
               id: user.id,
               full_name: user.full_name,
               email: user.email
@@ -156,7 +156,7 @@ const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
       onCancel={handleCancel}
       width={800}
       style={{ top: 20 }}
-      destroyOnClose
+      destroyOnHidden
       className="project-basic-info-modal"
       footer={null}
     >

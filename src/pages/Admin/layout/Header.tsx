@@ -50,11 +50,7 @@ const Header = () => {
     const audioRef = useRef<HTMLAudioElement>(null);
 
     // Use WebSocket hook to get connection status
-    const { isConnected } = useWebSocket(token, 'http://localhost:3000');
-
-    const handleNotificationClick = () => {
-        setShowNotifications(!showNotifications);
-    };
+    useWebSocket(token, 'http://localhost:3000');
 
     const handleLogout = () => {
         dispatch(logout());
@@ -483,13 +479,15 @@ const Header = () => {
                 alignItems: 'center',
                 position: 'relative',
                 zIndex: 10000,
+                height: 'auto',
+                lineHeight: 'normal',
             }}
         >
             <div>
-                <Title level={2} style={{ margin: 0, color: '#2c3e50', fontSize: '1.8rem' }}>
+                <Title level={2} style={{ margin: 0, color: '#2c3e50', fontSize: '1.8rem', lineHeight: 1.3 }}>
                     Chào mừng, {user?.full_name || 'Admin'}!
                 </Title>
-                <Text style={{ color: '#666', fontSize: '0.95rem' }}>
+                <Text style={{ color: '#666', fontSize: '0.95rem', lineHeight: 1.4 }}>
                     Hôm nay là ngày tốt để đảm bảo an toàn lao động
                 </Text>
             </div>

@@ -162,7 +162,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
       onCancel={handleCancel}
       footer={null}
       width={800}
-      destroyOnClose
+      destroyOnHidden
     >
       <motion.div
         initial={{ opacity: 0, y: 20 }}

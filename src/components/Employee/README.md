@@ -148,4 +148,3 @@ The sidebar includes the following navigation items:
 - Báo cáo sự cố (/employee/incidents/report)
 - Đào tạo (/employee/training)
 - PPE cá nhân (/employee/ppe)
-- Chứng chỉ (/employee/certificates)

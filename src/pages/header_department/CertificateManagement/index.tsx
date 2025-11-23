@@ -1,976 +1,675 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-// import * as certificateService from '../../../services/certificateService';
+import React, { useState, useEffect } from 'react';
+import { 
+  Card, 
+  Typography, 
+  Row,
+  Col,
+  Statistic,
+  Spin,
+  Alert,
+  Table,
+  Button,
+  Input,
+  Select,
+  Space,
+  Tag,
+  Modal,
+  message,
+  Tooltip,
+  Popconfirm,
+  Image,
+  Descriptions,
+  Empty
+} from 'antd';
+import { 
+  SafetyCertificateOutlined, 
+  CheckCircleOutlined,
+  WarningOutlined,
+  ExclamationCircleOutlined,
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  ClockCircleOutlined,
+  ReloadOutlined,
+  InfoCircleOutlined
+} from '@ant-design/icons';
+import certificateService from '../../../services/certificateService';
 
-// Types
-interface CompanyCertPackage {
-  package_id: number;
-  package_name: string;
-  description: string;
-  price: number;
-  duration_months: number;
-}
+const { Title } = Typography;
+const { Search } = Input;
+const { Option } = Select;
 
-interface CompanyCertEnrollment {
-  enrollment_id: number;
-  package_id: number;
-  company_name: string;
-  tax_code: string;
-  contact_person: string;
-  phone: string;
-  email: string;
-  enrolled_at: string;
-  status: 'active' | 'expired' | 'pending';
-}
+// Helper functions
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND'
+  }).format(amount);
+};
 
-interface RevenueData {
-  totalRevenue: number;
-  totalEnrollments: number;
-  averageValue: number;
-  topPackage: { name: string; count: number };
-  packageRevenue: Record<string, { revenue: number; count: number; price: number }>;
-  monthlyRevenue: Record<string, number>;
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('vi-VN');
+};
+
+interface Certificate {
+  _id: string;
+  certificateName: string;
+  certificateCode: string;
+  description?: string;
+  category: 'SAFETY' | 'TECHNICAL' | 'MANAGEMENT' | 'QUALITY' | 'ENVIRONMENTAL' | 'HEALTH' | 'OTHER';
+  subCategory?: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  issuingAuthority: string;
+  legalBasis?: string;
+  applicableRegulations?: string[];
+  validityPeriod: number;
+  validityPeriodUnit: 'MONTHS' | 'YEARS';
+  renewalRequired: boolean;
+  renewalProcess?: string;
+  renewalDocuments?: string[];
+  cost: number;
+  currency: string;
+  contactInfo: {
+    organization?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+  };
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'EXPIRED';
+  reminderSettings: {
+    enabled: boolean;
+    reminderDays: number[];
+    notificationMethods: ('EMAIL' | 'SMS' | 'SYSTEM')[];
+    recipients: string[];
+  };
+  attachments: Array<{
+    _id: string;
+    fileName: string;
+    filePath: string;
+    fileSize: number;
+    mimeType: string;
+    uploadedAt: string;
+    uploadedBy: string;
+  }>;
+  createdBy: string;
+  updatedBy?: string;
+  tags: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  issueDate?: string;
+  expiryDate?: string;
+  lastRenewalDate?: string;
+  renewalNotes?: string;
 }
 
 const CertificateManagement: React.FC = () => {
-  // State management
-  const [activeTab, setActiveTab] = useState<'packages' | 'enrollments' | 'revenue'>('packages');
-  const [showModal, setShowModal] = useState<string | null>(null);
-  const [currentEditingPackage, setCurrentEditingPackage] = useState<CompanyCertPackage | null>(null);
-  const [currentEditingEnrollment, setCurrentEditingEnrollment] = useState<CompanyCertEnrollment | null>(null);
-  const [, setLoading] = useState(false);
-  const [, setError] = useState<string | null>(null);
-  
-  // Form states
-  const [packageForm, setPackageForm] = useState({
-    package_name: '',
-    description: '',
-    price: 0,
-    duration_months: 12
-  });
-  
-  const [statusForm, setStatusForm] = useState({
-    newStatus: 'active' as 'active' | 'expired' | 'pending',
-    statusNote: ''
-  });
-  
-  // Filter states
-  const [packageSearch, setPackageSearch] = useState('');
-  const [durationFilter, setDurationFilter] = useState('');
-  const [enrollmentSearch, setEnrollmentSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [packageFilter, setPackageFilter] = useState('');
-  const [yearFilter, setYearFilter] = useState('2024');
-  const [monthFilter, setMonthFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalImage, setModalImage] = useState<string | null>(null);
 
-  // Data state
-  const [companyCertPackages, setCompanyCertPackages] = useState<CompanyCertPackage[]>([]);
-  const [companyCertEnrollments, setCompanyCertEnrollments] = useState<CompanyCertEnrollment[]>([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    expired: 0
+  });
 
-  // Load data on component mount
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  // Load certificates
+  const loadCertificates = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Load packages and enrollments
-      // Certificate service - to be implemented
-      const packagesData: CompanyCertPackage[] = [];
-      const enrollmentsData: CompanyCertEnrollment[] = [];
+      const res = await certificateService.getCertificates();
+      console.log('CertificateList API Response:', res);
       
-      setCompanyCertPackages(packagesData);
-      setCompanyCertEnrollments(enrollmentsData);
+      // Handle response like IncidentList does
+      let certificatesData = [];
+      
+      if (res.data?.success && res.data?.data) {
+        if (Array.isArray(res.data.data)) {
+          // Direct array: data.data (like incident)
+          certificatesData = res.data.data;
+        } else if (res.data.data && typeof res.data.data === 'object' && Array.isArray(res.data.data.data)) {
+          // Nested array: data.data.data (certificate with pagination)
+          certificatesData = res.data.data.data;
+        } else {
+          certificatesData = [];
+        }
+      } else {
+        certificatesData = [];
+      }
+      
+      console.log('Final certificates data:', certificatesData);
+      console.log('Certificates data type:', typeof certificatesData);
+      console.log('Certificates data is array:', Array.isArray(certificatesData));
+      console.log('Certificates data length:', Array.isArray(certificatesData) ? certificatesData.length : 'Not array');
+      if (Array.isArray(certificatesData) && certificatesData.length > 0) {
+        console.log('First certificate structure:', certificatesData[0]);
+        console.log('First certificate keys:', Object.keys(certificatesData[0]));
+      }
+      setCertificates(certificatesData);
+      
+      // Calculate stats - ensure certificatesData is array
+      const total = Array.isArray(certificatesData) ? certificatesData.length : 0;
+      const active = Array.isArray(certificatesData) ? certificatesData.filter((cert: any) => cert.status === 'ACTIVE').length : 0;
+      const inactive = Array.isArray(certificatesData) ? certificatesData.filter((cert: any) => cert.status === 'INACTIVE').length : 0;
+      const expired = Array.isArray(certificatesData) ? certificatesData.filter((cert: any) => cert.status === 'EXPIRED').length : 0;
+      
+      setStats({ total, active, inactive, expired });
     } catch (err: any) {
-      setError(err.message || 'Không thể tải dữ liệu');
-      console.error('Error loading certificate data:', err);
+      console.error('CertificateList fetch error:', err);
+      setError('Không thể tải danh sách chứng chỉ');
+      message.error('Không thể tải danh sách chứng chỉ');
     } finally {
       setLoading(false);
-    } 
+    }
   };
 
-  // Utility functions
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
-    }).format(amount);
-  };
+  useEffect(() => {
+    loadCertificates();
+  }, []);
 
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('vi-VN');
-  };
+  // Filter certificates - ensure certificates is an array
+  const filteredCertificates = Array.isArray(certificates) ? certificates.filter(certificate => {
+    const matchesSearch = !searchTerm || 
+      certificate.certificateName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      certificate.certificateCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      certificate.issuingAuthority.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = !categoryFilter || certificate.category === categoryFilter;
+    const matchesStatus = !statusFilter || certificate.status === statusFilter;
+    const matchesPriority = !priorityFilter || certificate.priority === priorityFilter;
+    
+    return matchesSearch && matchesCategory && matchesStatus && matchesPriority;
+  }) : [];
 
-  const formatDateTime = (dateTimeString: string): string => {
-    return new Date(dateTimeString).toLocaleString('vi-VN');
-  };
-
-  const getPackageName = useCallback((packageId: number): string => {
-    const pkg = companyCertPackages.find(p => p.package_id === packageId);
-    return pkg ? pkg.package_name : 'Không xác định';
-  }, [companyCertPackages]);
-
-  const getPackagePrice = useCallback((packageId: number): number => {
-    const pkg = companyCertPackages.find(p => p.package_id === packageId);
-    return pkg ? pkg.price : 0;
-  }, [companyCertPackages]);
-
-  const getStatusLabel = (status: string): string => {
+  // Get category label
+  const getCategoryLabel = (category: string) => {
     const labels: Record<string, string> = {
-      'active': 'Đang hoạt động',
-      'expired': 'Hết hạn',
-      'pending': 'Chờ xử lý'
+      'SAFETY': 'An toàn lao động',
+      'TECHNICAL': 'Kỹ thuật',
+      'MANAGEMENT': 'Quản lý',
+      'QUALITY': 'Chất lượng',
+      'ENVIRONMENTAL': 'Môi trường',
+      'HEALTH': 'Sức khỏe',
+      'OTHER': 'Khác'
     };
-    return labels[status] || status;
+    return labels[category] || category;
   };
 
-  const calculateExpiryDate = (enrolledAt: string, durationMonths: number): Date => {
-    const enrollDate = new Date(enrolledAt);
-    const expiryDate = new Date(enrollDate);
-    expiryDate.setMonth(enrollDate.getMonth() + durationMonths);
-    return expiryDate;
+  // Get status color
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      'ACTIVE': 'green',
+      'INACTIVE': 'default',
+      'SUSPENDED': 'orange',
+      'EXPIRED': 'red'
+    };
+    return colors[status] || 'default';
   };
 
-  const getEnrollmentCountByPackage = useCallback((packageId: number): number => {
-    return companyCertEnrollments.filter(e => e.package_id === packageId).length;
-  }, [companyCertEnrollments]);
-
-  const getActiveEnrollmentCountByPackage = useCallback((packageId: number): number => {
-    return companyCertEnrollments.filter(e => e.package_id === packageId && e.status === 'active').length;
-  }, [companyCertEnrollments]);
-
-  // Filter functions - memoized to prevent infinite loops
-  const getFilteredPackages = useCallback((): CompanyCertPackage[] => {
-    return companyCertPackages.filter(pkg => {
-      const matchesSearch = pkg.package_name.toLowerCase().includes(packageSearch.toLowerCase()) ||
-                          pkg.description.toLowerCase().includes(packageSearch.toLowerCase());
-      const matchesDuration = !durationFilter || pkg.duration_months.toString() === durationFilter;
-      
-      return matchesSearch && matchesDuration;
-    });
-  }, [companyCertPackages, packageSearch, durationFilter]);
-
-  const getFilteredEnrollments = useCallback((): CompanyCertEnrollment[] => {
-    return companyCertEnrollments.filter(enrollment => {
-      const matchesSearch = enrollment.company_name.toLowerCase().includes(enrollmentSearch.toLowerCase()) ||
-                          enrollment.tax_code.includes(enrollmentSearch) ||
-                          enrollment.contact_person.toLowerCase().includes(enrollmentSearch.toLowerCase());
-      const matchesStatus = !statusFilter || enrollment.status === statusFilter;
-      const matchesPackage = !packageFilter || enrollment.package_id.toString() === packageFilter;
-      
-      return matchesSearch && matchesStatus && matchesPackage;
-    });
-  }, [companyCertEnrollments, enrollmentSearch, statusFilter, packageFilter]);
-
-  // Revenue calculation - memoized to prevent infinite loops
-  const calculateRevenue = useCallback((year: string, month: string): RevenueData => {
-    let filteredData = companyCertEnrollments.filter(enrollment => {
-      const enrollDate = new Date(enrollment.enrolled_at);
-      const enrollYear = enrollDate.getFullYear();
-      const enrollMonth = enrollDate.getMonth() + 1;
-      
-      if (year && enrollYear !== parseInt(year)) return false;
-      if (month && enrollMonth !== parseInt(month)) return false;
-      
-      return true;
-    });
-    
-    let totalRevenue = 0;
-    let packageRevenue: Record<string, { revenue: number; count: number; price: number }> = {};
-    let monthlyRevenue: Record<string, number> = {};
-    
-    filteredData.forEach(enrollment => {
-      const pkg = companyCertPackages.find(p => p.package_id === enrollment.package_id);
-      if (pkg) {
-        totalRevenue += pkg.price;
-        
-        // Package revenue
-        if (!packageRevenue[pkg.package_name]) {
-          packageRevenue[pkg.package_name] = {
-            revenue: 0,
-            count: 0,
-            price: pkg.price
-          };
-        }
-        packageRevenue[pkg.package_name].revenue += pkg.price;
-        packageRevenue[pkg.package_name].count += 1;
-        
-        // Monthly revenue
-        const monthKey = new Date(enrollment.enrolled_at).toISOString().slice(0, 7);
-        if (!monthlyRevenue[monthKey]) {
-          monthlyRevenue[monthKey] = 0;
-        }
-        monthlyRevenue[monthKey] += pkg.price;
-      }
-    });
-    
-    // Find top package
-    let topPackage = { name: 'Không có', count: 0 };
-    Object.keys(packageRevenue).forEach(packageName => {
-      if (packageRevenue[packageName].count > topPackage.count) {
-        topPackage = {
-          name: packageName,
-          count: packageRevenue[packageName].count
-        };
-      }
-    });
-    
-    return {
-      totalRevenue,
-      totalEnrollments: filteredData.length,
-      averageValue: filteredData.length > 0 ? totalRevenue / filteredData.length : 0,
-      topPackage,
-      packageRevenue,
-      monthlyRevenue
+  // Get priority color
+  const getPriorityColor = (priority: string) => {
+    const colors: Record<string, string> = {
+      'LOW': 'green',
+      'MEDIUM': 'blue',
+      'HIGH': 'orange',
+      'CRITICAL': 'red'
     };
-  }, [companyCertEnrollments, companyCertPackages]);
+    return colors[priority] || 'default';
+  };
 
-  // Modal handlers - memoized to prevent infinite loops
-  const openModal = useCallback((modalId: string) => {
-    setShowModal(modalId);
-  }, []);
+  // Get status icon
+  const getStatusIcon = (status: string) => {
+    const icons: Record<string, React.ReactNode> = {
+      'ACTIVE': <CheckCircleOutlined />,
+      'INACTIVE': <ClockCircleOutlined />,
+      'SUSPENDED': <WarningOutlined />,
+      'EXPIRED': <ExclamationCircleOutlined />
+    };
+    return icons[status] || <InfoCircleOutlined />;
+  };
 
-  const closeModal = useCallback(() => {
-    setShowModal(null);
-    setCurrentEditingPackage(null);
-    setCurrentEditingEnrollment(null);
-    setPackageForm({
-      package_name: '',
-      description: '',
-      price: 0,
-      duration_months: 12
-    });
-    setStatusForm({
-      newStatus: 'active',
-      statusNote: ''
-    });
-  }, []);
+  // Handle view certificate
+  const handleViewCertificate = (certificate: Certificate) => {
+    setSelectedCertificate(certificate);
+    setModalVisible(true);
+  };
 
-  // Package management - memoized to prevent infinite loops
-  const editPackage = useCallback((packageId: number) => {
-    const pkg = companyCertPackages.find(p => p.package_id === packageId);
-    if (pkg) {
-      setCurrentEditingPackage(pkg);
-      setPackageForm({
-        package_name: pkg.package_name,
-        description: pkg.description,
-        price: pkg.price,
-        duration_months: pkg.duration_months
-      });
-      openModal('addPackageModal');
+  // Handle delete certificate
+  const handleDeleteCertificate = async (id: string) => {
+    try {
+      await certificateService.deleteCertificate(id);
+      message.success('Xóa chứng chỉ thành công');
+      setCertificates(certificates.filter(cert => cert._id !== id));
+    } catch (err: any) {
+      message.error('Không thể xóa chứng chỉ');
+      console.error('Delete certificate error:', err);
     }
-  }, [companyCertPackages, openModal]);
+  };
 
-  const deletePackage = useCallback((packageId: number) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa gói chứng chỉ này?')) {
-      const enrollmentCount = getEnrollmentCountByPackage(packageId);
-      if (enrollmentCount > 0) {
-        alert('Không thể xóa gói này vì đã có doanh nghiệp đăng ký!');
-        return;
-      }
-      
-      setCompanyCertPackages(prev => prev.filter(p => p.package_id !== packageId));
-    }
-  }, [getEnrollmentCountByPackage]);
+  // Close image modal
+  const closeImageModal = () => {
+    setModalImage(null);
+  };
 
-  const handlePackageSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (currentEditingPackage) {
-      // Update existing package
-      setCompanyCertPackages(prev => prev.map(pkg => 
-        pkg.package_id === currentEditingPackage.package_id 
-          ? { ...pkg, ...packageForm }
-          : pkg
-      ));
-    } else {
-      // Create new package
-      const newPackage: CompanyCertPackage = {
-        package_id: Math.max(...companyCertPackages.map(p => p.package_id)) + 1,
-        ...packageForm
-      };
-      setCompanyCertPackages(prev => [...prev, newPackage]);
-    }
-    
-    closeModal();
-  }, [currentEditingPackage, packageForm, companyCertPackages, closeModal]);
+  // Columns definition
+  const columns = [
+    {
+      title: 'Tên chứng chỉ',
+      dataIndex: 'certificateName',
+      key: 'certificateName',
+      width: 200,
+      render: (text: string, record: Certificate) => (
+        <div>
+          <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{text}</div>
+          <div style={{ fontSize: '12px', color: '#666' }}>{record.certificateCode}</div>
+        </div>
+      ),
+    },
+    {
+      title: 'Danh mục',
+      dataIndex: 'category',
+      key: 'category',
+      width: 120,
+      render: (category: string) => (
+        <Tag color="blue">{getCategoryLabel(category)}</Tag>
+      ),
+    },
+    {
+      title: 'Cơ quan cấp',
+      dataIndex: 'issuingAuthority',
+      key: 'issuingAuthority',
+      width: 150,
+      render: (text: string) => (
+        <div style={{ fontSize: '12px' }}>{text}</div>
+      ),
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (status: string) => (
+        <Tag color={getStatusColor(status)} icon={getStatusIcon(status)}>
+          {status}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Mức độ',
+      dataIndex: 'priority',
+      key: 'priority',
+      width: 100,
+      render: (priority: string) => (
+        <Tag color={getPriorityColor(priority)}>
+          {priority}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Chi phí',
+      dataIndex: 'cost',
+      key: 'cost',
+      width: 120,
+      render: (cost: number, record: Certificate) => (
+        <div>
+          <div style={{ fontWeight: 'bold' }}>{formatCurrency(cost)}</div>
+          <div style={{ fontSize: '12px', color: '#666' }}>{record.currency}</div>
+        </div>
+      ),
+    },
+    {
+      title: 'Ngày cấp',
+      dataIndex: 'issueDate',
+      key: 'issueDate',
+      width: 120,
+      render: (date: string) => date ? formatDate(date) : '-',
+    },
+    {
+      title: 'Ngày hết hạn',
+      dataIndex: 'expiryDate',
+      key: 'expiryDate',
+      width: 120,
+      render: (date: string) => date ? formatDate(date) : '-',
+    },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      width: 120,
+      render: (_: any, record: Certificate) => (
+        <Space>
+          <Tooltip title="Xem chi tiết">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewCertificate(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Chỉnh sửa">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => {
+                message.info('Chức năng chỉnh sửa đang phát triển');
+              }}
+            />
+          </Tooltip>
+          <Popconfirm
+            title="Bạn có chắc chắn muốn xóa chứng chỉ này?"
+            onConfirm={() => handleDeleteCertificate(record._id)}
+            okText="Xóa"
+            cancelText="Hủy"
+          >
+            <Tooltip title="Xóa">
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+              />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
 
-  // Enrollment management - memoized to prevent infinite loops
-  const viewEnrollmentDetails = useCallback((enrollmentId: number) => {
-    const enrollment = companyCertEnrollments.find(e => e.enrollment_id === enrollmentId);
-    if (enrollment) {
-      setCurrentEditingEnrollment(enrollment);
-      openModal('enrollmentModal');
-    }
-  }, [companyCertEnrollments, openModal]);
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
 
-  const updateEnrollmentStatus = useCallback((enrollmentId: number) => {
-    const enrollment = companyCertEnrollments.find(e => e.enrollment_id === enrollmentId);
-    if (enrollment) {
-      setCurrentEditingEnrollment(enrollment);
-      setStatusForm({
-        newStatus: enrollment.status,
-        statusNote: ''
-      });
-      openModal('updateStatusModal');
-    }
-  }, [companyCertEnrollments, openModal]);
-
-  const handleStatusSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (currentEditingEnrollment) {
-      setCompanyCertEnrollments(prev => prev.map(enrollment => 
-        enrollment.enrollment_id === currentEditingEnrollment.enrollment_id
-          ? { ...enrollment, status: statusForm.newStatus }
-          : enrollment
-      ));
-      closeModal();
-    }
-  }, [currentEditingEnrollment, statusForm.newStatus, closeModal]);
-
-  const exportEnrollmentReport = useCallback(() => {
-    const filteredEnrollments = getFilteredEnrollments();
-    const data = filteredEnrollments.map(enrollment => {
-      const pkg = companyCertPackages.find(p => p.package_id === enrollment.package_id);
-      const expiryDate = calculateExpiryDate(enrollment.enrolled_at, pkg?.duration_months || 0);
-      
-      return [
-        enrollment.company_name,
-        enrollment.tax_code,
-        enrollment.contact_person,
-        enrollment.phone,
-        enrollment.email,
-        pkg?.package_name || 'Không xác định',
-        formatCurrency(pkg?.price || 0),
-        formatDate(enrollment.enrolled_at),
-        formatDate(expiryDate.toISOString()),
-        getStatusLabel(enrollment.status)
-      ];
-    });
-    
-    const headers = [
-      'Tên doanh nghiệp',
-      'Mã số thuế',
-      'Người liên hệ',
-      'Số điện thoại',
-      'Email',
-      'Gói chứng chỉ',
-      'Giá gói',
-      'Ngày đăng ký',
-      'Ngày hết hạn',
-      'Trạng thái'
-    ];
-    
-    // Convert to CSV
-    const csvContent = [headers, ...data].map(row => 
-      row.map(cell => `"${cell}"`).join(',')
-    ).join('\n');
-    
-    // Download CSV
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `danh_sach_dang_ky_chung_chi_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, [getFilteredEnrollments, companyCertPackages]);
-
-  // Tab switching - memoized to prevent infinite loops
-  const switchTab = useCallback((tabName: 'packages' | 'enrollments' | 'revenue') => {
-    setActiveTab(tabName);
-  }, []);
-
-  // Memoize computed values to prevent infinite loops
-  const filteredPackages = useMemo(() => getFilteredPackages(), [companyCertPackages, packageSearch, durationFilter]);
-  const filteredEnrollments = useMemo(() => getFilteredEnrollments(), [companyCertEnrollments, enrollmentSearch, statusFilter, packageFilter]);
-  const revenueData = useMemo(() => calculateRevenue(yearFilter, monthFilter), [companyCertEnrollments, companyCertPackages, yearFilter, monthFilter]);
+  if (error) {
+    return (
+      <div style={{ padding: '24px' }}>
+        <Alert
+          message="Lỗi tải dữ liệu"
+          description={error}
+          type="error"
+          showIcon
+          action={
+            <button onClick={loadCertificates}>
+              Thử lại
+            </button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="certificate-management-container">
+    <div style={{ 
+      padding: '24px', 
+      background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
+      minHeight: '100vh'
+    }}>
       {/* Header */}
-      <div className="header">
-        <div>
-          <h1><i className="fas fa-certificate"></i> Quản lý chứng chỉ doanh nghiệp</h1>
-          <div className="breadcrumb">
-            <a href="/admin">Dashboard</a> / Chứng chỉ doanh nghiệp
-          </div>
-        </div>
-        <a href="/admin" className="btn btn-secondary">
-          <i className="fas fa-arrow-left"></i> Quay lại
-        </a>
-      </div>
+      <Card
+        styles={{ body: { padding: '20px 24px' } }}
+        style={{
+          marginBottom: 24,
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.9)',
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 10px 30px rgba(24, 144, 255, 0.08)'
+        }}
+      >
+        <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <SafetyCertificateOutlined style={{ color: '#1677ff' }} /> Quản lý chứng chỉ
+        </Title>
+      </Card>
 
-      {/* Tabs */}
-      <div className="tabs">
-        <div className="tab-nav">
-          <button 
-            className={`tab-button ${activeTab === 'packages' ? 'active' : ''}`}
-            onClick={() => switchTab('packages')}
+      {/* Stats Overview */}
+      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+        <Col xs={24} sm={6}>
+          <Card
+            styles={{ body: { padding: 16 } }}
+            style={{ borderRadius: 14, boxShadow: '0 6px 18px rgba(22,119,255,0.06)' }}
           >
-            <i className="fas fa-box-open"></i> Gói chứng chỉ
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'enrollments' ? 'active' : ''}`}
-            onClick={() => switchTab('enrollments')}
+            <Statistic
+              title="Tổng chứng chỉ"
+              value={stats.total}
+              prefix={<SafetyCertificateOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={6}>
+          <Card
+            styles={{ body: { padding: 16 } }}
+            style={{ borderRadius: 14, boxShadow: '0 6px 18px rgba(24,144,255,0.06)' }}
           >
-            <i className="fas fa-building"></i> Đăng ký doanh nghiệp
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'revenue' ? 'active' : ''}`}
-            onClick={() => switchTab('revenue')}
+            <Statistic
+              title="Đang hoạt động"
+              value={stats.active}
+              valueStyle={{ color: '#52c41a' }}
+              prefix={<CheckCircleOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={6}>
+          <Card
+            styles={{ body: { padding: 16 } }}
+            style={{ borderRadius: 14, boxShadow: '0 6px 18px rgba(82,196,26,0.06)' }}
           >
-            <i className="fas fa-chart-line"></i> Doanh thu
-          </button>
-        </div>
+            <Statistic
+              title="Không hoạt động"
+              value={stats.inactive}
+              valueStyle={{ color: '#8c8c8c' }}
+              prefix={<WarningOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={6}>
+          <Card
+            styles={{ body: { padding: 16 } }}
+            style={{ borderRadius: 14, boxShadow: '0 6px 18px rgba(255,77,79,0.06)' }}
+          >
+            <Statistic
+              title="Hết hạn"
+              value={stats.expired}
+              valueStyle={{ color: '#ff4d4f' }}
+              prefix={<ExclamationCircleOutlined />}
+            />
+          </Card>
+        </Col>
+      </Row>
 
-        {/* Packages Tab */}
-        {activeTab === 'packages' && (
-          <div className="tab-content active">
-            <div className="controls">
-              <div className="search-filters">
-                <div className="search-box">
-                  <i className="fas fa-search"></i>
-                  <input 
-                    type="text" 
-                    placeholder="Tìm kiếm gói chứng chỉ..." 
-                    value={packageSearch}
-                    onChange={(e) => setPackageSearch(e.target.value)}
-                  />
-                </div>
-                
-                <select 
-                  className="filter-select" 
-                  value={durationFilter}
-                  onChange={(e) => setDurationFilter(e.target.value)}
-                >
-                  <option value="">Tất cả thời hạn</option>
-                  <option value="12">12 tháng</option>
-                  <option value="24">24 tháng</option>
-                  <option value="36">36 tháng</option>
-                </select>
-              </div>
-              
-              <button className="btn btn-primary" onClick={() => openModal('addPackageModal')}>
-                <i className="fas fa-plus"></i> Tạo gói mới
-              </button>
-            </div>
+      {/* Filters */}
+      <Card style={{ marginBottom: 16 }}>
+        <Row gutter={16} align="middle">
+          <Col span={6}>
+            <Search
+              placeholder="Tìm kiếm chứng chỉ..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onSearch={setSearchTerm}
+              enterButton={<SearchOutlined />}
+            />
+          </Col>
+          <Col span={4}>
+            <Select
+              placeholder="Danh mục"
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              style={{ width: '100%' }}
+              allowClear
+            >
+              <Option value="SAFETY">An toàn lao động</Option>
+              <Option value="TECHNICAL">Kỹ thuật</Option>
+              <Option value="MANAGEMENT">Quản lý</Option>
+              <Option value="QUALITY">Chất lượng</Option>
+              <Option value="ENVIRONMENTAL">Môi trường</Option>
+              <Option value="HEALTH">Sức khỏe</Option>
+              <Option value="OTHER">Khác</Option>
+            </Select>
+          </Col>
+          <Col span={4}>
+            <Select
+              placeholder="Trạng thái"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              style={{ width: '100%' }}
+              allowClear
+            >
+              <Option value="ACTIVE">Đang hoạt động</Option>
+              <Option value="INACTIVE">Không hoạt động</Option>
+              <Option value="SUSPENDED">Tạm dừng</Option>
+              <Option value="EXPIRED">Đã hết hạn</Option>
+            </Select>
+          </Col>
+          <Col span={4}>
+            <Select
+              placeholder="Mức độ"
+              value={priorityFilter}
+              onChange={setPriorityFilter}
+              style={{ width: '100%' }}
+              allowClear
+            >
+              <Option value="LOW">Thấp</Option>
+              <Option value="MEDIUM">Trung bình</Option>
+              <Option value="HIGH">Cao</Option>
+              <Option value="CRITICAL">Nghiêm trọng</Option>
+            </Select>
+          </Col>
+          <Col span={6}>
+            <Space>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => window.location.reload()}
+              >
+                Tải lại
+              </Button>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  message.info('Chức năng tạo chứng chỉ đang phát triển');
+                }}
+              >
+                Tạo mới
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
 
-            <div className="data-grid">
-              {filteredPackages.map(pkg => {
-                const enrollmentCount = getEnrollmentCountByPackage(pkg.package_id);
-                const activeCount = getActiveEnrollmentCountByPackage(pkg.package_id);
-                
-                return (
-                  <div key={pkg.package_id} className="cert-card">
-                    <div className="card-header">
-                      <div className="cert-icon">
-                        <i className="fas fa-certificate"></i>
-                      </div>
-                      <div className="card-title">{pkg.package_name}</div>
-                      <div className="card-description">{pkg.description}</div>
-                    </div>
-                    <div className="card-body">
-                      <div className="cert-info">
-                        <div className="info-item">
-                          <i className="fas fa-clock"></i>
-                          <span>{pkg.duration_months} tháng</span>
-                        </div>
-                        <div className="info-item">
-                          <i className="fas fa-building"></i>
-                          <span>{enrollmentCount} doanh nghiệp</span>
-                        </div>
-                      </div>
-                      
-                      <div className="price-display">
-                        <div className="price-amount">{formatCurrency(pkg.price)}</div>
-                        <div className="price-label">Giá gói</div>
-                      </div>
-                      
-                      <div className="enrollment-stats">
-                        <div className="stats-title">Thống kê đăng ký</div>
-                        <div className="stats-row">
-                          <span>Đang hoạt động:</span>
-                          <strong>{activeCount}</strong>
-                        </div>
-                        <div className="stats-row">
-                          <span>Tổng đăng ký:</span>
-                          <strong>{enrollmentCount}</strong>
-                        </div>
-                      </div>
-                      
-                      <div className="card-actions">
-                        <button className="btn btn-sm btn-primary" onClick={() => editPackage(pkg.package_id)}>
-                          <i className="fas fa-edit"></i> Sửa
-                        </button>
-                        <button className="btn btn-sm btn-danger" onClick={() => deletePackage(pkg.package_id)}>
-                          <i className="fas fa-trash"></i> Xóa
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+      {/* Table */}
+      <Card>
+        <Table
+          columns={columns}
+          dataSource={filteredCertificates}
+          rowKey={(record) => record._id || (record as any).id || record.certificateCode || Math.random().toString()}
+          loading={loading}
+          pagination={{
+            total: filteredCertificates.length,
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) =>
+              `${range[0]}-${range[1]} của ${total} chứng chỉ`,
+          }}
+          locale={{
+            emptyText: (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Không có chứng chỉ nào"
+              />
+            ),
+          }}
+        />
+      </Card>
+
+      {/* Certificate Detail Modal */}
+      <Modal
+        title="Chi tiết chứng chỉ"
+        open={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setModalVisible(false)}>
+            Đóng
+          </Button>,
+        ]}
+        width={800}
+      >
+        {selectedCertificate && (
+          <div>
+            <Descriptions column={2} bordered>
+              <Descriptions.Item label="Tên chứng chỉ" span={2}>
+                {selectedCertificate.certificateName}
+              </Descriptions.Item>
+              <Descriptions.Item label="Mã chứng chỉ">
+                {selectedCertificate.certificateCode}
+              </Descriptions.Item>
+              <Descriptions.Item label="Danh mục">
+                <Tag color="blue">{getCategoryLabel(selectedCertificate.category)}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Cơ quan cấp">
+                {selectedCertificate.issuingAuthority}
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái">
+                <Tag color={getStatusColor(selectedCertificate.status)}>
+                  {selectedCertificate.status}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Mức độ">
+                <Tag color={getPriorityColor(selectedCertificate.priority)}>
+                  {selectedCertificate.priority}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Chi phí">
+                {formatCurrency(selectedCertificate.cost)} {selectedCertificate.currency}
+              </Descriptions.Item>
+              <Descriptions.Item label="Thời hạn">
+                {selectedCertificate.validityPeriod} {selectedCertificate.validityPeriodUnit}
+              </Descriptions.Item>
+              <Descriptions.Item label="Ngày cấp">
+                {selectedCertificate.issueDate ? formatDate(selectedCertificate.issueDate) : '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Ngày hết hạn">
+                {selectedCertificate.expiryDate ? formatDate(selectedCertificate.expiryDate) : '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Mô tả" span={2}>
+                {selectedCertificate.description || '-'}
+              </Descriptions.Item>
+            </Descriptions>
           </div>
         )}
+      </Modal>
 
-        {/* Enrollments Tab */}
-        {activeTab === 'enrollments' && (
-          <div className="tab-content active">
-            <div className="controls">
-              <div className="search-filters">
-                <div className="search-box">
-                  <i className="fas fa-search"></i>
-                  <input 
-                    type="text" 
-                    placeholder="Tìm kiếm theo tên doanh nghiệp..." 
-                    value={enrollmentSearch}
-                    onChange={(e) => setEnrollmentSearch(e.target.value)}
-                  />
-                </div>
-                
-                <select 
-                  className="filter-select" 
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="">Tất cả trạng thái</option>
-                  <option value="active">Đang hoạt động</option>
-                  <option value="expired">Hết hạn</option>
-                  <option value="pending">Chờ xử lý</option>
-                </select>
-                
-                <select 
-                  className="filter-select" 
-                  value={packageFilter}
-                  onChange={(e) => setPackageFilter(e.target.value)}
-                >
-                  <option value="">Tất cả gói</option>
-                  {companyCertPackages.map(pkg => (
-                    <option key={pkg.package_id} value={pkg.package_id}>{pkg.package_name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <button className="btn btn-success" onClick={exportEnrollmentReport}>
-                <i className="fas fa-download"></i> Xuất báo cáo
-              </button>
-            </div>
-
-            <div className="data-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Doanh nghiệp</th>
-                    <th>Mã số thuế</th>
-                    <th>Gói chứng chỉ</th>
-                    <th>Liên hệ</th>
-                    <th>Ngày đăng ký</th>
-                    <th>Trạng thái</th>
-                    <th>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredEnrollments.map(enrollment => {
-                    const pkg = companyCertPackages.find(p => p.package_id === enrollment.package_id);
-                    const expiryDate = calculateExpiryDate(enrollment.enrolled_at, pkg?.duration_months || 0);
-                    
-                    return (
-                      <tr key={enrollment.enrollment_id}>
-                        <td>
-                          <strong>{enrollment.company_name}</strong><br />
-                          <small>{enrollment.contact_person}</small>
-                        </td>
-                        <td>{enrollment.tax_code}</td>
-                        <td>
-                          <strong>{getPackageName(enrollment.package_id)}</strong><br />
-                          <small>{formatCurrency(getPackagePrice(enrollment.package_id))}</small>
-                        </td>
-                        <td>
-                          <i className="fas fa-phone"></i> {enrollment.phone}<br />
-                          <i className="fas fa-envelope"></i> {enrollment.email}
-                        </td>
-                        <td>
-                          <strong>{formatDate(enrollment.enrolled_at)}</strong><br />
-                          <small>Hết hạn: {formatDate(expiryDate.toISOString())}</small>
-                        </td>
-                        <td>
-                          <span className={`status-badge status-${enrollment.status}`}>
-                            {getStatusLabel(enrollment.status)}
-                          </span>
-                        </td>
-                        <td>
-                          <button className="btn btn-sm btn-primary" onClick={() => viewEnrollmentDetails(enrollment.enrollment_id)}>
-                            <i className="fas fa-eye"></i>
-                          </button>
-                          <button className="btn btn-sm btn-warning" onClick={() => updateEnrollmentStatus(enrollment.enrollment_id)}>
-                            <i className="fas fa-edit"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+      {/* Image Preview Modal */}
+      <Modal
+        title="Xem trước hình ảnh"
+        open={!!modalImage}
+        onCancel={closeImageModal}
+        footer={[
+          <Button key="close" onClick={closeImageModal}>
+            Đóng
+          </Button>,
+        ]}
+      >
+        {modalImage && (
+          <Image
+            src={modalImage}
+            alt="Preview"
+            style={{ width: '100%' }}
+          />
         )}
-
-        {/* Revenue Tab */}
-        {activeTab === 'revenue' && (
-          <div className="tab-content active">
-            <div className="controls">
-              <div className="search-filters">
-                <select 
-                  className="filter-select" 
-                  value={yearFilter}
-                  onChange={(e) => setYearFilter(e.target.value)}
-                >
-                  <option value="2024">2024</option>
-                  <option value="2023">2023</option>
-                  <option value="2022">2022</option>
-                </select>
-                
-                <select 
-                  className="filter-select" 
-                  value={monthFilter}
-                  onChange={(e) => setMonthFilter(e.target.value)}
-                >
-                  <option value="">Cả năm</option>
-                  <option value="1">Tháng 1</option>
-                  <option value="2">Tháng 2</option>
-                  <option value="3">Tháng 3</option>
-                  <option value="4">Tháng 4</option>
-                  <option value="5">Tháng 5</option>
-                  <option value="6">Tháng 6</option>
-                  <option value="7">Tháng 7</option>
-                  <option value="8">Tháng 8</option>
-                  <option value="9">Tháng 9</option>
-                  <option value="10">Tháng 10</option>
-                  <option value="11">Tháng 11</option>
-                  <option value="12">Tháng 12</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="revenue-summary">
-              <div className="revenue-card">
-                <div className="revenue-icon" style={{background: 'linear-gradient(135deg, #2ecc71, #27ae60)'}}>
-                  <i className="fas fa-dollar-sign"></i>
-                </div>
-                <div className="revenue-amount">{formatCurrency(revenueData.totalRevenue)}</div>
-                <div className="revenue-label">Tổng doanh thu</div>
-              </div>
-              
-              <div className="revenue-card">
-                <div className="revenue-icon" style={{background: 'linear-gradient(135deg, #3498db, #2980b9)'}}>
-                  <i className="fas fa-building"></i>
-                </div>
-                <div className="revenue-amount">{revenueData.totalEnrollments}</div>
-                <div className="revenue-label">Doanh nghiệp đăng ký</div>
-              </div>
-              
-              <div className="revenue-card">
-                <div className="revenue-icon" style={{background: 'linear-gradient(135deg, #f39c12, #e67e22)'}}>
-                  <i className="fas fa-chart-line"></i>
-                </div>
-                <div className="revenue-amount">{formatCurrency(revenueData.averageValue)}</div>
-                <div className="revenue-label">Giá trị trung bình</div>
-              </div>
-              
-              <div className="revenue-card">
-                <div className="revenue-icon" style={{background: 'linear-gradient(135deg, #9b59b6, #8e44ad)'}}>
-                  <i className="fas fa-trophy"></i>
-                </div>
-                <div className="revenue-amount">{revenueData.topPackage.name}</div>
-                <div className="revenue-label">Gói phổ biến nhất</div>
-              </div>
-            </div>
-            
-            <div className="chart-container">
-              <h3 style={{marginBottom: '1.5rem', color: '#2c3e50'}}>
-                <i className="fas fa-chart-bar"></i> Doanh thu theo gói chứng chỉ
-              </h3>
-              <div style={{display: 'grid', gap: '1rem'}}>
-                {Object.keys(revenueData.packageRevenue).map(packageName => {
-                  const pkg = revenueData.packageRevenue[packageName];
-                  const percentage = (pkg.revenue / revenueData.totalRevenue * 100).toFixed(1);
-                  
-                  return (
-                    <div key={packageName} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(52, 152, 219, 0.05)', borderRadius: '10px'}}>
-                      <div>
-                        <strong>{packageName}</strong><br />
-                        <small>{pkg.count} đăng ký</small>
-                      </div>
-                      <div style={{textAlign: 'right'}}>
-                        <strong>{formatCurrency(pkg.revenue)}</strong><br />
-                        <small>{percentage}%</small>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            
-            <div className="chart-container">
-              <h3 style={{marginBottom: '1.5rem', color: '#2c3e50'}}>
-                <i className="fas fa-calendar-alt"></i> Doanh thu theo tháng
-              </h3>
-              <div style={{display: 'grid', gap: '1rem'}}>
-                {Object.keys(revenueData.monthlyRevenue).sort().map(month => {
-                  const revenue = revenueData.monthlyRevenue[month];
-                  const monthName = new Date(month + '-01').toLocaleDateString('vi-VN', { 
-                    year: 'numeric', 
-                    month: 'long' 
-                  });
-                  
-                  return (
-                    <div key={month} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(46, 204, 113, 0.05)', borderRadius: '10px'}}>
-                      <div>
-                        <strong>{monthName}</strong>
-                      </div>
-                      <div style={{textAlign: 'right'}}>
-                        <strong>{formatCurrency(revenue)}</strong>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Add/Edit Package Modal */}
-      {showModal === 'addPackageModal' && (
-        <div className="modal active">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="modal-title">
-                {currentEditingPackage ? 'Chỉnh sửa gói chứng chỉ' : 'Tạo gói chứng chỉ mới'}
-              </h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
-            </div>
-            
-            <form onSubmit={handlePackageSubmit}>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Tên gói *</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    value={packageForm.package_name}
-                    onChange={(e) => setPackageForm(prev => ({ ...prev, package_name: e.target.value }))}
-                    required 
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Giá (VNĐ) *</label>
-                  <input 
-                    type="number" 
-                    className="form-input" 
-                    value={packageForm.price}
-                    onChange={(e) => setPackageForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
-                    required 
-                    min="0" 
-                    step="1000" 
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label">Thời hạn (tháng) *</label>
-                  <select 
-                    className="form-input" 
-                    value={packageForm.duration_months}
-                    onChange={(e) => setPackageForm(prev => ({ ...prev, duration_months: parseInt(e.target.value) }))}
-                    required
-                  >
-                    <option value="">Chọn thời hạn</option>
-                    <option value="12">12 tháng</option>
-                    <option value="24">24 tháng</option>
-                    <option value="36">36 tháng</option>
-                  </select>
-                </div>
-                
-                <div className="form-group full-width">
-                  <label className="form-label">Mô tả gói</label>
-                  <textarea 
-                    className="form-input" 
-                    rows={4} 
-                    placeholder="Mô tả chi tiết về gói chứng chỉ..."
-                    value={packageForm.description}
-                    onChange={(e) => setPackageForm(prev => ({ ...prev, description: e.target.value }))}
-                  />
-                </div>
-              </div>
-              
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                  Hủy
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-save"></i> Lưu gói
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Company Enrollment Modal */}
-      {showModal === 'enrollmentModal' && currentEditingEnrollment && (
-        <div className="modal active">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="modal-title">Chi tiết đăng ký</h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
-            </div>
-            
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Tên doanh nghiệp</label>
-                <div className="form-input" style={{background: '#f8f9fa', color: '#495057'}}>
-                  {currentEditingEnrollment.company_name}
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Mã số thuế</label>
-                <div className="form-input" style={{background: '#f8f9fa', color: '#495057'}}>
-                  {currentEditingEnrollment.tax_code}
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Người liên hệ</label>
-                <div className="form-input" style={{background: '#f8f9fa', color: '#495057'}}>
-                  {currentEditingEnrollment.contact_person}
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Số điện thoại</label>
-                <div className="form-input" style={{background: '#f8f9fa', color: '#495057'}}>
-                  {currentEditingEnrollment.phone}
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <div className="form-input" style={{background: '#f8f9fa', color: '#495057'}}>
-                  {currentEditingEnrollment.email}
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Gói chứng chỉ</label>
-                <div className="form-input" style={{background: '#f8f9fa', color: '#495057'}}>
-                  {getPackageName(currentEditingEnrollment.package_id)} - {formatCurrency(getPackagePrice(currentEditingEnrollment.package_id))}
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Ngày đăng ký</label>
-                <div className="form-input" style={{background: '#f8f9fa', color: '#495057'}}>
-                  {formatDateTime(currentEditingEnrollment.enrolled_at)}
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Ngày hết hạn</label>
-                <div className="form-input" style={{background: '#f8f9fa', color: '#495057'}}>
-                  {(() => {
-                    const pkg = companyCertPackages.find(p => p.package_id === currentEditingEnrollment.package_id);
-                    const expiryDate = calculateExpiryDate(currentEditingEnrollment.enrolled_at, pkg?.duration_months || 0);
-                    const remainingDays = Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                    return `${formatDate(expiryDate.toISOString())} ${remainingDays > 0 ? `(còn ${remainingDays} ngày)` : '(đã hết hạn)'}`;
-                  })()}
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Trạng thái</label>
-                <div className="form-input" style={{background: '#f8f9fa'}}>
-                  <span className={`status-badge status-${currentEditingEnrollment.status}`}>
-                    {getStatusLabel(currentEditingEnrollment.status)}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="form-group full-width">
-                <label className="form-label">Mô tả gói</label>
-                <div className="form-input" style={{background: '#f8f9fa', color: '#495057', minHeight: '80px'}}>
-                  {companyCertPackages.find(p => p.package_id === currentEditingEnrollment.package_id)?.description}
-                </div>
-              </div>
-            </div>
-            
-            <div className="form-actions">
-              <button className="btn btn-warning" onClick={() => updateEnrollmentStatus(currentEditingEnrollment.enrollment_id)}>
-                <i className="fas fa-edit"></i> Cập nhật trạng thái
-              </button>
-              <button className="btn btn-secondary" onClick={closeModal}>
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Update Status Modal */}
-      {showModal === 'updateStatusModal' && (
-        <div className="modal active">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="modal-title">Cập nhật trạng thái</h2>
-              <span className="close-modal" onClick={closeModal}>&times;</span>
-            </div>
-            
-            <form onSubmit={handleStatusSubmit}>
-              <div className="form-group">
-                <label className="form-label">Trạng thái mới *</label>
-                <select 
-                  className="form-input" 
-                  value={statusForm.newStatus}
-                  onChange={(e) => setStatusForm(prev => ({ ...prev, newStatus: e.target.value as 'active' | 'expired' | 'pending' }))}
-                  required
-                >
-                  <option value="active">Đang hoạt động</option>
-                  <option value="expired">Hết hạn</option>
-                  <option value="pending">Chờ xử lý</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Ghi chú</label>
-                <textarea 
-                  className="form-input" 
-                  rows={3} 
-                  placeholder="Lý do thay đổi trạng thái..."
-                  value={statusForm.statusNote}
-                  onChange={(e) => setStatusForm(prev => ({ ...prev, statusNote: e.target.value }))}
-                />
-              </div>
-              
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                  Hủy
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  <i className="fas fa-save"></i> Cập nhật
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 };

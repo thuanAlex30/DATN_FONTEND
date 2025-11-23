@@ -16,9 +16,9 @@ import {
   ExclamationCircleOutlined,
   BookOutlined,
   SafetyOutlined,
-  SafetyCertificateOutlined,
   LogoutOutlined,
-  ProjectOutlined
+  ProjectOutlined,
+  SafetyCertificateOutlined
 } from '@ant-design/icons';
 import styles from './EmployeeSidebar.module.css';
 
@@ -51,11 +51,6 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
       key: '/employee/profile',
       icon: <UserOutlined />,
       label: 'Thông tin cá nhân',
-    },
-    {
-      key: '/employee/incidents/report',
-      icon: <ExclamationCircleOutlined />,
-      label: 'Báo cáo sự cố',
     },
     {
       key: '/employee/training',

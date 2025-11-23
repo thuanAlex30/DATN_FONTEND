@@ -7,30 +7,42 @@ import {
   Row,
   Col,
   Space,
+  Form,
+  Input,
+  message,
+  Card,
   Divider
 } from 'antd';
 import {
   SafetyOutlined,
   LoginOutlined,
   ArrowLeftOutlined,
-  CheckCircleOutlined,
   PhoneOutlined,
   MailOutlined,
   EnvironmentOutlined,
+  ClockCircleOutlined,
   FacebookOutlined,
   InstagramOutlined,
   TwitterOutlined
 } from '@ant-design/icons';
-import styles from './About.module.css';
+import styles from './Contact.module.css';
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
 
-const AboutPage: React.FC = () => {
+const ContactPage: React.FC = () => {
   const navigate = useNavigate();
+  const [form] = Form.useForm();
 
   const handleLogin = () => {
     navigate('/login');
+  };
+
+  const handleContactSubmit = (values: any) => {
+    console.log('Contact form values:', values);
+    message.success('Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.');
+    form.resetFields();
   };
 
   return (
@@ -65,14 +77,14 @@ const AboutPage: React.FC = () => {
             </Button>
             <Button
               type="link"
-              className={styles.navLinkActive}
+              className={styles.navLink}
+              onClick={() => navigate('/about')}
             >
               Giới thiệu
             </Button>
             <Button
               type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/contact')}
+              className={styles.navLinkActive}
             >
               Liên Hệ
             </Button>
@@ -98,49 +110,104 @@ const AboutPage: React.FC = () => {
             Quay lại trang chủ
           </Button>
 
-          <section className={styles.aboutSection}>
+          <section className={styles.contactSection}>
             <Title level={1} className={styles.pageTitle}>
-              Giới thiệu về hệ thống
+              Liên hệ với chúng tôi
             </Title>
             
-            <Row gutter={[48, 48]} align="middle" className={styles.aboutRow}>
+            <Row gutter={[48, 48]}>
               <Col xs={24} lg={12}>
-                <Paragraph className={styles.aboutText}>
-                  Hệ thống Quản lý An toàn Lao động được phát triển nhằm hỗ trợ các tổ chức
-                  quản lý toàn diện các hoạt động liên quan đến an toàn lao động. Với giao diện
-                  thân thiện và các tính năng mạnh mẽ, hệ thống giúp:
+                <Paragraph className={styles.contactText}>
+                  Nếu bạn có bất kỳ câu hỏi hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi
+                  qua các kênh sau:
                 </Paragraph>
-                <ul className={styles.aboutList}>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Nâng cao hiệu quả quản lý an toàn lao động
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Giảm thiểu rủi ro và sự cố tại nơi làm việc
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Theo dõi và quản lý đào tạo an toàn
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Quản lý thiết bị bảo hộ cá nhân (PPE)
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Tạo báo cáo và thống kê chi tiết
-                  </li>
-                  <li>
-                    <CheckCircleOutlined className={styles.listIcon} />
-                    Xử lý sự cố nhanh chóng và hiệu quả
-                  </li>
-                </ul>
+                <Space direction="vertical" size="large" className={styles.contactInfo}>
+                  <div className={styles.contactItem}>
+                    <PhoneOutlined className={styles.contactIcon} />
+                    <div>
+                      <Text strong>Điện thoại</Text>
+                      <br />
+                      <Text>+84 (0) 123 456 789</Text>
+                    </div>
+                  </div>
+                  <div className={styles.contactItem}>
+                    <MailOutlined className={styles.contactIcon} />
+                    <div>
+                      <Text strong>Email</Text>
+                      <br />
+                      <Text>support@safety-system.com</Text>
+                    </div>
+                  </div>
+                  <div className={styles.contactItem}>
+                    <EnvironmentOutlined className={styles.contactIcon} />
+                    <div>
+                      <Text strong>Địa chỉ</Text>
+                      <br />
+                      <Text>123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh</Text>
+                    </div>
+                  </div>
+                  <div className={styles.contactItem}>
+                    <ClockCircleOutlined className={styles.contactIcon} />
+                    <div>
+                      <Text strong>Giờ làm việc</Text>
+                      <br />
+                      <Text>Thứ 2 - Thứ 6: 8:00 - 17:30</Text>
+                      <br />
+                      <Text>Thứ 7: 8:00 - 12:00</Text>
+                      <br />
+                      <Text>Chủ nhật: Nghỉ</Text>
+                    </div>
+                  </div>
+                </Space>
               </Col>
               <Col xs={24} lg={12}>
-                <div className={styles.aboutImage}>
-                  <SafetyOutlined className={styles.aboutIcon} />
-                </div>
+                <Card title="Gửi tin nhắn cho chúng tôi" className={styles.contactFormCard}>
+                  <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleContactSubmit}
+                  >
+                    <Form.Item
+                      name="name"
+                      label="Họ và tên"
+                      rules={[{ required: true, message: 'Vui lòng nhập họ và tên!' }]}
+                    >
+                      <Input placeholder="Nhập họ và tên của bạn" />
+                    </Form.Item>
+                    <Form.Item
+                      name="email"
+                      label="Email"
+                      rules={[
+                        { required: true, message: 'Vui lòng nhập email!' },
+                        { type: 'email', message: 'Email không hợp lệ!' }
+                      ]}
+                    >
+                      <Input placeholder="Nhập email của bạn" />
+                    </Form.Item>
+                    <Form.Item
+                      name="subject"
+                      label="Chủ đề"
+                      rules={[{ required: true, message: 'Vui lòng nhập chủ đề!' }]}
+                    >
+                      <Input placeholder="Nhập chủ đề" />
+                    </Form.Item>
+                    <Form.Item
+                      name="message"
+                      label="Nội dung"
+                      rules={[{ required: true, message: 'Vui lòng nhập nội dung!' }]}
+                    >
+                      <TextArea
+                        rows={6}
+                        placeholder="Nhập nội dung tin nhắn của bạn"
+                      />
+                    </Form.Item>
+                    <Form.Item>
+                      <Button type="primary" htmlType="submit" size="large" block>
+                        Gửi tin nhắn
+                      </Button>
+                    </Form.Item>
+                  </Form>
+                </Card>
               </Col>
             </Row>
           </section>
@@ -316,5 +383,5 @@ const AboutPage: React.FC = () => {
   );
 };
 
-export default AboutPage;
+export default ContactPage;
 

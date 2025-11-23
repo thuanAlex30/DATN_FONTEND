@@ -2228,7 +2228,7 @@ const PPEManagement: React.FC = () => {
         onCancel={() => setShowDistributeModal(false)}
         footer={null}
         width={800}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={distributeForm}

@@ -145,7 +145,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
       onCancel={handleCancel}
       footer={null}
       width={700}
-      destroyOnClose
+      destroyOnHidden
     >
       <Steps current={currentStep} style={{ marginBottom: '24px' }}>
         {steps.map((step, index) => (
