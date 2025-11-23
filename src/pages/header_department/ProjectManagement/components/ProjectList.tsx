@@ -192,7 +192,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
                             icon={<EyeOutlined />}
                             className="hover:bg-blue-50 hover:text-blue-600 transition-colors"
                           >
-                            <Link to={`/admin/project-management/${project.id}`}>
+                            <Link to={`/header-department/project-management/${project.id}`}>
                               Xem chi tiết
                             </Link>
                           </Button>
@@ -222,7 +222,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
                         </motion.div>
                       }
                       title={
-                        <Link to={`/admin/project-management/${project.id}`}>
+                        <Link to={`/header-department/project-management/${project.id}`}>
                           <Typography.Title 
                             level={5} 
                             className="!mb-0 !text-gray-800 hover:text-blue-600 transition-colors"
@@ -323,7 +323,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
           whileHover={{ x: 4 }}
           transition={{ duration: 0.2 }}
         >
-          <Link to={`/admin/project-management/${record.id}`}>
+          <Link to={`/header-department/project-management/${record.id}`}>
             <Typography.Title 
               level={5} 
               className="!mb-1 !text-gray-800 hover:text-blue-600 transition-colors"
@@ -469,7 +469,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
                 icon={<EyeOutlined />}
                 className="hover:bg-blue-50 hover:text-blue-600 transition-colors"
               >
-                <Link to={`/admin/project-management/${record.id}`}>
+                <Link to={`/header-department/project-management/${record.id}`}>
                   Xem
                 </Link>
               </Button>

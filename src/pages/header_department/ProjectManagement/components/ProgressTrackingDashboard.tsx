@@ -282,7 +282,7 @@ const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps> = ({ p
           <Card
             title="Trạng thái Milestone"
             extra={
-              <Link to={`/admin/project-management/${projectId}/milestones`}>
+              <Link to={`/header-department/project-management/${projectId}/milestones`}>
                 Xem tất cả <RightOutlined />
               </Link>
             }
@@ -319,7 +319,7 @@ const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps> = ({ p
           <Card
             title="Nhiệm vụ Gần đây"
             extra={
-              <Link to={`/admin/project-management/${projectId}/tasks`}>
+              <Link to={`/header-department/project-management/${projectId}/tasks`}>
                 Xem tất cả <RightOutlined />
               </Link>
             }
@@ -360,7 +360,7 @@ const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps> = ({ p
       <Card
         title="Tiến độ Giai đoạn"
         extra={
-          <Link to={`/admin/project-management/${projectId}/overview`}>
+          <Link to={`/header-department/project-management/${projectId}/overview`}>
             Xem tất cả <RightOutlined />
           </Link>
         }
@@ -377,19 +377,19 @@ const ProgressTrackingDashboard: React.FC<ProgressTrackingDashboardProps> = ({ p
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            href={`/admin/project-management/${projectId}/tasks`}
+            href={`/header-department/project-management/${projectId}/tasks`}
           >
             Tạo Nhiệm vụ Mới
           </Button>
           <Button
             icon={<FlagOutlined />}
-            href={`/admin/project-management/${projectId}/milestones`}
+            href={`/header-department/project-management/${projectId}/milestones`}
           >
             Tạo Milestone
           </Button>
           <Button
             icon={<FileTextOutlined />}
-            href={`/admin/project-management/${projectId}/status-reports`}
+            href={`/header-department/project-management/${projectId}/status-reports`}
           >
             Tạo Báo cáo
           </Button>

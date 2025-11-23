@@ -18,7 +18,6 @@ interface WebSocketProviderProps {
 const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
   const dispatch = useDispatch();
   const { token, isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const { isConnected } = useSelector((state: RootState) => state.websocket);
   const initialized = useRef(false);
   const currentToken = useRef<string | null>(null);
 
@@ -89,7 +88,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'safety',
         priority: 'high',
         created_at: new Date().toISOString(),
-        action_url: `/admin/incident-management/${data.incident?._id}`
+        action_url: `/header-department/incident-management/${data.incident?._id}`
       }));
 
       toast.warning('🚨 Sự cố mới được báo cáo');
@@ -107,7 +106,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'safety',
         priority: 'medium',
         created_at: new Date().toISOString(),
-        action_url: `/admin/incident-management/${data.incident?._id}`
+        action_url: `/header-department/incident-management/${data.incident?._id}`
       }));
     });
 
@@ -123,7 +122,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'safety',
         priority: 'medium',
         created_at: new Date().toISOString(),
-        action_url: `/admin/incident-management/${data.incident?._id}`
+        action_url: `/header-department/incident-management/${data.incident?._id}`
       }));
     });
 
@@ -139,7 +138,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'safety',
         priority: 'medium',
         created_at: new Date().toISOString(),
-        action_url: `/admin/incident-management/${data.incident?._id}`
+        action_url: `/header-department/incident-management/${data.incident?._id}`
       }));
 
       toast.success('✅ Sự cố đã được đóng');
@@ -161,7 +160,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'ppe',
         priority: 'medium',
         created_at: new Date().toISOString(),
-        action_url: `/admin/ppe-management`
+        action_url: `/header-department/ppe-management`
       }));
     });
 
@@ -180,7 +179,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'ppe',
         priority: 'medium',
         created_at: new Date().toISOString(),
-        action_url: `/admin/ppe-management`
+        action_url: `/header-department/ppe-management`
       }));
     });
 
@@ -196,7 +195,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'ppe',
         priority: 'high',
         created_at: new Date().toISOString(),
-        action_url: `/admin/ppe-management`
+        action_url: `/header-department/ppe-management`
       }));
 
       toast.warning('⚠️ PPE sắp hết hạn');
@@ -214,7 +213,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'ppe',
         priority: 'high',
         created_at: new Date().toISOString(),
-        action_url: `/admin/ppe-management`
+        action_url: `/header-department/ppe-management`
       }));
 
       toast.warning('📉 PPE sắp hết hàng');
@@ -233,7 +232,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'training',
         priority: 'medium',
         created_at: new Date().toISOString(),
-        action_url: `/admin/training-management`
+        action_url: `/header-department/training-management`
       }));
     });
 
@@ -249,7 +248,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'training',
         priority: 'medium',
         created_at: new Date().toISOString(),
-        action_url: `/admin/training-management`
+        action_url: `/header-department/training-management`
       }));
 
       toast.success('🎉 Hoàn thành đào tạo');
@@ -268,7 +267,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'project',
         priority: 'medium',
         created_at: new Date().toISOString(),
-        action_url: `/admin/project-management`
+        action_url: `/header-department/project-management`
       }));
     });
 
@@ -284,7 +283,7 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
         category: 'project',
         priority: 'low',
         created_at: new Date().toISOString(),
-        action_url: `/admin/project-management`
+        action_url: `/header-department/project-management`
       }));
     });
 

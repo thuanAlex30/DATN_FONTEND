@@ -14,7 +14,7 @@ interface Course {
 
 interface QuestionBank {
   _id: string;
-  bank_name: string;
+  name: string;
   description: string;
   course_id: string;
   questions: any[];
@@ -45,9 +45,12 @@ const QuestionBankModal: React.FC<QuestionBankModalProps> = ({ course, onClose }
     setLoading(true);
     try {
       const response = await api.get(`/training/question-banks/course/${course._id}`);
-      setQuestionBanks(response.data);
+      // Ensure we always have an array
+      const data = response.data?.data || response.data || [];
+      setQuestionBanks(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching question banks:', error);
+      setQuestionBanks([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -59,7 +62,7 @@ const QuestionBankModal: React.FC<QuestionBankModalProps> = ({ course, onClose }
 
     try {
       await api.post('/training/question-banks', {
-        bank_name: newBankName,
+        name: newBankName,
         description: newBankDescription,
         course_id: course._id,
       });
@@ -146,21 +149,21 @@ const QuestionBankModal: React.FC<QuestionBankModalProps> = ({ course, onClose }
             <h3>Danh sách ngân hàng câu hỏi</h3>
             {loading ? (
               <p>Đang tải...</p>
-            ) : questionBanks.length === 0 ? (
+            ) : !Array.isArray(questionBanks) || questionBanks.length === 0 ? (
               <p>Chưa có ngân hàng câu hỏi nào.</p>
             ) : (
               <div className="banks-grid">
                 {questionBanks.map((bank) => (
                   <div key={bank._id} className="bank-card">
                     <div className="bank-header">
-                      <h4>{bank.bank_name}</h4>
+                      <h4>{bank.name}</h4>
                       <div className="bank-actions">
                         <button 
                           className="btn btn-info btn-sm"
                           onClick={() => {
                             // Preview bank functionality - show questions in modal
                             console.log('Preview bank:', bank);
-                            alert(`Xem trước ngân hàng câu hỏi: ${bank.bank_name}\nSố câu hỏi: ${bank.questions?.length || 0}`);
+                            alert(`Xem trước ngân hàng câu hỏi: ${bank.name}\nSố câu hỏi: ${bank.questions?.length || 0}`);
                           }}
                         >
                           <i className="fas fa-eye"></i> Xem trước
