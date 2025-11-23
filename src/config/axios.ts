@@ -13,7 +13,19 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Get token from localStorage directly to avoid circular dependency
+    // Các endpoint chatbot cho phép không cần token
+    const optionalAuthEndpoints = [
+      '/chatbot/session',
+      '/chatbot/message',
+      '/chatbot/ai-status'
+    ];
+    
+    const isOptionalAuthEndpoint = optionalAuthEndpoints.some(endpoint => 
+      config.url?.includes(endpoint)
+    );
+    
+    // Chỉ thêm token nếu có và không phải là optional auth endpoint
+    // Hoặc nếu là optional auth endpoint, vẫn thêm token nếu có (để lấy thông tin user nếu đã đăng nhập)
     const token = localStorage.getItem(ENV.JWT_STORAGE_KEY);
     
     if (token && config.headers) {
@@ -25,6 +37,8 @@ apiClient.interceptors.request.use(
       console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
         data: config.data,
         params: config.params,
+        isOptionalAuth: isOptionalAuthEndpoint,
+        hasToken: !!token,
         timestamp: new Date().toISOString(),
       });
     }
@@ -76,7 +90,8 @@ apiClient.interceptors.response.use(
       const optionalAuthEndpoints = [
         '/chatbot/session',
         '/chatbot/message',
-        '/chatbot/ai-status'
+        '/chatbot/ai-status',
+        '/chatbot/history'
       ];
       
       const isOptionalAuthEndpoint = optionalAuthEndpoints.some(endpoint => 
@@ -85,6 +100,7 @@ apiClient.interceptors.response.use(
       
       if (isOptionalAuthEndpoint) {
         // Đây là endpoint optional auth, chỉ reject error, không redirect
+        // Không cần refresh token vì endpoint này không yêu cầu authentication
         console.log('ℹ️ Optional auth endpoint - not redirecting to login');
         return Promise.reject(error);
       }

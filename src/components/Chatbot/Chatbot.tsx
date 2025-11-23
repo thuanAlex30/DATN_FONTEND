@@ -47,16 +47,17 @@ const Chatbot: React.FC = () => {
       setSessionId(localSessionId);
       
       // Thử tạo session trên server (không bắt buộc)
+      // Chatbot có thể hoạt động mà không cần đăng nhập
       try {
         const response = await chatbotService.createSession();
         if (response.data.success) {
           // Nếu server trả về sessionId, dùng sessionId từ server
           setSessionId(response.data.data.sessionId);
         }
-      } catch (error) {
+      } catch (error: any) {
         // Lỗi không quan trọng, vẫn dùng localSessionId
-        // Khi chưa đăng nhập, API có thể trả về 401 nhưng không sao
-        console.log('Session creation on server failed (optional):', error);
+        // Chatbot có thể hoạt động mà không cần server session
+        console.log('Session creation on server failed (optional, chatbot still works):', error?.message || error);
       }
     };
     createSession();
@@ -133,9 +134,31 @@ const Chatbot: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
+      
+      // Xử lý lỗi chi tiết hơn
+      let errorContent = 'Xin lỗi, có lỗi xảy ra khi kết nối đến server.';
+      
+      if (error.response) {
+        // Server trả về response nhưng có lỗi
+        const status = error.response.status;
+        if (status === 500) {
+          errorContent = 'Xin lỗi, server đang gặp sự cố. Vui lòng thử lại sau.';
+        } else if (status === 429) {
+          errorContent = 'Bạn đã gửi quá nhiều tin nhắn. Vui lòng đợi một chút rồi thử lại.';
+        } else if (status >= 400 && status < 500) {
+          errorContent = error.response.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
+        }
+      } else if (error.request) {
+        // Request được gửi nhưng không nhận được response
+        errorContent = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng và đảm bảo backend đang chạy.';
+      } else {
+        // Lỗi khi setup request
+        errorContent = 'Có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại.';
+      }
+      
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: 'Xin lỗi, có lỗi xảy ra khi kết nối đến server. Vui lòng kiểm tra kết nối mạng và thử lại.',
+        content: errorContent,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);

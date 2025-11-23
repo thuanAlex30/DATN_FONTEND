@@ -34,6 +34,7 @@ import ManagerPPEManagement from '../pages/Manager/PPEManagement';
 import ManagerProjectManagement from '../pages/Manager/ProjectManagement';
 import ManagerTraining from '../pages/Manager/Training';
 import WebSocketTest from '../pages/WebSocketTest';
+import LandingPage from '../pages/Landing';
 import { projectManagementRoutes } from './projectManagementRoutes';
 import ProjectManagementRouteWrapper from './ProjectManagementRouteWrapper';
 
@@ -46,6 +47,7 @@ const AppRoutes = () => {
     return (
         <Routes>
             {/* Public routes */}
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             
@@ -151,9 +153,6 @@ const AppRoutes = () => {
                 path="/websocket-test" 
                 element={<WebSocketTest />} 
             />
-            
-            {/* Redirect root to login */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
             
             {/* Protected admin routes */}
             <Route 
