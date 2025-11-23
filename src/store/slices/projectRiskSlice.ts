@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import projectRiskService, { type ProjectRisk } from '../../services/projectRiskService';
+import projectRiskService from '../../services/projectRiskService';
+import type { ProjectRisk } from '../../services/projectRiskService';
 import type { 
   RiskStats,
   CreateRiskData,

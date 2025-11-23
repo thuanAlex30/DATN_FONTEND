@@ -5,8 +5,6 @@ export interface ProjectResource {
   resource_type: 'HUMAN' | 'EQUIPMENT' | 'MATERIAL' | 'FACILITY' | 'TECHNOLOGY';
   description?: string;
   quantity: number;
-  unit_cost: number;
-  total_cost: number;
   availability_start: string;
   availability_end: string;
   status: 'AVAILABLE' | 'ALLOCATED' | 'UNAVAILABLE' | 'MAINTENANCE';
@@ -34,7 +32,6 @@ export interface CreateResourceData {
   resource_type: 'HUMAN' | 'EQUIPMENT' | 'MATERIAL' | 'FACILITY' | 'TECHNOLOGY';
   description?: string;
   quantity: number;
-  unit_cost: number;
   availability_start: string;
   availability_end: string;
 }
@@ -44,7 +41,6 @@ export interface UpdateResourceData {
   resource_type?: 'HUMAN' | 'EQUIPMENT' | 'MATERIAL' | 'FACILITY' | 'TECHNOLOGY';
   description?: string;
   quantity?: number;
-  unit_cost?: number;
   availability_start?: string;
   availability_end?: string;
   status?: 'AVAILABLE' | 'ALLOCATED' | 'UNAVAILABLE' | 'MAINTENANCE';
@@ -71,8 +67,6 @@ export interface ResourceStats {
   total_resources: number;
   allocated_resources: number;
   available_resources: number;
-  total_cost: number;
-  allocated_cost: number;
   utilization_rate: number;
 }
 

@@ -1,208 +1,223 @@
 import api from './api';
 
-const API_BASE = '/project-communications';
+const API_BASE = '/project-communication';
 
-export interface ProjectCommunication {
+export interface ProjectMessage {
   _id: string;
   id: string;
-  project_id: {
-    _id: string;
-    id: string;
-    project_name: string;
-  };
-  sender_id: {
-    _id: string;
-    id: string;
-    email: string;
-    full_name: string;
-  };
-  recipient_id?: {
-    _id: string;
-    id: string;
-    email: string;
-    full_name: string;
-  };
-  subject: string;
-  message: string;
-  communication_type: 'EMAIL' | 'MESSAGE' | 'ANNOUNCEMENT' | 'NOTIFICATION';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  status: 'DRAFT' | 'SENT' | 'READ' | 'ARCHIVED';
-  attachments?: Array<{
-    filename: string;
-    url: string;
-    size: number;
-  }>;
+  project_id: string;
+  sender_id: string;
+  sender_name: string;
+  content: string;
+  message_type: 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM';
+  reply_to?: string;
+  attachments?: string[];
   created_at: string;
   updated_at: string;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
 }
 
-export interface ProjectCommunicationsResponse {
-  success: boolean;
-  message: string;
-  data: ProjectCommunication[];
-  timestamp: string;
-}
-
-export interface CreateCommunicationData {
+export interface ProjectNotification {
+  _id: string;
+  id: string;
   project_id: string;
-  recipient_id?: string;
-  subject: string;
+  user_id: string;
+  title: string;
   message: string;
-  communication_type: 'EMAIL' | 'MESSAGE' | 'ANNOUNCEMENT' | 'NOTIFICATION';
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  attachments?: Array<{
-    filename: string;
-    url: string;
-    size: number;
-  }>;
+  type: 'TASK' | 'MILESTONE' | 'RISK' | 'RESOURCE' | 'MEETING' | 'GENERAL';
+  is_read: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectMeeting {
+  _id: string;
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  meeting_date: string;
+  duration: number;
+  location: string;
+  meeting_type: 'IN_PERSON' | 'ONLINE' | 'HYBRID';
+  attendees: string[];
+  agenda: string[];
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateMessageData {
+  project_id: string;
+  content: string;
+  message_type: 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM';
+  reply_to?: string;
+  attachments?: string[];
+}
+
+export interface CreateNotificationData {
+  project_id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: 'TASK' | 'MILESTONE' | 'RISK' | 'RESOURCE' | 'MEETING' | 'GENERAL';
+}
+
+export interface CreateMeetingData {
+  project_id: string;
+  title: string;
+  description: string;
+  meeting_date: string;
+  duration: number;
+  location: string;
+  meeting_type: 'IN_PERSON' | 'ONLINE' | 'HYBRID';
+  attendees: string[];
+  agenda: string[];
 }
 
 export const projectCommunicationService = {
-  // Get all communications for a project
-  getProjectCommunications: async (projectId: string): Promise<{ data: ProjectCommunication[]; success: boolean; message?: string }> => {
+  // Messages
+  getProjectMessages: async (projectId: string, page: number = 1, limit: number = 50) => {
     try {
-      const response = await api.get<ProjectCommunicationsResponse>(`${API_BASE}/project/${projectId}/communications`);
-      return { 
-        data: response.data.data || [], 
-        success: true 
-      };
+      const response = await api.get(`${API_BASE}/${projectId}/messages`, {
+        params: { page, limit }
+      });
+      return { data: response.data.data || [], success: true };
     } catch (error) {
-      console.error('Error fetching project communications:', error);
-      return { 
-        data: [], 
-        success: false, 
-        message: 'Failed to fetch project communications' 
-      };
+      console.error('Error fetching project messages:', error);
+      return { data: [], success: false, message: 'Failed to fetch project messages' };
     }
   },
 
-  // Get communication by ID
-  getCommunicationById: async (communicationId: string): Promise<{ data: ProjectCommunication | null; success: boolean; message?: string }> => {
+  sendMessage: async (data: CreateMessageData) => {
     try {
-      const response = await api.get<{ success: boolean; data: ProjectCommunication }>(`${API_BASE}/communications/${communicationId}`);
-      return { 
-        data: response.data.data || null, 
-        success: true 
-      };
+      const response = await api.post(`${API_BASE}/messages`, data);
+      return { data: response.data.data, success: true };
     } catch (error) {
-      console.error('Error fetching communication:', error);
-      return { 
-        data: null, 
-        success: false, 
-        message: 'Failed to fetch communication' 
-      };
+      console.error('Error sending message:', error);
+      return { data: null, success: false, message: 'Failed to send message' };
     }
   },
 
-  // Create new communication
-  createCommunication: async (communicationData: CreateCommunicationData): Promise<{ data: ProjectCommunication | null; success: boolean; message?: string }> => {
+  deleteMessage: async (messageId: string) => {
     try {
-      const response = await api.post<{ success: boolean; data: ProjectCommunication }>(`${API_BASE}/communications`, communicationData);
-      return { 
-        data: response.data.data || null, 
-        success: true 
-      };
+      const response = await api.delete(`${API_BASE}/messages/${messageId}`);
+      return { data: response.data.data, success: true };
     } catch (error) {
-      console.error('Error creating communication:', error);
-      return { 
-        data: null, 
-        success: false, 
-        message: 'Failed to create communication' 
-      };
+      console.error('Error deleting message:', error);
+      return { data: null, success: false, message: 'Failed to delete message' };
     }
   },
 
-  // Update communication
-  updateCommunication: async (communicationId: string, communicationData: Partial<CreateCommunicationData>): Promise<{ data: ProjectCommunication | null; success: boolean; message?: string }> => {
+  // Notifications
+  getProjectNotifications: async (projectId: string) => {
     try {
-      const response = await api.put<{ success: boolean; data: ProjectCommunication }>(`${API_BASE}/communications/${communicationId}`, communicationData);
-      return { 
-        data: response.data.data || null, 
-        success: true 
-      };
+      const response = await api.get(`${API_BASE}/${projectId}/notifications`);
+      return { data: response.data.data || [], success: true };
     } catch (error) {
-      console.error('Error updating communication:', error);
-      return { 
-        data: null, 
-        success: false, 
-        message: 'Failed to update communication' 
-      };
+      console.error('Error fetching project notifications:', error);
+      return { data: [], success: false, message: 'Failed to fetch project notifications' };
     }
   },
 
-  // Delete communication
-  deleteCommunication: async (communicationId: string): Promise<{ success: boolean; message?: string }> => {
+  getUserNotifications: async (userId: string, projectId?: string) => {
     try {
-      await api.delete(`${API_BASE}/communications/${communicationId}`);
-      return { 
-        success: true 
-      };
+      let endpoint = `${API_BASE}/notifications/user/${userId}`;
+      if (projectId) {
+        endpoint = `${API_BASE}/project/${projectId}/notifications/user/${userId}`;
+      }
+      const response = await api.get(endpoint);
+      return { data: response.data.data || [], success: true };
     } catch (error) {
-      console.error('Error deleting communication:', error);
-      return { 
-        success: false, 
-        message: 'Failed to delete communication' 
-      };
+      console.error('Error fetching user notifications:', error);
+      return { data: [], success: false, message: 'Failed to fetch user notifications' };
     }
   },
 
-  // Mark communication as read
-  markAsRead: async (communicationId: string): Promise<{ data: ProjectCommunication | null; success: boolean; message?: string }> => {
+  createNotification: async (data: CreateNotificationData) => {
     try {
-      const response = await api.put<{ success: boolean; data: ProjectCommunication }>(`${API_BASE}/communications/${communicationId}/read`);
-      return { 
-        data: response.data.data || null, 
-        success: true 
-      };
+      const response = await api.post(`${API_BASE}/notifications`, data);
+      return { data: response.data.data, success: true };
     } catch (error) {
-      console.error('Error marking communication as read:', error);
-      return { 
-        data: null, 
-        success: false, 
-        message: 'Failed to mark communication as read' 
-      };
+      console.error('Error creating notification:', error);
+      return { data: null, success: false, message: 'Failed to create notification' };
     }
   },
 
-  // Archive communication
-  archiveCommunication: async (communicationId: string): Promise<{ data: ProjectCommunication | null; success: boolean; message?: string }> => {
+  markNotificationAsRead: async (notificationId: string) => {
     try {
-      const response = await api.put<{ success: boolean; data: ProjectCommunication }>(`${API_BASE}/communications/${communicationId}/archive`);
-      return { 
-        data: response.data.data || null, 
-        success: true 
-      };
+      const response = await api.put(`${API_BASE}/notifications/${notificationId}/read`);
+      return { data: response.data.data, success: true };
     } catch (error) {
-      console.error('Error archiving communication:', error);
-      return { 
-        data: null, 
-        success: false, 
-        message: 'Failed to archive communication' 
-      };
+      console.error('Error marking notification as read:', error);
+      return { data: null, success: false, message: 'Failed to mark notification as read' };
     }
   },
 
-  // Get communications for a specific user
-  getUserCommunications: async (userId: string): Promise<{ data: ProjectCommunication[]; success: boolean; message?: string }> => {
+  markAllNotificationsAsRead: async (userId: string, projectId?: string) => {
     try {
-      const response = await api.get<ProjectCommunicationsResponse>(`${API_BASE}/user/${userId}/communications`);
-      return { 
-        data: response.data.data || [], 
-        success: true 
-      };
+      let endpoint = `${API_BASE}/notifications/user/${userId}/read-all`;
+      if (projectId) {
+        endpoint = `${API_BASE}/project/${projectId}/notifications/user/${userId}/read-all`;
+      }
+      const response = await api.put(endpoint);
+      return { data: response.data.data, success: true };
     } catch (error) {
-      console.error('Error fetching user communications:', error);
-      return { 
-        data: [], 
-        success: false, 
-        message: 'Failed to fetch user communications' 
-      };
+      console.error('Error marking all notifications as read:', error);
+      return { data: null, success: false, message: 'Failed to mark all notifications as read' };
+    }
+  },
+
+  // Meetings
+  getProjectMeetings: async (projectId: string) => {
+    try {
+      const response = await api.get(`${API_BASE}/${projectId}/meetings`);
+      return { data: response.data.data || [], success: true };
+    } catch (error) {
+      console.error('Error fetching project meetings:', error);
+      return { data: [], success: false, message: 'Failed to fetch project meetings' };
+    }
+  },
+
+  createMeeting: async (data: CreateMeetingData) => {
+    try {
+      const response = await api.post(`${API_BASE}/meetings`, data);
+      return { data: response.data.data, success: true };
+    } catch (error) {
+      console.error('Error creating meeting:', error);
+      return { data: null, success: false, message: 'Failed to create meeting' };
+    }
+  },
+
+  updateMeeting: async (meetingId: string, data: Partial<CreateMeetingData>) => {
+    try {
+      const response = await api.put(`${API_BASE}/meetings/${meetingId}`, data);
+      return { data: response.data.data, success: true };
+    } catch (error) {
+      console.error('Error updating meeting:', error);
+      return { data: null, success: false, message: 'Failed to update meeting' };
+    }
+  },
+
+  deleteMeeting: async (meetingId: string) => {
+    try {
+      const response = await api.delete(`${API_BASE}/meetings/${meetingId}`);
+      return { data: response.data.data, success: true };
+    } catch (error) {
+      console.error('Error deleting meeting:', error);
+      return { data: null, success: false, message: 'Failed to delete meeting' };
+    }
+  },
+
+  // Statistics
+  getCommunicationStats: async (projectId: string) => {
+    try {
+      const response = await api.get(`${API_BASE}/${projectId}/stats`);
+      return { data: response.data.data, success: true };
+    } catch (error) {
+      console.error('Error fetching communication stats:', error);
+      return { data: null, success: false, message: 'Failed to fetch communication stats' };
     }
   }
 };
 
 export default projectCommunicationService;
-

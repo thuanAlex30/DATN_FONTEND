@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import api from '../services/api';
 import {
   courseSetApi,
   courseApi,
@@ -8,6 +9,7 @@ import {
   questionBankApi,
   questionApi,
   trainingStatsApi,
+  trainingAssignmentApi,
   type CourseSet,
   type Course,
   type TrainingSession,
@@ -15,6 +17,7 @@ import {
   type QuestionBank,
   type Question,
   type TrainingStats,
+  type TrainingAssignment,
   type CourseFormData,
   type SessionFormData,
   type QuestionBankFormData,
@@ -119,8 +122,16 @@ export const useCourses = (filters?: CourseFilters) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await courseApi.getAll(filters);
-      setCourses(data);
+      // Check if user is employee and needs available courses
+      if (filters?.isDeployed === true) {
+        // Use employee-specific API
+        const data = await courseApi.getAvailableForEmployee(filters);
+        setCourses(data);
+      } else {
+        // Use regular API for admin/manager
+        const data = await courseApi.getAll(filters);
+        setCourses(data);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch courses');
       toast.error('Failed to fetch courses');
@@ -188,6 +199,69 @@ export const useCourses = (filters?: CourseFilters) => {
     createCourse,
     updateCourse,
     deleteCourse,
+  };
+};
+
+// Custom hook for Department Courses
+export const useDepartmentCourses = (departmentId: string) => {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDepartmentCourses = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      let response;
+      if (!departmentId) {
+        console.log('⚠️ No departmentId provided, fetching all courses');
+        response = await api.get('/training/courses');
+      } else {
+        console.log('🔍 Fetching courses for department:', departmentId);
+        response = await api.get(`/training/courses/department/${departmentId}`);
+      }
+      
+      console.log('🔍 API Response:', response.data);
+      
+      const data = response.data?.data || response.data || [];
+      console.log('🔍 Extracted data:', data);
+      
+      // Filter out null values and ensure it's an array
+      const validCourses = Array.isArray(data) ? data.filter(course => course && course._id) : [];
+      console.log('🔍 Valid courses:', validCourses);
+      
+      // Debug: Log each course's deployment status
+      validCourses.forEach((course, index) => {
+        console.log(`🔍 Course ${index + 1}:`, {
+          id: course._id,
+          name: course.course_name,
+          is_deployed: course.is_deployed,
+          assignment_id: course.assignment_id,
+          deployed_at: course.deployed_at,
+          deployed_by: course.deployed_by
+        });
+      });
+      setCourses(validCourses);
+    } catch (err: any) {
+      console.error('❌ Error fetching courses:', err);
+      setError(err.message || 'Failed to fetch courses');
+      toast.error('Failed to fetch courses');
+      setCourses([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [departmentId]);
+
+  useEffect(() => {
+    fetchDepartmentCourses();
+  }, [fetchDepartmentCourses]);
+
+  return {
+    courses,
+    loading,
+    error,
+    fetchDepartmentCourses,
   };
 };
 
@@ -278,6 +352,38 @@ export const useTrainingSessions = (filters?: SessionFilters) => {
     createSession,
     updateSession,
     deleteSession,
+  };
+};
+
+// Custom hook for Available Training Sessions (Employee)
+export const useAvailableTrainingSessions = (filters?: SessionFilters) => {
+  const [sessions, setSessions] = useState<TrainingSession[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchSessions = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await trainingSessionApi.getAvailableForEmployee(filters);
+      setSessions(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch available training sessions');
+      toast.error('Failed to fetch available training sessions');
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+
+  return {
+    sessions,
+    loading,
+    error,
+    fetchSessions
   };
 };
 
@@ -590,5 +696,131 @@ export const useTrainingStats = () => {
     loading,
     error,
     fetchStats,
+  };
+};
+
+// Custom hook for Training Assignments
+export const useTrainingAssignments = (filters: { courseId?: string; departmentId?: string } = {}) => {
+  const [assignments, setAssignments] = useState<TrainingAssignment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAssignments = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await trainingAssignmentApi.getAll(filters);
+      setAssignments(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch training assignments');
+      toast.error('Failed to fetch training assignments');
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
+
+  const createAssignment = useCallback(async (data: {
+    course_id: string;
+    department_id: string;
+    notes?: string;
+  }) => {
+    try {
+      setLoading(true);
+      const newAssignment = await trainingAssignmentApi.create(data);
+      setAssignments(prev => [...prev, newAssignment]);
+      toast.success('Training assignment created successfully');
+      return newAssignment;
+    } catch (err: any) {
+      setError(err.message || 'Failed to create training assignment');
+      toast.error('Failed to create training assignment');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updateAssignment = useCallback(async (id: string, data: {
+    course_id?: string;
+    department_id?: string;
+    notes?: string;
+  }) => {
+    try {
+      setLoading(true);
+      const updatedAssignment = await trainingAssignmentApi.update(id, data);
+      setAssignments(prev => prev.map(assignment => 
+        assignment._id === id ? updatedAssignment : assignment
+      ));
+      toast.success('Training assignment updated successfully');
+      return updatedAssignment;
+    } catch (err: any) {
+      setError(err.message || 'Failed to update training assignment');
+      toast.error('Failed to update training assignment');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const deleteAssignment = useCallback(async (id: string) => {
+    try {
+      setLoading(true);
+      await trainingAssignmentApi.delete(id);
+      setAssignments(prev => prev.filter(assignment => assignment._id !== id));
+      toast.success('Training assignment deleted successfully');
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete training assignment');
+      toast.error('Failed to delete training assignment');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAssignments();
+  }, [fetchAssignments]);
+
+  return {
+    assignments,
+    loading,
+    error,
+    fetchAssignments,
+    createAssignment,
+    updateAssignment,
+    deleteAssignment,
+  };
+};
+
+// Custom hook for Department Training Dashboard
+export const useDepartmentTrainingDashboard = (departmentId: string) => {
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDashboard = useCallback(async () => {
+    if (!departmentId) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get(`/training/dashboard/department/${departmentId}`);
+      setDashboard(response.data.data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch department dashboard');
+      toast.error('Failed to fetch department dashboard');
+    } finally {
+      setLoading(false);
+    }
+  }, [departmentId]);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  return {
+    dashboard,
+    loading,
+    error,
+    fetchDashboard,
   };
 };

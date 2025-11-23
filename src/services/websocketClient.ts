@@ -48,7 +48,10 @@ class WebSocketClient {
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000
+      reconnectionDelayMax: 5000,
+      upgrade: true,
+      rememberUpgrade: true,
+      withCredentials: true
     });
 
     this.setupEventListeners();
@@ -63,6 +66,7 @@ class WebSocketClient {
     // Connection events
     this.socket.on('connect', () => {
       console.log('🔌 WebSocket connected:', this.socket?.id);
+      console.log('🔌 Socket transport:', this.socket?.io.engine.transport.name);
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.emit('connection_status', { connected: true });
@@ -85,6 +89,12 @@ class WebSocketClient {
 
     this.socket.on('connect_error', (error) => {
       console.error('🔌 WebSocket connection error:', error);
+      console.error('🔌 Error details:', {
+        message: error.message,
+        description: (error as any).description,
+        context: (error as any).context,
+        type: (error as any).type
+      });
       this.isConnected = false;
       this.emit('connection_error', error);
     });

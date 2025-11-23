@@ -35,18 +35,42 @@ const LoginPage: React.FC = () => {
       if (login.fulfilled.match(resultAction)) {
         const user = resultAction.payload.user;
         console.log('✅ Login successful, user:', user);
-        console.log('🔍 User role:', user.role?.role_name);
+        console.log('🔍 User role object:', user.role);
+        console.log('🔍 User role name:', user.role?.role_name);
+        console.log('🔍 User role _id:', user.role?._id);
+        console.log('🔍 Full user object keys:', Object.keys(user));
         
         // Small delay to ensure state is updated before redirect
         setTimeout(() => {
-          // Check if user is admin
-          if (user.role?.role_name === 'admin') {
+          // Check user role and redirect accordingly
+          const roleName = user.role?.role_name;
+          console.log('🔍 Final role check:', { roleName, role: user.role });
+          
+          if (roleName === 'admin') {
             console.log('🔀 Redirecting to admin dashboard...');
             safeNavigate('/admin/dashboard', { replace: true });
+          } else if (roleName === 'manager') {
+            console.log('🔀 Redirecting to manager dashboard...');
+            safeNavigate('/manager/dashboard', { replace: true });
+          } else if (roleName === 'header_department') {
+            console.log('🔀 Redirecting to header department dashboard...');
+            safeNavigate('/header-department/dashboard', { replace: true });
+          } else if (roleName === 'employee') {
+            console.log('🔀 Redirecting to employee dashboard...');
+            safeNavigate('/employee/dashboard', { replace: true });
           } else {
-            console.log('🔀 Redirecting to home page...');
-            // Handle non-admin users (redirect to appropriate page)
-            safeNavigate('/home', { replace: true });
+            console.error('❌ Unknown role or missing role:', { roleName, role: user.role });
+            // Fallback: try to determine role from username or other fields
+            if (user.username?.includes('admin')) {
+              console.log('🔀 Fallback: Redirecting to admin dashboard based on username...');
+              safeNavigate('/admin/dashboard', { replace: true });
+            } else if (user.username?.includes('manager')) {
+              console.log('🔀 Fallback: Redirecting to manager dashboard based on username...');
+              safeNavigate('/manager/dashboard', { replace: true });
+            } else {
+              console.log('🔀 Fallback: Redirecting to employee dashboard...');
+              safeNavigate('/employee/dashboard', { replace: true });
+            }
           }
         }, 100);
       } else if (login.rejected.match(resultAction)) {

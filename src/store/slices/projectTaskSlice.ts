@@ -33,7 +33,7 @@ const initialState: ProjectTaskState = {
   stats: null,
   loading: false,
   error: null,
-  selectedTask: null,
+  selectedTask: null
 };
 
 // Async thunks
