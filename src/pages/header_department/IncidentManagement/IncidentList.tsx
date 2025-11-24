@@ -25,7 +25,8 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   WarningOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  ArrowUpOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 
@@ -259,6 +260,17 @@ const IncidentList: React.FC = () => {
               href={`/header-department/incident-management/${record._id}/progress-history`}
             >
               Tiến độ
+            </Button>
+          </Tooltip>
+          <Tooltip title="Escalate sự cố">
+            <Button 
+              type="link" 
+              size="small" 
+              danger
+              icon={<ArrowUpOutlined />}
+              href={`/header-department/incident-management/${record._id}/escalate`}
+            >
+              Escalate
             </Button>
           </Tooltip>
           <Tooltip title="Đóng sự cố">

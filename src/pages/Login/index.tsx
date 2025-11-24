@@ -56,7 +56,10 @@ const LoginPage: React.FC = () => {
             // Use role_code for precise matching (from backend roleMatrix.js)
             switch (roleCode.toLowerCase()) {
               case 'system_admin':
-              case 'Company Admin':
+                redirectPath = '/system_admin';
+                console.log('🔀 Redirecting to system admin page (role_code:', roleCode, ')');
+                break;
+              case 'company_admin':
                 redirectPath = '/admin/dashboard';
                 console.log('🔀 Redirecting to admin dashboard (role_code:', roleCode, ')');
                 break;

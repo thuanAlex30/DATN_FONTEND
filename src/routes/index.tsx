@@ -17,12 +17,14 @@ import InvestigateIncident from '../pages/header_department/IncidentManagement/I
 import UpdateProgress from '../pages/header_department/IncidentManagement/UpdateProgress';
 import CloseIncident from '../pages/header_department/IncidentManagement/CloseIncident';
 import ProgressHistory from '../pages/header_department/IncidentManagement/ProgressHistory';
+import EscalateIncident from '../pages/header_department/IncidentManagement/EscalateIncident';
 import HeaderDepartmentCertificateManagementPage from '../pages/header_department/CertificateManagement';
 import HeaderDepartmentIncidentManagementPage from '../pages/header_department/IncidentManagement';
 import HeaderDepartmentPPEManagementPage from '../pages/header_department/PPEManagement';
 import HeaderDepartmentTrainingManagementPage from '../pages/header_department/TrainingManagement';
 import HeaderDepartmentDashboard from '../pages/header_department/Dashboard';
 import HeaderDepartmentLayout from '../components/HeaderDepartment/HeaderDepartmentLayout';
+import SystemAdminPage from '../pages/system_admin';
 import ReportIncident from '../pages/Employee/ReportIncident';
 import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
@@ -155,6 +157,16 @@ const AppRoutes = () => {
             {/* Redirect root to login */}
             <Route path="/" element={<Navigate to="/login" replace />} />
             
+            {/* System Admin route - highest level admin */}
+            <Route 
+                path="/system_admin" 
+                element={
+                    <AuthGuard requiredRole="system_admin">
+                        <SystemAdminPage />
+                    </AuthGuard>
+                } 
+            />
+
             {/* Protected admin routes */}
             <Route 
                 path="/admin/dashboard" 
@@ -341,6 +353,16 @@ const AppRoutes = () => {
                     <AuthGuard requiredRole="header_department">
                         <HeaderDepartmentLayout>
                             <CloseIncident />
+                        </HeaderDepartmentLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/header-department/incident-management/:id/escalate" 
+                element={
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
+                            <EscalateIncident />
                         </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 

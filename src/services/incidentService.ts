@@ -34,6 +34,15 @@ const incidentService = {
 
   // Admin - close incident
   closeIncident: (id: string) => api.put(`/incidents/close/${id}`),
+
+  // Department Header - escalate incident
+  escalateIncident: (id: string, data: { 
+    escalation_level: 'SITE' | 'DEPARTMENT' | 'COMPANY' | 'EXTERNAL';
+    reason: string;
+  }) => api.post(`/incidents/${id}/escalate`, data),
+
+  // Get incident escalations
+  getIncidentEscalations: (id: string) => api.get(`/incidents/${id}/escalations`),
 };
 
 export default incidentService;
