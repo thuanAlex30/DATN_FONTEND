@@ -65,7 +65,7 @@ const AppRoutes = () => {
             <Route 
                 path="/employee/dashboard" 
                 element={
-                    <AuthGuard requiredRole="employee">
+                    <AuthGuard minRoleLevel={10} maxRoleLevel={20} tenantScope="tenant" departmentScope="own">
                         <EmployeeDashboard />
                     </AuthGuard>
                 } 
@@ -75,7 +75,7 @@ const AppRoutes = () => {
             <Route 
                 path="/manager/dashboard" 
                 element={
-                    <AuthGuard requiredRole="manager">
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <ManagerDashboard />
                     </AuthGuard>
                 } 
@@ -85,7 +85,7 @@ const AppRoutes = () => {
             <Route 
                 path="/manager/ppe" 
                 element={
-                    <AuthGuard requiredRole="manager">
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <ManagerPPEManagement />
                     </AuthGuard>
                 } 
@@ -93,7 +93,7 @@ const AppRoutes = () => {
             <Route 
                 path="/manager/project-management" 
                 element={
-                    <AuthGuard requiredRole="manager">
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <ManagerProjectManagement />
                     </AuthGuard>
                 } 
@@ -101,7 +101,7 @@ const AppRoutes = () => {
             <Route 
                 path="/manager/training" 
                 element={
-                    <AuthGuard requiredRole="manager">
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <ManagerTraining />
                     </AuthGuard>
                 } 
@@ -158,7 +158,7 @@ const AppRoutes = () => {
             <Route 
                 path="/admin/dashboard" 
                 element={
-                    <AuthGuard requiredRole="admin">
+                    <AuthGuard minRoleLevel={90} tenantScope="tenant">
                         <AdminLayout>
                             <DashboardPage />
                         </AdminLayout>
@@ -170,7 +170,7 @@ const AppRoutes = () => {
             <Route 
                 path="/header-department/dashboard" 
                 element={
-                    <AuthGuard requiredRole="header_department">
+                    <AuthGuard minRoleLevel={80} tenantScope="tenant" departmentScope="hierarchy">
                         <HeaderDepartmentLayout>
                             <HeaderDepartmentDashboard />
                         </HeaderDepartmentLayout>
@@ -220,7 +220,7 @@ const AppRoutes = () => {
             <Route 
                 path="/admin/user-management" 
                 element={
-                    <AuthGuard requiredRole="admin">
+                    <AuthGuard minRoleLevel={90} tenantScope="tenant">
                         <AdminLayout>
                             <UserManagementPage />
                         </AdminLayout>
@@ -230,7 +230,7 @@ const AppRoutes = () => {
             <Route 
                 path="/admin/role-management" 
                 element={
-                    <AuthGuard requiredRole="admin">
+                    <AuthGuard minRoleLevel={90} tenantScope="tenant">
                         <AdminLayout>
                             <RoleManagementPage />
                         </AdminLayout>
@@ -240,7 +240,7 @@ const AppRoutes = () => {
             <Route 
                 path="/admin/department-position" 
                 element={
-                    <AuthGuard requiredRole="admin">
+                    <AuthGuard minRoleLevel={90} tenantScope="tenant">
                         <AdminLayout>
                             <DepartmentPositionPage />
                         </AdminLayout>
@@ -250,7 +250,7 @@ const AppRoutes = () => {
             <Route 
                 path="/admin/system-logs" 
                 element={
-                    <AuthGuard requiredRole="admin">
+                    <AuthGuard minRoleLevel={90} tenantScope="tenant">
                         <AdminLayout>
                             <SystemLogsPage />
                         </AdminLayout>

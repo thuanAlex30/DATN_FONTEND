@@ -91,10 +91,20 @@ export const login = createAsyncThunk<
         ...detailedUser,
         // Ensure role information is properly set from the correct structure
         roleName: user.role?.role_name || detailedUser.role?.role_name,
-        role: user.role || detailedUser.role,
+        role: {
+          ...(user.role || detailedUser.role),
+          // Ensure role_level, role_code, scope_rules are included
+          role_level: user.role?.role_level || detailedUser.role?.role_level,
+          role_code: user.role?.role_code || detailedUser.role?.role_code,
+          scope_rules: user.role?.scope_rules || detailedUser.role?.scope_rules || {}
+        },
         // Ensure department information is properly set
         department: detailedUser.department || user.department,
-        department_id: detailedUser.department_id || user.department_id
+        department_id: detailedUser.department_id || user.department_id,
+        // Ensure tenant_id is included
+        tenant_id: detailedUser.tenant_id || user.tenant_id,
+        // Store department_ids as array for multi-department support (future)
+        department_ids: detailedUser.department_ids || (detailedUser.department_id ? [detailedUser.department_id] : [])
       };
       
       console.log('🔍 Final userData after merge:', {

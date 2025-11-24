@@ -26,7 +26,6 @@ import {
 import userService from '../../../services/userService';
 import projectService from '../../../services/projectService';
 import * as ppeService from '../../../services/ppeService';
-import * as incidentService from '../../../services/incidentService';
 import SystemLogService from '../../../services/SystemLogService';
 import notificationService from '../../../services/notificationService';
 import QuickAddEmployeeModal from '../../../components/QuickAddEmployeeModal';
