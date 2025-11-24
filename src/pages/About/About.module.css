@@ -868,7 +868,7 @@
 }
 
 .statCard :global(.ant-card-body) {
-  padding: 1.5rem !important;
+  padding: 1.1rem !important;
 }
 
 .statCard :global(.ant-statistic-title) {
@@ -1249,6 +1249,26 @@
     linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(213, 246, 225, 0.95));
   color: #0c7c3d !important;
   border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 12px 30px rgba(15, 120, 60, 0.18);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+}
+
+.socialButton:hover {
+  color: #d5ffe6 !important;
+  border-color: transparent;
+  background: linear-gradient(135deg, #0c7c3d, #0a6c36);
+  box-shadow: 0 18px 35px rgba(9, 88, 45, 0.35);
+  transform: translateY(-4px) scale(1.05);
+}
+
+.socialButton:active,
+.socialButton:focus-visible {
+  color: #b9ffd6 !important;
+  border-color: transparent;
+  background: linear-gradient(135deg, #0a6c36, #064b24);
+  box-shadow: 0 12px 28px rgba(5, 56, 27, 0.45);
+  transform: translateY(-1px) scale(0.97);
+  outline: none;
 }
 
 /* ====== RESPONSIVE ====== */

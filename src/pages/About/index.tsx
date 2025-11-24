@@ -345,7 +345,7 @@ const AboutPage: React.FC = () => {
             className={`${styles.statsSection} ${visibleSections.has('stats-section') ? styles.visible : ''}`}
             data-scroll-section
           >
-            <Row gutter={[24, 24]}>
+            <Row gutter={[12, 12]}>
               <Col xs={12} sm={6}>
                 <Card className={styles.statCard}>
                   <Statistic

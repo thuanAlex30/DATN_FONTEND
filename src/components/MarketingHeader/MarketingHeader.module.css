@@ -44,11 +44,19 @@
 .loginBtn {
   border-radius: 999px;
   border: none;
-  background: linear-gradient(120deg, #1f4fff, #20d6c7);
+  background: linear-gradient(120deg, #0c7c3d, #0fbf67);
   font-weight: 600;
   padding: 0 1.75rem;
   height: 44px;
-  box-shadow: 0 18px 35px rgba(31, 79, 255, 0.25);
+  color: #ffffff !important;
+  box-shadow: 0 18px 35px rgba(14, 127, 63, 0.25);
+}
+
+.loginBtn:hover,
+.loginBtn:focus-visible {
+  background: linear-gradient(120deg, #0a6c36, #0fbf67);
+  box-shadow: 0 20px 40px rgba(9, 88, 45, 0.3);
+  color: #d5ffe6 !important;
 }
 
 .navBar {
@@ -91,10 +99,12 @@
   .headerTop {
     flex-direction: column;
     gap: 0.75rem;
+    align-items: flex-start;
   }
 
   .navLinks {
     justify-content: center;
   }
 }
+
 

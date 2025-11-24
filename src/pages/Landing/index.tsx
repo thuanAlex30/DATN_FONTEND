@@ -73,6 +73,14 @@ const heroHighlights = [
   { icon: <CheckCircleOutlined />, label: 'Tuân thủ pháp lý' }
 ];
 
+const heroSlides = [
+  'https://hbcg.vn/laravel-filemanager/app/public/media/image/an-toan-lao-dong-trong-xay-dung-4.jpg',
+  'https://vinacontrolce.vn/wp-content/uploads/2023/01/5-quy-dinh-ve-an-toan-lao-dong-trong-xay-dung.jpg',
+  'https://knacert.com.vn/storage/die-can-biet-ve-an-toan-lao-dong.jpg'
+];
+
+const HERO_SLIDE_INTERVAL = 7;
+
 const reasonHighlights = [
   {
     icon: <ThunderboltOutlined />,
@@ -200,6 +208,19 @@ const LandingPage: React.FC = () => {
       <Content className={styles.content}>
         <section className={styles.heroSection}>
           <div className={styles.heroBackground}>
+            <div className={styles.heroSlider} aria-hidden="true">
+              {heroSlides.map((src, index) => (
+                <div
+                  key={src}
+                  className={styles.heroSlide}
+                  style={{
+                    backgroundImage: `url(${src})`,
+                    animationDelay: `${index * HERO_SLIDE_INTERVAL}s`,
+                    animationDuration: `${heroSlides.length * HERO_SLIDE_INTERVAL}s`
+                  }}
+                />
+              ))}
+            </div>
             <div className={`${styles.heroContent} ${isVisible ? styles.visible : ''}`}>
               <div className={styles.heroBadge}>
                 <RocketOutlined />
@@ -230,18 +251,7 @@ const LandingPage: React.FC = () => {
                   type="primary"
                   size="large"
                   className={`${styles.heroButton} ${styles.primaryCta}`}
-                  href="https://safeops.vn/register"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Dùng thử miễn phí
-                </Button>
-                <Button
-                  size="large"
-                  className={`${styles.heroButton} ${styles.secondaryCta}`}
-                  href="https://safeops.vn/lien-he/"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={() => navigate('/contact')}
                 >
                   <PhoneOutlined />
                   Yêu cầu tư vấn

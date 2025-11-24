@@ -1142,9 +1142,19 @@
 .socialButton:hover {
   transform: translateY(-4px) scale(1.05);
   background: linear-gradient(135deg, #0c7c3d, #0a6c36);
-  color: #ffffff !important;
+  color: #d5ffe6 !important;
   border-color: transparent;
   box-shadow: 0 18px 35px rgba(9, 88, 45, 0.35);
+}
+
+.socialButton:active,
+.socialButton:focus-visible {
+  color: #b9ffd6 !important;
+  border-color: transparent;
+  background: linear-gradient(135deg, #0a6c36, #064b24);
+  box-shadow: 0 12px 28px rgba(5, 56, 27, 0.45);
+  transform: translateY(-1px) scale(0.97);
+  outline: none;
 }
 
 @media (max-width: 992px) {
