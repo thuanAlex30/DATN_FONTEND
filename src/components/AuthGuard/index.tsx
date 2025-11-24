@@ -49,8 +49,88 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     const userRoleCode = user.role?.role_code;
     const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
     
+    // Helper function to normalize role names for matching
+    const normalizeRole = (role: string): string[] => {
+      const normalized = role.toLowerCase().trim();
+      // Generate all possible variations
+      const variations = [
+        normalized,
+        normalized.replace(/\s+/g, '_'), // "department header" -> "department_header"
+        normalized.replace(/_/g, ' '),  // "department_header" -> "department header"
+        normalized.replace(/\s+/g, ''), // "department header" -> "departmentheader"
+      ];
+      return [...new Set(variations)]; // Remove duplicates
+    };
+    
+    // Role name mapping for common variations
+    const roleMapping: { [key: string]: string[] } = {
+      'header_department': ['department header', 'department_header', 'header_department', 'header department'],
+      'department_header': ['department header', 'department_header', 'header_department', 'header department'],
+      'department header': ['department header', 'department_header', 'header_department', 'header department'],
+      'company_admin': ['company admin', 'company_admin', 'admin'],
+      'system_admin': ['system admin', 'system_admin'],
+      'department_manager': ['department manager', 'department_manager', 'manager'],
+      'department manager': ['department manager', 'department_manager', 'manager'],
+      'manager': ['department manager', 'department_manager', 'manager', 'dept manager'],
+      'team_leader': ['team leader', 'team_leader', 'leader'],
+      'team leader': ['team leader', 'team_leader', 'leader'],
+      'leader': ['team leader', 'team_leader', 'leader'],
+      'safety_officer': ['safety officer', 'safety_officer'],
+      'warehouse_staff': ['warehouse staff', 'warehouse_staff'],
+      'maintenance_staff': ['maintenance staff', 'maintenance_staff'],
+    };
+    
     const hasRoleMatch = allowedRoles.some(role => {
       const normalizedRole = role.toLowerCase().trim();
+      const roleVariations = normalizeRole(normalizedRole);
+      
+      // Get mapped variations if available
+      const mappedVariations = roleMapping[normalizedRole] || [];
+      const allRoleVariations = [...new Set([...roleVariations, ...mappedVariations])];
+      
+      // Check user role_name variations
+      if (userRoleName) {
+        const userRoleNameLower = userRoleName.toLowerCase().trim();
+        const userRoleNameVariations = normalizeRole(userRoleName);
+        
+        // Check direct match
+        if (allRoleVariations.includes(userRoleNameLower)) {
+          return true;
+        }
+        
+        // Check if any variation matches
+        if (roleVariations.some(rv => userRoleNameVariations.includes(rv))) {
+          return true;
+        }
+        
+        // Check mapped variations
+        if (mappedVariations.some(mv => userRoleNameVariations.includes(mv))) {
+          return true;
+        }
+      }
+      
+      // Check user role_code variations
+      if (userRoleCode) {
+        const userRoleCodeLower = userRoleCode.toLowerCase().trim();
+        const userRoleCodeVariations = normalizeRole(userRoleCode);
+        
+        // Check direct match
+        if (allRoleVariations.includes(userRoleCodeLower)) {
+          return true;
+        }
+        
+        // Check if any variation matches
+        if (roleVariations.some(rv => userRoleCodeVariations.includes(rv))) {
+          return true;
+        }
+        
+        // Check mapped variations
+        if (mappedVariations.some(mv => userRoleCodeVariations.includes(mv))) {
+          return true;
+        }
+      }
+      
+      // Direct match (original logic)
       return normalizedRole === userRoleName?.toLowerCase() || 
              normalizedRole === userRoleCode?.toLowerCase();
     });
