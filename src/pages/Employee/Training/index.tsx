@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -91,16 +91,6 @@ const EmployeeTraining: React.FC = () => {
       return session ? courses.find(c => c._id === session.course_id?._id) : null;
     })
     .filter(Boolean);
-
-  const courseIdToEnrollment = useMemo(() => {
-    const map: Record<string, any> = {};
-    userEnrollments.forEach(en => {
-      const session = sessions.find(s => s._id === en.session_id?._id);
-      const cId = session?.course_id?._id;
-      if (cId) map[cId] = en;
-    });
-    return map;
-  }, [userEnrollments, sessions]);
 
   const handleEnroll = async (courseId: string) => {
     try {

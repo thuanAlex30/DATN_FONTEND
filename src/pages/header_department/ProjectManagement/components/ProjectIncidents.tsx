@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { 
   Card, 
   Typography, 
@@ -22,7 +22,6 @@ import {
   ClockCircleOutlined,
   CheckCircleOutlined,
   UserOutlined,
-  CalendarOutlined,
   EyeOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../../services/incidentService';
@@ -230,7 +229,7 @@ const ProjectIncidents: React.FC<ProjectIncidentsProps> = ({ projectId }) => {
       title: 'Hành động',
       key: 'action',
       width: 100,
-      render: (_, record: Incident) => (
+      render: (_: unknown, record: Incident) => (
         <Space>
           <Tooltip title="Xem chi tiết">
             <Button 
