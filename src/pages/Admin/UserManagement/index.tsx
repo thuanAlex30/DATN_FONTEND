@@ -62,26 +62,123 @@ const UserManagement: React.FC = () => {
 
   // Check if current user has permission to view users
   const hasUserReadPermission = () => {
-    if (!currentUser?.role?.permissions) return false;
-    return currentUser.role.permissions['user:read'] === true;
+    if (!currentUser?.role) return false;
+    
+    // Allow Company Admin and System Admin (role_level >= 90) to access
+    if (currentUser.role.role_level && currentUser.role.role_level >= 90) {
+      return true;
+    }
+    
+    // Fallback: Check role_name for Company Admin or System Admin
+    const roleName = currentUser.role.role_name?.toLowerCase() || '';
+    if (roleName === 'company admin' || roleName === 'system admin' || roleName === 'company_admin' || roleName === 'system_admin') {
+      return true;
+    }
+    
+    // Check specific permission in user_management array
+    if (currentUser.role.permissions) {
+      // Handle both formats: object with arrays or flat object
+      const userManagement = (currentUser.role.permissions as any).user_management;
+      if (Array.isArray(userManagement) && userManagement.includes('read_user')) {
+        return true;
+      }
+      // Fallback: check flat format
+      if ((currentUser.role.permissions as any)['user:read'] === true) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   // Check if current user has permission to create users
   const hasUserCreatePermission = () => {
-    if (!currentUser?.role?.permissions) return false;
-    return currentUser.role.permissions['user:create'] === true;
+    if (!currentUser?.role) return false;
+    
+    // Allow Company Admin and System Admin (role_level >= 90) to create
+    if (currentUser.role.role_level && currentUser.role.role_level >= 90) {
+      return true;
+    }
+    
+    // Fallback: Check role_name for Company Admin or System Admin
+    const roleName = currentUser.role.role_name?.toLowerCase() || '';
+    if (roleName === 'company admin' || roleName === 'system admin' || roleName === 'company_admin' || roleName === 'system_admin') {
+      return true;
+    }
+    
+    // Check specific permission in user_management array
+    if (currentUser.role.permissions) {
+      const userManagement = (currentUser.role.permissions as any).user_management;
+      if (Array.isArray(userManagement) && userManagement.includes('create_user')) {
+        return true;
+      }
+      // Fallback: check flat format
+      if ((currentUser.role.permissions as any)['user:create'] === true) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   // Check if current user has permission to update users
   const hasUserUpdatePermission = () => {
-    if (!currentUser?.role?.permissions) return false;
-    return currentUser.role.permissions['user:update'] === true;
+    if (!currentUser?.role) return false;
+    
+    // Allow Company Admin and System Admin (role_level >= 90) to update
+    if (currentUser.role.role_level && currentUser.role.role_level >= 90) {
+      return true;
+    }
+    
+    // Fallback: Check role_name for Company Admin or System Admin
+    const roleName = currentUser.role.role_name?.toLowerCase() || '';
+    if (roleName === 'company admin' || roleName === 'system admin' || roleName === 'company_admin' || roleName === 'system_admin') {
+      return true;
+    }
+    
+    // Check specific permission in user_management array
+    if (currentUser.role.permissions) {
+      const userManagement = (currentUser.role.permissions as any).user_management;
+      if (Array.isArray(userManagement) && userManagement.includes('update_user')) {
+        return true;
+      }
+      // Fallback: check flat format
+      if ((currentUser.role.permissions as any)['user:update'] === true) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   // Check if current user has permission to delete users
   const hasUserDeletePermission = () => {
-    if (!currentUser?.role?.permissions) return false;
-    return currentUser.role.permissions['user:delete'] === true;
+    if (!currentUser?.role) return false;
+    
+    // Allow Company Admin and System Admin (role_level >= 90) to delete
+    if (currentUser.role.role_level && currentUser.role.role_level >= 90) {
+      return true;
+    }
+    
+    // Fallback: Check role_name for Company Admin or System Admin
+    const roleName = currentUser.role.role_name?.toLowerCase() || '';
+    if (roleName === 'company admin' || roleName === 'system admin' || roleName === 'company_admin' || roleName === 'system_admin') {
+      return true;
+    }
+    
+    // Check specific permission in user_management array
+    if (currentUser.role.permissions) {
+      const userManagement = (currentUser.role.permissions as any).user_management;
+      if (Array.isArray(userManagement) && userManagement.includes('delete_user')) {
+        return true;
+      }
+      // Fallback: check flat format
+      if ((currentUser.role.permissions as any)['user:delete'] === true) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   // Load users
@@ -89,8 +186,21 @@ const UserManagement: React.FC = () => {
     try {
       setLoading(true);
       const users = await userService.getAllUsers();
-      setUsers(users);
-      setFilteredUsers(users);
+      // Transform users to match expected type structure
+      const transformedUsers = users.map(user => ({
+        ...user,
+        role: user.role ? {
+          _id: (user.role as any)._id || (user.role as any).id || '',
+          role_name: user.role.role_name,
+          role_code: (user.role as any).role_code,
+          role_level: (user.role as any).role_level,
+          scope_rules: (user.role as any).scope_rules,
+          permissions: (user.role as any).permissions || {},
+          is_active: (user.role as any).is_active
+        } : undefined
+      })) as User[];
+      setUsers(transformedUsers);
+      setFilteredUsers(transformedUsers);
     } catch (err) {
       message.error('Không thể tải danh sách người dùng');
       console.error('Error loading users:', err);

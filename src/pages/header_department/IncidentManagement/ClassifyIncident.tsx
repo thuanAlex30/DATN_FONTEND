@@ -38,7 +38,7 @@ const ClassifyIncident: React.FC = () => {
         severity: values.severity
       });
       message.success('Phân loại thành công');
-      navigate('/admin/incident-management');
+      navigate('/header-department/incident-management');
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || 'Không thể phân loại';
       setError(errorMessage);

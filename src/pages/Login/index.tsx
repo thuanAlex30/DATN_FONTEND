@@ -35,25 +35,150 @@ const LoginPage: React.FC = () => {
       if (login.fulfilled.match(resultAction)) {
         const user = resultAction.payload.user;
         console.log('✅ Login successful, user:', user);
-        console.log('🔍 User role:', user.role?.role_name);
+        console.log('🔍 User role object:', user.role);
+        console.log('🔍 User role name:', user.role?.role_name);
+        console.log('🔍 User role _id:', user.role?._id);
+        console.log('🔍 Full user object keys:', Object.keys(user));
         
         // Small delay to ensure state is updated before redirect
         setTimeout(() => {
           // Check user role and redirect accordingly
-          if (user.role?.role_name === 'system_admin') {
-            console.log('🔀 Redirecting to admin dashboard...');
-            safeNavigate('/admin/dashboard', { replace: true });
-          } else if (user.role?.role_name === 'manager') {
-            console.log('🔀 Redirecting to manager dashboard...');
-            safeNavigate('/manager/dashboard', { replace: true });
-          } else if (user.role?.role_name === 'employee') {
-            console.log('🔀 Redirecting to employee dashboard...');
-            safeNavigate('/employee/dashboard', { replace: true });
+          // Priority: role_code > role_name > role_level
+          const roleCode = user.role?.role_code;
+          const roleName = user.role?.role_name;
+          const roleLevel = user.role?.role_level;
+          console.log('🔍 Final role check:', { roleCode, roleName, roleLevel, role: user.role });
+          
+          // Map role_code to dashboard routes
+          let redirectPath = '/home'; // Default fallback
+          
+          if (roleCode) {
+            // Use role_code for precise matching (from backend roleMatrix.js)
+            switch (roleCode.toLowerCase()) {
+              case 'system_admin':
+              case 'Company Admin':
+                redirectPath = '/admin/dashboard';
+                console.log('🔀 Redirecting to admin dashboard (role_code:', roleCode, ')');
+                break;
+              case 'department_header':
+                redirectPath = '/header-department/dashboard';
+                console.log('🔀 Redirecting to header department dashboard (role_code:', roleCode, ')');
+                break;
+              case 'manager':
+                redirectPath = '/manager/dashboard';
+                console.log('🔀 Redirecting to manager dashboard (role_code:', roleCode, ')');
+                break;
+              case 'employee':
+                redirectPath = '/employee/dashboard';
+                console.log('🔀 Redirecting to employee dashboard (role_code:', roleCode, ')');
+                break;
+              case 'team_leader':
+                // Team leader can use employee dashboard or manager dashboard based on permissions
+                redirectPath = '/employee/dashboard';
+                console.log('🔀 Redirecting to employee dashboard (role_code:', roleCode, ')');
+                break;
+              case 'trainer':
+              case 'safety_officer':
+              case 'warehouse_staff':
+              case 'maintenance_staff':
+                // Specialized roles default to employee dashboard
+                redirectPath = '/employee/dashboard';
+                console.log('🔀 Redirecting to employee dashboard (role_code:', roleCode, ')');
+                break;
+              default:
+                console.warn('⚠️ Unknown role_code:', roleCode, '- using role_level fallback');
+                // Fallback to role_level-based routing
+                if (roleLevel >= 90) {
+                  redirectPath = '/admin/dashboard';
+                } else if (roleLevel >= 80) {
+                  redirectPath = '/header-department/dashboard';
+                } else if (roleLevel >= 70) {
+                  redirectPath = '/manager/dashboard';
+                } else {
+                  redirectPath = '/employee/dashboard';
+                }
+            }
+          } else if (roleName) {
+            // Fallback to role_name matching (legacy support)
+            const normalizedRoleName = roleName.toLowerCase().trim();
+            // Admin roles
+            if (normalizedRoleName === 'company admin' || 
+                normalizedRoleName === 'system admin' || 
+                normalizedRoleName === 'admin') {
+              redirectPath = '/admin/dashboard';
+              console.log('🔀 Redirecting to admin dashboard (role_name:', roleName, ')');
+            } 
+            // Header Department roles
+            else if (normalizedRoleName === 'header_department' || 
+                     normalizedRoleName === 'department header' ||
+                     normalizedRoleName === 'department_header') {
+              redirectPath = '/header-department/dashboard';
+              console.log('🔀 Redirecting to header department dashboard (role_name:', roleName, ')');
+            } 
+            // Manager roles
+            else if (normalizedRoleName === 'manager' || 
+                     normalizedRoleName === 'department manager') {
+              redirectPath = '/manager/dashboard';
+              console.log('🔀 Redirecting to manager dashboard (role_name:', roleName, ')');
+            } 
+            // Employee and other roles
+            else if (normalizedRoleName === 'employee' ||
+                     normalizedRoleName === 'team leader' ||
+                     normalizedRoleName === 'team_leader' ||
+                     normalizedRoleName === 'trainer' ||
+                     normalizedRoleName === 'safety officer' ||
+                     normalizedRoleName === 'safety_officer' ||
+                     normalizedRoleName === 'warehouse staff' ||
+                     normalizedRoleName === 'warehouse_staff' ||
+                     normalizedRoleName === 'maintenance staff' ||
+                     normalizedRoleName === 'maintenance_staff') {
+              redirectPath = '/employee/dashboard';
+              console.log('🔀 Redirecting to employee dashboard (role_name:', roleName, ')');
+            } 
+            else {
+              console.warn('⚠️ Unknown role_name:', roleName, '- using role_level fallback');
+              // Fallback to role_level
+              if (roleLevel !== undefined && roleLevel >= 90) {
+                redirectPath = '/admin/dashboard';
+              } else if (roleLevel !== undefined && roleLevel >= 80) {
+                redirectPath = '/header-department/dashboard';
+              } else if (roleLevel !== undefined && roleLevel >= 70) {
+                redirectPath = '/manager/dashboard';
+              } else {
+                redirectPath = '/employee/dashboard';
+              }
+            }
+          } else if (roleLevel !== undefined) {
+            // Final fallback: use role_level
+            if (roleLevel >= 90) {
+              redirectPath = '/admin/dashboard';
+              console.log('🔀 Redirecting to admin dashboard (role_level:', roleLevel, ')');
+            } else if (roleLevel >= 80) {
+              redirectPath = '/header-department/dashboard';
+              console.log('🔀 Redirecting to header department dashboard (role_level:', roleLevel, ')');
+            } else if (roleLevel >= 70) {
+              redirectPath = '/manager/dashboard';
+              console.log('🔀 Redirecting to manager dashboard (role_level:', roleLevel, ')');
+            } else {
+              redirectPath = '/employee/dashboard';
+              console.log('🔀 Redirecting to employee dashboard (role_level:', roleLevel, ')');
+            }
           } else {
-            console.log('🔀 Redirecting to home page...');
-            // Fallback for other roles
-            safeNavigate('/home', { replace: true });
+            // Last resort: try username-based fallback
+            console.error('❌ No role information found:', { roleCode, roleName, roleLevel, role: user.role });
+            if (user.username?.toLowerCase().includes('admin')) {
+              redirectPath = '/admin/dashboard';
+              console.log('🔀 Fallback: Redirecting to admin dashboard based on username');
+            } else if (user.username?.toLowerCase().includes('manager')) {
+              redirectPath = '/manager/dashboard';
+              console.log('🔀 Fallback: Redirecting to manager dashboard based on username');
+            } else {
+              redirectPath = '/employee/dashboard';
+              console.log('🔀 Fallback: Redirecting to employee dashboard');
+            }
           }
+          
+          safeNavigate(redirectPath, { replace: true });
         }, 100);
       } else if (login.rejected.match(resultAction)) {
         // Error is already handled by the slice

@@ -4,12 +4,21 @@ export interface User {
   email: string;
   full_name: string;
   phone?: string;
-  role: {
+  role?: {
     _id: string;
     role_name: string;
-    permissions: Record<string, boolean>;
-    is_active: boolean;
+    role_code?: string;
+    role_level?: number;
+    scope_rules?: {
+      tenant_scope?: 'global' | 'tenant' | 'self';
+      department_scope?: 'all' | 'hierarchy' | 'own' | 'none';
+      data_scope?: 'full' | 'department' | 'self';
+      can_assign_lower_roles?: boolean;
+    };
+    permissions?: Record<string, boolean>;
+    is_active?: boolean;
   };
+  tenant_id?: string;
   department?: {
     _id: string;
     department_name: string;

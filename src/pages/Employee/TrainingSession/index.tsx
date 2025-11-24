@@ -311,7 +311,12 @@ const TrainingSession: React.FC = () => {
       if (response.data.success) {
         message.success(`Hoàn thành khóa học! Điểm số: ${totalScore}/${currentTrainingData?.questions.reduce((sum, q) => sum + q.points, 0)}`);
         localStorage.removeItem('currentTrainingData');
-        navigate('/training');
+        
+        // Add a small delay to ensure the success message is shown
+        setTimeout(() => {
+          // Force page reload to refresh all data
+          window.location.href = '/employee/training';
+        }, 1500);
       } else {
         message.error(`Lỗi: ${response.data.message}`);
       }

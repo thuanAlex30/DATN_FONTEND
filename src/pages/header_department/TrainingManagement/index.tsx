@@ -41,7 +41,8 @@ import {
   FileExcelOutlined,
   CheckCircleOutlined,
   InfoCircleOutlined,
-  ArrowLeftOutlined
+  ArrowLeftOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
 import { downloadQuestionTemplate } from '../../../utils/questionTemplate';
 import {
@@ -51,14 +52,16 @@ import {
   useQuestionBanks,
   useQuestions,
   useCourseSets,
+  useTrainingAssignments,
 } from '../../../hooks/useTraining';
 import ViewCourseModal from './components/ViewCourseModal';
 import QuestionBankModal from './components/QuestionBankModal';
 import ViewSessionModal from './components/ViewSessionModal';
 import EnrollmentModal from './components/EnrollmentModal';
+import CourseAssignmentModal from './components/CourseAssignmentModal';
 
 const TrainingManagement: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'courses' | 'sessions' | 'enrollments' | 'question-banks'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'sessions' | 'enrollments' | 'question-banks' | 'assignments'>('courses');
   const [showModal, setShowModal] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [filters, setFilters] = useState({
@@ -112,6 +115,9 @@ const TrainingManagement: React.FC = () => {
   
   // Load all courses for session form (without filters)
   const { courses: allCourses } = useCourses({});
+  
+  // Training assignments
+  const { assignments, loading: assignmentsLoading, createAssignment, updateAssignment, deleteAssignment } = useTrainingAssignments();
   
   // Debug courses
   console.log('Available courses (filtered):', courses);
@@ -236,8 +242,7 @@ const TrainingManagement: React.FC = () => {
     }
   };
 
-  const handleSessionSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSessionSubmit = async (values?: any) => {
     try {
       // Validate required fields
       if (!sessionForm.session_name || !sessionForm.course_id || !sessionForm.start_time || !sessionForm.end_time) {
@@ -514,6 +519,22 @@ const TrainingManagement: React.FC = () => {
     }
   };
 
+  // Assignment handlers
+  const handleEditAssignment = (assignment: any) => {
+    setEditingItem(assignment);
+    openModal('editAssignmentModal');
+  };
+
+  const handleDeleteAssignment = async (id: string) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa gán khóa học này?')) {
+      try {
+        await deleteAssignment(id);
+      } catch (error) {
+        console.error('Error deleting assignment:', error);
+      }
+    }
+  };
+
 
   const formatDateTime = (dateTimeString: string): string => {
     return new Date(dateTimeString).toLocaleString('vi-VN');
@@ -563,7 +584,7 @@ const TrainingManagement: React.FC = () => {
                 </Typography.Title>
                 <Breadcrumb style={{ marginTop: '8px' }}>
                   <Breadcrumb.Item>
-                    <a href="/admin/dashboard">Dashboard</a>
+                    <a href="/header-department/dashboard">Dashboard</a>
                   </Breadcrumb.Item>
                   <Breadcrumb.Item>Quản lý đào tạo</Breadcrumb.Item>
                 </Breadcrumb>
@@ -573,7 +594,7 @@ const TrainingManagement: React.FC = () => {
               <Button 
                 type="default" 
                 icon={<ArrowLeftOutlined />}
-                href="/admin/dashboard"
+                href="/header-department/dashboard"
               >
                 Quay lại
               </Button>
@@ -623,6 +644,16 @@ const TrainingManagement: React.FC = () => {
                   <span>
                     <QuestionCircleOutlined />
                     Ngân hàng câu hỏi
+                  </span>
+                ),
+                children: null
+              },
+              {
+                key: 'assignments',
+                label: (
+                  <span>
+                    <TeamOutlined />
+                    Gán khóa học
                   </span>
                 ),
                 children: null
@@ -1278,6 +1309,129 @@ const TrainingManagement: React.FC = () => {
                                       {questions.filter(q => q.bank_id === bank._id).length} câu hỏi
                                     </Typography.Text>
                                   </Space>
+                                </Space>
+                              </div>
+                            }
+                          />
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+                )}
+              </Card>
+            </div>
+          )}
+
+          {/* Assignments Tab */}
+          {activeTab === 'assignments' && (
+            <div style={{ marginTop: '16px' }}>
+              <Card>
+                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+                  <Col>
+                    <Space wrap>
+                      <Input
+                        placeholder="Tìm kiếm gán khóa học..."
+                        prefix={<SearchOutlined />}
+                        style={{ width: 300 }}
+                      />
+                    </Space>
+                  </Col>
+                  <Col>
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />}
+                      onClick={() => openModal('addAssignmentModal')}
+                    >
+                      Gán khóa học cho phòng ban
+                    </Button>
+                  </Col>
+                </Row>
+
+                {assignmentsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
+                  </div>
+                ) : assignments.length === 0 ? (
+                  <Empty
+                    image={<TeamOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                    description={
+                      <div>
+                        <Typography.Title level={4}>Chưa có gán khóa học nào</Typography.Title>
+                        <Typography.Text type="secondary">
+                          Hãy gán khóa học cho phòng ban đầu tiên
+                        </Typography.Text>
+                      </div>
+                    }
+                  >
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />}
+                      onClick={() => openModal('addAssignmentModal')}
+                    >
+                      Gán khóa học
+                    </Button>
+                  </Empty>
+                ) : (
+                  <Row gutter={[16, 16]}>
+                    {assignments.map(assignment => (
+                      <Col xs={24} sm={12} lg={8} xl={6} key={assignment._id}>
+                        <Card
+                          hoverable
+                          style={{ height: '100%' }}
+                          actions={[
+                            <Tooltip title="Sửa">
+                              <Button 
+                                type="text" 
+                                icon={<EditOutlined />}
+                                onClick={() => handleEditAssignment(assignment)}
+                              />
+                            </Tooltip>,
+                            <Popconfirm
+                              title="Xóa gán khóa học"
+                              description="Bạn có chắc chắn muốn xóa gán khóa học này?"
+                              onConfirm={() => handleDeleteAssignment(assignment._id)}
+                              okText="Xóa"
+                              cancelText="Hủy"
+                            >
+                              <Tooltip title="Xóa">
+                                <Button 
+                                  type="text" 
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                />
+                              </Tooltip>
+                            </Popconfirm>
+                          ]}
+                        >
+                          <Card.Meta
+                            title={
+                              <Typography.Text strong style={{ fontSize: '16px' }}>
+                                {assignment.course_id?.course_name}
+                              </Typography.Text>
+                            }
+                            description={
+                              <div>
+                                <Space direction="vertical" size={4}>
+                                  <Space>
+                                    <TeamOutlined style={{ color: '#1890ff' }} />
+                                    <Typography.Text>{assignment.department_id?.department_name}</Typography.Text>
+                                  </Space>
+                                  <Space>
+                                    <UserOutlined style={{ color: '#52c41a' }} />
+                                    <Typography.Text>Gán bởi: {assignment.assigned_by?.full_name}</Typography.Text>
+                                  </Space>
+                                  <Space>
+                                    <ClockCircleOutlined style={{ color: '#faad14' }} />
+                                    <Typography.Text>
+                                      {new Date(assignment.assigned_at).toLocaleDateString('vi-VN')}
+                                    </Typography.Text>
+                                  </Space>
+                                  {assignment.notes && (
+                                    <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                                      {assignment.notes}
+                                    </Typography.Text>
+                                  )}
                                 </Space>
                               </div>
                             }
@@ -2081,6 +2235,16 @@ const TrainingManagement: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Course Assignment Modal */}
+      <CourseAssignmentModal
+        visible={showModal === 'addAssignmentModal'}
+        onCancel={closeModal}
+        onSuccess={() => {
+          closeModal();
+          // Refresh assignments
+        }}
+      />
     </div>
   );
 };

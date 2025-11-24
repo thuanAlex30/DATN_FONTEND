@@ -14,20 +14,21 @@ import DashboardPage from '../pages/Admin/Dashboard';
 import UserManagementPage from '../pages/Admin/UserManagement';
 import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
-import ProjectManagement from '../pages/Admin/ProjectManagement';
-import TrainingManagementPage from '../pages/Admin/TrainingManagement';
-import PPEManagementPage from '../pages/Admin/PPEManagement';
+import ProjectManagement from '../pages/header_department/ProjectManagement';
 import RoleManagementPage from '../pages/Admin/RoleManagement';
-import IncidentManagementPage from '../pages/Admin/IncidentManagement';
-import CertificateManagementPage from '../pages/Admin/CertificateManagement';
-import ManagerIncidentHandling from '../pages/Manager/IncidentHandling';
-import ClassifyIncident from '../pages/Admin/IncidentManagement/ClassifyIncident';
-import AssignIncident from '../pages/Admin/IncidentManagement/AssignIncident';
-import InvestigateIncident from '../pages/Admin/IncidentManagement/InvestigateIncident';
-import UpdateProgress from '../pages/Admin/IncidentManagement/UpdateProgress';
-import CloseIncident from '../pages/Admin/IncidentManagement/CloseIncident';
-import ProgressHistory from '../pages/Admin/IncidentManagement/ProgressHistory';
-import ReportIncident from '../pages/Manager/ReportIncident';
+import ClassifyIncident from '../pages/header_department/IncidentManagement/ClassifyIncident';
+import AssignIncident from '../pages/header_department/IncidentManagement/AssignIncident';
+import InvestigateIncident from '../pages/header_department/IncidentManagement/InvestigateIncident';
+import UpdateProgress from '../pages/header_department/IncidentManagement/UpdateProgress';
+import CloseIncident from '../pages/header_department/IncidentManagement/CloseIncident';
+import ProgressHistory from '../pages/header_department/IncidentManagement/ProgressHistory';
+import HeaderDepartmentCertificateManagementPage from '../pages/header_department/CertificateManagement';
+import HeaderDepartmentIncidentManagementPage from '../pages/header_department/IncidentManagement';
+import HeaderDepartmentPPEManagementPage from '../pages/header_department/PPEManagement';
+import HeaderDepartmentTrainingManagementPage from '../pages/header_department/TrainingManagement';
+import HeaderDepartmentDashboard from '../pages/header_department/Dashboard';
+import HeaderDepartmentLayout from '../components/HeaderDepartment/HeaderDepartmentLayout';
+import ReportIncident from '../pages/Employee/ReportIncident';
 import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
 import EmployeePPE from '../pages/Employee/PPE';
@@ -83,7 +84,7 @@ const AppRoutes = () => {
             <Route 
                 path="/employee/dashboard" 
                 element={
-                    <AuthGuard requiredRole="employee">
+                    <AuthGuard minRoleLevel={10} maxRoleLevel={20} tenantScope="tenant" departmentScope="own">
                         <EmployeeDashboard />
                     </AuthGuard>
                 } 
@@ -93,7 +94,7 @@ const AppRoutes = () => {
             <Route 
                 path="/manager/dashboard" 
                 element={
-                    <AuthGuard requiredRole="manager">
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <ManagerDashboard />
                     </AuthGuard>
                 } 
@@ -103,7 +104,7 @@ const AppRoutes = () => {
             <Route 
                 path="/manager/ppe" 
                 element={
-                    <AuthGuard requiredRole="manager">
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <ManagerPPEManagement />
                     </AuthGuard>
                 } 
@@ -111,7 +112,7 @@ const AppRoutes = () => {
             <Route 
                 path="/manager/project-management" 
                 element={
-                    <AuthGuard requiredRole="manager">
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <ManagerProjectManagement />
                     </AuthGuard>
                 } 
@@ -119,7 +120,7 @@ const AppRoutes = () => {
             <Route 
                 path="/manager/training" 
                 element={
-                    <AuthGuard requiredRole="manager">
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <ManagerTraining />
                     </AuthGuard>
                 } 
@@ -131,14 +132,6 @@ const AppRoutes = () => {
                 element={
                     <AuthGuard requiredRole="manager">
                         <ReportIncident />
-                    </AuthGuard>
-                } 
-            />
-            <Route 
-                path="/manager/incident-handling" 
-                element={
-                    <AuthGuard requiredRole="manager">
-                        <ManagerIncidentHandling />
                     </AuthGuard>
                 } 
             />
@@ -185,17 +178,69 @@ const AppRoutes = () => {
             <Route 
                 path="/admin/dashboard" 
                 element={
-                    <AuthGuard requiredRole="admin">
+                    <AuthGuard minRoleLevel={90} tenantScope="tenant">
                         <AdminLayout>
                             <DashboardPage />
                         </AdminLayout>
                     </AuthGuard>
                 } 
             />
+
+            {/* Header Department routes */}
+            <Route 
+                path="/header-department/dashboard" 
+                element={
+                    <AuthGuard minRoleLevel={80} tenantScope="tenant" departmentScope="hierarchy">
+                        <HeaderDepartmentLayout>
+                            <HeaderDepartmentDashboard />
+                        </HeaderDepartmentLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/header-department/training-management" 
+                element={
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
+                            <HeaderDepartmentTrainingManagementPage />
+                        </HeaderDepartmentLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/header-department/certificate-management" 
+                element={
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
+                            <HeaderDepartmentCertificateManagementPage />
+                        </HeaderDepartmentLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/header-department/ppe-management" 
+                element={
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
+                            <HeaderDepartmentPPEManagementPage />
+                        </HeaderDepartmentLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/header-department/incident-management" 
+                element={
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
+                            <HeaderDepartmentIncidentManagementPage />
+                        </HeaderDepartmentLayout>
+                    </AuthGuard>
+                } 
+            />
             <Route 
                 path="/admin/user-management" 
                 element={
-                    <AuthGuard requiredRole="admin">
+                    <AuthGuard minRoleLevel={90} tenantScope="tenant">
                         <AdminLayout>
                             <UserManagementPage />
                         </AdminLayout>
@@ -205,7 +250,7 @@ const AppRoutes = () => {
             <Route 
                 path="/admin/role-management" 
                 element={
-                    <AuthGuard requiredRole="admin">
+                    <AuthGuard minRoleLevel={90} tenantScope="tenant">
                         <AdminLayout>
                             <RoleManagementPage />
                         </AdminLayout>
@@ -215,7 +260,7 @@ const AppRoutes = () => {
             <Route 
                 path="/admin/department-position" 
                 element={
-                    <AuthGuard requiredRole="admin">
+                    <AuthGuard minRoleLevel={90} tenantScope="tenant">
                         <AdminLayout>
                             <DepartmentPositionPage />
                         </AdminLayout>
@@ -225,7 +270,7 @@ const AppRoutes = () => {
             <Route 
                 path="/admin/system-logs" 
                 element={
-                    <AuthGuard requiredRole="admin">
+                    <AuthGuard minRoleLevel={90} tenantScope="tenant">
                         <AdminLayout>
                             <SystemLogsPage />
                         </AdminLayout>
@@ -233,123 +278,89 @@ const AppRoutes = () => {
                 } 
             />
             <Route 
-                path="/admin/project-management" 
+                path="/header-department/project-management" 
                 element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
                             <ProjectManagement />
-                        </AdminLayout>
+                        </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 
             />
             <Route 
-                path="/admin/project-management/:projectId/*" 
+                path="/header-department/project-management/:projectId/*" 
                 element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
                             <ProjectManagement />
-                        </AdminLayout>
+                        </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 
             />
+            {/* Các route /admin dưới đây đã được chuyển cho Header Department nên tạm thời ẩn khỏi Admin:
+                - /admin/training-management
+                - /admin/certificate-management
+                - /admin/ppe-management
+                - /admin/incident-management
+            */}
+            {/* Header Department incident action routes */}
             <Route 
-                path="/admin/training-management" 
+                path="/header-department/incident-management/:id/classify" 
                 element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
-                            <TrainingManagementPage />
-                        </AdminLayout>
-                    </AuthGuard>
-                } 
-            />
-            <Route 
-                path="/admin/ppe-management" 
-                element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
-                            <PPEManagementPage />
-                        </AdminLayout>
-                    </AuthGuard>
-                } 
-            />
-            <Route 
-                path="/admin/certificate-management" 
-                element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
-                            <CertificateManagementPage />
-                        </AdminLayout>
-                    </AuthGuard>
-                } 
-            />
-            <Route 
-                path="/admin/incident-management" 
-                element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
-                            <IncidentManagementPage />
-                        </AdminLayout>
-                    </AuthGuard>
-                } 
-            />
-            {/* Admin incident action routes */}
-            <Route 
-                path="/admin/incidents/:id/classify" 
-                element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
                             <ClassifyIncident />
-                        </AdminLayout>
+                        </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 
             />
             <Route 
-                path="/admin/incidents/:id/assign" 
+                path="/header-department/incident-management/:id/assign" 
                 element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
                             <AssignIncident />
-                        </AdminLayout>
+                        </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 
             />
             <Route 
-                path="/admin/incidents/:id/investigate" 
+                path="/header-department/incident-management/:id/investigate" 
                 element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
                             <InvestigateIncident />
-                        </AdminLayout>
+                        </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 
             />
             <Route 
-                path="/admin/incidents/:id/progress" 
+                path="/header-department/incident-management/:id/progress" 
                 element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
                             <UpdateProgress />
-                        </AdminLayout>
+                        </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 
             />
             <Route 
-                path="/admin/incidents/:id/progress-history" 
+                path="/header-department/incident-management/:id/progress-history" 
                 element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
                             <ProgressHistory />
-                        </AdminLayout>
+                        </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 
             />
             <Route 
-                path="/admin/incidents/:id/close" 
+                path="/header-department/incident-management/:id/close" 
                 element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
                             <CloseIncident />
-                        </AdminLayout>
+                        </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 
             />
@@ -360,12 +371,12 @@ const AppRoutes = () => {
                     key={route.path}
                     path={route.path}
                     element={
-                        <AuthGuard requiredRole="admin">
-                            <AdminLayout>
+                        <AuthGuard requiredRole="header_department">
+                            <HeaderDepartmentLayout>
                                 <Suspense fallback={<div className="loading">Đang tải...</div>}>
                                     <ProjectManagementRouteWrapper Component={route.component} />
                                 </Suspense>
-                            </AdminLayout>
+                            </HeaderDepartmentLayout>
                         </AuthGuard>
                     }
                 />
