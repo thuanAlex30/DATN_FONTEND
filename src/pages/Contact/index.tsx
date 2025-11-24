@@ -15,7 +15,6 @@ import {
 } from 'antd';
 import {
   SafetyOutlined,
-  LoginOutlined,
   ArrowLeftOutlined,
   PhoneOutlined,
   MailOutlined,
@@ -31,9 +30,10 @@ import {
   CustomerServiceOutlined,
   TeamOutlined
 } from '@ant-design/icons';
+import MarketingHeader from '../../components/MarketingHeader';
 import styles from './Contact.module.css';
 
-const { Header, Content, Footer } = Layout;
+const { Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
@@ -53,57 +53,7 @@ const ContactPage: React.FC = () => {
 
   return (
     <Layout className={styles.layout}>
-      {/* Header with Navigation */}
-      <Header className={styles.header}>
-        <div className={styles.headerTop}>
-          <div className={styles.logo} onClick={() => navigate('/')}>
-            <SafetyOutlined className={styles.logoIcon} />
-            <Title level={4} className={styles.logoText}>
-              Hệ Thống Quản Lý An Toàn Lao Động
-            </Title>
-          </div>
-          <Button
-            type="primary"
-            size="large"
-            icon={<LoginOutlined />}
-            onClick={handleLogin}
-            className={styles.loginBtn}
-          >
-            Đăng nhập
-          </Button>
-        </div>
-        <div className={styles.navBar}>
-          <Space size="large" className={styles.navLinks}>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/')}
-            >
-              Trang chủ
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/about')}
-            >
-              Giới thiệu
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLinkActive}
-            >
-              Liên Hệ
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/faq')}
-            >
-              FAQ
-            </Button>
-          </Space>
-        </div>
-      </Header>
+      <MarketingHeader activeKey="contact" />
 
       <Content className={styles.content}>
         {/* Hero Section with Green Background */}

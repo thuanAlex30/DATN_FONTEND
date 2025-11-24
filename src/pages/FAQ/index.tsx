@@ -7,20 +7,24 @@ import {
   Collapse,
   Space,
   Row,
-  Col
+  Col,
+  Divider
 } from 'antd';
 import {
   SafetyOutlined,
-  LoginOutlined,
   ArrowLeftOutlined,
   QuestionCircleOutlined,
   PhoneOutlined,
   MailOutlined,
-  EnvironmentOutlined
+  EnvironmentOutlined,
+  FacebookOutlined,
+  InstagramOutlined,
+  TwitterOutlined
 } from '@ant-design/icons';
+import MarketingHeader from '../../components/MarketingHeader';
 import styles from './FAQ.module.css';
 
-const { Header, Content, Footer } = Layout;
+const { Content, Footer } = Layout;
 const { Title, Text } = Typography;
 
 const FAQPage: React.FC = () => {
@@ -80,57 +84,7 @@ const FAQPage: React.FC = () => {
 
   return (
     <Layout className={styles.layout}>
-      {/* Header with Navigation */}
-      <Header className={styles.header}>
-        <div className={styles.headerTop}>
-          <div className={styles.logo} onClick={() => navigate('/')}>
-            <SafetyOutlined className={styles.logoIcon} />
-            <Title level={4} className={styles.logoText}>
-              Hệ Thống Quản Lý An Toàn Lao Động
-            </Title>
-          </div>
-          <Button
-            type="primary"
-            size="large"
-            icon={<LoginOutlined />}
-            onClick={handleLogin}
-            className={styles.loginBtn}
-          >
-            Đăng nhập
-          </Button>
-        </div>
-        <div className={styles.navBar}>
-          <Space size="large" className={styles.navLinks}>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/')}
-            >
-              Trang chủ
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/about')}
-            >
-              Giới thiệu
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/contact')}
-            >
-              Liên Hệ
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLinkActive}
-            >
-              FAQ
-            </Button>
-          </Space>
-        </div>
-      </Header>
+      <MarketingHeader activeKey="faq" />
 
       <Content className={styles.content}>
         <div className={styles.pageContainer}>
@@ -358,10 +312,17 @@ const FAQPage: React.FC = () => {
             </Col>
           </Row>
           
+          <Divider className={styles.footerDivider} />
+          
           <div className={styles.footerBottom}>
             <Text className={styles.footerCopyright}>
               © {new Date().getFullYear()} Hệ Thống Quản Lý An Toàn Lao Động. Tất cả các quyền được bảo lưu.
             </Text>
+            <div className={styles.footerSocial}>
+              <Button type="link" icon={<FacebookOutlined />} className={styles.socialButton} />
+              <Button type="link" icon={<InstagramOutlined />} className={styles.socialButton} />
+              <Button type="link" icon={<TwitterOutlined />} className={styles.socialButton} />
+            </div>
           </div>
         </div>
       </Footer>

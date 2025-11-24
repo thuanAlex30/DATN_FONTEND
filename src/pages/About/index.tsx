@@ -15,7 +15,6 @@ import {
 } from 'antd';
 import {
   SafetyOutlined,
-  LoginOutlined,
   ArrowLeftOutlined,
   CheckCircleOutlined,
   PhoneOutlined,
@@ -34,9 +33,10 @@ import {
   UserOutlined,
   SafetyCertificateOutlined
 } from '@ant-design/icons';
+import MarketingHeader from '../../components/MarketingHeader';
 import styles from './About.module.css';
 
-const { Header, Content, Footer } = Layout;
+const { Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
 const AboutPage: React.FC = () => {
@@ -54,26 +54,11 @@ const AboutPage: React.FC = () => {
 
   // Hình ảnh xây dựng cho carousel
   const constructionImages = [
-    {
-      url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&q=80',
-      alt: 'Công trình xây dựng an toàn'
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&q=80',
-      alt: 'Nhân viên làm việc an toàn'
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=1200&q=80',
-      alt: 'Thiết bị bảo hộ lao động'
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=1200&q=80',
-      alt: 'Công trường xây dựng'
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&q=80',
-      alt: 'An toàn lao động'
-    }
+  'https://cdn.vietnambiz.vn/2019/12/1/photo-1-1575201255304457023286.jpg',
+  'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&q=80',
+  'https://img.timvieckysu.com/2020/08/cong-nhan-xay-dung-la-gi-1.jpg',
+  'https://media.vneconomy.vn/w800/images/upload/2022/12/13/ctd-xay-tet-2.jpg',
+  'https://jobs365.vn/wp-content/uploads/2021/06/ky-su-xay-dung-can-biet-nhung-gi-1.jpg'
   ];
 
   // Reset image errors khi component mount lại và setup timeout cho tất cả hình ảnh
@@ -81,17 +66,32 @@ const AboutPage: React.FC = () => {
     setImageErrors({});
     setImageLoaded({});
     
-    // Setup timeout cho tất cả hình ảnh - nếu không load trong 5 giây thì hiển thị fallback
+    // Preload images và đảm bảo hình ảnh luôn hiển thị
     const timeouts: Record<number, ReturnType<typeof setTimeout>> = {};
-    constructionImages.forEach((_, index) => {
+    constructionImages.forEach((imageUrl, index) => {
+      // Preload images để hình ảnh load nhanh hơn
+      const img = new Image();
+      img.src = imageUrl;
+      img.onload = () => {
+        handleImageLoad(index);
+      };
+      img.onerror = () => {
+        handleImageError(index);
+      };
+      
+      // Đảm bảo hình ảnh luôn hiển thị ngay cả khi đang load
+      setImageLoaded(prev => ({ ...prev, [index]: false }));
+      
+      // Timeout dài hơn để đợi hình ảnh load (15 giây)
       timeouts[index] = setTimeout(() => {
-        setImageErrors(prev => {
-          if (!prev[index]) {
-            return { ...prev, [index]: true };
+        setImageLoaded(prevLoaded => {
+          if (!prevLoaded[index]) {
+            // Nếu chưa load sau 15 giây, vẫn hiển thị hình ảnh với opacity thấp
+            return { ...prevLoaded, [index]: true };
           }
-          return prev;
+          return prevLoaded;
         });
-      }, 5000);
+      }, 15000);
     });
     setImageTimeouts(timeouts);
     
@@ -204,67 +204,13 @@ const AboutPage: React.FC = () => {
 
   return (
     <Layout className={styles.layout}>
-      {/* Header with Navigation */}
-      <Header className={styles.header}>
-        <div className={styles.headerTop}>
-          <div className={styles.logo} onClick={() => navigate('/')}>
-            <SafetyOutlined className={styles.logoIcon} />
-            <Title level={4} className={styles.logoText}>
-              Hệ Thống Quản Lý An Toàn Lao Động
-            </Title>
-          </div>
-          <Button
-            type="primary"
-            size="large"
-            icon={<LoginOutlined />}
-            onClick={handleLogin}
-            className={styles.loginBtn}
-          >
-            Đăng nhập
-          </Button>
-        </div>
-        <div className={styles.navBar}>
-          <Space size="large" className={styles.navLinks}>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/')}
-            >
-              Trang chủ
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLinkActive}
-            >
-              Giới thiệu
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/contact')}
-            >
-              Liên Hệ
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/faq')}
-            >
-              FAQ
-            </Button>
-          </Space>
-        </div>
-      </Header>
+      <MarketingHeader activeKey="about" />
 
       <Content className={styles.content}>
         {/* Hero Section */}
         <section className={styles.heroSection}>
           <div className={styles.heroContainer}>
             <div className={styles.heroContent}>
-              <div className={styles.heroBadge}>
-                <SafetyOutlined className={styles.badgeIcon} />
-                <span>Về Hệ Thống</span>
-              </div>
               <Title level={1} className={styles.heroTitle}>
               Giới thiệu về hệ thống
             </Title>
@@ -285,7 +231,7 @@ const AboutPage: React.FC = () => {
             data-scroll-section
           >
             <Card className={styles.aboutFrameCard}>
-            <Row gutter={[48, 48]} align="middle" className={styles.aboutRow}>
+            <Row gutter={[48, 48]} align="stretch" className={styles.aboutRow}>
               <Col xs={24} lg={12}>
                   <div className={styles.aboutContent}>
                     <div className={styles.aboutContentHeader}>
@@ -352,36 +298,36 @@ const AboutPage: React.FC = () => {
                       effect="fade"
                       fade={true}
                     >
-                      {constructionImages.map((image, index) => (
+                      {constructionImages.map((imageUrl, index) => (
                         <div key={index} className={styles.carouselItem}>
                           <div className={styles.carouselImageContainer}>
-                            {imageErrors[index] ? (
+                            <img
+                              src={imageUrl}
+                              className={styles.carouselImage}
+                              onError={() => handleImageError(index)}
+                              onLoad={() => handleImageLoad(index)}
+                              loading="eager"
+                              style={{ 
+                                display: 'block',
+                                opacity: imageLoaded[index] ? 1 : 0.8,
+                                transition: 'opacity 0.8s ease-in-out',
+                                visibility: 'visible',
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                position: 'relative',
+                                zIndex: 1
+                              }}
+                            />
+                            {imageErrors[index] && (
                               <div className={styles.carouselImageFallback}>
-                                <SafetyOutlined style={{ fontSize: '64px', color: '#fff', marginBottom: '16px' }} />
-                                <div className={styles.carouselImageFallbackText}>{image.alt}</div>
+                                <SafetyOutlined style={{ fontSize: '64px', color: '#fff', opacity: 0.9 }} />
                               </div>
-                            ) : (
-                              <>
-                                {!imageLoaded[index] && (
-                                  <div className={styles.carouselImagePlaceholder}>
-                                    <SafetyOutlined style={{ fontSize: '48px', color: 'rgba(255,255,255,0.5)' }} />
-                                  </div>
-                                )}
-                                <img
-                                  src={image.url}
-                                  alt={image.alt}
-                                  className={styles.carouselImage}
-                                  onError={() => handleImageError(index)}
-                                  onLoad={() => handleImageLoad(index)}
-                                  loading="eager"
-                                  style={{ 
-                                    display: 'block',
-                                    opacity: imageLoaded[index] ? 1 : 0.3,
-                                    transition: 'opacity 0.5s ease',
-                                    visibility: 'visible'
-                                  }}
-                                />
-                              </>
+                            )}
+                            {!imageLoaded[index] && !imageErrors[index] && (
+                              <div className={styles.carouselImagePlaceholder}>
+                                <SafetyOutlined style={{ fontSize: '48px', opacity: 0.4, color: '#fff' }} />
+                              </div>
                             )}
                           </div>
                         </div>

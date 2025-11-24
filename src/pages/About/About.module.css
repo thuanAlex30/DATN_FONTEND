@@ -17,7 +17,7 @@
   top: 0;
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid #dcefe3;
 }
 
 .headerTop {
@@ -27,7 +27,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid #dcefe3;
 }
 
 .logo {
@@ -44,33 +44,33 @@
 
 .logoIcon {
   font-size: 2rem;
-  color: #1890ff;
+  color: #0f9b4d;
 }
 
 .logoText {
   margin: 0 !important;
-  color: #2c3e50 !important;
+  color: #0f1d17 !important;
   font-weight: 700;
   font-size: 1.25rem;
 }
 
 .loginBtn {
-  background: #1890ff;
+  background: #0f9b4d;
   border: none;
   color: #ffffff;
   font-weight: 600;
   height: 40px;
   padding: 0 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(15, 155, 77, 0.3);
   transition: all 0.3s ease;
 }
 
 .loginBtn:hover {
-  background: #40a9ff;
+  background: #13c267;
   color: #ffffff;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(15, 155, 77, 0.4);
 }
 
 .navBar {
@@ -88,7 +88,7 @@
 }
 
 .navLink {
-  color: #495057 !important;
+  color: #3a4b42 !important;
   font-weight: 500;
   font-size: 0.95rem;
   padding: 0.5rem 1rem !important;
@@ -98,12 +98,12 @@
 }
 
 .navLink:hover {
-  color: #1890ff !important;
-  background: rgba(24, 144, 255, 0.08);
+  color: #0f9b4d !important;
+  background: rgba(15, 155, 77, 0.08);
 }
 
 .navLinkActive {
-  color: #1890ff !important;
+  color: #0f9b4d !important;
   font-weight: 600;
   font-size: 0.95rem;
   padding: 0.5rem 1rem !important;
@@ -114,9 +114,9 @@
 /* ====== CONTENT + HERO ====== */
 .content {
   background:
-    radial-gradient(circle at top left, rgba(129, 140, 248, 0.15), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(236, 72, 153, 0.15), transparent 55%),
-    linear-gradient(180deg, #f6f8ff 0%, #ffffff 100%);
+    radial-gradient(circle at top left, rgba(187, 247, 208, 0.15), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(32, 214, 160, 0.15), transparent 55%),
+    linear-gradient(180deg, #f5fbf7 0%, #ffffff 100%);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -124,15 +124,15 @@
 
 .heroSection {
   background:
-    radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.4), transparent 50%),
-    radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.4), transparent 50%),
-    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.3), transparent 70%),
-    linear-gradient(135deg, #6366f1 0%, #8b5cf6 35%, #ec4899 70%, #f59e0b 100%);
-  padding: 7rem 2rem 6rem;
+    radial-gradient(circle at 20% 30%, rgba(15, 155, 77, 0.4), transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(32, 214, 160, 0.4), transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(52, 211, 153, 0.3), transparent 70%),
+    linear-gradient(135deg, #0fb356 0%, #23c77b 35%, #1fbf83 70%, #16a34a 100%);
+  padding: 4rem 2rem 3.5rem;
   position: relative;
   overflow: hidden;
   box-shadow:
-    0 32px 100px rgba(15, 23, 42, 0.6),
+    0 32px 100px rgba(15, 29, 23, 0.6),
     inset 0 0 0 1px rgba(255, 255, 255, 0.1);
   animation: gradientShift 20s ease infinite;
   background-size: 300% 300%;
@@ -161,10 +161,10 @@
   position: absolute;
   inset: -50%;
   background:
-    radial-gradient(circle at 15% 25%, rgba(99, 102, 241, 0.4), transparent 50%),
-    radial-gradient(circle at 85% 15%, rgba(236, 72, 153, 0.4), transparent 50%),
-    radial-gradient(circle at 50% 80%, rgba(139, 92, 246, 0.3), transparent 55%),
-    radial-gradient(circle at 25% 60%, rgba(245, 158, 11, 0.25), transparent 60%);
+    radial-gradient(circle at 15% 25%, rgba(15, 155, 77, 0.4), transparent 50%),
+    radial-gradient(circle at 85% 15%, rgba(32, 214, 160, 0.4), transparent 50%),
+    radial-gradient(circle at 50% 80%, rgba(52, 211, 153, 0.3), transparent 55%),
+    radial-gradient(circle at 25% 60%, rgba(34, 197, 94, 0.25), transparent 60%);
   opacity: 0.95;
   filter: blur(40px);
   animation: floatBackground 25s ease-in-out infinite;
@@ -176,7 +176,7 @@
   inset: auto -120px -160px -120px;
   background:
     radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.4), transparent 60%),
-    radial-gradient(circle at 70% 50%, rgba(118, 75, 162, 0.35), transparent 55%);
+    radial-gradient(circle at 70% 50%, rgba(16, 185, 129, 0.35), transparent 55%);
   filter: blur(40px);
   opacity: 0.9;
   animation: float 20s ease-in-out infinite;
@@ -226,13 +226,13 @@
 .heroBadge {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(191, 219, 254, 0.4));
+  gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(209, 250, 229, 0.4));
   backdrop-filter: blur(16px) saturate(180%);
-  padding: 0.65rem 1.75rem;
+  padding: 0.5rem 1.4rem;
   border-radius: 50px;
-  margin-bottom: 1.75rem;
-  font-size: 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
   font-weight: 700;
   border: 1.5px solid rgba(255, 255, 255, 0.7);
   animation: fadeInUp 0.6s ease-out, shimmer 4s ease-in-out infinite, badgePulse 3s ease-in-out infinite;
@@ -284,27 +284,27 @@
 
 .heroBadge:hover {
   transform: scale(1.08) translateY(-2px);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(191, 219, 254, 0.6));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(209, 250, 229, 0.6));
   box-shadow: 
     0 10px 50px rgba(255, 255, 255, 0.35),
     0 0 0 1px rgba(255, 255, 255, 0.2) inset;
 }
 
 .badgeIcon {
-  font-size: 1.2rem;
+  font-size: 1rem;
 }
 
 .heroTitle {
   color: #ffffff !important;
-  font-size: 4rem !important;
+  font-size: 2.75rem !important;
   font-weight: 900 !important;
-  margin-bottom: 1.75rem !important;
+  margin-bottom: 1.25rem !important;
   line-height: 1.15 !important;
   letter-spacing: -0.02em !important;
   text-shadow: 
     0 6px 30px rgba(0, 0, 0, 0.3),
     0 0 60px rgba(255, 255, 255, 0.15),
-    0 0 100px rgba(99, 102, 241, 0.2);
+    0 0 100px rgba(15, 155, 77, 0.2);
   animation: fadeInUp 0.8s ease-out, titleGlow 4s ease-in-out infinite, titleFloat 6s ease-in-out infinite;
   background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.95) 50%, rgba(255, 255, 255, 0.85) 100%);
   -webkit-background-clip: text;
@@ -345,9 +345,9 @@
 
 .heroDescription {
   color: rgba(255, 255, 255, 0.98) !important;
-  font-size: 1.35rem !important;
-  line-height: 1.85 !important;
-  max-width: 850px;
+  font-size: 1.1rem !important;
+  line-height: 1.75 !important;
+  max-width: 750px;
   margin: 0 auto !important;
   animation: fadeInUp 1s ease-out 0.2s both;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
@@ -387,14 +387,14 @@
 }
 
 .sectionTitle {
-  color: #1e293b !important;
+  color: #10251b !important;
   font-size: 2.75rem !important;
   font-weight: 900 !important;
   margin-bottom: 3.5rem !important;
   text-align: center;
   position: relative;
   letter-spacing: -0.02em !important;
-  background: linear-gradient(135deg, #1e293b 0%, #475569 50%, #6366f1 100%);
+  background: linear-gradient(135deg, #10251b 0%, #3c4f45 50%, #0fb356 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -408,9 +408,9 @@
   transform: translateX(-50%);
   width: 100px;
   height: 5px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #0fb356 0%, #23c77b 50%, #1fbf83 100%);
   border-radius: 3px;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 12px rgba(15, 155, 77, 0.4);
   animation: underlinePulse 3s ease-in-out infinite;
 }
 
@@ -429,15 +429,20 @@
   margin-bottom: 0;
 }
 
+.aboutRow :global(.ant-col) {
+  display: flex;
+  align-items: stretch;
+}
+
 /* ====== ABOUT CARD & CONTENT ====== */
 .aboutFrameCard {
   border-radius: 28px !important;
   box-shadow:
-    0 25px 80px rgba(15, 23, 42, 0.2),
+    0 25px 80px rgba(15, 29, 23, 0.2),
     0 0 0 1px rgba(255, 255, 255, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)) !important;
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 250, 246, 0.95)) !important;
   backdrop-filter: blur(24px) saturate(180%);
   padding: 3rem !important;
   position: relative;
@@ -454,8 +459,8 @@
   width: 200%;
   height: 200%;
   background: 
-    radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.15), transparent 50%),
-    radial-gradient(circle at 70% 70%, rgba(236, 72, 153, 0.12), transparent 50%);
+    radial-gradient(circle at 30% 30%, rgba(15, 155, 77, 0.15), transparent 50%),
+    radial-gradient(circle at 70% 70%, rgba(32, 214, 160, 0.12), transparent 50%);
   opacity: 0;
   transition: opacity 0.6s ease;
   animation: cardGlow 8s ease-in-out infinite;
@@ -479,7 +484,7 @@
   bottom: 0;
   border-radius: 28px;
   padding: 2px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(236, 72, 153, 0.3), rgba(139, 92, 246, 0.3));
+  background: linear-gradient(135deg, rgba(15, 155, 77, 0.3), rgba(32, 214, 160, 0.3), rgba(52, 211, 153, 0.3));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -488,9 +493,8 @@
 }
 
 .aboutFrameCard:hover {
-  transform: translateY(-8px) scale(1.01);
   box-shadow:
-    0 35px 100px rgba(99, 102, 241, 0.3),
+    0 35px 100px rgba(15, 155, 77, 0.3),
     0 0 0 1px rgba(255, 255, 255, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
@@ -510,16 +514,20 @@
 .aboutContent {
   padding: 2rem 2.25rem 2rem 1.5rem;
   background: 
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 250, 246, 0.95));
   backdrop-filter: blur(16px) saturate(180%);
   border-radius: 22px;
-  border: 1.5px solid rgba(99, 102, 241, 0.15);
+  border: 1.5px solid rgba(15, 155, 77, 0.15);
   box-shadow: 
-    0 16px 40px rgba(15, 23, 42, 0.1),
+    0 16px 40px rgba(15, 29, 23, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  height: 100%;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
 }
 
 .aboutContent::before {
@@ -529,7 +537,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.05), transparent);
+  background: linear-gradient(90deg, transparent, rgba(46, 176, 92, 0.05), transparent);
   transition: left 0.6s ease;
 }
 
@@ -538,12 +546,11 @@
 }
 
 .aboutContent:hover {
-  border-color: rgba(99, 102, 241, 0.35);
+  border-color: rgba(15, 155, 77, 0.35);
   box-shadow: 
-    0 24px 60px rgba(99, 102, 241, 0.25),
+    0 24px 60px rgba(15, 155, 77, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  transform: translateY(-4px);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(250, 252, 255, 0.98));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(244, 252, 247, 0.98));
 }
 
 .aboutContentHeader {
@@ -554,26 +561,26 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(24, 144, 255, 0.12);
+  background: rgba(15, 155, 77, 0.12);
   padding: 0.45rem 1.15rem;
   border-radius: 999px;
   margin-bottom: 0.75rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #1890ff;
+  color: #0f9b4d;
 }
 
 .titleBadgeIcon {
   font-size: 1rem;
-  color: #1890ff;
+  color: #0f9b4d;
 }
 
 .aboutSectionTitle {
-  color: #1e293b !important;
+  color: #10251b !important;
   font-size: 2rem !important;
   font-weight: 800 !important;
   margin: 0 0 1rem 0 !important;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #0fb356 0%, #23c77b 50%, #1fbf83 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -589,7 +596,7 @@
 
 .aboutText {
   font-size: 1.1rem;
-  color: #475569;
+  color: #3c4f45;
   line-height: 1.75;
   margin-bottom: 1.25rem;
   font-weight: 400;
@@ -615,14 +622,14 @@
   gap: 0.2rem;                    /* khoảng cách rất nhỏ giữa icon và chữ */
   padding: 0.35rem 0.5rem;
   font-size: 0.95rem;
-  color: #495057;
+  color: #3a4b42;
   border-radius: 8px;
   transition: all 0.3s ease;
   margin: 0.25rem 0;
 }
 
 .listItemWrapper:hover {
-  background: rgba(102, 126, 234, 0.08);
+  background: rgba(46, 176, 92, 0.08);
   transform: translateX(4px);
   padding-left: 0.75rem;
 }
@@ -633,7 +640,7 @@
   margin: 0;
   padding: 0;
   font-size: 0.9rem !important;
-  color: #52c41a !important;
+  color: #12a150 !important;
 }
 
 .listItemWrapper span {
@@ -650,20 +657,22 @@
   align-items: center;
   justify-content: center;
   min-height: 500px;
+  height: 100%;
   padding: 0.75rem;
 }
 
 .aboutCarousel {
   width: 100%;
   max-width: 600px;
-  height: 500px;
+  height: 100%;
+  min-height: 500px;
   border-radius: 24px;
   overflow: hidden;
   box-shadow:
-    0 20px 60px rgba(102, 126, 234, 0.25),
-    0 0 0 3px rgba(102, 126, 234, 0.1);
+    0 20px 60px rgba(46, 176, 92, 0.25),
+    0 0 0 3px rgba(46, 176, 92, 0.1);
   background: #ffffff;
-  border: 3px solid rgba(102, 126, 234, 0.2);
+  border: 3px solid rgba(46, 176, 92, 0.2);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
@@ -673,7 +682,7 @@
   position: absolute;
   inset: -4px;
   border-radius: 28px;
-  background: linear-gradient(135deg, #667eea, #764ba2, #ec4899);
+  background: linear-gradient(135deg, #1ec97d, #0d8b49, #1fbf83);
   opacity: 0;
   z-index: -1;
   filter: blur(20px);
@@ -685,10 +694,9 @@
 }
 
 .aboutCarouselWrapper:hover .aboutCarousel {
-  transform: translateY(-4px);
   box-shadow:
-    0 28px 80px rgba(102, 126, 234, 0.35),
-    0 0 0 3px rgba(102, 126, 234, 0.2);
+    0 28px 80px rgba(46, 176, 92, 0.35),
+    0 0 0 3px rgba(46, 176, 92, 0.2);
 }
 
 .aboutCarousel :global(.slick-list),
@@ -715,12 +723,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1ec97d 0%, #0d8b49 100%);
   transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 500px;
 }
 
 .aboutCarouselWrapper:hover .carouselImageContainer {
-  transform: scale(1.02);
+  /* Removed transform to prevent bounce effect */
 }
 
 .carouselImage {
@@ -728,7 +737,12 @@
   height: 100%;
   object-fit: cover;
   border-radius: 24px;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s ease-in-out;
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-height: 500px;
+  background: linear-gradient(135deg, #1ec97d 0%, #0d8b49 100%);
 }
 
 .carouselImageContainer:hover .carouselImage {
@@ -743,8 +757,13 @@
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, rgba(46, 176, 92, 0.9) 0%, rgba(16, 185, 129, 0.9) 100%);
   border-radius: 24px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  min-height: 500px;
 }
 
 .carouselImageFallbackText {
@@ -760,8 +779,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));
+  background: linear-gradient(135deg, rgba(46, 176, 92, 0.2), rgba(16, 185, 129, 0.2));
   border-radius: 24px;
+  z-index: 1;
+  pointer-events: none;
+  min-height: 500px;
 }
 
 /* Dots */
@@ -773,15 +795,15 @@
 .statsSection {
   padding: 4rem 2rem;
   background:
-    radial-gradient(circle at 20% 25%, rgba(99, 102, 241, 0.25), transparent 55%),
-    radial-gradient(circle at 80% 10%, rgba(236, 72, 153, 0.25), transparent 60%),
-    radial-gradient(circle at 50% 80%, rgba(139, 92, 246, 0.2), transparent 65%),
-    linear-gradient(135deg, #eef2ff 0%, #f8fafc 50%, #ffffff 100%);
+    radial-gradient(circle at 20% 25%, rgba(15, 155, 77, 0.25), transparent 55%),
+    radial-gradient(circle at 80% 10%, rgba(32, 214, 160, 0.25), transparent 60%),
+    radial-gradient(circle at 50% 80%, rgba(52, 211, 153, 0.2), transparent 65%),
+    linear-gradient(135deg, #effbf3 0%, #f6fcf8 50%, #ffffff 100%);
   border-radius: 32px;
   margin: 5rem 0;
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(15, 155, 77, 0.1);
   box-shadow: 
-    0 20px 60px rgba(15, 23, 42, 0.1),
+    0 20px 60px rgba(15, 29, 23, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
@@ -797,12 +819,12 @@
 .statCard {
   width: 100%;
   border-radius: 24px !important;
-  border: 1.5px solid rgba(99, 102, 241, 0.15) !important;
+  border: 1.5px solid rgba(15, 155, 77, 0.15) !important;
   box-shadow: 
-    0 20px 50px rgba(15, 23, 42, 0.15),
+    0 20px 50px rgba(15, 29, 23, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
   background: 
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)) !important;
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 250, 246, 0.95)) !important;
   backdrop-filter: blur(16px) saturate(180%);
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -816,16 +838,15 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+  background: linear-gradient(135deg, rgba(46, 176, 92, 0.05), rgba(16, 185, 129, 0.05));
   opacity: 0;
   transition: opacity 0.4s ease;
 }
 
 .statCard:hover {
-  transform: translateY(-12px) scale(1.06) rotate(1deg);
-  border-color: rgba(99, 102, 241, 0.4) !important;
+  border-color: rgba(15, 155, 77, 0.4) !important;
   box-shadow: 
-    0 30px 80px rgba(99, 102, 241, 0.3),
+    0 30px 80px rgba(15, 155, 77, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
 }
 
@@ -851,7 +872,7 @@
 }
 
 .statCard :global(.ant-statistic-title) {
-  color: #6c757d;
+  color: #4a5c52;
   font-size: 0.95rem;
 }
 
@@ -870,10 +891,10 @@
   border-radius: 24px !important;
   border: 1.5px solid rgba(148, 163, 184, 0.2) !important;
   box-shadow: 
-    0 20px 50px rgba(15, 23, 42, 0.15),
+    0 20px 50px rgba(15, 29, 23, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
   background: 
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)) !important;
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 250, 246, 0.95)) !important;
   backdrop-filter: blur(16px) saturate(180%);
   text-align: center;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -888,16 +909,16 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+  background: linear-gradient(135deg, rgba(46, 176, 92, 0.05), rgba(16, 185, 129, 0.05));
   opacity: 0;
   transition: opacity 0.4s ease;
 }
 
 .valueCard:hover {
   transform: translateY(-16px) scale(1.04) rotateY(2deg);
-  border-color: rgba(99, 102, 241, 0.4) !important;
+  border-color: rgba(15, 155, 77, 0.4) !important;
   box-shadow: 
-    0 35px 90px rgba(99, 102, 241, 0.3),
+    0 35px 90px rgba(15, 155, 77, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
 }
 
@@ -919,12 +940,12 @@
   justify-content: center;
   font-size: 2.75rem;
   color: #ffffff;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #0fb356 0%, #23c77b 50%, #1fbf83 100%);
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   box-shadow: 
-    0 12px 30px rgba(99, 102, 241, 0.3),
+    0 12px 30px rgba(15, 155, 77, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -938,23 +959,19 @@
 }
 
 .valueCard:hover .valueIcon {
-  transform: scale(1.15) rotate(8deg) translateY(-4px);
-  box-shadow: 
-    0 20px 50px rgba(99, 102, 241, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 40%, #ec4899 80%, #f59e0b 100%);
+  /* Loại bỏ tất cả hiệu ứng hover của icon */
 }
 
 .valueCard:hover .valueIcon::before {
-  opacity: 1;
+  /* Loại bỏ hiệu ứng hover của icon */
 }
 
 .valueTitle {
-  color: #1e293b !important;
+  color: #10251b !important;
   font-size: 1.65rem !important;
   font-weight: 800 !important;
   margin-bottom: 1.25rem !important;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #0fb356 0%, #23c77b 50%, #1fbf83 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -967,7 +984,7 @@
 }
 
 .valueText {
-  color: #64748b;
+  color: #4c5f55;
   line-height: 1.8;
   font-size: 1rem;
   font-weight: 400;
@@ -980,25 +997,25 @@
   margin: 5rem 0;
   border-radius: 32px;
   background:
-    radial-gradient(circle at 25% 35%, rgba(99, 102, 241, 0.22), transparent 55%),
-    radial-gradient(circle at 85% 15%, rgba(139, 92, 246, 0.22), transparent 60%),
-    radial-gradient(circle at 50% 75%, rgba(236, 72, 153, 0.18), transparent 65%),
-    linear-gradient(135deg, #f3f5ff 0%, #f8fafc 50%, #ffffff 100%);
-  border: 1px solid rgba(99, 102, 241, 0.1);
+    radial-gradient(circle at 25% 35%, rgba(15, 155, 77, 0.22), transparent 55%),
+    radial-gradient(circle at 85% 15%, rgba(52, 211, 153, 0.22), transparent 60%),
+    radial-gradient(circle at 50% 75%, rgba(32, 214, 160, 0.18), transparent 65%),
+    linear-gradient(135deg, #f2fbf5 0%, #f6fcf8 50%, #ffffff 100%);
+  border: 1px solid rgba(15, 155, 77, 0.1);
   box-shadow: 
-    0 20px 60px rgba(15, 23, 42, 0.1),
+    0 20px 60px rgba(15, 29, 23, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .featureCard {
   height: 100%;
   border-radius: 24px !important;
-  border: 1.5px solid rgba(99, 102, 241, 0.15) !important;
+  border: 1.5px solid rgba(15, 155, 77, 0.15) !important;
   box-shadow: 
-    0 20px 50px rgba(15, 23, 42, 0.15),
+    0 20px 50px rgba(15, 29, 23, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
   background: 
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)) !important;
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 250, 246, 0.95)) !important;
   backdrop-filter: blur(16px) saturate(180%);
   text-align: center;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1013,16 +1030,16 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+  background: linear-gradient(135deg, rgba(46, 176, 92, 0.08), rgba(16, 185, 129, 0.08));
   opacity: 0;
   transition: opacity 0.4s ease;
 }
 
 .featureCard:hover {
   transform: translateY(-16px) scale(1.04) rotateY(-2deg);
-  border-color: rgba(99, 102, 241, 0.4) !important;
+  border-color: rgba(15, 155, 77, 0.4) !important;
   box-shadow: 
-    0 35px 90px rgba(99, 102, 241, 0.3),
+    0 35px 90px rgba(15, 155, 77, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
 }
 
@@ -1043,12 +1060,12 @@
   align-items: center;
   justify-content: center;
   font-size: 2.25rem;
-  color: #6366f1;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.12));
+  color: #0fb356;
+  background: linear-gradient(135deg, rgba(15, 155, 77, 0.12), rgba(52, 211, 153, 0.12));
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   box-shadow: 
-    0 8px 20px rgba(99, 102, 241, 0.15),
+    0 8px 20px rgba(15, 155, 77, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
@@ -1057,7 +1074,7 @@
   position: absolute;
   inset: -4px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #1ec97d, #0d8b49);
   opacity: 0;
   z-index: -1;
   transition: opacity 0.4s ease;
@@ -1065,24 +1082,19 @@
 }
 
 .featureCard:hover .featureIcon {
-  transform: scale(1.2) rotate(-8deg) translateY(-4px);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.25));
-  color: #8b5cf6;
-  box-shadow: 
-    0 16px 40px rgba(99, 102, 241, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  /* Loại bỏ tất cả hiệu ứng hover của icon */
 }
 
 .featureCard:hover .featureIcon::after {
-  opacity: 0.6;
+  /* Loại bỏ hiệu ứng hover của icon */
 }
 
 .featureTitle {
-  color: #1e293b !important;
+  color: #10251b !important;
   font-size: 1.55rem !important;
   font-weight: 800 !important;
   margin-bottom: 1.25rem !important;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  background: linear-gradient(135deg, #0fb356 0%, #23c77b 50%, #1fbf83 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1097,7 +1109,7 @@
 }
 
 .featureDescription {
-  color: #64748b;
+  color: #4c5f55;
   line-height: 1.8;
   font-size: 1rem;
   font-weight: 400;
@@ -1107,24 +1119,26 @@
 /* ====== FOOTER ====== */
 .footer {
   background:
-    radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.18), transparent 60%),
-    radial-gradient(circle at 80% 0%, rgba(236, 72, 153, 0.18), transparent 65%),
-    linear-gradient(180deg, #eef2ff 0%, #ffffff 60%);
-  color: #1f2937;
-  padding: 5rem 2rem 3rem;
+    radial-gradient(circle at 15% 20%, rgba(15, 155, 77, 0.18), transparent 60%),
+    radial-gradient(circle at 80% 0%, rgba(32, 214, 160, 0.18), transparent 65%),
+    linear-gradient(180deg, #effbf3 0%, #ffffff 60%);
+  color: #132b20;
+  padding: 5rem 0 3rem;
   margin-top: auto;
   border-top: 1px solid rgba(148, 163, 184, 0.25);
+  position: relative;
+  overflow: hidden;
+  width: 100%;
 }
 
 .footerContent {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 3rem;
-  border-radius: 32px;
+  width: 100%;
+  padding: 3rem 2rem;
+  border-radius: 0;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(243, 247, 255, 0.98));
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: 0 35px 90px rgba(15, 23, 42, 0.18);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(236, 249, 242, 0.98));
+  border: none;
+  box-shadow: none;
 }
 
 .footerLogo {
@@ -1136,12 +1150,12 @@
 
 .footerLogoIcon {
   font-size: 2.25rem;
-  color: #2563eb;
+  color: #0c7c3d;
 }
 
 .footerLogoText {
   margin: 0 !important;
-  color: #1d4ed8 !important;
+  color: #0a5f31 !important;
   font-weight: 700;
   font-size: 1.6rem;
 }
@@ -1159,18 +1173,18 @@
   padding: 0.9rem 1rem;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(226, 232, 240, 0.6);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(214, 236, 222, 0.6);
+  box-shadow: 0 12px 30px rgba(15, 29, 23, 0.08);
 }
 
 .footerContactIcon {
-  color: #2563eb;
+  color: #0c7c3d;
   font-size: 1.15rem;
   margin-top: 0.2rem;
 }
 
 .footerColumnTitle {
-  color: #0f172a !important;
+  color: #0c291a !important;
   margin-bottom: 1.5rem !important;
   font-weight: 700;
   font-size: 1.05rem;
@@ -1185,7 +1199,7 @@
 }
 
 .footerLink {
-  color: #475569 !important;
+  color: #3c4f45 !important;
   padding: 0.35rem 0 !important;
   height: auto !important;
   font-weight: 500;
@@ -1196,10 +1210,8 @@
 }
 
 .footerLink:hover {
-  color: #2563eb !important;
-  transform: translateX(6px);
-  background: rgba(37, 99, 235, 0.08);
-  padding-left: 0.6rem !important;
+  color: #0c7c3d !important;
+  /* Đã bỏ hiệu ứng transform và padding khi hover */
 }
 
 .footerDivider {
@@ -1215,7 +1227,7 @@
 }
 
 .footerCopyright {
-  color: #475569;
+  color: #3c4f45;
   font-size: 0.95rem;
 }
 
@@ -1234,8 +1246,8 @@
   justify-content: center;
   border-radius: 12px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(226, 232, 255, 0.95));
-  color: #2563eb !important;
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(213, 246, 225, 0.95));
+  color: #0c7c3d !important;
   border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
@@ -1280,11 +1292,15 @@
   }
 
   .aboutCarousel {
-    height: 400px;
+    min-height: 400px;
+  }
+
+  .aboutContent {
+    min-height: 400px;
   }
 
   .footer {
-    padding: 4rem 1.5rem 2.5rem;
+    padding: 4rem 0 2.5rem;
   }
 
   .footerContent {
