@@ -1,0 +1,35 @@
+.layout {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.contentLayout {
+  margin-left: 280px;
+  background: transparent;
+}
+
+.content {
+  padding: 20px;
+  background: transparent;
+  min-height: 100vh;
+}
+
+.pageContent {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .contentLayout {
+    margin-left: 0;
+  }
+  
+  .content {
+    padding: 16px;
+  }
+  
+  .pageContent {
+    max-width: 100%;
+  }
+}

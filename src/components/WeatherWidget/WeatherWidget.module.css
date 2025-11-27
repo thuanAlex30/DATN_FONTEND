@@ -1,0 +1,187 @@
+.widget {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 16px;
+  border: 1px solid rgba(24, 144, 255, 0.2);
+  background: rgba(24, 144, 255, 0.08);
+  border-radius: 16px;
+  min-width: 260px;
+  color: #1f1f1f;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.widget:hover {
+  background: rgba(24, 144, 255, 0.14);
+  border-color: rgba(24, 144, 255, 0.4);
+}
+
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.primary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.temperature {
+  font-size: 18px;
+  font-weight: 600;
+  color: #096dd9;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.condition {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f1f1f;
+}
+
+.location {
+  font-size: 11px;
+  color: #595959;
+  text-transform: capitalize;
+}
+
+.secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #434343;
+}
+
+.wind {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.wind::before {
+  content: '💨';
+  margin-right: 4px;
+}
+
+.refreshButton {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #096dd9;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: color 0.2s ease;
+}
+
+.refreshButton:disabled {
+  cursor: not-allowed;
+  color: #8c8c8c;
+}
+
+.refreshButton:not(:disabled):hover {
+  color: #0050b3;
+}
+
+.locationButton {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #8c8c8c;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: color 0.2s ease;
+}
+
+.locationButton:disabled {
+  cursor: not-allowed;
+  color: #d9d9d9;
+}
+
+.locationButton:not(:disabled):hover {
+  color: #1890ff;
+}
+
+.locationButtonActive {
+  color: #52c41a !important;
+}
+
+.locationStatus {
+  font-size: 11px;
+  color: #5c5c5c;
+}
+
+.forecastStrip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.forecastItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 90px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(24, 144, 255, 0.15);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.forecastDay {
+  font-size: 11px;
+  text-transform: capitalize;
+  color: #434343;
+}
+
+.forecastCondition {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f1f1f;
+  line-height: 1.2;
+}
+
+.forecastTemp {
+  font-size: 12px;
+  font-weight: 600;
+  color: #096dd9;
+}
+
+.error {
+  border-color: #ffa39e;
+  background: #fff1f0;
+  color: #a8071a;
+}
+
+@media (max-width: 768px) {
+  .widget {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .location {
+    display: none;
+  }
+
+  .forecastItem {
+    min-width: 80px;
+  }
+}
+

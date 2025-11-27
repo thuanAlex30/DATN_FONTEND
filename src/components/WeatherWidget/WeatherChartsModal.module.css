@@ -1,0 +1,72 @@
+.chartWrapper {
+  width: 100%;
+  padding: 8px 0;
+}
+
+.chartSvg {
+  width: 100%;
+}
+
+.legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #595959;
+}
+
+.legendColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.axisLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #8c8c8c;
+  text-transform: capitalize;
+  gap: 6px;
+}
+
+.axisLabels span {
+  flex: 1;
+  text-align: center;
+  white-space: pre-line;
+  line-height: 1.2;
+}
+
+.valueRange {
+  margin-top: 4px;
+}
+
+.modal :global(.ant-modal-content) {
+  border-radius: 20px;
+}
+
+.modal :global(.ant-modal-body) {
+  padding: 24px 32px;
+}
+
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tabBody {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+

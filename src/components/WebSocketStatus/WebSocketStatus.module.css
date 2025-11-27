@@ -1,0 +1,46 @@
+.statusContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.statusIcon {
+  font-size: 14px;
+}
+
+.statusText {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.connected {
+  color: #52c41a;
+}
+
+.connecting {
+  color: #faad14;
+}
+
+.error {
+  color: #ff4d4f;
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}

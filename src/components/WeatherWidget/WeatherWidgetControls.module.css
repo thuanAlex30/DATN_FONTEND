@@ -1,0 +1,34 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settingsButton {
+  border-radius: 999px;
+  border-color: rgba(24, 144, 255, 0.3);
+  color: #096dd9;
+}
+
+.settingsButton:hover {
+  color: #0050b3;
+  border-color: rgba(24, 144, 255, 0.6);
+}
+
+.advancedFields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.locationActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.locationError {
+  font-size: 12px;
+}
+

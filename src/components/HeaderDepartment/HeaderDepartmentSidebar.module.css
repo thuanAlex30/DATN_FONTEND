@@ -1,0 +1,46 @@
+ .sider {
+  background: #ffffff;
+  border-right: 1px solid #f0f0f0;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+}
+
+.logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  border-bottom: 1px solid #f0f0f0;
+  font-weight: 600;
+  color: #1890ff;
+  gap: 8px;
+}
+
+.logoIcon {
+  font-size: 20px;
+}
+
+.logoText {
+  font-size: 16px;
+}
+
+.menu {
+  border-right: none;
+  padding-top: 8px;
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  border-top: 1px solid #f0f0f0;
+}
+
+.footerMenu {
+  border-right: none;
+}
+
+
