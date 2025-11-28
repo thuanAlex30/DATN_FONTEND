@@ -1,0 +1,17 @@
+<svg width="180" height="80" viewBox="0 0 180 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="dhkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fdf2f8"/>
+      <stop offset="100%" stop-color="#f5d0fe"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="80" rx="18" fill="url(#dhkGradient)"/>
+  <text x="90" y="44" text-anchor="middle" font-family="Poppins, 'Segoe UI', sans-serif" font-size="34" font-weight="700" fill="#be185d">DHK</text>
+  <text x="90" y="62" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="16" font-weight="600" letter-spacing="2" fill="#831843">
+    JEWELRY
+  </text>
+</svg>
+
+
+
+

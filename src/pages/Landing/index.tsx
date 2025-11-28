@@ -7,6 +7,7 @@ import {
   MailOutlined,
   EnvironmentOutlined,
   TeamOutlined,
+  ReadOutlined,
   CheckCircleOutlined,
   ThunderboltOutlined,
   RocketOutlined,
@@ -17,10 +18,23 @@ import {
   FacebookOutlined,
   InstagramOutlined,
   TwitterOutlined,
-  CustomerServiceOutlined
+  CustomerServiceOutlined,
+  SafetyCertificateOutlined,
+  SolutionOutlined,
+  IdcardOutlined,
+  BarChartOutlined,
+  SkinOutlined,
+  FundProjectionScreenOutlined,
+  AreaChartOutlined,
+  AuditOutlined,
+  ProjectOutlined,
+  UserSwitchOutlined,
+  MessageOutlined
 } from '@ant-design/icons';
 import MarketingHeader from '../../components/MarketingHeader';
 import styles from './Landing.module.css';
+import dhkLogo from '../../assets/clients/dhk-jewelry.svg';
+import maxxLogo from '../../assets/clients/maxx-sport.svg';
 
 const { Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -28,36 +42,54 @@ const { Title, Text, Paragraph } = Typography;
 const BRAND_NAME = 'Hệ Thống Quản Lý An Toàn Lao Động';
 const BRAND_SHORT = 'Safety';
 
-const moduleCards = [
+const moduleCards: Array<{
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  iconColor: string;
+  iconBg: string;
+}> = [
   {
-    icon: 'https://img.icons8.com/color/96/hard-hat.png',
+    icon: <SafetyOutlined />,
     title: 'Quản lý An toàn',
-    description: 'Theo dõi và quản lý các hoạt động an toàn lao động, sự cố và rủi ro.'
+    description: 'Theo dõi và quản lý các hoạt động an toàn lao động, sự cố và rủi ro.',
+    iconColor: '#f97316',
+    iconBg: 'linear-gradient(135deg, #fff4e6 0%, #ffe5d0 100%)'
   },
   {
-    icon: 'https://img.icons8.com/color/96/training.png',
+    icon: <ReadOutlined />,
     title: 'Đào tạo & Chứng chỉ',
-    description: 'Quản lý các khóa đào tạo an toàn và theo dõi chứng chỉ của nhân viên.'
+    description: 'Quản lý các khóa đào tạo an toàn và theo dõi chứng chỉ của nhân viên.',
+    iconColor: '#2563eb',
+    iconBg: 'linear-gradient(135deg, #e6f0ff 0%, #d0e2ff 100%)'
   },
   {
-    icon: 'https://img.icons8.com/color/96/conference.png',
+    icon: <TeamOutlined />,
     title: 'Quản lý Nhân sự',
-    description: 'Quản lý thông tin nhân viên, phòng ban, chức vụ và vai trò.'
+    description: 'Quản lý thông tin nhân viên, phòng ban, chức vụ và vai trò.',
+    iconColor: '#db2777',
+    iconBg: 'linear-gradient(135deg, #ffe6f1 0%, #ffd0e5 100%)'
   },
   {
-    icon: 'https://img.icons8.com/color/96/combo-chart.png',
+    icon: <AreaChartOutlined />,
     title: 'Báo cáo & Thống kê',
-    description: 'Tạo báo cáo chi tiết và xem thống kê về an toàn lao động.'
+    description: 'Tạo báo cáo chi tiết và xem thống kê về an toàn lao động.',
+    iconColor: '#16a34a',
+    iconBg: 'linear-gradient(135deg, #e6f9ee 0%, #cff5dc 100%)'
   },
   {
-    icon: 'https://img.icons8.com/color/96/safety-vest.png',
+    icon: <AuditOutlined />,
     title: 'Quản lý PPE',
-    description: 'Theo dõi và quản lý thiết bị bảo hộ cá nhân cho nhân viên.'
+    description: 'Theo dõi và quản lý thiết bị bảo hộ cá nhân cho nhân viên.',
+    iconColor: '#9333ea',
+    iconBg: 'linear-gradient(135deg, #f5e6ff 0%, #ebd4ff 100%)'
   },
   {
-    icon: 'https://img.icons8.com/color/96/project.png',
+    icon: <ProjectOutlined />,
     title: 'Quản lý Dự án',
-    description: 'Quản lý các dự án, cột mốc, tài nguyên và rủi ro dự án.'
+    description: 'Quản lý các dự án, cột mốc, tài nguyên và rủi ro dự án.',
+    iconColor: '#0ea5e9',
+    iconBg: 'linear-gradient(135deg, #e0f7ff 0%, #c8efff 100%)'
   }
 ];
 
@@ -109,12 +141,12 @@ const trustedClients = [
   { name: 'Sonha', src: 'https://logo.clearbit.com/sonha.com.vn' },
   { name: 'Duc Viet Foods', src: 'https://logo.clearbit.com/ducvietfoods.vn' },
   { name: 'Hong Ha', src: 'https://logo.clearbit.com/hongha.com.vn' },
-  { name: 'DHK Jewelry', src: 'https://logo.clearbit.com/dhkjewelry.com' },
+  { name: 'DHK Jewelry', src: dhkLogo },
   { name: 'Viglacera', src: 'https://logo.clearbit.com/viglacera.com.vn' },
   { name: 'Emspo', src: 'https://logo.clearbit.com/emspo.com.vn' },
   { name: 'Dirty Coins', src: 'https://logo.clearbit.com/dirtycoins.vn' },
   { name: 'Beemart', src: 'https://logo.clearbit.com/beemart.vn' },
-  { name: 'Maxx Sport', src: 'https://logo.clearbit.com/maxxsport.com' }
+  { name: 'Maxx Sport', src: maxxLogo }
 ];
 
 const trustedClientRows = Array.from(
@@ -147,22 +179,28 @@ const workflowSteps = [
 
 const supportChannels = [
   {
-    icon: 'https://placehold.co/80x80/19d06a/ffffff?text=TV',
+    icon: <UserSwitchOutlined />,
     title: 'Nhân viên tư vấn',
     description: 'Đội ngũ chuyên gia đồng hành từ bước khảo sát đến lúc vận hành trơn tru.',
-    contact: 'support@safety-system.com'
+    contact: 'support@safety-system.com',
+    iconColor: '#059669',
+    iconBg: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)'
   },
   {
-    icon: 'https://placehold.co/80x80/19d06a/ffffff?text=CS',
+    icon: <PhoneOutlined />,
     title: 'Tổng đài 0123456789',
     description: 'Hỗ trợ 24/7 tất cả các ngày trong tuần, phản hồi trong vòng 5 phút.',
-    contact: '09 1800 6181'
+    contact: '09 1800 6181',
+    iconColor: '#2563eb',
+    iconBg: 'linear-gradient(135deg, #e0f2ff 0%, #c9e4ff 100%)'
   },
   {
-    icon: 'https://placehold.co/80x80/19d06a/ffffff?text=IT',
+    icon: <MessageOutlined />,
     title: 'Livechat & ticket',
     description: 'Gửi yêu cầu trên app hoặc portal, theo dõi trạng thái xử lý minh bạch.',
-    contact: 'support.safety.vn'
+    contact: 'support.safety.vn',
+    iconColor: '#f97316',
+    iconBg: 'linear-gradient(135deg, #fff4e6 0%, #ffe0c7 100%)'
   }
 ];
 
@@ -342,8 +380,10 @@ const LandingPage: React.FC = () => {
                 {moduleCards.map((feature) => (
                   <Col xs={24} sm={12} lg={8} key={feature.title}>
                     <Card className={`${styles.featureCard} ${styles.fadeInUp}`}>
-                      <div className={styles.featureIconWrap}>
-                        <img src={feature.icon} alt={feature.title} className={styles.featureIcon} />
+                      <div className={styles.featureIconWrap} style={{ background: feature.iconBg }}>
+                        <span className={styles.featureIconSymbol} style={{ color: feature.iconColor }}>
+                          {feature.icon}
+                        </span>
                       </div>
                       <Title level={4} className={styles.featureTitle}>{feature.title}</Title>
                       <Paragraph className={styles.featureDescription}>{feature.description}</Paragraph>
@@ -397,8 +437,10 @@ const LandingPage: React.FC = () => {
             <div className={styles.supportGrid}>
               {supportChannels.map((channel) => (
                 <Card key={channel.title} className={styles.supportCard}>
-                  <div className={styles.supportIcon}>
-                    <img src={channel.icon} alt={channel.title} />
+                  <div className={styles.supportIcon} style={{ background: channel.iconBg }}>
+                    <span className={styles.supportIconSymbol} style={{ color: channel.iconColor }}>
+                      {channel.icon}
+                    </span>
                   </div>
                   <Title level={4}>{channel.title}</Title>
                   <Paragraph>{channel.description}</Paragraph>

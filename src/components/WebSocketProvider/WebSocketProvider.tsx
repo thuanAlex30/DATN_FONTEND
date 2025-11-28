@@ -255,6 +255,34 @@ const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
       toast.success('🎉 Hoàn thành đào tạo');
     });
 
+    websocketClient.on('training_graded', (data: any) => {
+      console.log('✅ Training graded:', data);
+      dispatch(updateLastActivity());
+      
+      const enrollment = data.enrollment || {};
+      const message = data.message || 
+        (enrollment.passed 
+          ? `Chúc mừng! Bạn đã đậu khóa học với điểm số ${enrollment.score}`
+          : `Bạn đã hoàn thành khóa học với điểm số ${enrollment.score}. Vui lòng làm lại để đạt yêu cầu.`);
+      
+      dispatch(addNotification({
+        id: `training_graded_${Date.now()}`,
+        title: enrollment.passed ? '🎉 Đậu khóa học' : '📝 Kết quả khóa học',
+        message: message,
+        type: enrollment.passed ? 'success' : 'warning',
+        category: 'training',
+        priority: 'high',
+        created_at: new Date().toISOString(),
+        action_url: `/training`
+      }));
+
+      if (enrollment.passed) {
+        toast.success(`🎉 Chúc mừng! Bạn đã đậu với điểm ${enrollment.score}`);
+      } else {
+        toast.warning(`📝 Điểm số: ${enrollment.score}. Vui lòng làm lại.`);
+      }
+    });
+
     // Project events
     websocketClient.on('project_created', (data: any) => {
       console.log('📋 Project created:', data);

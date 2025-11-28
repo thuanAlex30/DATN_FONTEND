@@ -23,7 +23,9 @@ import {
   Divider,
   Alert,
   Checkbox,
-  DatePicker
+  DatePicker,
+  Badge,
+  message
 } from 'antd';
 import { 
   BookOutlined, 
@@ -1145,6 +1147,7 @@ const TrainingManagement: React.FC = () => {
           )}
 
           {/* Question Banks Tab */}
+
           {activeTab === 'question-banks' && (
             <div style={{ marginTop: '16px' }}>
               <Card>
@@ -2081,6 +2084,7 @@ const TrainingManagement: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
     </div>
   );
 };
