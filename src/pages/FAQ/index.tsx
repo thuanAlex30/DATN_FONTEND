@@ -272,9 +272,6 @@ const FAQPage: React.FC = () => {
                   Chương trình hợp tác
                 </Button>
                 <Button type="link" className={styles.footerLink}>
-                  Đối tác giao hàng
-                </Button>
-                <Button type="link" className={styles.footerLink}>
                   Đối tác kinh doanh
                 </Button>
                 <Button type="link" className={styles.footerLink}>

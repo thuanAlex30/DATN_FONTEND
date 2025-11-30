@@ -56,9 +56,12 @@ const ContactPage: React.FC = () => {
       <MarketingHeader activeKey="contact" />
 
       <Content className={styles.content}>
-        {/* Hero Section with Green Background */}
         <div className={styles.heroSection}>
           <div className={styles.heroContent}>
+            <div className={styles.heroBadge}>
+              <MessageOutlined className={styles.heroBadgeIcon} />
+              <span>Hỗ trợ nhanh chóng & tận tâm</span>
+            </div>
             <Title level={1} className={styles.heroTitle}>
               Liên hệ với chúng tôi
             </Title>
@@ -356,9 +359,6 @@ const ContactPage: React.FC = () => {
                 </Button>
                 <Button type="link" className={styles.footerLink}>
                   Chương trình hợp tác
-                </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Đối tác giao hàng
                 </Button>
                 <Button type="link" className={styles.footerLink}>
                   Đối tác kinh doanh

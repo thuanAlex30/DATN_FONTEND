@@ -114,9 +114,11 @@
 
 .content {
   background:
-    radial-gradient(circle at top left, rgba(187, 247, 208, 0.08), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(32, 214, 160, 0.08), transparent 55%),
-    linear-gradient(180deg, #f4fbf7 0%, #ffffff 100%);
+    radial-gradient(circle at 15% -10%, rgba(254, 243, 199, 0.8), transparent 60%),
+    radial-gradient(circle at 85% 0%, rgba(250, 204, 21, 0.45), transparent 60%),
+    radial-gradient(circle at top left, rgba(187, 247, 208, 0.18), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(32, 214, 160, 0.18), transparent 55%),
+    linear-gradient(180deg, #fefce8 0%, #ffffff 55%, #ecfdf3 100%);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -126,16 +128,16 @@
 /* Hero Section with Blue/Purple Gradient Background */
 .heroSection {
   background:
-    radial-gradient(circle at top left, rgba(187, 247, 208, 0.65), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(32, 214, 160, 0.55), transparent 55%),
-    linear-gradient(135deg, #0d8d46 0%, #16a34a 45%, #34d399 100%);
-  padding: 5rem 2rem 4rem;
+    radial-gradient(circle at 15% -10%, rgba(254, 243, 199, 0.95), transparent 60%),
+    radial-gradient(circle at 85% 5%, rgba(250, 204, 21, 0.55), transparent 60%),
+    radial-gradient(circle at 8% 15%, rgba(187, 247, 208, 0.9), transparent 60%),
+    radial-gradient(circle at 92% 30%, rgba(52, 211, 153, 0.75), transparent 55%),
+    radial-gradient(circle at 50% 110%, rgba(22, 163, 74, 0.35), transparent 65%),
+    linear-gradient(180deg, #fefce8 0%, #f0fdf4 50%, #ecfdf3 100%);
+  padding: 4.5rem 2rem 3.5rem;
   text-align: center;
   position: relative;
   overflow: hidden;
-  box-shadow:
-    0 28px 80px rgba(15, 29, 23, 0.25),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .heroSection::before {
@@ -182,24 +184,49 @@
   z-index: 1;
 }
 
-.heroTitle {
-  color: #ffffff !important;
-  font-size: 3.5rem !important;
-  font-weight: 800 !important;
-  margin-bottom: 1.5rem !important;
-  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  letter-spacing: -0.5px;
-  animation: fadeInDown 0.8s ease-out;
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.4rem;
+  border-radius: 999px;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #14532d;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(254, 243, 199, 0.96), rgba(209, 250, 229, 0.98));
+  border: 1.5px solid rgba(234, 179, 8, 0.5);
+  box-shadow:
+    0 12px 34px rgba(250, 204, 21, 0.42),
+    0 0 0 1px rgba(22, 163, 74, 0.16);
 }
 
+.heroBadgeIcon {
+  font-size: 1rem;
+  color: #16a34a;
+}
+
+.heroTitle {
+  color: #0d8d46 !important;
+  font-size: 3.75rem !important;
+  font-weight: 900 !important;
+  margin-bottom: 1.5rem !important;
+  letter-spacing: -0.5px;
+  animation: fadeInDown 0.8s ease-out;
+  position: relative;
+  text-shadow: 0 2px 8px rgba(15, 118, 52, 0.15);
+}
+
+
 .heroSubtitle {
-  color: rgba(255, 255, 255, 0.98);
-  font-size: 1.3rem;
+  color: #1a5f3e !important;
+  font-size: 1.4rem !important;
   line-height: 1.8;
   display: block;
   margin-bottom: 3rem;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   animation: fadeInUp 0.8s ease-out 0.2s both;
+  font-weight: 600 !important;
+  position: relative;
 }
 
 @keyframes fadeInDown {
@@ -229,18 +256,39 @@
 }
 
 .heroCard {
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(236, 253, 245, 0.98) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 24px;
   padding: 2.5rem 2rem;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 2px solid rgba(34, 197, 94, 0.3);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
   box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    0 12px 40px rgba(15, 155, 77, 0.25),
+    0 4px 16px rgba(34, 197, 94, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 0 0 1px rgba(34, 197, 94, 0.1);
   animation: fadeInUp 0.8s ease-out both;
+  position: relative;
+  overflow: hidden;
+}
+
+.heroCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #0d8d46, #34d399, #22c55e);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+
+.heroCard:hover::before {
+  transform: scaleX(1);
 }
 
 .heroCard:nth-child(1) {
@@ -256,48 +304,69 @@
 }
 
 .heroCard:hover {
-  background: rgba(255, 255, 255, 0.28);
-  transform: translateY(-8px) scale(1.02);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(220, 252, 231, 1) 100%);
+  transform: translateY(-12px) scale(1.03);
   box-shadow: 
-    0 16px 48px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  border-color: rgba(255, 255, 255, 0.5);
+    0 20px 60px rgba(15, 155, 77, 0.4),
+    0 8px 24px rgba(34, 197, 94, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 0 0 2px rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.6);
 }
 
 .heroCardIcon {
-  font-size: 3rem;
-  color: #ffffff;
+  font-size: 3.5rem;
   margin-bottom: 1rem;
   display: block;
-  transition: transform 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, #0d8d46 0%, #16a34a 50%, #34d399 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 4px 12px rgba(34, 197, 94, 0.4));
+  position: relative;
 }
 
 .heroCard:hover .heroCardIcon {
   animation: bounceIcon 0.6s ease;
+  filter: drop-shadow(0 6px 20px rgba(34, 197, 94, 0.6)) drop-shadow(0 0 20px rgba(34, 197, 94, 0.4));
+  transform: scale(1.1);
 }
 
 .heroCardNumber {
-  color: #ffffff !important;
-  font-size: 2.5rem !important;
-  font-weight: 700 !important;
+  color: #0a5f31 !important;
+  font-size: 3.25rem !important;
+  font-weight: 900 !important;
   margin: 0.5rem 0 !important;
+  background: linear-gradient(135deg, #022c22 0%, #047857 40%, #16a34a 70%, #22c55e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 4px 12px rgba(34, 197, 94, 0.5)) drop-shadow(0 2px 8px rgba(15, 118, 52, 0.3));
+  text-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+  position: relative;
 }
 
 .heroCardLabel {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1.1rem;
+  color: #0d8d46 !important;
+  font-size: 1.3rem !important;
   display: block;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, #0a5f31 0%, #0d8d46 50%, #16a34a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 2px 6px rgba(34, 197, 94, 0.3));
+  text-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
 }
 
 /* Top Section - Primary Contact Methods */
 .topSection {
   background: #ffffff;
-  padding: 4rem 0 3rem;
+  padding: 3.5rem 0 3rem;
   border-bottom: 1px solid rgba(214, 236, 222, 0.8);
-  margin-top: -3rem;
   position: relative;
-  z-index: 2;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
+  z-index: 1;
 }
 
 .pageContainer {
@@ -407,21 +476,23 @@
 }
 
 .contactMethodTitle {
-  font-size: 1.3rem;
-  color: #132b20;
+  font-size: 1.5rem !important;
+  color: #0a5f31 !important;
   display: block;
-  font-weight: 700;
+  font-weight: 800 !important;
   margin-bottom: 0.75rem;
   letter-spacing: -0.2px;
+  text-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
 }
 
 .contactMethodValue {
-  font-size: 1.15rem;
-  color: #233025;
+  font-size: 1.25rem !important;
+  color: #0d8d46 !important;
   display: block;
-  font-weight: 600;
+  font-weight: 700 !important;
   margin-bottom: 0.5rem;
   transition: color 0.3s ease;
+  text-shadow: 0 1px 4px rgba(34, 197, 94, 0.15);
 }
 
 .contactMethodCard:hover .contactMethodValue {
@@ -459,13 +530,18 @@
 }
 
 .contactInfoTitle {
-  color: #132b20 !important;
-  font-size: 1.75rem !important;
-  font-weight: 800 !important;
+  color: #0a5f31 !important;
+  font-size: 2rem !important;
+  font-weight: 900 !important;
   margin-bottom: 2rem !important;
   padding-bottom: 1rem;
   position: relative;
   letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #0a5f31 0%, #0d8d46 50%, #16a34a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 2px 8px rgba(34, 197, 94, 0.3));
 }
 
 .contactInfoTitle::after {
@@ -847,13 +923,18 @@
 }
 
 .contactFormTitle {
-  color: #132b20 !important;
-  font-size: 1.75rem !important;
-  font-weight: 800 !important;
+  color: #0a5f31 !important;
+  font-size: 2rem !important;
+  font-weight: 900 !important;
   margin-bottom: 2rem !important;
   padding-bottom: 1rem;
   position: relative;
   letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #0a5f31 0%, #0d8d46 50%, #16a34a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 2px 8px rgba(34, 197, 94, 0.3));
 }
 
 .contactFormTitle::after {

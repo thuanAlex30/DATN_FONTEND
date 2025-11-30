@@ -10,12 +10,10 @@ import {
   Space,
   Divider,
   Card,
-  Statistic,
-  Carousel
+  Statistic
 } from 'antd';
 import {
   SafetyOutlined,
-  ArrowLeftOutlined,
   CheckCircleOutlined,
   PhoneOutlined,
   MailOutlined,
@@ -31,7 +29,12 @@ import {
   HeartOutlined,
   BarChartOutlined,
   UserOutlined,
-  SafetyCertificateOutlined
+  SafetyCertificateOutlined,
+  ToolOutlined,
+  BuildOutlined,
+  SecurityScanOutlined,
+  WarningOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons';
 import MarketingHeader from '../../components/MarketingHeader';
 import styles from './About.module.css';
@@ -41,9 +44,6 @@ const { Title, Text, Paragraph } = Typography;
 
 const AboutPage: React.FC = () => {
   const navigate = useNavigate();
-  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
-  const [imageLoaded, setImageLoaded] = useState<Record<number, boolean>>({});
-  const [imageTimeouts, setImageTimeouts] = useState<Record<number, ReturnType<typeof setTimeout>>>({});
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set());
   const [statsValues, setStatsValues] = useState({
     users: 0,
@@ -61,44 +61,12 @@ const AboutPage: React.FC = () => {
   'https://jobs365.vn/wp-content/uploads/2021/06/ky-su-xay-dung-can-biet-nhung-gi-1.jpg'
   ];
 
-  // Reset image errors khi component mount lại và setup timeout cho tất cả hình ảnh
+  // Preload images để hình ảnh load nhanh hơn
   useEffect(() => {
-    setImageErrors({});
-    setImageLoaded({});
-    
-    // Preload images và đảm bảo hình ảnh luôn hiển thị
-    const timeouts: Record<number, ReturnType<typeof setTimeout>> = {};
-    constructionImages.forEach((imageUrl, index) => {
-      // Preload images để hình ảnh load nhanh hơn
+    constructionImages.forEach((imageUrl) => {
       const img = new Image();
       img.src = imageUrl;
-      img.onload = () => {
-        handleImageLoad(index);
-      };
-      img.onerror = () => {
-        handleImageError(index);
-      };
-      
-      // Đảm bảo hình ảnh luôn hiển thị ngay cả khi đang load
-      setImageLoaded(prev => ({ ...prev, [index]: false }));
-      
-      // Timeout dài hơn để đợi hình ảnh load (15 giây)
-      timeouts[index] = setTimeout(() => {
-        setImageLoaded(prevLoaded => {
-          if (!prevLoaded[index]) {
-            // Nếu chưa load sau 15 giây, vẫn hiển thị hình ảnh với opacity thấp
-            return { ...prevLoaded, [index]: true };
-          }
-          return prevLoaded;
-        });
-      }, 15000);
     });
-    setImageTimeouts(timeouts);
-    
-    // Clear all timeouts on unmount
-    return () => {
-      Object.values(timeouts).forEach(timeout => clearTimeout(timeout));
-    };
   }, []);
 
   // Scroll animations với Intersection Observer
@@ -174,46 +142,21 @@ const AboutPage: React.FC = () => {
     navigate('/login');
   };
 
-  const handleImageError = (index: number) => {
-    // Clear timeout if exists
-    if (imageTimeouts[index]) {
-      clearTimeout(imageTimeouts[index]);
-    }
-    // Hiển thị fallback ngay lập tức
-    setImageErrors(prev => ({ ...prev, [index]: true }));
-    setImageLoaded(prev => ({ ...prev, [index]: false }));
-  };
-
-  const handleImageLoad = (index: number) => {
-    // Clear timeout if exists
-    if (imageTimeouts[index]) {
-      clearTimeout(imageTimeouts[index]);
-      setImageTimeouts(prev => {
-        const newTimeouts = { ...prev };
-        delete newTimeouts[index];
-        return newTimeouts;
-      });
-    }
-    setImageLoaded(prev => ({ ...prev, [index]: true }));
-    setImageErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[index];
-      return newErrors;
-    });
-  };
-
   return (
     <Layout className={styles.layout}>
       <MarketingHeader activeKey="about" />
 
       <Content className={styles.content}>
-        {/* Hero Section */}
         <section className={styles.heroSection}>
           <div className={styles.heroContainer}>
             <div className={styles.heroContent}>
+              <div className={styles.heroBadge}>
+                <SafetyOutlined className={styles.badgeIcon} />
+                <span>Giải pháp an toàn lao động toàn diện</span>
+              </div>
               <Title level={1} className={styles.heroTitle}>
-              Giới thiệu về hệ thống
-            </Title>
+                Giới thiệu về hệ thống
+              </Title>
               <Paragraph className={styles.heroDescription}>
                 Hệ thống Quản lý An toàn Lao động được phát triển nhằm hỗ trợ các tổ chức
                 quản lý toàn diện các hoạt động liên quan đến an toàn lao động. Với giao diện
@@ -223,16 +166,32 @@ const AboutPage: React.FC = () => {
           </div>
         </section>
 
-        <div className={styles.pageContainer}>
-          {/* Main About Section */}
-          <section 
-            className={`${styles.aboutSection} ${visibleSections.has('about-section') ? styles.visible : ''}`}
-            id="about-section"
-            data-scroll-section
-          >
+        {/* Main About Section */}
+        <section 
+          className={`${styles.aboutSection} ${visibleSections.has('about-section') ? styles.visible : ''}`}
+          id="about-section"
+          data-scroll-section
+        >
+          <div className={styles.aboutBackground}>
+            <div className={styles.aboutImageSlider} aria-hidden="true">
+              {constructionImages.map((imageUrl, index) => (
+                <div
+                  key={imageUrl}
+                  className={styles.aboutBackgroundSlide}
+                  style={{
+                    backgroundImage: `url(${imageUrl})`,
+                    opacity: index === 0 ? 1 : 0,
+                    animationDelay: `${index * 4}s`,
+                    animationDuration: `${constructionImages.length * 4}s`
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className={styles.pageContainer}>
             <Card className={styles.aboutFrameCard}>
-            <Row gutter={[48, 48]} align="stretch" className={styles.aboutRow}>
-              <Col xs={24} lg={12}>
+              <Row gutter={[32, 24]} className={styles.aboutContentRow}>
+                <Col xs={24} lg={14} className={styles.aboutContentCol}>
                   <div className={styles.aboutContent}>
                     <div className={styles.aboutContentHeader}>
                       <div className={styles.aboutTitleBadge}>
@@ -243,101 +202,104 @@ const AboutPage: React.FC = () => {
                         Hệ thống của chúng tôi
                       </Title>
                     </div>
-                <Paragraph className={styles.aboutText}>
-                  Hệ thống Quản lý An toàn Lao động là giải pháp toàn diện được thiết kế để hỗ trợ
-                  các tổ chức trong việc quản lý và đảm bảo an toàn lao động một cách hiệu quả.
-                  Với công nghệ hiện đại và giao diện thân thiện, hệ thống giúp:
-                </Paragraph>
-                <ul className={styles.aboutList}>
-                  <li>
+                    <Paragraph className={styles.aboutText}>
+                      Hệ thống Quản lý An toàn Lao động là giải pháp toàn diện được thiết kế để hỗ trợ
+                      các tổ chức trong việc quản lý và đảm bảo an toàn lao động một cách hiệu quả.
+                      Với công nghệ hiện đại và giao diện thân thiện, hệ thống giúp:
+                    </Paragraph>
+                    <ul className={styles.aboutList}>
+                      <li>
                         <div className={styles.listItemWrapper}>
-                    <CheckCircleOutlined className={styles.listIcon} />
+                          <CheckCircleOutlined className={styles.listIcon} />
                           <span>Nâng cao hiệu quả quản lý an toàn lao động</span>
                         </div>
-                  </li>
-                  <li>
+                      </li>
+                      <li>
                         <div className={styles.listItemWrapper}>
-                    <CheckCircleOutlined className={styles.listIcon} />
+                          <CheckCircleOutlined className={styles.listIcon} />
                           <span>Giảm thiểu rủi ro và sự cố tại nơi làm việc</span>
                         </div>
-                  </li>
-                  <li>
+                      </li>
+                      <li>
                         <div className={styles.listItemWrapper}>
-                    <CheckCircleOutlined className={styles.listIcon} />
+                          <CheckCircleOutlined className={styles.listIcon} />
                           <span>Theo dõi và quản lý đào tạo an toàn</span>
                         </div>
-                  </li>
-                  <li>
+                      </li>
+                      <li>
                         <div className={styles.listItemWrapper}>
-                    <CheckCircleOutlined className={styles.listIcon} />
+                          <CheckCircleOutlined className={styles.listIcon} />
                           <span>Quản lý thiết bị bảo hộ cá nhân (PPE)</span>
                         </div>
-                  </li>
-                  <li>
+                      </li>
+                      <li>
                         <div className={styles.listItemWrapper}>
-                    <CheckCircleOutlined className={styles.listIcon} />
+                          <CheckCircleOutlined className={styles.listIcon} />
                           <span>Tạo báo cáo và thống kê chi tiết</span>
                         </div>
-                  </li>
-                  <li>
+                      </li>
+                      <li>
                         <div className={styles.listItemWrapper}>
-                    <CheckCircleOutlined className={styles.listIcon} />
+                          <CheckCircleOutlined className={styles.listIcon} />
                           <span>Xử lý sự cố nhanh chóng và hiệu quả</span>
                         </div>
-                  </li>
-                </ul>
+                      </li>
+                    </ul>
                   </div>
-              </Col>
-              <Col xs={24} lg={12}>
-                  <div className={styles.aboutCarouselWrapper}>
-                    <Carousel
-                      autoplay
-                      autoplaySpeed={4000}
-                      dots={true}
-                      className={styles.aboutCarousel}
-                      effect="fade"
-                      fade={true}
-                    >
-                      {constructionImages.map((imageUrl, index) => (
-                        <div key={index} className={styles.carouselItem}>
-                          <div className={styles.carouselImageContainer}>
-                            <img
-                              src={imageUrl}
-                              className={styles.carouselImage}
-                              onError={() => handleImageError(index)}
-                              onLoad={() => handleImageLoad(index)}
-                              loading="eager"
-                              style={{ 
-                                display: 'block',
-                                opacity: imageLoaded[index] ? 1 : 0.8,
-                                transition: 'opacity 0.8s ease-in-out',
-                                visibility: 'visible',
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                position: 'relative',
-                                zIndex: 1
-                              }}
-                            />
-                            {imageErrors[index] && (
-                              <div className={styles.carouselImageFallback}>
-                                <SafetyOutlined style={{ fontSize: '64px', color: '#fff', opacity: 0.9 }} />
-                              </div>
-                            )}
-                            {!imageLoaded[index] && !imageErrors[index] && (
-                              <div className={styles.carouselImagePlaceholder}>
-                                <SafetyOutlined style={{ fontSize: '48px', opacity: 0.4, color: '#fff' }} />
-                              </div>
-                            )}
-                          </div>
+                </Col>
+                <Col xs={24} lg={10} className={styles.aboutIconCol}>
+                  <div className={styles.aboutIconContainer}>
+                    <div className={styles.iconGrid}>
+                      <div className={styles.iconItem}>
+                        <div className={styles.iconWrapper}>
+                          <SafetyOutlined className={styles.safetyIcon} />
                         </div>
-                      ))}
-                    </Carousel>
-                </div>
+                        <span className={styles.iconLabel}>An Toàn</span>
+                      </div>
+                      <div className={styles.iconItem}>
+                        <div className={styles.iconWrapper}>
+                          <BuildOutlined className={styles.safetyIcon} />
+                        </div>
+                        <span className={styles.iconLabel}>Xây Dựng</span>
+                      </div>
+                      <div className={styles.iconItem}>
+                        <div className={styles.iconWrapper}>
+                          <SecurityScanOutlined className={styles.safetyIcon} />
+                        </div>
+                        <span className={styles.iconLabel}>Bảo Vệ</span>
+                      </div>
+                      <div className={styles.iconItem}>
+                        <div className={styles.iconWrapper}>
+                          <ToolOutlined className={styles.safetyIcon} />
+                        </div>
+                        <span className={styles.iconLabel}>Công Cụ</span>
+                      </div>
+                      <div className={styles.iconItem}>
+                        <div className={styles.iconWrapper}>
+                          <WarningOutlined className={styles.safetyIcon} />
+                        </div>
+                        <span className={styles.iconLabel}>Cảnh Báo</span>
+                      </div>
+                      <div className={styles.iconItem}>
+                        <div className={styles.iconWrapper}>
+                          <SafetyCertificateOutlined className={styles.safetyIcon} />
+                        </div>
+                        <span className={styles.iconLabel}>Chứng Chỉ</span>
+                      </div>
+                    </div>
+                    <div className={styles.iconCenter}>
+                      <div className={styles.centerIconWrapper}>
+                        <ThunderboltOutlined className={styles.centerIcon} />
+                      </div>
+                    </div>
+                  </div>
                 </Col>
               </Row>
             </Card>
-          </section>
+          </div>
+        </section>
+
+        <div className={styles.pageContainer}>
 
           {/* Statistics Section */}
           <section 
@@ -591,9 +553,6 @@ const AboutPage: React.FC = () => {
                 </Button>
                 <Button type="link" className={styles.footerLink}>
                   Chương trình hợp tác
-                </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Đối tác giao hàng
                 </Button>
                 <Button type="link" className={styles.footerLink}>
                   Đối tác kinh doanh

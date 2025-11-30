@@ -267,7 +267,7 @@ const LandingPage: React.FC = () => {
               </div>
 
               <Title level={1} className={styles.heroTitle}>
-                Nền tảng quản lý <span>công việc & doanh nghiệp</span> {BRAND_SHORT}
+                Nền tảng quản lý <span>an toàn lao động tại công trường</span> 
               </Title>
 
               <Paragraph className={styles.heroDescription}>
@@ -284,18 +284,6 @@ const LandingPage: React.FC = () => {
                 ))}
               </ul>
 
-              <div className={styles.heroActions}>
-                <Button
-                  type="primary"
-                  size="large"
-                  className={`${styles.heroButton} ${styles.primaryCta}`}
-                  onClick={() => navigate('/contact')}
-                >
-                  <PhoneOutlined />
-                  Yêu cầu tư vấn
-                </Button>
-              </div>
-
               <div className={styles.heroMetrics}>
                 {heroMetrics.map((metric) => (
                   <div key={metric.label} className={styles.heroMetric}>
@@ -303,6 +291,18 @@ const LandingPage: React.FC = () => {
                     <div className={styles.heroMetricLabel}>{metric.label}</div>
                   </div>
                 ))}
+              </div>
+
+              <div className={styles.heroJoinButton}>
+                <Button
+                  type="primary"
+                  size="large"
+                  className={styles.joinSystemButton}
+                  onClick={() => navigate('/contact')}
+                  icon={<RocketOutlined />}
+                >
+                  Tham gia hệ thống của chúng tôi
+                </Button>
               </div>
             </div>
           </div>
@@ -453,6 +453,28 @@ const LandingPage: React.FC = () => {
 
       </Content>
 
+      {/* Floating consult button */}
+      <div className={styles.floatingConsultWrap}>
+        <Button
+          type="primary"
+          size="large"
+          className={styles.floatingConsultButton}
+          onClick={() => navigate('/contact')}
+        >
+          <span className={styles.floatingConsultGlow} />
+
+          <span className={styles.floatingConsultIcon}>
+            <span className={styles.floatingConsultIconPulse} />
+            <PhoneOutlined />
+          </span>
+
+          <span className={styles.floatingConsultText}>
+            Yêu cầu tư vấn
+            <span className={styles.floatingConsultSub}>Gọi lại trong 5 phút</span>
+          </span>
+        </Button>
+      </div>
+
       {/* Footer */}
       <Footer className={styles.footer}>
         <div className={styles.footerContent}>
@@ -532,9 +554,6 @@ const LandingPage: React.FC = () => {
                 </Button>
                 <Button type="link" className={styles.footerLink}>
                   Chương trình hợp tác
-                </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Đối tác giao hàng
                 </Button>
                 <Button type="link" className={styles.footerLink}>
                   Đối tác kinh doanh
