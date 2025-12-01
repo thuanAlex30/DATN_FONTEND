@@ -6,7 +6,8 @@ import {
   SafetyOutlined,
   LogoutOutlined,
   ProjectOutlined,
-  BookOutlined
+  BookOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import styles from './ManagerSidebar.module.css';
 
@@ -40,6 +41,11 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
       key: '/manager/training',
       icon: <BookOutlined />,
       label: 'Quản lý đào tạo',
+    },
+    {
+      key: '/manager/hikvision-events',
+      icon: <LockOutlined />,
+      label: 'Kiểm soát truy cập',
     },
     // Các tính năng sẽ được thêm sau
     // {

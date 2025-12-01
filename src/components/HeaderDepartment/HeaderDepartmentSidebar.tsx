@@ -9,6 +9,7 @@ import {
   LogoutOutlined,
   BookOutlined,
   ProjectOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import styles from './HeaderDepartmentSidebar.module.css';
 
@@ -52,6 +53,11 @@ const HeaderDepartmentSidebar: React.FC<HeaderDepartmentSidebarProps> = ({ onLog
       key: '/header-department/incident-management',
       icon: <ExclamationCircleOutlined />,
       label: 'Quản lý sự cố',
+    },
+    {
+      key: '/header-department/hikvision-events',
+      icon: <LockOutlined />,
+      label: 'Kiểm soát truy cập',
     },
   ];
 

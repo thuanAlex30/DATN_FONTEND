@@ -205,8 +205,10 @@ const DepartmentPositionPage: React.FC = () => {
 
   // Load employees for a specific department
   const loadDepartmentEmployees = async (departmentId: string) => {
+    // Open drawer immediately so users see loading feedback
+    setSelectedDepartmentForEmployees(departmentId);
     setIsLoadingEmployees(true);
-    setError('');
+    setError(null);
     
     try {
       const response = await departmentService.getDepartmentEmployees(departmentId, {
@@ -215,11 +217,14 @@ const DepartmentPositionPage: React.FC = () => {
         sort_order: 'asc'
       });
       
-      setSelectedDepartmentEmployees(response.data.employees);
-      setSelectedDepartmentForEmployees(departmentId);
+      // Support both { data: { employees: [] } } and { data: { data: { employees: [] } } } payloads
+      const nestedEmployees = (response as any)?.data?.data?.employees;
+      const employeesResponse = response?.data?.employees ?? nestedEmployees ?? [];
+      setSelectedDepartmentEmployees(employeesResponse);
     } catch (error: any) {
       console.error('Error loading department employees:', error);
       setError('Không thể tải danh sách nhân viên');
+      setSelectedDepartmentEmployees([]);
     } finally {
       setIsLoadingEmployees(false);
     }

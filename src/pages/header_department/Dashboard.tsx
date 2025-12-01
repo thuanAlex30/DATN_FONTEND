@@ -12,7 +12,6 @@ import {
   Tag,
   Empty,
   Space,
-  Divider,
 } from 'antd';
 import {
   TeamOutlined,
@@ -26,7 +25,6 @@ import {
   ProjectOutlined,
   InfoCircleOutlined,
   RiseOutlined,
-  FallOutlined,
 } from '@ant-design/icons';
 import HeaderDepartmentLayout from '../../components/HeaderDepartment/HeaderDepartmentLayout';
 import headerDepartmentDashboardService from '../../services/headerDepartmentDashboardService';
@@ -74,6 +72,7 @@ const HeaderDepartmentDashboard: React.FC = () => {
       setLoading(false);
     }
   };
+
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -368,7 +367,7 @@ const HeaderDepartmentDashboard: React.FC = () => {
         </Row>
 
         {/* Recent Activities */}
-        <Card title="Hoạt động gần đây">
+        <Card title="Hoạt động gần đây" style={{ marginBottom: '24px' }}>
           {recentActivities.length > 0 ? (
             <List
               dataSource={recentActivities}
@@ -406,6 +405,7 @@ const HeaderDepartmentDashboard: React.FC = () => {
             <Empty description="Chưa có hoạt động nào" />
           )}
         </Card>
+
       </div>
     </HeaderDepartmentLayout>
   );

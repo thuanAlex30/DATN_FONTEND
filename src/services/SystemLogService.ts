@@ -1,12 +1,14 @@
 import api from './api';
 
+export interface SystemLogUser {
+    _id?: string;
+    username?: string | null;
+    full_name?: string | null;
+}
+
 export interface SystemLog {
     _id: string;
-    user_id?: {
-        _id: string;
-        username: string;
-        full_name: string;
-    };
+    user_id?: SystemLogUser | null;
     action: string;
     module: string;
     severity: 'info' | 'success' | 'warning' | 'error' | 'critical';
@@ -14,6 +16,9 @@ export interface SystemLog {
     ip_address: string;
     user_agent?: string;
     timestamp: string;
+    session_id?: string | null;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface SystemLogFilters {
@@ -24,6 +29,21 @@ export interface SystemLogFilters {
     search?: string;
     start_date?: string;
     end_date?: string;
+    ip_address?: string;
+}
+
+export interface SystemLogPagination {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+}
+
+export interface SystemLogListResponse {
+    logs: SystemLog[];
+    pagination: SystemLogPagination;
 }
 
 export interface SystemLogStats {
@@ -37,11 +57,21 @@ export interface AnalyticsData {
     severity_distribution: Array<{ _id: string; count: number }>;
     module_distribution: Array<{ _id: string; count: number }>;
     daily_activity: Array<{ _id: { day: number; month: number; year: number }; count: number }>;
-    top_users: Array<{ user_name?: string; username?: string; count: number }>;
+    top_users: Array<{ user_id?: string; user_name?: string; username?: string; count: number }>;
+    time_range?: string;
+    period_start?: string;
+    period_end?: string;
+}
+
+export interface LogCleanupResult {
+    deleted_count: number;
+    cutoff_date?: string;
+    original_days?: number;
+    actual_period?: number | string;
 }
 
 class SystemLogService {
-    static async getLogs(filters: SystemLogFilters = {}) {
+    static async getLogs(filters: SystemLogFilters = {}): Promise<SystemLogListResponse> {
         try {
             const params = new URLSearchParams();
             Object.entries(filters).forEach(([key, value]) => {
@@ -50,10 +80,8 @@ class SystemLogService {
                 }
             });
 
-            console.log('Making request to:', `/system-logs?${params.toString()}`);
             const response = await api.get(`/system-logs?${params.toString()}`);
-            console.log('System logs response:', response.data);
-            return response.data.data; // Access the actual data from the API response
+            return response.data.data;
         } catch (error) {
             console.error('SystemLogService.getLogs error:', error);
             throw error;
@@ -123,12 +151,12 @@ class SystemLogService {
         return response.data;
     }
 
-    static async cleanupOldLogs(days: number = 90) {
+    static async cleanupOldLogs(days: number = 90): Promise<LogCleanupResult> {
         try {
             const response = await api.post('/system-logs/cleanup-old', {
                 days: days
             });
-            return response.data;
+            return response.data.data;
         } catch (error: any) {
             console.error('SystemLogService.cleanupOldLogs error:', error);
             // Re-throw the error with more context

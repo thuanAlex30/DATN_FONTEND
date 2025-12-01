@@ -23,6 +23,7 @@ import HeaderDepartmentIncidentManagementPage from '../pages/header_department/I
 import HeaderDepartmentPPEManagementPage from '../pages/header_department/PPEManagement';
 import HeaderDepartmentTrainingManagementPage from '../pages/header_department/TrainingManagement';
 import HeaderDepartmentDashboard from '../pages/header_department/Dashboard';
+import HeaderDepartmentHikvisionEventsPage from '../pages/header_department/HikvisionEvents';
 import HeaderDepartmentLayout from '../components/HeaderDepartment/HeaderDepartmentLayout';
 import SystemAdminPage from '../pages/system_admin';
 import ReportIncident from '../pages/Employee/ReportIncident';
@@ -35,6 +36,7 @@ import ManagerDashboard from '../pages/Manager/Dashboard';
 import ManagerPPEManagement from '../pages/Manager/PPEManagement';
 import ManagerProjectManagement from '../pages/Manager/ProjectManagement';
 import ManagerTraining from '../pages/Manager/Training';
+import ManagerHikvisionEventsPage from '../pages/Manager/HikvisionEvents';
 import WebSocketTest from '../pages/WebSocketTest';
 import { projectManagementRoutes } from './projectManagementRoutes';
 import ProjectManagementRouteWrapper from './ProjectManagementRouteWrapper';
@@ -103,6 +105,14 @@ const AppRoutes = () => {
                 element={
                     <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <ManagerTraining />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/hikvision-events" 
+                element={
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
+                        <ManagerHikvisionEventsPage />
                     </AuthGuard>
                 } 
             />
@@ -226,6 +236,16 @@ const AppRoutes = () => {
                     <AuthGuard requiredRole="header_department">
                         <HeaderDepartmentLayout>
                             <HeaderDepartmentIncidentManagementPage />
+                        </HeaderDepartmentLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/header-department/hikvision-events" 
+                element={
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
+                            <HeaderDepartmentHikvisionEventsPage />
                         </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 
