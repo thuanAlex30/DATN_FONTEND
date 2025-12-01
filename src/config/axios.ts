@@ -13,22 +13,46 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Các endpoint chatbot cho phép không cần token
+    // Các endpoint public - KHÔNG gửi token (pricing routes)
+    const publicEndpoints = [
+      '/pricing/orders',
+      '/pricing/payment-return',
+      '/pricing/payment-cancel',
+      '/pricing/payment-webhook'
+    ];
+    
+    // Các endpoint optional auth - có thể gửi token nếu có (chatbot)
     const optionalAuthEndpoints = [
       '/chatbot/session',
       '/chatbot/message',
       '/chatbot/ai-status'
     ];
     
+    const isPublicEndpoint = publicEndpoints.some(endpoint => 
+      config.url?.includes(endpoint)
+    );
+    
     const isOptionalAuthEndpoint = optionalAuthEndpoints.some(endpoint => 
       config.url?.includes(endpoint)
     );
     
-    // Chỉ thêm token nếu có và không phải là optional auth endpoint
-    // Hoặc nếu là optional auth endpoint, vẫn thêm token nếu có (để lấy thông tin user nếu đã đăng nhập)
     const token = localStorage.getItem(ENV.JWT_STORAGE_KEY);
     
-    if (token && config.headers) {
+    // Không thêm token cho public endpoints (pricing routes)
+    if (isPublicEndpoint) {
+      // Xóa token nếu có trong header (đảm bảo không gửi token)
+      if (config.headers) {
+        delete config.headers.Authorization;
+      }
+      // Đảm bảo không có Authorization header
+      if (config.headers && config.headers.Authorization) {
+        delete config.headers.Authorization;
+      }
+    } else if (token && config.headers && !isOptionalAuthEndpoint) {
+      // Thêm token cho các endpoint khác (không phải public, không phải optional auth)
+      config.headers.Authorization = `Bearer ${token}`;
+    } else if (token && config.headers && isOptionalAuthEndpoint) {
+      // Optional auth endpoints: vẫn thêm token nếu có (để lấy thông tin user nếu đã đăng nhập)
       config.headers.Authorization = `Bearer ${token}`;
     }
     
@@ -37,8 +61,10 @@ apiClient.interceptors.request.use(
       console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
         data: config.data,
         params: config.params,
+        isPublicEndpoint,
         isOptionalAuth: isOptionalAuthEndpoint,
         hasToken: !!token,
+        hasAuthHeader: !!config.headers?.Authorization,
         timestamp: new Date().toISOString(),
       });
     }
@@ -86,6 +112,14 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
       }
       
+      // Các endpoint public - không redirect về login khi có 401
+      const publicEndpoints = [
+        '/pricing/orders',
+        '/pricing/payment-return',
+        '/pricing/payment-cancel',
+        '/pricing/payment-webhook'
+      ];
+      
       // Các endpoint cho phép optional auth - không redirect về login
       const optionalAuthEndpoints = [
         '/chatbot/session',
@@ -94,14 +128,18 @@ apiClient.interceptors.response.use(
         '/chatbot/history'
       ];
       
+      const isPublicEndpoint = publicEndpoints.some(endpoint => 
+        originalRequest.url?.includes(endpoint)
+      );
+      
       const isOptionalAuthEndpoint = optionalAuthEndpoints.some(endpoint => 
         originalRequest.url?.includes(endpoint)
       );
       
-      if (isOptionalAuthEndpoint) {
-        // Đây là endpoint optional auth, chỉ reject error, không redirect
+      if (isPublicEndpoint || isOptionalAuthEndpoint) {
+        // Đây là endpoint public hoặc optional auth, chỉ reject error, không redirect
         // Không cần refresh token vì endpoint này không yêu cầu authentication
-        console.log('ℹ️ Optional auth endpoint - not redirecting to login');
+        console.log('ℹ️ Public/Optional auth endpoint - not redirecting to login');
         return Promise.reject(error);
       }
       

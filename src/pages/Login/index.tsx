@@ -59,6 +59,9 @@ const LoginPage: React.FC = () => {
             // Use role_code for precise matching (from backend roleMatrix.js)
             switch (normalizedRoleCode) {
               case 'system_admin':
+                redirectPath = '/system-admin/home';
+                console.log('🔀 Redirecting to system admin home (role_code:', roleCode, ')');
+                break;
               case 'company_admin':
                 redirectPath = '/admin/dashboard';
                 console.log('🔀 Redirecting to admin dashboard (role_code:', roleCode, ')');
@@ -104,10 +107,16 @@ const LoginPage: React.FC = () => {
           } else if (roleName) {
             // Fallback to role_name matching (legacy support)
             const normalizedRoleName = roleName.toLowerCase().trim();
-            // Admin roles
-            if (normalizedRoleName === 'company admin' || 
-                normalizedRoleName === 'system admin' || 
-                normalizedRoleName === 'admin') {
+            // System Admin
+            if (normalizedRoleName === 'system admin' || 
+                normalizedRoleName === 'system_admin') {
+              redirectPath = '/system-admin/home';
+              console.log('🔀 Redirecting to system admin home (role_name:', roleName, ')');
+            }
+            // Company Admin
+            else if (normalizedRoleName === 'company admin' || 
+                     normalizedRoleName === 'company_admin' ||
+                     normalizedRoleName === 'admin') {
               redirectPath = '/admin/dashboard';
               console.log('🔀 Redirecting to admin dashboard (role_name:', roleName, ')');
             } 
@@ -141,7 +150,9 @@ const LoginPage: React.FC = () => {
             else {
               console.warn('⚠️ Unknown role_name:', roleName, '- using role_level fallback');
               // Fallback to role_level
-              if (roleLevel !== undefined && roleLevel >= 90) {
+              if (roleLevel !== undefined && roleLevel >= 100) {
+                redirectPath = '/system-admin/home';
+              } else if (roleLevel !== undefined && roleLevel >= 90) {
                 redirectPath = '/admin/dashboard';
               } else if (roleLevel !== undefined && roleLevel >= 80) {
                 redirectPath = '/header-department/dashboard';
@@ -153,7 +164,10 @@ const LoginPage: React.FC = () => {
             }
           } else if (roleLevel !== undefined) {
             // Final fallback: use role_level
-            if (roleLevel >= 90) {
+            if (roleLevel >= 100) {
+              redirectPath = '/system-admin/home';
+              console.log('🔀 Redirecting to system admin home (role_level:', roleLevel, ')');
+            } else if (roleLevel >= 90) {
               redirectPath = '/admin/dashboard';
               console.log('🔀 Redirecting to admin dashboard (role_level:', roleLevel, ')');
             } else if (roleLevel >= 80) {

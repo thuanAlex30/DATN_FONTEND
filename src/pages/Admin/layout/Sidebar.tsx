@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../../store/slices/authSlice';
+import type { RootState } from '../../../store';
 import { 
   Layout, 
   Menu, 
@@ -19,7 +20,9 @@ import {
   SafetyCertificateOutlined,
   ExclamationCircleOutlined,
   LogoutOutlined,
-  WifiOutlined
+  WifiOutlined,
+  TeamOutlined,
+  MessageOutlined
 } from '@ant-design/icons';
 import styles from './Sidebar.module.css'; 
 
@@ -29,13 +32,58 @@ const { Title, Text } = Typography;
 const Sidebar = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const { user } = useSelector((state: RootState) => state.auth);
 
     const handleLogout = () => {
         dispatch(logout());
         navigate('/login');
     };
 
-    const menuItems: MenuProps['items'] = [
+    // Check if user is system_admin
+    const isSystemAdmin = user?.role?.role_code?.toLowerCase() === 'system_admin' || 
+                          user?.role?.role_name?.toLowerCase() === 'system admin' ||
+                          user?.role?.role_level === 100;
+
+    // Menu items for system_admin - Dashboard, System Log, and Customer & Feedback
+    const systemAdminMenuItems: MenuProps['items'] = [
+        {
+            key: 'system-management',
+            label: 'Quản lý hệ thống',
+            type: 'group',
+            children: [
+                {
+                    key: '/system-admin/home',
+                    icon: <DashboardOutlined />,
+                    label: 'Dashboard',
+                },
+                {
+                    key: '/admin/system-logs',
+                    icon: <FileTextOutlined />,
+                    label: 'Nhật ký hệ thống',
+                },
+            ],
+        },
+        {
+            key: 'customer-feedback',
+            label: 'Khách hàng & phản hồi',
+            type: 'group',
+            children: [
+                {
+                    key: '/system-admin/customers',
+                    icon: <TeamOutlined />,
+                    label: 'Khách hàng tham gia',
+                },
+                {
+                    key: '/system-admin/support-messages',
+                    icon: <MessageOutlined />,
+                    label: 'Tin nhắn hỗ trợ',
+                },
+            ],
+        },
+    ];
+
+    // Menu items for company_admin and other admin roles
+    const adminMenuItems: MenuProps['items'] = [
         {
             key: 'system-management',
             label: 'Quản lý hệ thống',
@@ -116,6 +164,8 @@ const Sidebar = () => {
         },
     ];
 
+    const menuItems: MenuProps['items'] = isSystemAdmin ? systemAdminMenuItems : adminMenuItems;
+
     const handleMenuClick = ({ key }: { key: string }) => {
         navigate(key);
     };
@@ -149,7 +199,7 @@ const Sidebar = () => {
                     items={menuItems}
                     onClick={handleMenuClick}
                     className={styles.menu}
-                    defaultOpenKeys={['system-management', 'project-management', 'training-incident', 'ppe-management']}
+                    defaultOpenKeys={isSystemAdmin ? ['system-management', 'customer-feedback'] : ['system-management', 'project-management', 'training-incident', 'ppe-management']}
                 />
             </div>
 

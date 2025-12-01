@@ -6,6 +6,7 @@ import LoginPage from '../pages/Login';
 import UnauthorizedPage from '../pages/Unauthorized';
 import HomePage from '../pages/Home';
 import DashboardPage from '../pages/Admin/Dashboard';
+import SystemAdminHome from '../pages/Admin/SystemAdminHome';
 import UserManagementPage from '../pages/Admin/UserManagement';
 import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
@@ -35,6 +36,14 @@ import ManagerProjectManagement from '../pages/Manager/ProjectManagement';
 import ManagerTraining from '../pages/Manager/Training';
 import WebSocketTest from '../pages/WebSocketTest';
 import LandingPage from '../pages/Landing';
+import PricingPage from '../pages/Pricing';
+import OrderFormPage from '../pages/Pricing/OrderForm';
+import PaymentSuccess from '../pages/Pricing/PaymentSuccess';
+import PaymentFailed from '../pages/Pricing/PaymentFailed';
+import PaymentCancelled from '../pages/Pricing/PaymentCancelled';
+import AboutPage from '../pages/About';
+import ContactPage from '../pages/Contact';
+import FAQPage from '../pages/FAQ';
 import { projectManagementRoutes } from './projectManagementRoutes';
 import ProjectManagementRouteWrapper from './ProjectManagementRouteWrapper';
 
@@ -48,6 +57,14 @@ const AppRoutes = () => {
         <Routes>
             {/* Public routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/pricing/order" element={<OrderFormPage />} />
+            <Route path="/pricing/payment-success" element={<PaymentSuccess />} />
+            <Route path="/pricing/payment-failed" element={<PaymentFailed />} />
+            <Route path="/pricing/payment-cancelled" element={<PaymentCancelled />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/faq" element={<FAQPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             
@@ -154,6 +171,18 @@ const AppRoutes = () => {
                 element={<WebSocketTest />} 
             />
             
+            {/* System Admin Home - Global scope */}
+            <Route 
+                path="/system-admin/home" 
+                element={
+                    <AuthGuard minRoleLevel={100} tenantScope="global">
+                        <AdminLayout>
+                            <SystemAdminHome />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+
             {/* Protected admin routes */}
             <Route 
                 path="/admin/dashboard" 

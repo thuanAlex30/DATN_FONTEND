@@ -147,8 +147,7 @@ const LandingPage: React.FC = () => {
                     type="primary"
                     size="large"
                     className={styles.ctaButton}
-                    disabled
-                    title="Chức năng đang phát triển"
+                    onClick={() => navigate('/pricing')}
                   >
                     Tham gia hệ thống của chúng tôi
                   </Button>
