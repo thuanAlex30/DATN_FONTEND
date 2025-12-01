@@ -139,9 +139,10 @@ interface PPEIssuance {
 npm install
 ```
 
-2. Cấu hình WebSocket URL trong `.env`:
+2. Cấu hình API/WebSocket URL trong `.env.local`:
 ```
-REACT_APP_WS_URL=ws://localhost:3000
+VITE_API_BASE_URL=https://datn-backend-t3uq.onrender.com/api
+VITE_WS_BASE_URL=https://datn-backend-t3uq.onrender.com
 ```
 
 3. Chạy ứng dụng:

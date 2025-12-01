@@ -1,4 +1,5 @@
 import api from './api';
+import { ENV } from '../config/env';
 import type { Department, DepartmentQuery, DepartmentCreate, DepartmentUpdate, DepartmentOption } from '../types/department';
 
 // Department service with employee count functionality
@@ -253,7 +254,7 @@ const departmentService = {
       const url = `/departments/${departmentId}/employees${queryString ? `?${queryString}` : ''}`;
       
       console.log('Making request to:', url);
-      console.log('Full URL:', `http://localhost:3000/api${url}`);
+      console.log('Full URL:', `${ENV.API_BASE_URL}${url}`);
       
       const response = await api.get(url);
       console.log('API response:', response);

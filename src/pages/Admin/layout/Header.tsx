@@ -25,6 +25,7 @@ import type { RootState } from '../../../store';
 import ProfileModal from '../../../components/ProfileModal/ProfileModal';
 import { useWebSocket } from '../../../hooks/useWebSocket';
 import websocketClient from '../../../services/websocketClient';
+import { ENV } from '../../../config/env';
 import { 
   markNotificationAsRead, 
   clearAllNotifications,
@@ -50,7 +51,7 @@ const Header = () => {
     const audioRef = useRef<HTMLAudioElement>(null);
 
     // Use WebSocket hook to get connection status
-    useWebSocket(token, 'http://localhost:3000');
+    useWebSocket(token, ENV.WS_BASE_URL);
 
     const handleLogout = () => {
         dispatch(logout());
