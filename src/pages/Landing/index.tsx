@@ -19,12 +19,6 @@ import {
   InstagramOutlined,
   TwitterOutlined,
   CustomerServiceOutlined,
-  SafetyCertificateOutlined,
-  SolutionOutlined,
-  IdcardOutlined,
-  BarChartOutlined,
-  SkinOutlined,
-  FundProjectionScreenOutlined,
   AreaChartOutlined,
   AuditOutlined,
   ProjectOutlined,
@@ -33,8 +27,6 @@ import {
 } from '@ant-design/icons';
 import MarketingHeader from '../../components/MarketingHeader';
 import styles from './Landing.module.css';
-import dhkLogo from '../../assets/clients/dhk-jewelry.svg';
-import maxxLogo from '../../assets/clients/maxx-sport.svg';
 
 const { Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -137,16 +129,16 @@ const reasonHighlights = [
 ];
 
 const trustedClients = [
-  { name: 'LUG', src: 'https://logo.clearbit.com/lug.vn' },
-  { name: 'Sonha', src: 'https://logo.clearbit.com/sonha.com.vn' },
-  { name: 'Duc Viet Foods', src: 'https://logo.clearbit.com/ducvietfoods.vn' },
-  { name: 'Hong Ha', src: 'https://logo.clearbit.com/hongha.com.vn' },
-  { name: 'DHK Jewelry', src: dhkLogo },
-  { name: 'Viglacera', src: 'https://logo.clearbit.com/viglacera.com.vn' },
-  { name: 'Emspo', src: 'https://logo.clearbit.com/emspo.com.vn' },
-  { name: 'Dirty Coins', src: 'https://logo.clearbit.com/dirtycoins.vn' },
-  { name: 'Beemart', src: 'https://logo.clearbit.com/beemart.vn' },
-  { name: 'Maxx Sport', src: maxxLogo }
+  { name: 'Vietracimex Infra', src: 'https://nqs.1cdn.vn/2023/06/08/dautu.kinhtechungkhoan.vn-stores-news_dataimages-2023-062023-08-18-_220230608181438.png' },
+  { name: 'Viteccons', src: 'https://nhathuduc.com.vn/pl/img/29/logo-viteccons-02.jpg' },
+  { name: 'Coteccons (CTD)', src: 'https://finance.vietstock.vn/image/CTD' },
+  { name: 'Central Cons', src: 'https://tse4.mm.bing.net/th/id/OIP.0__3T40cyOLhyymX6eLqxwHaB8?pid=Api&P=0&h=220' },
+  { name: 'Hòa Bình Construction', src: 'https://cdn.haitrieu.com/wp-content/uploads/2022/08/logo-hoa-binh-1024x1020.png' },
+  { name: 'Cofico', src: 'https://liphoco.com/wp-content/uploads/2023/03/cofico.png' },
+  { name: 'Kusto Home', src: 'https://tse1.mm.bing.net/th/id/OIP.BBs6SrZdj8zoP6N4WIR_iQHaDW?pid=Api&P=0&h=220' },
+  { name: 'Nova E&C (Novaland)', src: 'https://novalandnovaworld.vn/wp-content/uploads/2022/09/141306novae-c-full.png' },
+  { name: 'APC Corporation', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/APC-logo.svg/1200px-APC-logo.svg.png' },
+  { name: 'Ricons', src: 'https://cms.vietnamreport.net/source/LogoBusiness/logo%20Ricons%202004new-01.png' }
 ];
 
 const trustedClientRows = Array.from(
@@ -245,50 +237,50 @@ const LandingPage: React.FC = () => {
 
       <Content className={styles.content}>
         <section className={styles.heroSection}>
-          <div className={styles.heroContainer}>
-            <Row gutter={[48, 32]} align="middle">
-              {/* Left Side - Text Content */}
-              <Col xs={24} lg={12}>
-                <div className={styles.heroContent}>
-                  <Title level={1} className={styles.heroTitle}>
-                    Quản Lý An Toàn Lao Động
-                  </Title>
-                  <Title level={2} className={styles.heroSubtitle}>
-                    Chuyên nghiệp & Hiệu quả
-                  </Title>
-                  <Paragraph className={styles.heroDescription}>
-                    Khám phá hệ thống quản lý toàn diện giúp tổ chức của bạn đảm bảo an toàn lao động,
-                    quản lý đào tạo, theo dõi thiết bị bảo hộ và xử lý sự cố một cách hiệu quả.
-                  </Paragraph>
-                  <Button
-                    type="primary"
-                    size="large"
-                    className={styles.ctaButton}
-                    onClick={() => navigate('/pricing')}
-                  >
-                    Tham gia hệ thống của chúng tôi
-                  </Button>
-                </div>
-              </Col>
-              
-              {/* Right Side - Image/Illustration */}
-              <Col xs={24} lg={12}>
-                <div className={styles.heroImage}>
-                  <img 
-                    src="/hero-image.jpg" 
-                    alt="Quản lý an toàn lao động"
-                    className={styles.heroImageImg}
-                    onError={(e) => {
-                      // Fallback nếu ảnh không tồn tại
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      const placeholder = target.nextElementSibling as HTMLElement;
-                      if (placeholder) placeholder.style.display = 'flex';
-                    }}
-                  />
-                  {/* Fallback placeholder nếu ảnh không tồn tại */}
-                  <div className={styles.heroImagePlaceholder}>
-                    <SafetyOutlined className={styles.heroImageIcon} />
+          <div className={styles.heroBackground}>
+            <div className={styles.heroSlider} aria-hidden="true">
+              {heroSlides.map((src, index) => (
+                <div
+                  key={src}
+                  className={styles.heroSlide}
+                  style={{
+                    backgroundImage: `url(${src})`,
+                    animationDelay: `${index * HERO_SLIDE_INTERVAL}s`,
+                    animationDuration: `${heroSlides.length * HERO_SLIDE_INTERVAL}s`
+                  }}
+                />
+              ))}
+            </div>
+            <div className={`${styles.heroContent} ${isVisible ? styles.visible : ''}`}>
+              <div className={styles.heroBadge}>
+                <RocketOutlined />
+                <span>{BRAND_NAME}</span>
+                <span>+1.000 doanh nghiệp</span>
+              </div>
+
+              <Title level={1} className={styles.heroTitle}>
+                Nền tảng quản lý <span>an toàn lao động tại công trường</span> 
+              </Title>
+
+              <Paragraph className={styles.heroDescription}>
+                Kết nối con người, quy trình và dữ liệu trong một nền tảng duy nhất. Chuẩn hóa vận hành, tự động hóa
+                nhắc việc và hiển thị KPI realtime trên mọi thiết bị.
+              </Paragraph>
+
+              <ul className={styles.heroHighlights}>
+                {heroHighlights.map((item) => (
+                  <li key={item.label} className={styles.heroHighlight}>
+                    <span className={styles.heroHighlightIcon}>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className={styles.heroMetrics}>
+                {heroMetrics.map((metric) => (
+                  <div key={metric.label} className={styles.heroMetric}>
+                    <div className={styles.heroMetricValue}>{metric.value}</div>
+                    <div className={styles.heroMetricLabel}>{metric.label}</div>
                   </div>
                 ))}
               </div>
@@ -298,8 +290,8 @@ const LandingPage: React.FC = () => {
                   type="primary"
                   size="large"
                   className={styles.joinSystemButton}
-                  onClick={() => navigate('/contact')}
                   icon={<RocketOutlined />}
+                  onClick={() => navigate('/pricing')}
                 >
                   Tham gia hệ thống của chúng tôi
                 </Button>

@@ -12,13 +12,13 @@ import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
 import ProjectManagement from '../pages/header_department/ProjectManagement';
 import RoleManagementPage from '../pages/Admin/RoleManagement';
-<<<<<<< HEAD
 import ClassifyIncident from '../pages/header_department/IncidentManagement/ClassifyIncident';
 import AssignIncident from '../pages/header_department/IncidentManagement/AssignIncident';
 import InvestigateIncident from '../pages/header_department/IncidentManagement/InvestigateIncident';
 import UpdateProgress from '../pages/header_department/IncidentManagement/UpdateProgress';
 import CloseIncident from '../pages/header_department/IncidentManagement/CloseIncident';
 import ProgressHistory from '../pages/header_department/IncidentManagement/ProgressHistory';
+import UpdateEmployeeIncident from '../pages/header_department/IncidentManagement/UpdateEmployeeIncident';
 import HeaderDepartmentCertificateManagementPage from '../pages/header_department/CertificateManagement';
 import HeaderDepartmentIncidentManagementPage from '../pages/header_department/IncidentManagement';
 import HeaderDepartmentPPEManagementPage from '../pages/header_department/PPEManagement';

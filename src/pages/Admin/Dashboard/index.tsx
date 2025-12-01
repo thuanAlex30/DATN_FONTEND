@@ -6,9 +6,7 @@ import {
   Button, 
   Typography, 
   Avatar, 
-  Spin,
-  List,
-  Tag
+  Spin
 } from 'antd';
 import styles from './Dashboard.module.css';
 import {
@@ -23,10 +21,7 @@ import {
   BarChartOutlined,
   BellOutlined,
   CalendarOutlined,
-  SyncOutlined,
-  FileAddOutlined,
-  TrophyOutlined,
-  BarChartOutlined
+  SyncOutlined
 } from '@ant-design/icons';
 import userService from '../../../services/userService';
 import projectService from '../../../services/projectService';

@@ -23,9 +23,7 @@ import {
   Divider,
   Alert,
   Checkbox,
-  DatePicker,
-  Badge,
-  message
+  DatePicker
 } from 'antd';
 import { 
   BookOutlined, 
@@ -119,7 +117,7 @@ const TrainingManagement: React.FC = () => {
   const { courses: allCourses } = useCourses({});
   
   // Training assignments
-  const { assignments, loading: assignmentsLoading, createAssignment, updateAssignment, deleteAssignment } = useTrainingAssignments();
+  const { assignments, loading: assignmentsLoading, deleteAssignment } = useTrainingAssignments();
   
   // Debug courses
   console.log('Available courses (filtered):', courses);
@@ -244,7 +242,7 @@ const TrainingManagement: React.FC = () => {
     }
   };
 
-  const handleSessionSubmit = async (values?: any) => {
+  const handleSessionSubmit = async () => {
     try {
       // Validate required fields
       if (!sessionForm.session_name || !sessionForm.course_id || !sessionForm.start_time || !sessionForm.end_time) {
@@ -488,13 +486,6 @@ const TrainingManagement: React.FC = () => {
       correct_answer: question.correct_answer,
     });
     openModal('addQuestionModal');
-  };
-
-  const handleExcelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setExcelFile(file);
-    }
   };
 
   const handleImportExcel = async () => {
@@ -1071,7 +1062,7 @@ const TrainingManagement: React.FC = () => {
                       title: 'Nhân viên',
                       dataIndex: ['user_id', 'full_name'],
                       key: 'user',
-                      render: (text: string, record: any) => (
+                      render: (text: string) => (
                         <Space>
                           <Avatar size="small" icon={<UserOutlined />} />
                           <Typography.Text strong>{text}</Typography.Text>
@@ -2239,7 +2230,6 @@ const TrainingManagement: React.FC = () => {
         </Form>
       </Modal>
 
-<<<<<<< HEAD:src/pages/header_department/TrainingManagement/index.tsx
       {/* Course Assignment Modal */}
       <CourseAssignmentModal
         visible={showModal === 'addAssignmentModal'}
@@ -2249,8 +2239,6 @@ const TrainingManagement: React.FC = () => {
           // Refresh assignments
         }}
       />
-=======
->>>>>>> origin/anh-thy:src/pages/Admin/TrainingManagement/index.tsx
     </div>
   );
 };

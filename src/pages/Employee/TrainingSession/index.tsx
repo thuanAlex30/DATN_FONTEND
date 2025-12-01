@@ -316,18 +316,11 @@ const TrainingSession: React.FC = () => {
         
         localStorage.removeItem('currentTrainingData');
         
-<<<<<<< HEAD
         // Add a small delay to ensure the success message is shown
         setTimeout(() => {
           // Force page reload to refresh all data
           window.location.href = '/employee/training';
         }, 1500);
-=======
-        // Navigate back to training list
-        setTimeout(() => {
-          navigate('/training');
-        }, 2000);
->>>>>>> origin/anh-thy
       } else {
         message.error(`Lỗi: ${response.data.message}`);
       }
