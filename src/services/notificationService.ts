@@ -121,7 +121,7 @@ class NotificationService {
             try {
                 const response = await api.get('/notifications', { 
                     params: filters,
-                    timeout: 3000 // 3 seconds timeout
+                    timeout: 3000 // 3 seconds timeout (shorter than backend's 5s)
                 });
                 return response.data.data;
             } catch (timeoutError: any) {
@@ -130,7 +130,7 @@ class NotificationService {
                     // Fallback to public notifications
                     const publicResponse = await api.get('/notifications/public', { 
                         params: filters,
-                        timeout: 3000
+                        timeout: 10000
                     });
                     return publicResponse.data.data;
                 }

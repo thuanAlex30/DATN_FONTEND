@@ -150,7 +150,7 @@ const CreateMilestoneModal: React.FC<CreateMilestoneModalProps> = ({
       footer={null}
       width={800}
       className="create-milestone-modal"
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}

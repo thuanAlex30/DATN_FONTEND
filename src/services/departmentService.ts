@@ -30,36 +30,6 @@ const departmentService = {
     }
   },
 
-  // Search departments with advanced filters
-  async searchDepartments(query: {
-    q?: string;
-    has_manager?: string;
-    has_employees?: string;
-    limit?: number;
-  } = {}): Promise<{ 
-    success: boolean; 
-    message: string; 
-    data: { 
-      departments: Department[]; 
-      total: number;
-    }; 
-    timestamp: string 
-}> {
-  try {
-    console.log('Searching departments with query:', query);
-    const response = await api.get('/departments/search', {
-      params: query
-    });
-    console.log('Search response:', response.data);
-    return response.data; 
-  } catch (error: any) {
-    console.error('Error searching departments:', error);
-    console.error('Error response data:', error.response?.data);
-    console.error('Error status:', error.response?.status);
-    throw error;
-  }
-},
-
   // Get department by ID
   async getDepartmentById(id: string): Promise<Department> {
     try {
@@ -120,14 +90,10 @@ const departmentService = {
   // Create new department
   async createDepartment(departmentData: DepartmentCreate): Promise<Department> {
     try {
-      console.log('Creating department with data:', departmentData);
       const response = await api.post('/departments', departmentData);
-      console.log('Create department response:', response.data);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error creating department:', error);
-      console.error('Error response data:', error.response?.data);
-      console.error('Error status:', error.response?.status);
       throw error;
     }
   },
@@ -185,6 +151,22 @@ const departmentService = {
       return response.data.data;
     } catch (error) {
       console.error('Error fetching department stats:', error);
+      throw error;
+    }
+  },
+
+  // Search departments
+  async searchDepartments(searchTerm: string, filters: any = {}): Promise<Department[]> {
+    try {
+      const response = await api.get('/departments/search', {
+        params: {
+          search: searchTerm,
+          ...filters
+        }
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error searching departments:', error);
       throw error;
     }
   },

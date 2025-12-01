@@ -42,6 +42,8 @@ const ProjectStatusReports: React.FC<ProjectStatusReportsProps> = ({ projectId }
         return 'status-behind-schedule';
       case 'completed':
         return 'status-completed';
+      case 'unknown':
+        return 'status-unknown';
       default:
         return 'status-default';
     }
@@ -114,8 +116,8 @@ const ProjectStatusReports: React.FC<ProjectStatusReportsProps> = ({ projectId }
               <div className="status-report-header">
                 <div className="status-report-title">
                   <h3>Báo cáo tuần {report.week_number}</h3>
-                  <span className={`status-badge ${getStatusBadgeClass(report.overall_status)}`}>
-                    {report.overall_status}
+                  <span className={`status-badge ${getStatusBadgeClass(report.overall_status || 'unknown')}`}>
+                    {report.overall_status || 'Chưa xác định'}
                   </span>
                 </div>
                 <div className="status-report-actions">

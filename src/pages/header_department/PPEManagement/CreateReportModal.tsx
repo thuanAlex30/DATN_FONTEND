@@ -15,7 +15,8 @@ import {
 } from 'antd';
 import { BarChartOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
 import * as ppeService from '../../../services/ppeService';
-import ReportExportService, { ExportOptions } from '../../../services/ReportExportService';
+import ReportExportService from '../../../services/ReportExportService';
+import type { ExportOptions } from '../../../services/ReportExportService';
 import * as XLSX from 'xlsx';
 
 interface CreateReportModalProps {

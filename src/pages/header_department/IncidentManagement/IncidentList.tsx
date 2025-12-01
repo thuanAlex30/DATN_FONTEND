@@ -1,14 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Card, 
-  Typography, 
   Button, 
   Space,
   Table,
   Tag,
   Row,
   Col,
-  Statistic,
   Input,
   Select,
   Modal,
@@ -19,14 +17,11 @@ import {
   Tooltip
 } from 'antd';
 import { 
-  ExclamationCircleOutlined, 
   SearchOutlined,
   ClockCircleOutlined,
-  CheckCircleOutlined,
   CloseCircleOutlined,
-  WarningOutlined,
   InfoCircleOutlined,
-  ArrowUpOutlined
+  ReloadOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 
@@ -42,7 +37,7 @@ interface IncidentItem {
   images?: string[];
 }
 
-const { Title } = Typography;
+// const { Title } = Typography; // Title không còn dùng ở component con
 
 const IncidentList: React.FC = () => {
   const [incidents, setIncidents] = useState<IncidentItem[]>([]);
@@ -70,8 +65,15 @@ const IncidentList: React.FC = () => {
       try {
         setLoading(true);
         const res = await incidentService.getIncidents();
-        setIncidents(res.data);
+        console.log('IncidentList API Response:', res);
+        
+        // ApiResponse.success() returns { success: true, data: [...], message: "...", timestamp: "..." }
+        const incidentsData = res.data?.success ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+        
+        console.log('Final incidents data:', incidentsData);
+        setIncidents(incidentsData);
       } catch (err: any) {
+        console.error('IncidentList fetch error:', err);
         setError('Không thể tải danh sách sự cố');
         message.error('Không thể tải danh sách sự cố');
       } finally {
@@ -94,26 +96,66 @@ const IncidentList: React.FC = () => {
     return matchesSearch && matchesStatus && matchesSeverity;
   });
 
-  // Get severity color
+  // Get severity color (supports both EN and VI labels)
   const getSeverityColor = (severity: string) => {
-    switch (severity?.toLowerCase()) {
-      case 'critical': return 'red';
-      case 'high': return 'orange';
-      case 'medium': return 'yellow';
-      case 'low': return 'green';
-      default: return 'default';
+    const value = (severity || '').toLowerCase();
+    switch (value) {
+      // English labels
+      case 'critical':
+        return '#ff4d4f';
+      case 'high':
+        return '#fa8c16';
+      case 'medium':
+        return '#fadb14';
+      case 'low':
+        return '#52c41a';
+      // Vietnamese labels
+      case 'rất nghiêm trọng':
+        return '#ff4d4f';
+      case 'nghiêm trọng':
+        return '#fa541c';
+      case 'nặng':
+        return '#fa8c16';
+      case 'trung bình':
+        return '#fadb14';
+      case 'nhẹ':
+        return '#52c41a';
+      default:
+        return '#d9d9d9';
     }
   };
 
-  // Get status color
+  // Get status color (supports both EN and VI labels)
   const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'open': return 'red';
-      case 'in_progress': return 'blue';
-      case 'resolved': return 'green';
-      case 'closed': return 'gray';
-      default: return 'default';
+    const value = (status || '').toLowerCase();
+    switch (value) {
+      // English labels
+      case 'open':
+        return '#ff4d4f';
+      case 'in_progress':
+        return '#1677ff';
+      case 'resolved':
+        return '#52c41a';
+      case 'closed':
+        return '#8c8c8c';
+      // Vietnamese labels
+      case 'mới ghi nhận':
+        return '#ff4d4f';
+      case 'đang xử lý':
+        return '#1677ff';
+      case 'đã giải quyết':
+        return '#52c41a';
+      case 'đã đóng':
+        return '#8c8c8c';
+      default:
+        return '#d9d9d9';
     }
+  };
+
+  // Capitalize first letter for display
+  const capitalizeFirst = (text?: string) => {
+    if (!text) return '';
+    return text.charAt(0).toUpperCase() + text.slice(1);
   };
 
   // Table columns
@@ -150,8 +192,17 @@ const IncidentList: React.FC = () => {
       dataIndex: 'severity',
       key: 'severity',
       render: (severity: string) => (
-        <Tag color={getSeverityColor(severity)}>
-          {severity || 'Chưa xác định'}
+        <Tag
+          bordered={false}
+          style={{
+            color: getSeverityColor(severity),
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            fontWeight: 600
+          }}
+        >
+          {capitalizeFirst(severity) || 'Chưa xác định'}
         </Tag>
       ),
     },
@@ -160,8 +211,17 @@ const IncidentList: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {status || 'Chưa xác định'}
+        <Tag
+          bordered={false}
+          style={{
+            color: getStatusColor(status),
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            fontWeight: 600
+          }}
+        >
+          {capitalizeFirst(status) || 'Chưa xác định'}
         </Tag>
       ),
     },
@@ -176,23 +236,37 @@ const IncidentList: React.FC = () => {
       dataIndex: 'images',
       key: 'images',
       render: (images: string[]) => (
-        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           {Array.isArray(images) && images.length > 0 ? (
             images.slice(0, 3).map((src, idx) => (
-              <Image
+              <div
                 key={idx}
-                src={src}
-                alt={`img-${idx}`}
-                width={40}
-                height={40}
-                style={{ borderRadius: '4px', cursor: 'pointer' }}
-                preview={{
-                  src: src,
-                  onVisibleChange: (visible) => {
-                    if (visible) openModal(src);
-                  }
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  border: '2px solid #f0f0f0',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  background: '#fafafa',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
-              />
+                onClick={() => openModal(src)}
+              >
+                <img
+                  src={src}
+                  alt={`img-${idx}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                  loading="lazy"
+                />
+              </div>
             ))
           ) : (
             <span style={{ color: '#94a3b8' }}>—</span>
@@ -200,15 +274,18 @@ const IncidentList: React.FC = () => {
           {images && images.length > 3 && (
             <Tooltip title={`+${images.length - 3} hình khác`}>
               <div style={{ 
-                width: 40, 
-                height: 40, 
-                background: '#f5f5f5', 
-                borderRadius: '4px', 
+                width: 60, 
+                height: 60, 
+                background: 'linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%)', 
+                borderRadius: '8px', 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
-                fontSize: '12px',
-                color: '#666'
+                fontSize: '14px',
+                color: '#666',
+                fontWeight: '600',
+                border: '2px solid #f0f0f0',
+                cursor: 'pointer'
               }}>
                 +{images.length - 3}
               </div>
@@ -222,22 +299,12 @@ const IncidentList: React.FC = () => {
       key: 'action',
       render: (_: unknown, record: IncidentItem) => (
         <Space wrap>
-          <Tooltip title="Phân loại sự cố">
-            <Button 
-              type="link" 
-              size="small" 
-              icon={<WarningOutlined />}
-              href={`/header-department/incident-management/${record._id}/classify`}
-            >
-              Phân loại
-            </Button>
-          </Tooltip>
           <Tooltip title="Phân công xử lý">
             <Button 
               type="link" 
               size="small" 
               icon={<InfoCircleOutlined />}
-              href={`/header-department/incident-management/${record._id}/assign`}
+              href={`/admin/incidents/${record._id}/assign`}
             >
               Phân công
             </Button>
@@ -247,7 +314,7 @@ const IncidentList: React.FC = () => {
               type="link" 
               size="small" 
               icon={<SearchOutlined />}
-              href={`/header-department/incident-management/${record._id}/investigate`}
+              href={`/admin/incidents/${record._id}/investigate`}
             >
               Điều tra
             </Button>
@@ -257,20 +324,9 @@ const IncidentList: React.FC = () => {
               type="link" 
               size="small" 
               icon={<ClockCircleOutlined />}
-              href={`/header-department/incident-management/${record._id}/progress-history`}
+              href={`/admin/incidents/${record._id}/progress-history`}
             >
               Tiến độ
-            </Button>
-          </Tooltip>
-          <Tooltip title="Escalate sự cố">
-            <Button 
-              type="link" 
-              size="small" 
-              danger
-              icon={<ArrowUpOutlined />}
-              href={`/header-department/incident-management/${record._id}/escalate`}
-            >
-              Escalate
             </Button>
           </Tooltip>
           <Tooltip title="Đóng sự cố">
@@ -279,7 +335,7 @@ const IncidentList: React.FC = () => {
               size="small" 
               danger
               icon={<CloseCircleOutlined />}
-              href={`/header-department/incident-management/${record._id}/close`}
+              href={`/admin/incidents/${record._id}/close`}
             >
               Đóng
             </Button>
@@ -312,65 +368,37 @@ const IncidentList: React.FC = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <Title level={2}>
-          <ExclamationCircleOutlined /> Danh sách sự cố
-        </Title>
-      </div>
-
-      {/* Stats Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="Tổng sự cố"
-              value={incidents.length}
-              prefix={<ExclamationCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="Đang xử lý"
-              value={incidents.filter(i => i.status === 'in_progress').length}
-              valueStyle={{ color: '#1890ff' }}
-              prefix={<ClockCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={8}>
-          <Card>
-            <Statistic
-              title="Đã đóng"
-              value={incidents.filter(i => i.status === 'closed').length}
-              valueStyle={{ color: '#52c41a' }}
-              prefix={<CheckCircleOutlined />}
-            />
-          </Card>
-        </Col>
-      </Row>
-
       {/* Filters */}
-      <Card style={{ marginBottom: '24px' }}>
+      <Card 
+        styles={{ body: { padding: 16 } }}
+        style={{ 
+          marginBottom: 24,
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(6px)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.04)'
+        }}
+      >
         <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} sm={8}>
+          <Col xs={24} md={8}>
             <Input
               placeholder="Tìm kiếm sự cố..."
               prefix={<SearchOutlined />}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ width: '100%' }}
+              allowClear
+              size="large"
             />
           </Col>
-          <Col xs={24} sm={8}>
+          <Col xs={24} md={6}>
             <Select
               placeholder="Lọc theo trạng thái"
               style={{ width: '100%' }}
-              value={statusFilter}
+              value={statusFilter || undefined}
               onChange={setStatusFilter}
               allowClear
+              size="large"
             >
               <Select.Option value="open">Mở</Select.Option>
               <Select.Option value="in_progress">Đang xử lý</Select.Option>
@@ -378,13 +406,14 @@ const IncidentList: React.FC = () => {
               <Select.Option value="closed">Đã đóng</Select.Option>
             </Select>
           </Col>
-          <Col xs={24} sm={8}>
+          <Col xs={24} md={6}>
             <Select
               placeholder="Lọc theo mức độ"
               style={{ width: '100%' }}
-              value={severityFilter}
+              value={severityFilter || undefined}
               onChange={setSeverityFilter}
               allowClear
+              size="large"
             >
               <Select.Option value="critical">Nghiêm trọng</Select.Option>
               <Select.Option value="high">Cao</Select.Option>
@@ -392,15 +421,43 @@ const IncidentList: React.FC = () => {
               <Select.Option value="low">Thấp</Select.Option>
             </Select>
           </Col>
+          <Col xs={24} md={4} style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('');
+                setSeverityFilter('');
+              }}
+              size="middle"
+              shape="round"
+            >
+              Đặt lại
+            </Button>
+          </Col>
         </Row>
       </Card>
 
       {/* Incidents Table */}
-      <Card>
+      <Card 
+        styles={{ body: { padding: 0 } }}
+        style={{ borderRadius: 16, overflow: 'hidden', boxShadow: '0 10px 26px rgba(0,0,0,0.05)' }}
+      >
         <Table
           columns={columns}
           dataSource={filteredIncidents}
           rowKey="_id"
+          bordered
+          size="middle"
+          sticky
+          scroll={{ x: true }}
+          locale={{
+            emptyText: (
+              <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8' }}>
+                Không có sự cố nào phù hợp
+              </div>
+            )
+          }}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,

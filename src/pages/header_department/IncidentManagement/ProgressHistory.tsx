@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Card, 
   Typography, 
@@ -38,7 +38,7 @@ interface ProgressEntry {
     _id: string;
     full_name: string;
     username: string;
-  };
+  } | null;
   timestamp: string;
 }
 
@@ -55,6 +55,7 @@ const { Title, Text } = Typography;
 
 const ProgressHistory: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [incident, setIncident] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +69,9 @@ const ProgressHistory: React.FC = () => {
       try {
         setLoading(true);
         const response = await incidentService.getIncidentById(id);
-        setIncident(response.data);
+        // ApiResponse.success() => { success, message, data }
+        const incidentData = response.data?.success ? response.data.data : response.data;
+        setIncident(incidentData || null);
       } catch (err: any) {
         setError('Không thể tải thông tin sự cố');
         message.error('Không thể tải thông tin sự cố');
@@ -152,8 +155,8 @@ const ProgressHistory: React.FC = () => {
           type="error"
           showIcon
           action={
-            <Button size="small" danger>
-              <Link to="/header-department/incident-management">Quay lại danh sách</Link>
+            <Button size="small" danger onClick={() => navigate('/admin/incident-management')}>
+              Quay lại danh sách
             </Button>
           }
         />
@@ -179,8 +182,17 @@ const ProgressHistory: React.FC = () => {
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <Space style={{ marginBottom: '16px' }}>
-          <Button icon={<ArrowLeftOutlined />}>
-            <Link to="/header-department/incident-management">Quay lại</Link>
+          <Button 
+            icon={<ArrowLeftOutlined />} 
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/admin/incident-management');
+              }
+            }}
+          >
+            Quay lại
           </Button>
         </Space>
         <Title level={2}>
@@ -250,7 +262,7 @@ const ProgressHistory: React.FC = () => {
                       </Space>
                       <Space>
                         <Avatar size="small" icon={<UserOutlined />} />
-                        <Text strong>{entry.performedBy.full_name}</Text>
+                        <Text strong>{entry.performedBy?.full_name || entry.performedBy?.username || 'Người dùng không xác định'}</Text>
                       </Space>
                     </div>
                     {entry.note && (

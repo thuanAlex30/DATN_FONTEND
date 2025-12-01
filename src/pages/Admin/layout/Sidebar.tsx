@@ -1,12 +1,12 @@
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../../store/slices/authSlice';
+import type { RootState } from '../../../store';
 import { 
   Layout, 
   Menu, 
   Typography, 
-  Button, 
-  Space
+  Button
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -15,8 +15,16 @@ import {
   SafetyOutlined,
   BankOutlined,
   FileTextOutlined,
-  LogoutOutlined
-} from '@ant-design/icons'; 
+  ProjectOutlined,
+  BookOutlined,
+  SafetyCertificateOutlined,
+  ExclamationCircleOutlined,
+  LogoutOutlined,
+  WifiOutlined,
+  TeamOutlined,
+  MessageOutlined
+} from '@ant-design/icons';
+import styles from './Sidebar.module.css'; 
 
 const { Sider } = Layout;
 const { Title, Text } = Typography;
@@ -24,13 +32,58 @@ const { Title, Text } = Typography;
 const Sidebar = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const { user } = useSelector((state: RootState) => state.auth);
 
     const handleLogout = () => {
         dispatch(logout());
         navigate('/login');
     };
 
-    const menuItems: MenuProps['items'] = [
+    // Check if user is system_admin
+    const isSystemAdmin = user?.role?.role_code?.toLowerCase() === 'system_admin' || 
+                          user?.role?.role_name?.toLowerCase() === 'system admin' ||
+                          user?.role?.role_level === 100;
+
+    // Menu items for system_admin - Dashboard, System Log, and Customer & Feedback
+    const systemAdminMenuItems: MenuProps['items'] = [
+        {
+            key: 'system-management',
+            label: 'Quản lý hệ thống',
+            type: 'group',
+            children: [
+                {
+                    key: '/system-admin/home',
+                    icon: <DashboardOutlined />,
+                    label: 'Dashboard',
+                },
+                {
+                    key: '/admin/system-logs',
+                    icon: <FileTextOutlined />,
+                    label: 'Nhật ký hệ thống',
+                },
+            ],
+        },
+        {
+            key: 'customer-feedback',
+            label: 'Khách hàng & phản hồi',
+            type: 'group',
+            children: [
+                {
+                    key: '/system-admin/customers',
+                    icon: <TeamOutlined />,
+                    label: 'Khách hàng tham gia',
+                },
+                {
+                    key: '/system-admin/support-messages',
+                    icon: <MessageOutlined />,
+                    label: 'Tin nhắn hỗ trợ',
+                },
+            ],
+        },
+    ];
+
+    // Menu items for company_admin and other admin roles
+    const adminMenuItems: MenuProps['items'] = [
         {
             key: 'system-management',
             label: 'Quản lý hệ thống',
@@ -63,7 +116,55 @@ const Sidebar = () => {
                 },
             ],
         },
+        {
+            key: 'project-management',
+            label: 'Quản lý dự án',
+            type: 'group',
+            children: [
+                {
+                    key: '/admin/project-management',
+                    icon: <ProjectOutlined />,
+                    label: 'Dự án',
+                },
+            ],
+        },
+        {
+            key: 'training-incident',
+            label: 'Đào tạo & Sự cố',
+            type: 'group',
+            children: [
+                {
+                    key: '/admin/training-management',
+                    icon: <BookOutlined />,
+                    label: 'Quản lý đào tạo',
+                },
+                {
+                    key: '/admin/incident-management',
+                    icon: <ExclamationCircleOutlined />,
+                    label: 'Quản lý sự cố',
+                },
+            ],
+        },
+        {
+            key: 'ppe-management',
+            label: 'Thiết bị bảo hộ',
+            type: 'group',
+            children: [
+                {
+                    key: '/admin/ppe-management',
+                    icon: <SafetyCertificateOutlined />,
+                    label: 'Quản lý PPE',
+                },
+                {
+                    key: '/admin/certificate-management',
+                    icon: <SafetyCertificateOutlined />,
+                    label: 'Gói chứng chỉ',
+                },
+            ],
+        },
     ];
+
+    const menuItems: MenuProps['items'] = isSystemAdmin ? systemAdminMenuItems : adminMenuItems;
 
     const handleMenuClick = ({ key }: { key: string }) => {
         navigate(key);
@@ -72,69 +173,45 @@ const Sidebar = () => {
     return (
         <Sider 
             width={280} 
-            style={{
-                background: '#fff',
-                borderRight: '1px solid #f0f0f0',
-                height: '100vh',
-                position: 'fixed',
-                left: 0,
-                top: 0,
-                zIndex: 1000,
-                overflow: 'auto'
-            }}
+            className={styles.sidebar}
         >
             {/* Header */}
-            <div style={{ 
-                padding: '24px 16px 16px', 
-                borderBottom: '1px solid #f0f0f0',
-                textAlign: 'center'
-            }}>
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                    <Title level={3} style={{ margin: 0, color: '#1890ff' }}>
+            <div className={styles.sidebarHeader}>
+                <div className={styles.logoContainer}>
+                    <Title level={3} className={styles.logoTitle}>
                         <SafetyOutlined /> SafetyPro
                     </Title>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                    <Text className={styles.logoSubtitle}>
                         Administrator Dashboard
                     </Text>
-                </Space>
+                    <div className={styles.connectionStatus}>
+                        <div className={styles.statusDot}></div>
+                        <WifiOutlined style={{ fontSize: '10px' }} />
+                        <span>Đã kết nối</span>
+                    </div>
+                </div>
             </div>
 
             {/* Navigation Menu */}
-            <div style={{ padding: '16px 0' }}>
+            <div className={styles.sidebarNav}>
                 <Menu
                     mode="inline"
                     items={menuItems}
                     onClick={handleMenuClick}
-                    style={{ 
-                        border: 'none',
-                        background: 'transparent'
-                    }}
-                    defaultOpenKeys={['system-management']}
+                    className={styles.menu}
+                    defaultOpenKeys={isSystemAdmin ? ['system-management', 'customer-feedback'] : ['system-management', 'project-management', 'training-incident', 'ppe-management']}
                 />
             </div>
 
             {/* Footer with Logout */}
-            <div style={{ 
-                position: 'absolute', 
-                bottom: 0, 
-                left: 0, 
-                right: 0, 
-                padding: '16px',
-                borderTop: '1px solid #f0f0f0',
-                background: '#fff'
-            }}>
+            <div className={styles.sidebarFooter}>
                 <Button 
-                    type="text" 
+                    type="primary"
                     danger
                     icon={<LogoutOutlined />}
                     onClick={handleLogout}
-                    style={{ 
-                        width: '100%',
-                        height: '40px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'flex-start'
-                    }}
+                    className={styles.logoutButton}
+                    block
                 >
                     Đăng xuất
                 </Button>

@@ -129,7 +129,7 @@ const PositionModal: React.FC<PositionModalProps> = ({
       onCancel={handleCancel}
       footer={null}
       width={600}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}

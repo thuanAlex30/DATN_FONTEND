@@ -1,4 +1,3 @@
-import { api } from '../config/axios';
 import incidentService from './incidentService';
 import { getDashboardStats as getPPEDashboardStats } from './ppeService';
 import { trainingStatsApi } from './trainingApi';
@@ -106,7 +105,7 @@ class HeaderDepartmentDashboardService {
       };
 
       if (trainingStats.status === 'fulfilled') {
-        const trainingData = trainingStats.value;
+        const trainingData = trainingStats.value as any; // Type assertion để tránh lỗi type checking
         training = {
           activeCourses: trainingData.active_courses || trainingData.activeCourses || 0,
           completionRate: trainingData.completion_rate || trainingData.completionRate || 0,
@@ -141,12 +140,14 @@ class HeaderDepartmentDashboardService {
       };
 
       if (projectStats.status === 'fulfilled' && projectStats.value.success) {
-        const projectData = projectStats.value.data;
-        projects = {
-          active: projectData.active_projects || projectData.active || 0,
-          highRisk: projectData.high_risk_projects || projectData.highRisk || 0,
-          milestonesDueSoon: projectData.milestones_due_soon || projectData.milestonesDueSoon || 0,
-        };
+        const projectData = projectStats.value.data as any; // Type assertion để tránh lỗi type checking
+        if (projectData) {
+          projects = {
+            active: projectData.active_projects || projectData.active || 0,
+            highRisk: projectData.high_risk_projects || projectData.highRisk || 0,
+            milestonesDueSoon: projectData.milestones_due_soon || projectData.milestonesDueSoon || 0,
+          };
+        }
       }
 
       // Certificates - try to get from training stats or set defaults

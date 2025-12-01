@@ -1,27 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Card, Typography, Button, Space, Table, Tag, Avatar, Row, Col, 
+  Card, Typography, Button, Space, Table, Tag, Avatar, Row, Col, Statistic, 
   Input, Select, message, Popconfirm, Tabs, Spin, Alert, Drawer, 
-  List, Badge, Tooltip, Empty
+  List, Badge, Tooltip, Empty 
 } from 'antd';
 import { 
   BankOutlined, PlusOutlined, EditOutlined, DeleteOutlined, 
   UserOutlined, TeamOutlined, ReloadOutlined, 
-  SettingOutlined, SyncOutlined, CloseOutlined,
-  ExportOutlined, BarChartOutlined
+  SettingOutlined, ProjectOutlined, SyncOutlined, CloseOutlined 
 } from '@ant-design/icons';
 import departmentService from '../../../services/departmentService';
 import positionService from '../../../services/positionService';
 import userService from '../../../services/userService';
-import DepartmentModal from './components/DepartmentModal';
-import PositionModal from './components/PositionModal';
-import HierarchyTab from './components/HierarchyTab';
-import AnalyticsTab from './components/AnalyticsTab';
-import BulkActions from './components/BulkActions';
-import AdvancedFilters from './components/AdvancedFilters';
-import ExportModal from './components/ExportModal';
-import QuickActions from './components/QuickActions';
-import ImportModal from './components/ImportModal';
 import type { 
   Employee, 
   DepartmentStats
@@ -71,26 +61,6 @@ const DepartmentPositionPage: React.FC = () => {
   }>>([]);
   const [selectedDepartmentForEmployees, setSelectedDepartmentForEmployees] = useState<string | null>(null);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState<boolean>(false);
-
-  // Modal states
-  const [departmentModalVisible, setDepartmentModalVisible] = useState(false);
-  const [positionModalVisible, setPositionModalVisible] = useState(false);
-  const [editingDepartment, setEditingDepartment] = useState<APIDepartment | null>(null);
-  const [editingPosition, setEditingPosition] = useState<APIPosition | null>(null);
-  const [departmentModalMode, setDepartmentModalMode] = useState<'create' | 'edit'>('create');
-  const [positionModalMode, setPositionModalMode] = useState<'create' | 'edit'>('create');
-
-  // Bulk operations
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [bulkActionLoading, setBulkActionLoading] = useState(false);
-
-  // Export modal
-  const [exportModalVisible, setExportModalVisible] = useState(false);
-  const [exportType, setExportType] = useState<'departments' | 'positions' | 'analytics'>('departments');
-
-  // Import modal
-  const [importModalVisible, setImportModalVisible] = useState(false);
-  const [importType, setImportType] = useState<'departments' | 'positions'>('departments');
 
   // Filter states
   const [filteredDepartments, setFilteredDepartments] = useState<APIDepartment[]>([]);
@@ -183,25 +153,6 @@ const DepartmentPositionPage: React.FC = () => {
     }
   };
 
-  // Load all data function
-  const loadAllData = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      await Promise.all([
-        loadDepartments(),
-        loadPositions(),
-        loadStats(),
-        loadEmployees()
-      ]);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      setError('Có lỗi xảy ra khi tải dữ liệu');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Load employees for a specific department
   const loadDepartmentEmployees = async (departmentId: string) => {
@@ -228,166 +179,6 @@ const DepartmentPositionPage: React.FC = () => {
     } finally {
       setIsLoadingEmployees(false);
     }
-  };
-
-  // Modal handlers
-  const handleCreateDepartment = () => {
-    console.log('Creating new department');
-    setEditingDepartment(null);
-    setDepartmentModalMode('create');
-    setDepartmentModalVisible(true);
-  };
-
-  const handleEditDepartment = (department: APIDepartment) => {
-    console.log('Editing department:', department);
-    setEditingDepartment(department);
-    setDepartmentModalMode('edit');
-    setDepartmentModalVisible(true);
-  };
-
-  const handleCreatePosition = () => {
-    setEditingPosition(null);
-    setPositionModalMode('create');
-    setPositionModalVisible(true);
-  };
-
-  const handleEditPosition = (position: APIPosition) => {
-    setEditingPosition(position);
-    setPositionModalMode('edit');
-    setPositionModalVisible(true);
-  };
-
-  const handleModalSuccess = () => {
-    setDepartmentModalVisible(false);
-    setPositionModalVisible(false);
-    setEditingDepartment(null);
-    setEditingPosition(null);
-    loadAllData();
-  };
-
-  const handleDeleteDepartment = async (departmentId: string) => {
-    try {
-      await departmentService.deleteDepartment(departmentId);
-      message.success('Xóa phòng ban thành công!');
-      loadAllData();
-    } catch (error) {
-      console.error('Error deleting department:', error);
-      message.error('Có lỗi xảy ra khi xóa phòng ban!');
-    }
-  };
-
-  const handleDeletePosition = async (positionId: string) => {
-    try {
-      await positionService.delete(positionId);
-      message.success('Xóa vị trí thành công!');
-      loadAllData();
-    } catch (error) {
-      console.error('Error deleting position:', error);
-      message.error('Có lỗi xảy ra khi xóa vị trí!');
-    }
-  };
-
-  // Bulk operations
-  const handleBulkDelete = async (type: 'departments' | 'positions') => {
-    if (selectedRowKeys.length === 0) {
-      message.warning('Vui lòng chọn ít nhất một mục để xóa!');
-      return;
-    }
-
-    try {
-      setBulkActionLoading(true);
-      const promises = selectedRowKeys.map(async id => {
-        if (type === 'departments') {
-          await departmentService.deleteDepartment(id as string);
-          return { success: true };
-        } else {
-          await positionService.delete(id as string);
-          return { success: true };
-        }
-      });
-
-      const results = await Promise.all(promises);
-      const successCount = results.filter(r => r.success).length;
-      
-      if (successCount > 0) {
-        message.success(`Xóa thành công ${successCount}/${selectedRowKeys.length} mục!`);
-        setSelectedRowKeys([]);
-        loadAllData();
-      } else {
-        message.error('Không thể xóa các mục đã chọn!');
-      }
-    } catch (error) {
-      console.error('Error in bulk delete:', error);
-      message.error('Có lỗi xảy ra khi xóa hàng loạt!');
-    } finally {
-      setBulkActionLoading(false);
-    }
-  };
-
-  const handleBulkActivate = async (type: 'departments' | 'positions', activate: boolean) => {
-    if (selectedRowKeys.length === 0) {
-      message.warning('Vui lòng chọn ít nhất một mục!');
-      return;
-    }
-
-    try {
-      setBulkActionLoading(true);
-      const promises = selectedRowKeys.map(async id => {
-        try {
-          if (type === 'departments') {
-            await departmentService.updateDepartment(id as string, { is_active: activate });
-            return { success: true };
-          } else {
-            await positionService.update(id as string, { is_active: activate });
-            return { success: true };
-          }
-        } catch (error) {
-          return { success: false };
-        }
-      });
-
-      const results = await Promise.all(promises);
-      const successCount = results.filter(r => r.success).length;
-      
-      if (successCount > 0) {
-        message.success(`${activate ? 'Kích hoạt' : 'Vô hiệu hóa'} thành công ${successCount}/${selectedRowKeys.length} mục!`);
-        setSelectedRowKeys([]);
-        loadAllData();
-      } else {
-        message.error(`Không thể ${activate ? 'kích hoạt' : 'vô hiệu hóa'} các mục đã chọn!`);
-      }
-    } catch (error) {
-      console.error('Error in bulk activate:', error);
-      message.error('Có lỗi xảy ra khi cập nhật hàng loạt!');
-    } finally {
-      setBulkActionLoading(false);
-    }
-  };
-
-  // Export functionality
-  const handleExport = (type: 'departments' | 'positions' | 'analytics') => {
-    setExportType(type);
-    setExportModalVisible(true);
-  };
-
-  // Import functionality
-  const handleImport = (type: 'departments' | 'positions') => {
-    setImportType(type);
-    setImportModalVisible(true);
-  };
-
-  // Quick actions
-  const handleQuickCreate = (type: 'department' | 'position') => {
-    if (type === 'department') {
-      handleCreateDepartment();
-    } else {
-      handleCreatePosition();
-    }
-  };
-
-  const handleImportSuccess = () => {
-    loadAllData();
-    message.success('Nhập dữ liệu thành công!');
   };
 
   // Utility functions
@@ -481,9 +272,27 @@ const DepartmentPositionPage: React.FC = () => {
     setFilteredPositions(filtered);
   };
 
-
   // Load all data on component mount
   useEffect(() => {
+    const loadAllData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        await Promise.all([
+          loadDepartments(),
+          loadPositions(),
+          loadStats(),
+          loadEmployees()
+        ]);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        setError('Có lỗi xảy ra khi tải dữ liệu');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     loadAllData();
   }, []);
 
@@ -567,19 +376,12 @@ const DepartmentPositionPage: React.FC = () => {
             />
           </Tooltip>
           <Tooltip title="Chỉnh sửa">
-            <Button 
-              type="link" 
-              icon={<EditOutlined />} 
-              onClick={() => handleEditDepartment(record)}
-            />
+            <Button type="link" icon={<EditOutlined />} />
           </Tooltip>
           <Tooltip title="Xóa">
             <Popconfirm
               title="Bạn có chắc chắn muốn xóa phòng ban này?"
-              description="Hành động này không thể hoàn tác!"
-              onConfirm={() => handleDeleteDepartment(record.id)}
-              okText="Xóa"
-              cancelText="Hủy"
+              onConfirm={() => message.info('Chức năng xóa đang được phát triển')}
             >
               <Button 
                 type="link" 
@@ -640,19 +442,12 @@ const DepartmentPositionPage: React.FC = () => {
       render: (_: any, record: APIPosition) => (
         <Space>
           <Tooltip title="Chỉnh sửa">
-            <Button 
-              type="link" 
-              icon={<EditOutlined />} 
-              onClick={() => handleEditPosition(record)}
-            />
+            <Button type="link" icon={<EditOutlined />} />
           </Tooltip>
           <Tooltip title="Xóa">
             <Popconfirm
               title="Bạn có chắc chắn muốn xóa vị trí này?"
-              description="Hành động này không thể hoàn tác!"
-              onConfirm={() => handleDeletePosition(record.id)}
-              okText="Xóa"
-              cancelText="Hủy"
+              onConfirm={() => message.info('Chức năng xóa đang được phát triển')}
             >
               <Button 
                 type="link" 
@@ -726,21 +521,45 @@ const DepartmentPositionPage: React.FC = () => {
         </Row>
       </Card>
 
-      {/* Quick Actions */}
-      <QuickActions
-        onQuickCreate={handleQuickCreate}
-        onImport={() => handleImport('departments')}
-        onExport={() => handleExport('departments')}
-        onRefresh={loadAllData}
-        onSettings={() => message.info('Cài đặt đang được phát triển!')}
-        stats={{
-          totalDepartments: stats.totalDepartments,
-          totalPositions: stats.totalPositions,
-          totalEmployees: stats.totalEmployees,
-          activeDepartments: departments.filter(d => d.is_active).length
-        }}
-        loading={isLoading}
-      />
+      {/* Stats Grid */}
+      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Phòng ban hoạt động"
+              value={stats.totalDepartments}
+              prefix={<BankOutlined style={{ color: '#1890ff' }} />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Vị trí công việc"
+              value={stats.totalPositions}
+              prefix={<UserOutlined style={{ color: '#52c41a' }} />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Nhân viên đang làm"
+              value={stats.totalEmployees}
+              prefix={<UserOutlined style={{ color: '#faad14' }} />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Dự án đang thực hiện"
+              value={stats.totalProjects}
+              prefix={<ProjectOutlined style={{ color: '#722ed1' }} />}
+            />
+          </Card>
+        </Col>
+      </Row>
 
       {/* Tabs */}
       <Card>
@@ -758,21 +577,6 @@ const DepartmentPositionPage: React.FC = () => {
               ),
               children: (
                 <div>
-                  {/* Advanced Filters */}
-                  <AdvancedFilters
-                    type="departments"
-                    onFilter={(filters) => {
-                      // TODO: Implement advanced filtering
-                      console.log('Department filters:', filters);
-                    }}
-                    onClear={() => {
-                      setDepartmentSearch('');
-                      setDepartmentStatusFilter('');
-                      setDepartmentLevelFilter('');
-                    }}
-                    loading={isLoading}
-                  />
-
                   <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
                     <Col>
                       <Space>
@@ -805,44 +609,15 @@ const DepartmentPositionPage: React.FC = () => {
                       </Space>
                     </Col>
                     <Col>
-                      <Space>
-                        <Button 
-                          type="primary" 
-                          icon={<PlusOutlined />}
-                          onClick={handleCreateDepartment}
-                        >
-                          Thêm phòng ban
-                        </Button>
-                        <Button 
-                          icon={<ExportOutlined />}
-                          onClick={() => handleExport('departments')}
-                        >
-                          Xuất Excel
-                        </Button>
-                      </Space>
+                      <Button type="primary" icon={<PlusOutlined />}>
+                        Thêm phòng ban
+                      </Button>
                     </Col>
                   </Row>
-
-                  {/* Bulk Actions */}
-                  <BulkActions
-                    selectedRowKeys={selectedRowKeys}
-                    onBulkDelete={() => handleBulkDelete('departments')}
-                    onBulkActivate={(activate) => handleBulkActivate('departments', activate)}
-                    onBulkExport={() => handleExport('departments')}
-                    loading={bulkActionLoading}
-                    type="departments"
-                  />
                   <Table
                     columns={departmentColumns}
                     dataSource={filteredDepartments}
                     rowKey="id"
-                    rowSelection={{
-                      selectedRowKeys,
-                      onChange: setSelectedRowKeys,
-                      getCheckboxProps: (record) => ({
-                        disabled: getEmployeeCountByDepartment(record.id) > 0,
-                      }),
-                    }}
                     pagination={{
                       pageSize: 10,
                       showSizeChanger: true,
@@ -864,21 +639,6 @@ const DepartmentPositionPage: React.FC = () => {
               ),
               children: (
                 <div>
-                  {/* Advanced Filters */}
-                  <AdvancedFilters
-                    type="positions"
-                    onFilter={(filters) => {
-                      // TODO: Implement advanced filtering
-                      console.log('Position filters:', filters);
-                    }}
-                    onClear={() => {
-                      setPositionSearch('');
-                      setPositionStatusFilter('');
-                      setPositionLevelFilter('');
-                    }}
-                    loading={isLoading}
-                  />
-
                   <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
                     <Col>
                       <Space>
@@ -911,44 +671,15 @@ const DepartmentPositionPage: React.FC = () => {
                       </Space>
                     </Col>
                     <Col>
-                      <Space>
-                        <Button 
-                          type="primary" 
-                          icon={<PlusOutlined />}
-                          onClick={handleCreatePosition}
-                        >
-                          Thêm vị trí
-                        </Button>
-                        <Button 
-                          icon={<ExportOutlined />}
-                          onClick={() => handleExport('positions')}
-                        >
-                          Xuất Excel
-                        </Button>
-                      </Space>
+                      <Button type="primary" icon={<PlusOutlined />}>
+                        Thêm vị trí
+                      </Button>
                     </Col>
                   </Row>
-
-                  {/* Bulk Actions */}
-                  <BulkActions
-                    selectedRowKeys={selectedRowKeys}
-                    onBulkDelete={() => handleBulkDelete('positions')}
-                    onBulkActivate={(activate) => handleBulkActivate('positions', activate)}
-                    onBulkExport={() => handleExport('positions')}
-                    loading={bulkActionLoading}
-                    type="positions"
-                  />
                   <Table
                     columns={positionColumns}
                     dataSource={filteredPositions}
                     rowKey="id"
-                    rowSelection={{
-                      selectedRowKeys,
-                      onChange: setSelectedRowKeys,
-                      getCheckboxProps: (record) => ({
-                        disabled: getEmployeeCountByPosition(record.id) > 0,
-                      }),
-                    }}
                     pagination={{
                       pageSize: 10,
                       showSizeChanger: true,
@@ -958,40 +689,6 @@ const DepartmentPositionPage: React.FC = () => {
                     }}
                   />
                 </div>
-              ),
-            },
-            {
-              key: 'hierarchy',
-              label: (
-                <span>
-                  <BankOutlined />
-                  Cấu trúc tổ chức
-                </span>
-              ),
-              children: (
-                <HierarchyTab
-                  departments={departments}
-                  positions={positions}
-                  departmentEmployeeCounts={departmentEmployeeCounts}
-                  onRefresh={loadAllData}
-                />
-              ),
-            },
-            {
-              key: 'analytics',
-              label: (
-                <span>
-                  <BarChartOutlined />
-                  Thống kê
-                </span>
-              ),
-              children: (
-                <AnalyticsTab
-                  departments={departments}
-                  positions={positions}
-                  departmentEmployeeCounts={departmentEmployeeCounts}
-                  onRefresh={loadAllData}
-                />
               ),
             },
           ]}
@@ -1076,41 +773,6 @@ const DepartmentPositionPage: React.FC = () => {
           />
         )}
       </Drawer>
-
-      {/* Department Modal */}
-      <DepartmentModal
-        visible={departmentModalVisible}
-        onCancel={() => setDepartmentModalVisible(false)}
-        onSuccess={handleModalSuccess}
-        department={editingDepartment}
-        mode={departmentModalMode}
-      />
-
-      {/* Position Modal */}
-      <PositionModal
-        visible={positionModalVisible}
-        onCancel={() => setPositionModalVisible(false)}
-        onSuccess={handleModalSuccess}
-        position={editingPosition}
-        mode={positionModalMode}
-      />
-
-      {/* Export Modal */}
-      <ExportModal
-        visible={exportModalVisible}
-        onCancel={() => setExportModalVisible(false)}
-        type={exportType}
-        data={exportType === 'departments' ? departments : 
-              exportType === 'positions' ? positions : []}
-      />
-
-      {/* Import Modal */}
-      <ImportModal
-        visible={importModalVisible}
-        onCancel={() => setImportModalVisible(false)}
-        onSuccess={handleImportSuccess}
-        type={importType}
-      />
     </div>
   );
 };
