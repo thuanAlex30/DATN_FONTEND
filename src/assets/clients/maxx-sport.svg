@@ -1,0 +1,19 @@
+<svg width="180" height="80" viewBox="0 0 180 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="maxxGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#dbeafe"/>
+      <stop offset="100%" stop-color="#bfdbfe"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="80" rx="18" fill="url(#maxxGradient)"/>
+  <text x="90" y="46" text-anchor="middle" font-family="Poppins, 'Segoe UI', sans-serif" font-size="34" font-weight="800" fill="#1d4ed8">
+    MAXX
+  </text>
+  <text x="90" y="63" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="16" font-weight="600" letter-spacing="4" fill="#1e3a8a">
+    SPORT
+  </text>
+</svg>
+
+
+
+

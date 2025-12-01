@@ -11,11 +11,12 @@ import {
   Space,
   Layout
 } from 'antd';
-import { UserOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, SafetyOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { login } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import type { LoginRequest } from '../../types/auth';
 import { useSafeNavigate } from '../../hooks/useSafeNavigate';
+import styles from './Login.module.css';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -206,100 +207,119 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const constructionImage = 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1920&q=80';
+
   return (
-    <Layout style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-      <Content style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        padding: '20px'
-      }}>
-        <Card 
-          style={{ 
-            width: '100%', 
-            maxWidth: 400,
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-            borderRadius: '12px'
-          }}
-        >
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {/* Header */}
-            <div style={{ textAlign: 'center' }}>
-              <SafetyOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
-              <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-                Hệ Thống Quản Lý An Toàn
-              </Title>
-              <Text type="secondary" style={{ fontSize: '16px' }}>
-                Đăng nhập quản trị viên
-              </Text>
-            </div>
+    <Layout className={styles.loginLayout}>
+      {/* Full Screen Background Image */}
+      <img 
+        src={constructionImage} 
+        alt="Xây dựng an toàn" 
+        className={styles.loginBackgroundImage}
+        onError={(e) => {
+          // Fallback nếu ảnh lỗi
+          (e.target as HTMLImageElement).src = 'https://hbcg.vn/laravel-filemanager/app/public/media/image/an-toan-lao-dong-trong-xay-dung-4.jpg';
+        }}
+      />
 
-            {/* Form */}
-            <Form
-              form={form}
-              name="login"
-              onFinish={handleSubmit}
-              layout="vertical"
-              size="large"
-            >
-              <Form.Item
-                name="username"
-                label="Tên đăng nhập"
-                rules={[
-                  { required: true, message: 'Vui lòng nhập tên đăng nhập!' }
-                ]}
-              >
-                <Input
-                  prefix={<UserOutlined />}
-                  placeholder="Nhập tên đăng nhập"
-                  autoComplete="username"
-                />
-              </Form.Item>
+      {/* Back Button */}
+      <div 
+        className={styles.backButton}
+        onClick={() => safeNavigate('/')}
+      >
+        <ArrowLeftOutlined className={styles.backButtonIcon} />
+        <span>Về trang chủ</span>
+      </div>
 
-              <Form.Item
-                name="password"
-                label="Mật khẩu"
-                rules={[
-                  { required: true, message: 'Vui lòng nhập mật khẩu!' }
-                ]}
-              >
-                <Input.Password
-                  prefix={<LockOutlined />}
-                  placeholder="Nhập mật khẩu"
-                  autoComplete="current-password"
-                />
-              </Form.Item>
+      <Content className={styles.loginContent}>
+        <div className={styles.loginContainer}>
+          {/* Form Section - Overlay trên hình ảnh */}
+          <div className={styles.loginFormSection}>
+            <Card className={styles.loginCard}>
+              <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                {/* Header */}
+                <div className={styles.loginHeader}>
+                  <SafetyOutlined className={styles.loginIcon} />
+                  <Title level={2} className={styles.loginTitle}>
+                    Hệ Thống Quản Lý An Toàn
+                  </Title>
+                  <Text className={styles.loginSubtitle}>
+                    Đăng nhập quản trị viên
+                  </Text>
+                </div>
 
-              {error && (
-                <Alert
-                  message={typeof error === 'string' ? error : 'Đăng nhập thất bại, vui lòng kiểm tra tên đăng nhập và mật khẩu'}
-                  type="error"
-                  showIcon
-                  style={{ marginBottom: '16px' }}
-                />
-              )}
-
-              <Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={loading}
-                  block
+                {/* Form */}
+                <Form
+                  form={form}
+                  name="login"
+                  onFinish={handleSubmit}
+                  layout="vertical"
                   size="large"
+                  className={styles.loginForm}
                 >
-                  {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
-                </Button>
-              </Form.Item>
-            </Form>
+                  <Form.Item
+                    name="username"
+                    label="* Tên đăng nhập"
+                    className={styles.loginFormItem}
+                    rules={[
+                      { required: true, message: 'Vui lòng nhập tên đăng nhập!' }
+                    ]}
+                  >
+                    <Input
+                      prefix={<UserOutlined />}
+                      placeholder="Nhập tên đăng nhập"
+                      autoComplete="username"
+                    />
+                  </Form.Item>
 
-            {/* Footer */}
-            <div style={{ textAlign: 'center' }}>
-              <Text type="secondary" style={{ fontSize: '14px' }}>
-                Nếu có vấn đề, vui lòng liên hệ quản trị viên hệ thống
-              </Text>
-            </div>
-          </Space>
-        </Card>
+                  <Form.Item
+                    name="password"
+                    label="* Mật khẩu"
+                    className={styles.loginFormItem}
+                    rules={[
+                      { required: true, message: 'Vui lòng nhập mật khẩu!' }
+                    ]}
+                  >
+                    <Input.Password
+                      prefix={<LockOutlined />}
+                      placeholder="Nhập mật khẩu"
+                      autoComplete="current-password"
+                    />
+                  </Form.Item>
+
+                  {error && (
+                    <Alert
+                      message={typeof error === 'string' ? error : 'Đăng nhập thất bại, vui lòng kiểm tra tên đăng nhập và mật khẩu'}
+                      type="error"
+                      showIcon
+                      style={{ marginBottom: '16px' }}
+                    />
+                  )}
+
+                  <Form.Item>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      loading={loading}
+                      block
+                      size="large"
+                      className={styles.loginButton}
+                    >
+                      {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                    </Button>
+                  </Form.Item>
+                </Form>
+
+                {/* Footer */}
+                <div className={styles.loginFooter}>
+                  <Text className={styles.loginFooterText}>
+                    Nếu có vấn đề, vui lòng liên hệ quản trị viên hệ thống
+                  </Text>
+                </div>
+              </Space>
+            </Card>
+          </div>
+        </div>
       </Content>
     </Layout>
   );

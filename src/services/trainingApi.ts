@@ -388,6 +388,101 @@ export const trainingEnrollmentApi = {
   },
 };
 
+// Additional Training APIs
+export const trainingHelperApi = {
+  // Get available sessions for a course
+  getAvailableSessions: async (courseId: string, userId?: string): Promise<TrainingSession[]> => {
+    const params = new URLSearchParams();
+    if (userId) params.append('userId', userId);
+    
+    const response = await api.get<ApiResponse<TrainingSession[]>>(
+      `/training/courses/${courseId}/available-sessions?${params.toString()}`
+    );
+    return response.data.data;
+  },
+
+  // Get user enrollments
+  getUserEnrollments: async (userId: string, filters?: { status?: string }): Promise<TrainingEnrollment[]> => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    
+    const response = await api.get<ApiResponse<TrainingEnrollment[]>>(
+      `/training/users/${userId}/enrollments?${params.toString()}`
+    );
+    return response.data.data;
+  },
+
+  // Get improved course stats
+  getImprovedCourseStats: async (courseId: string) => {
+    const response = await api.get<ApiResponse<any>>(`/training/courses/${courseId}/stats-improved`);
+    return response.data.data;
+  },
+};
+
+// Training Submission/Grading APIs (Admin)
+export interface TrainingSubmission {
+  _id: string;
+  enrollment_id: string;
+  session_id: {
+    _id: string;
+    session_name: string;
+    course_id: {
+      _id: string;
+      course_name: string;
+    };
+  };
+  user_id: {
+    _id: string;
+    full_name: string;
+    email: string;
+  };
+  answers: Record<string, string>;
+  submitted_at: string;
+  status: 'submitted' | 'graded';
+  graded_at?: string;
+  graded_by?: {
+    _id: string;
+    full_name: string;
+  };
+  admin_comments?: string;
+  questions?: any[];
+}
+
+export const trainingGradingApi = {
+  // Get submissions waiting for grading
+  getSubmissionsForGrading: async (filters?: { sessionId?: string; userId?: string }): Promise<TrainingSubmission[]> => {
+    const params = new URLSearchParams();
+    if (filters?.sessionId) params.append('sessionId', filters.sessionId);
+    if (filters?.userId) params.append('userId', filters.userId);
+    
+    const response = await api.get<ApiResponse<TrainingSubmission[]>>(
+      `/training/submissions/grading?${params.toString()}`
+    );
+    return response.data.data;
+  },
+
+  // Get submission details for grading
+  getSubmissionForGrading: async (submissionId: string): Promise<TrainingSubmission> => {
+    const response = await api.get<ApiResponse<TrainingSubmission>>(
+      `/training/submissions/${submissionId}/grading`
+    );
+    return response.data.data;
+  },
+
+  // Grade a submission
+  gradeSubmission: async (submissionId: string, data: {
+    score: number;
+    passed: boolean;
+    admin_comments?: string;
+  }): Promise<any> => {
+    const response = await api.post<ApiResponse<any>>(
+      `/training/submissions/${submissionId}/grade`,
+      data
+    );
+    return response.data.data;
+  },
+};
+
 // Question Bank API
 export const questionBankApi = {
   getAll: async (filters?: { courseId?: string }): Promise<QuestionBank[]> => {

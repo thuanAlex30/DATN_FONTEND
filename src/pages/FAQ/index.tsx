@@ -12,7 +12,6 @@ import {
 } from 'antd';
 import {
   SafetyOutlined,
-  LoginOutlined,
   ArrowLeftOutlined,
   QuestionCircleOutlined,
   PhoneOutlined,
@@ -22,9 +21,10 @@ import {
   InstagramOutlined,
   TwitterOutlined
 } from '@ant-design/icons';
+import MarketingHeader from '../../components/MarketingHeader';
 import styles from './FAQ.module.css';
 
-const { Header, Content, Footer } = Layout;
+const { Content, Footer } = Layout;
 const { Title, Text } = Typography;
 
 const FAQPage: React.FC = () => {
@@ -67,59 +67,24 @@ const FAQPage: React.FC = () => {
     }
   ];
 
+  const faqHighlights = [
+    {
+      value: '24/7',
+      label: 'Hỗ trợ chuyên gia'
+    },
+    {
+      value: '500+',
+      label: 'Doanh nghiệp đang tin dùng'
+    },
+    {
+      value: '99%',
+      label: 'Phản hồi được giải quyết'
+    }
+  ];
+
   return (
     <Layout className={styles.layout}>
-      {/* Header with Navigation */}
-      <Header className={styles.header}>
-        <div className={styles.headerTop}>
-          <div className={styles.logo} onClick={() => navigate('/')}>
-            <SafetyOutlined className={styles.logoIcon} />
-            <Title level={4} className={styles.logoText}>
-              Hệ Thống Quản Lý An Toàn Lao Động
-            </Title>
-          </div>
-          <Button
-            type="primary"
-            size="large"
-            icon={<LoginOutlined />}
-            onClick={handleLogin}
-            className={styles.loginBtn}
-          >
-            Đăng nhập
-          </Button>
-        </div>
-        <div className={styles.navBar}>
-          <Space size="large" className={styles.navLinks}>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/')}
-            >
-              Trang chủ
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/about')}
-            >
-              Giới thiệu
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLink}
-              onClick={() => navigate('/contact')}
-            >
-              Liên Hệ
-            </Button>
-            <Button
-              type="link"
-              className={styles.navLinkActive}
-            >
-              FAQ
-            </Button>
-          </Space>
-        </div>
-      </Header>
+      <MarketingHeader activeKey="faq" />
 
       <Content className={styles.content}>
         <div className={styles.pageContainer}>
@@ -133,16 +98,95 @@ const FAQPage: React.FC = () => {
           </Button>
 
           <section className={styles.faqSection}>
-            <Title level={1} className={styles.pageTitle}>
-              Câu hỏi thường gặp
-            </Title>
-            <Collapse
-              items={faqData}
-              className={styles.faqCollapse}
-              expandIcon={({ isActive }) => (
-                <QuestionCircleOutlined rotate={isActive ? 90 : 0} />
-              )}
-            />
+            <Row gutter={[48, 40]} align="middle" className={styles.faqHeroRow}>
+              <Col xs={24} lg={12} xl={11}>
+                <div className={styles.faqHero}>
+                  <Title level={1} className={styles.pageTitle}>
+                    Câu hỏi thường gặp
+                  </Title>
+                  <Text className={styles.faqSubtitle}>
+                    Tất cả thông tin bạn cần biết về hệ thống quản lý an toàn lao động đều có tại đây.
+                  </Text>
+                  <div className={styles.faqHighlights}>
+                    {faqHighlights.map(item => (
+                      <div key={item.label} className={styles.faqHighlightCard}>
+                        <span className={styles.faqHighlightValue}>{item.value}</span>
+                        <span className={styles.faqHighlightLabel}>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Col>
+              <Col xs={24} lg={12} xl={13}>
+                <div className={styles.faqImageContainer}>
+                  <img 
+                    src="https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=800&q=80" 
+                    alt="An toàn lao động" 
+                    className={styles.faqHeroImage}
+                  />
+                  <div className={styles.faqImageOverlay}></div>
+                </div>
+              </Col>
+            </Row>
+            
+            <div className={styles.faqContentWrapper}>
+              <Row gutter={[32, 32]} align="stretch">
+                <Col xs={24} lg={16} xl={15}>
+                  <div className={styles.faqQuestionsWrapper}>
+                    <Collapse
+                      items={faqData}
+                      className={styles.faqCollapse}
+                      expandIcon={({ isActive }) => (
+                        <QuestionCircleOutlined rotate={isActive ? 90 : 0} />
+                      )}
+                    />
+                  </div>
+                </Col>
+                <Col xs={24} lg={8} xl={9}>
+                  <div className={styles.faqSideImages}>
+                    <div className={styles.faqSideImageCard}>
+                      <div className={styles.faqSideImageWrapper}>
+                        <img 
+                          src="https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=400&q=80" 
+                          alt="Thiết bị bảo hộ" 
+                          className={styles.faqSideImage}
+                        />
+                      </div>
+                      <div className={styles.faqSideImageContent}>
+                        <Title level={5}>Thiết bị bảo hộ</Title>
+                        <Text>Quản lý và theo dõi thiết bị bảo hộ cá nhân</Text>
+                      </div>
+                    </div>
+                    <div className={styles.faqSideImageCard}>
+                      <div className={styles.faqSideImageWrapper}>
+                        <img 
+                          src="https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&q=80" 
+                          alt="Đào tạo an toàn" 
+                          className={styles.faqSideImage}
+                        />
+                      </div>
+                      <div className={styles.faqSideImageContent}>
+                        <Title level={5}>Đào tạo an toàn</Title>
+                        <Text>Chương trình đào tạo chuyên nghiệp</Text>
+                      </div>
+                    </div>
+                    <div className={styles.faqSideImageCard}>
+                      <div className={styles.faqSideImageWrapper}>
+                        <img 
+                          src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&q=80" 
+                          alt="Quản lý dự án" 
+                          className={styles.faqSideImage}
+                        />
+                      </div>
+                      <div className={styles.faqSideImageContent}>
+                        <Title level={5}>Quản lý dự án</Title>
+                        <Text>Theo dõi và quản lý dự án hiệu quả</Text>
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+            </div>
           </section>
         </div>
       </Content>
@@ -190,9 +234,6 @@ const FAQPage: React.FC = () => {
                   Chính sách chất lượng
                 </Button>
                 <Button type="link" className={styles.footerLink}>
-                  Tuyển dụng
-                </Button>
-                <Button type="link" className={styles.footerLink}>
                   Quy chế hoạt động
                 </Button>
                 <Button type="link" className={styles.footerLink}>
@@ -217,9 +258,6 @@ const FAQPage: React.FC = () => {
                 <Button type="link" className={styles.footerLink}>
                   Thông tin cá nhân
                 </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Lịch sử giao dịch
-                </Button>
               </Space>
             </Col>
 
@@ -232,9 +270,6 @@ const FAQPage: React.FC = () => {
                 </Button>
                 <Button type="link" className={styles.footerLink}>
                   Chương trình hợp tác
-                </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Đối tác giao hàng
                 </Button>
                 <Button type="link" className={styles.footerLink}>
                   Đối tác kinh doanh
@@ -270,9 +305,6 @@ const FAQPage: React.FC = () => {
                 >
                   Liên hệ
                 </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Tài liệu hướng dẫn
-                </Button>
               </Space>
             </Col>
           </Row>
@@ -284,30 +316,9 @@ const FAQPage: React.FC = () => {
               © {new Date().getFullYear()} Hệ Thống Quản Lý An Toàn Lao Động. Tất cả các quyền được bảo lưu.
             </Text>
             <div className={styles.footerSocial}>
-              <Button
-                type="link"
-                icon={<FacebookOutlined />}
-                className={styles.socialButton}
-                href="https://facebook.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-              <Button
-                type="link"
-                icon={<InstagramOutlined />}
-                className={styles.socialButton}
-                href="https://instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              />
-              <Button
-                type="link"
-                icon={<TwitterOutlined />}
-                className={styles.socialButton}
-                href="https://twitter.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              />
+              <Button type="link" icon={<FacebookOutlined />} className={styles.socialButton} />
+              <Button type="link" icon={<InstagramOutlined />} className={styles.socialButton} />
+              <Button type="link" icon={<TwitterOutlined />} className={styles.socialButton} />
             </div>
           </div>
         </div>

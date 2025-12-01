@@ -18,6 +18,7 @@ import InvestigateIncident from '../pages/header_department/IncidentManagement/I
 import UpdateProgress from '../pages/header_department/IncidentManagement/UpdateProgress';
 import CloseIncident from '../pages/header_department/IncidentManagement/CloseIncident';
 import ProgressHistory from '../pages/header_department/IncidentManagement/ProgressHistory';
+import UpdateEmployeeIncident from '../pages/header_department/IncidentManagement/UpdateEmployeeIncident';
 import HeaderDepartmentCertificateManagementPage from '../pages/header_department/CertificateManagement';
 import HeaderDepartmentIncidentManagementPage from '../pages/header_department/IncidentManagement';
 import HeaderDepartmentPPEManagementPage from '../pages/header_department/PPEManagement';
@@ -390,6 +391,16 @@ const AppRoutes = () => {
                         <HeaderDepartmentLayout>
                             <CloseIncident />
                         </HeaderDepartmentLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/incidents/:id/update-employee" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <UpdateEmployeeIncident />
+                        </AdminLayout>
                     </AuthGuard>
                 } 
             />
