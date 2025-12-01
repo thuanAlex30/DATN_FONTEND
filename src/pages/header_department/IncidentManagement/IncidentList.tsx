@@ -21,7 +21,8 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
   InfoCircleOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  UserOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 
@@ -337,6 +338,16 @@ const IncidentList: React.FC = () => {
               href={`/header-department/incident-management/${record._id}/progress-history`}
             >
               Tiến độ
+            </Button>
+          </Tooltip>
+          <Tooltip title="Cập nhật thông tin nhân viên">
+            <Button 
+              type="link" 
+              size="small" 
+              icon={<UserOutlined />}
+              href={`/admin/incidents/${record._id}/update-employee`}
+            >
+              Cập nhật NV
             </Button>
           </Tooltip>
           <Tooltip title="Đóng sự cố">

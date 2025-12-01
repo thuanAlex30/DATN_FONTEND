@@ -173,6 +173,11 @@ class WebSocketClient {
       this.emit('training_completed', data);
     });
 
+    this.socket.on('training_graded', (data) => {
+      console.log('✅ Training graded:', data);
+      this.emit('training_graded', data);
+    });
+
     // PPE events
 
     this.socket.on('ppe_returned', (data) => {

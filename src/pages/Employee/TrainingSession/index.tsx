@@ -301,22 +301,33 @@ const TrainingSession: React.FC = () => {
 
       console.log('Calculated score:', totalScore, 'Type:', typeof totalScore);
 
-      // Submit answers to backend
+      // Submit answers to backend (lưu bài, chờ admin chấm)
       const response = await api.post(`/training/sessions/${currentTrainingData.session._id}/submit`, {
         answers: answers,
-        score: totalScore,
-        completion_time: new Date().toISOString()
+        completionTime: new Date().toISOString()
       });
 
       if (response.data.success) {
-        message.success(`Hoàn thành khóa học! Điểm số: ${totalScore}/${currentTrainingData?.questions.reduce((sum, q) => sum + q.points, 0)}`);
+        // Bài đã được gửi, chờ admin chấm điểm
+        message.success(
+          `Bài làm của bạn đã được gửi thành công!\nVui lòng chờ admin chấm điểm. Bạn sẽ nhận được thông báo khi có kết quả.`,
+          5
+        );
+        
         localStorage.removeItem('currentTrainingData');
         
+<<<<<<< HEAD
         // Add a small delay to ensure the success message is shown
         setTimeout(() => {
           // Force page reload to refresh all data
           window.location.href = '/employee/training';
         }, 1500);
+=======
+        // Navigate back to training list
+        setTimeout(() => {
+          navigate('/training');
+        }, 2000);
+>>>>>>> origin/anh-thy
       } else {
         message.error(`Lỗi: ${response.data.message}`);
       }

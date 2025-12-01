@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
+=======
+import React, { useMemo, useState, useEffect } from 'react';
+>>>>>>> origin/anh-thy
 import { useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -46,7 +50,17 @@ const EmployeeTraining: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourseSet] = useState('');
   const [isMandatory, setIsMandatory] = useState('');
+<<<<<<< HEAD
   const [refreshKey, setRefreshKey] = useState(0);
+=======
+  
+  // Listen for training graded notifications (from WebSocket)
+  useEffect(() => {
+    // This will be handled by WebSocket notifications
+    // When admin grades, user will receive notification
+  }, []);
+  
+>>>>>>> origin/anh-thy
 
   // API hooks
   const { courses, loading: coursesLoading, fetchCourses } = useCourses({
@@ -167,12 +181,9 @@ const EmployeeTraining: React.FC = () => {
 
   const handleEnroll = async (courseId: string) => {
     try {
-      // Find available sessions for this course
-      const availableSessions = sessions.filter(session => 
-        session.course_id?._id === courseId && 
-        session.status_code === 'SCHEDULED' &&
-        !userEnrollments.some(enrollment => enrollment.session_id?._id === session._id)
-      );
+      // Use new API to get available sessions
+      const { trainingHelperApi } = await import('../../../services/trainingApi');
+      const availableSessions = await trainingHelperApi.getAvailableSessions(courseId, user?.id);
 
       if (availableSessions.length === 0) {
         message.warning('Không có buổi đào tạo nào khả dụng cho khóa học này');
@@ -192,12 +203,31 @@ const EmployeeTraining: React.FC = () => {
         // Refresh all data to show updated enrollments
         handleRefresh();
       } else {
+<<<<<<< HEAD
         message.error(`Lỗi: ${response.data.message || 'Không thể đăng ký'}`);
+=======
+        // Check if it's a prerequisites error
+        if (response.data.data?.missingPrerequisites) {
+          message.error(`Bạn cần hoàn thành ${response.data.data.missingPrerequisites.length} khóa học tiên quyết trước`);
+        } else {
+          message.error(`Lỗi đăng ký: ${response.data.message || 'Có lỗi xảy ra'}`);
+        }
+>>>>>>> origin/anh-thy
       }
     } catch (error: any) {
       console.error('Error enrolling:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi đăng ký';
-      message.error(`Lỗi đăng ký: ${errorMessage}`);
+      
+      // Handle prerequisites error
+      if (error.response?.data?.data?.missingPrerequisites) {
+        message.error(`Bạn cần hoàn thành ${error.response.data.data.missingPrerequisites.length} khóa học tiên quyết trước`);
+      } else if (error.response?.status === 400 && errorMessage.includes('prerequisite')) {
+        message.error('Bạn cần hoàn thành các khóa học tiên quyết trước khi đăng ký');
+      } else if (error.response?.status === 400 && errorMessage.includes('full')) {
+        message.error('Buổi đào tạo đã đầy, vui lòng chọn buổi khác');
+      } else {
+        message.error(`Lỗi đăng ký: ${errorMessage}`);
+      }
     }
   };
 
@@ -346,6 +376,13 @@ const EmployeeTraining: React.FC = () => {
       
       return session?.course_id?._id === courseId;
     });
+    
+    // If status is 'enrolled' but has no score, might be submitted and waiting for grading
+    // We'll check this by looking at enrollment status and score
+    if (enrollment?.status === 'enrolled' && enrollment?.score === null || enrollment?.score === undefined) {
+      return 'submitted'; // Đã nộp, chờ chấm
+    }
+    
     return enrollment?.status || 'not_enrolled';
   };
 
@@ -371,6 +408,7 @@ const EmployeeTraining: React.FC = () => {
     const getStatusColor = (status: string) => {
       switch (status) {
         case 'enrolled': return 'blue';
+        case 'submitted': return 'orange'; // Đã nộp, chờ chấm
         case 'completed': return 'green';
         case 'failed': return 'red';
         default: return 'default';
@@ -380,6 +418,7 @@ const EmployeeTraining: React.FC = () => {
     const getStatusText = (status: string) => {
       switch (status) {
         case 'enrolled': return 'Đã đăng ký';
+        case 'submitted': return 'Đã nộp, chờ chấm';
         case 'completed': return 'Hoàn thành';
         case 'failed': return 'Chưa đạt';
         default: return status;
@@ -433,6 +472,15 @@ const EmployeeTraining: React.FC = () => {
                 onClick={() => handleStartTraining(course._id)}
               >
                 Vào học
+              </Button>
+            ),
+            enrollmentStatus === 'submitted' && (
+              <Button 
+                type="default"
+                icon={<ClockCircleOutlined />}
+                disabled
+              >
+                Đã nộp, chờ chấm điểm
               </Button>
             ),
             enrollmentStatus === 'failed' && (

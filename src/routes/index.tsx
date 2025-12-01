@@ -16,6 +16,7 @@ import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
 import ProjectManagement from '../pages/header_department/ProjectManagement';
 import RoleManagementPage from '../pages/Admin/RoleManagement';
+<<<<<<< HEAD
 import ClassifyIncident from '../pages/header_department/IncidentManagement/ClassifyIncident';
 import AssignIncident from '../pages/header_department/IncidentManagement/AssignIncident';
 import InvestigateIncident from '../pages/header_department/IncidentManagement/InvestigateIncident';
@@ -29,6 +30,19 @@ import HeaderDepartmentTrainingManagementPage from '../pages/header_department/T
 import HeaderDepartmentDashboard from '../pages/header_department/Dashboard';
 import HeaderDepartmentLayout from '../components/HeaderDepartment/HeaderDepartmentLayout';
 import ReportIncident from '../pages/Employee/ReportIncident';
+=======
+import IncidentManagementPage from '../pages/Admin/IncidentManagement';
+import CertificateManagementPage from '../pages/Admin/CertificateManagement';
+import ManagerIncidentHandling from '../pages/Manager/IncidentHandling';
+import ClassifyIncident from '../pages/Admin/IncidentManagement/ClassifyIncident';
+import AssignIncident from '../pages/Admin/IncidentManagement/AssignIncident';
+import InvestigateIncident from '../pages/Admin/IncidentManagement/InvestigateIncident';
+import UpdateProgress from '../pages/Admin/IncidentManagement/UpdateProgress';
+import CloseIncident from '../pages/Admin/IncidentManagement/CloseIncident';
+import ProgressHistory from '../pages/Admin/IncidentManagement/ProgressHistory';
+import UpdateEmployeeIncident from '../pages/Admin/IncidentManagement/UpdateEmployeeIncident';
+import ReportIncident from '../pages/Manager/ReportIncident';
+>>>>>>> origin/anh-thy
 import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
 import EmployeePPE from '../pages/Employee/PPE';
@@ -361,6 +375,16 @@ const AppRoutes = () => {
                         <HeaderDepartmentLayout>
                             <CloseIncident />
                         </HeaderDepartmentLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/admin/incidents/:id/update-employee" 
+                element={
+                    <AuthGuard requiredRole="admin">
+                        <AdminLayout>
+                            <UpdateEmployeeIncident />
+                        </AdminLayout>
                     </AuthGuard>
                 } 
             />

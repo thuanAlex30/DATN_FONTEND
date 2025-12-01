@@ -23,7 +23,9 @@ import {
   Divider,
   Alert,
   Checkbox,
-  DatePicker
+  DatePicker,
+  Badge,
+  message
 } from 'antd';
 import { 
   BookOutlined, 
@@ -1176,6 +1178,7 @@ const TrainingManagement: React.FC = () => {
           )}
 
           {/* Question Banks Tab */}
+
           {activeTab === 'question-banks' && (
             <div style={{ marginTop: '16px' }}>
               <Card>
@@ -2236,6 +2239,7 @@ const TrainingManagement: React.FC = () => {
         </Form>
       </Modal>
 
+<<<<<<< HEAD:src/pages/header_department/TrainingManagement/index.tsx
       {/* Course Assignment Modal */}
       <CourseAssignmentModal
         visible={showModal === 'addAssignmentModal'}
@@ -2245,6 +2249,8 @@ const TrainingManagement: React.FC = () => {
           // Refresh assignments
         }}
       />
+=======
+>>>>>>> origin/anh-thy:src/pages/Admin/TrainingManagement/index.tsx
     </div>
   );
 };
