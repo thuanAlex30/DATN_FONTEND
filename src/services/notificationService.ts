@@ -66,6 +66,27 @@ export interface NotificationCategory {
     label: string;
 }
 
+export interface NotificationSettingItem {
+    value: string;
+    label: string;
+    color?: string;
+    enabled: boolean;
+}
+
+export interface NotificationSettings {
+    types: NotificationSettingItem[];
+    categories: NotificationSettingItem[];
+    priorities: NotificationSettingItem[];
+    auto_cleanup: {
+        enabled: boolean;
+        days: number;
+    };
+    real_time: {
+        enabled: boolean;
+        interval: number;
+    };
+}
+
 export interface CreateNotificationData {
     user_id: string;
     title: string;
@@ -360,10 +381,10 @@ class NotificationService {
 
 
     // Get notification settings
-    static async getNotificationSettings() {
+    static async getNotificationSettings(): Promise<NotificationSettings> {
         try {
             const response = await api.get('/notifications/settings');
-            return response.data;
+            return response.data.data;
         } catch (error) {
             console.error('Error getting notification settings:', error);
             throw error;
@@ -371,10 +392,10 @@ class NotificationService {
     }
 
     // Update notification settings
-    static async updateNotificationSettings(settings: any) {
+    static async updateNotificationSettings(settings: NotificationSettings) {
         try {
             const response = await api.put('/notifications/settings', { settings });
-            return response.data;
+            return response.data.data;
         } catch (error) {
             console.error('Error updating notification settings:', error);
             throw error;

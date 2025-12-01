@@ -73,8 +73,9 @@ const RoleManagementPage: React.FC = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await RoleService.getRoles({ page: 1, limit: 50 });
-                setRoles(response.data.roles);
+        const response = await RoleService.getRoles({ page: 1, limit: 50 });
+        const loadedRoles = response.data?.roles ?? response.data?.data?.roles ?? [];
+        setRoles(Array.isArray(loadedRoles) ? loadedRoles : []);
             } catch (err) {
                 console.error('Error loading roles:', err);
                 setError('Không thể tải danh sách vai trò. Vui lòng thử lại.');
@@ -194,7 +195,11 @@ const RoleManagementPage: React.FC = () => {
                 };
                 
                 const response = await RoleService.createRole(newRoleData);
-                setRoles(prev => [...prev, response.data.role]);
+                const createdRole = response.data?.role ?? response.data?.data?.role;
+                if (!createdRole) {
+                    throw new Error('Không nhận được dữ liệu vai trò mới từ máy chủ');
+                }
+                setRoles(prev => [...prev, createdRole]);
                 alert('Đã tạo vai trò mới thành công!');
             }
             

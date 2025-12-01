@@ -61,6 +61,7 @@ const ManagerDashboard: React.FC = () => {
     fetchDashboardStats();
   }, [user]);
 
+
   return (
     <ManagerLayout
       title="Manager Dashboard"
@@ -208,6 +209,7 @@ const ManagerDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
       </div>
 
       {/* Notification Panel */}

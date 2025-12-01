@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import { 
     Card, 
@@ -22,7 +22,12 @@ import {
     Dropdown,
     Spin,
     Divider,
-    DatePicker
+    DatePicker,
+    List,
+    Switch,
+    InputNumber,
+    Empty,
+    Progress
 } from 'antd';
 import { 
     SettingOutlined, 
@@ -41,13 +46,19 @@ import {
     ExclamationCircleOutlined,
     CloseCircleOutlined,
     ExportOutlined,
-    ThunderboltOutlined
+    ThunderboltOutlined,
+    DeleteOutlined
 } from '@ant-design/icons';
-import SystemLogService from '../../../services/SystemLogService';
-import NotificationService from '../../../services/notificationService';
+import SystemLogService, { type AnalyticsData } from '../../../services/SystemLogService';
+import NotificationService, { 
+    type Notification, 
+    type NotificationFilters, 
+    type NotificationResponse, 
+    type NotificationSettings, 
+    type NotificationStats 
+} from '../../../services/notificationService';
 import FrontendLoggingService from '../../../services/frontendLoggingService';
-import type { SystemLog, SystemLogFilters, SystemLogStats } from '../../../services/SystemLogService';
-import type { Notification, NotificationStats } from '../../../services/notificationService';
+import type { SystemLog, SystemLogFilters, SystemLogStats, SystemLogPagination } from '../../../services/SystemLogService';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -56,9 +67,8 @@ const { RangePicker } = DatePicker;
 const SystemLogs: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'logs' | 'notifications' | 'public-notifications' | 'analytics' | 'settings'>('logs');
     const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
-    const [publicNotifications] = useState<Notification[]>([]);
-    const [filteredLogs, setFilteredLogs] = useState<SystemLog[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [logsPagination, setLogsPagination] = useState<SystemLogPagination | null>(null);
+    const [logsLoading, setLogsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
     // Filters
@@ -70,7 +80,29 @@ const SystemLogs: React.FC = () => {
     
     // Pagination
     const [currentLogPage, setCurrentLogPage] = useState(1);
-    const [logsPerPage] = useState(10);
+    const [logsPerPage, setLogsPerPage] = useState(10);
+    
+    // Notifications
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [notificationPagination, setNotificationPagination] = useState<NotificationResponse['pagination'] | null>(null);
+    const [notificationFilters, setNotificationFilters] = useState<NotificationFilters>({
+        page: 1,
+        limit: 10
+    });
+    const [notificationReadStatus, setNotificationReadStatus] = useState<'all' | 'read' | 'unread'>('all');
+    const [notificationSearchTerm, setNotificationSearchTerm] = useState('');
+    const [notificationsLoading, setNotificationsLoading] = useState(false);
+    
+    // Public notifications
+    const [publicNotifications, setPublicNotifications] = useState<Notification[]>([]);
+    const [publicNotificationPagination, setPublicNotificationPagination] = useState<NotificationResponse['pagination'] | null>(null);
+    const [publicNotificationFilters, setPublicNotificationFilters] = useState<NotificationFilters>({
+        page: 1,
+        limit: 10
+    });
+    const [publicNotificationReadStatus, setPublicNotificationReadStatus] = useState<'all' | 'read' | 'unread'>('all');
+    const [publicNotificationSearchTerm, setPublicNotificationSearchTerm] = useState('');
+    const [publicNotificationsLoading, setPublicNotificationsLoading] = useState(false);
     
     // Modals
     const [logDetailModal, setLogDetailModal] = useState<SystemLog | null>(null);
@@ -95,47 +127,110 @@ const SystemLogs: React.FC = () => {
     });
     
     // Analytics
-    const [analyticsTimeRange] = useState<'today' | 'week' | 'month' | 'year'>('today');
+    const [analyticsTimeRange, setAnalyticsTimeRange] = useState<'today' | 'week' | 'month' | 'quarter'>('week');
+    const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
+    
+    // Settings
+    const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
+    const [settingsLoading, setSettingsLoading] = useState(false);
+    const [settingsSaving, setSettingsSaving] = useState(false);
+    const [logCleanupDays, setLogCleanupDays] = useState(90);
+    const [cleanupLogsLoading, setCleanupLogsLoading] = useState(false);
+    const [cleanupNotificationsLoading, setCleanupNotificationsLoading] = useState(false);
 
-    // Load data on component mount
-    useEffect(() => {
-        const loadData = async () => {
-            try {
-                setLoading(true);
-                await Promise.all([
-                    loadSystemLogs(),
-                    loadStats()
-                ]);
-            } catch (err) {
-                console.error('Error loading data:', err);
-                setError('Lỗi khi tải dữ liệu');
-            } finally {
-                setLoading(false);
-            }
+    const notificationTypeOptions = [
+        { value: 'info', label: 'Thông tin' },
+        { value: 'success', label: 'Thành công' },
+        { value: 'warning', label: 'Cảnh báo' },
+        { value: 'error', label: 'Lỗi' },
+        { value: 'critical', label: 'Nghiêm trọng' }
+    ];
+
+    const notificationPriorityOptions = [
+        { value: 'low', label: 'Thấp' },
+        { value: 'medium', label: 'Trung bình' },
+        { value: 'high', label: 'Cao' },
+        { value: 'urgent', label: 'Khẩn cấp' }
+    ];
+
+    const notificationCategoryOptions = [
+        { value: 'system', label: 'Hệ thống' },
+        { value: 'training', label: 'Đào tạo' },
+        { value: 'safety', label: 'An toàn' },
+        { value: 'ppe', label: 'PPE' },
+        { value: 'project', label: 'Dự án' },
+        { value: 'user', label: 'Người dùng' },
+        { value: 'general', label: 'Chung' }
+    ];
+
+    const analyticsRangeOptions = [
+        { label: 'Hôm nay', value: 'today' },
+        { label: '7 ngày', value: 'week' },
+        { label: '30 ngày', value: 'month' },
+        { label: '90 ngày', value: 'quarter' }
+    ];
+
+    const notificationRequestFilters = useMemo(() => {
+        const filters: NotificationFilters = {
+            ...notificationFilters
         };
+        if (notificationReadStatus === 'all') {
+            delete filters.is_read;
+        } else {
+            filters.is_read = notificationReadStatus === 'read';
+        }
+        return filters;
+    }, [notificationFilters, notificationReadStatus]);
 
-        loadData();
-    }, []);
+    const publicNotificationRequestFilters = useMemo(() => {
+        const filters: NotificationFilters = {
+            ...publicNotificationFilters
+        };
+        if (publicNotificationReadStatus === 'all') {
+            delete filters.is_read;
+        } else {
+            filters.is_read = publicNotificationReadStatus === 'read';
+        }
+        return filters;
+    }, [publicNotificationFilters, publicNotificationReadStatus]);
 
     // Load system logs
     const loadSystemLogs = useCallback(async () => {
         try {
+            setLogsLoading(true);
             const filters: SystemLogFilters = {
-                search: searchTerm,
-                module: moduleFilter,
-                severity: severityFilter,
                 page: currentLogPage,
                 limit: logsPerPage
             };
 
+            if (searchTerm.trim()) {
+                filters.search = searchTerm.trim();
+            }
+            if (moduleFilter) {
+                filters.module = moduleFilter;
+            }
+            if (severityFilter) {
+                filters.severity = severityFilter;
+            }
+            if (dateFilter) {
+                const startOfDay = dayjs(dateFilter).startOf('day').toISOString();
+                const endOfDay = dayjs(dateFilter).endOf('day').toISOString();
+                filters.start_date = startOfDay;
+                filters.end_date = endOfDay;
+            }
+
             const response = await SystemLogService.getLogs(filters);
-            console.log('System logs response data:', response);
             setSystemLogs(response.logs || []);
+            setLogsPagination(response.pagination || null);
+            setError(null);
         } catch (err) {
             console.error('Error loading system logs:', err);
             setError('Lỗi khi tải nhật ký hệ thống');
+        } finally {
+            setLogsLoading(false);
         }
-    }, [searchTerm, moduleFilter, severityFilter, currentLogPage, logsPerPage]);
+    }, [searchTerm, moduleFilter, severityFilter, dateFilter, currentLogPage, logsPerPage]);
 
 
     // Load stats
@@ -154,34 +249,239 @@ const SystemLogs: React.FC = () => {
         }
     }, [analyticsTimeRange]);
 
-    // Filter logs
-    useEffect(() => {
-        const filtered = systemLogs.filter(log => {
-            const matchesSearch = !searchTerm || 
-                log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                log.module.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                log.ip_address.toLowerCase().includes(searchTerm.toLowerCase());
-            
-            const matchesModule = !moduleFilter || log.module === moduleFilter;
-            const matchesSeverity = !severityFilter || log.severity === severityFilter;
-            const matchesDate = !dateFilter || log.timestamp.startsWith(dateFilter);
+    const loadNotifications = useCallback(async () => {
+        try {
+            setNotificationsLoading(true);
+            const response = await NotificationService.getNotifications(notificationRequestFilters);
+            setNotifications(response.notifications || []);
+            setNotificationPagination(response.pagination || null);
+        } catch (err) {
+            console.error('Error loading notifications:', err);
+            message.error('Không thể tải thông báo hệ thống');
+        } finally {
+            setNotificationsLoading(false);
+        }
+    }, [notificationRequestFilters]);
 
-            return matchesSearch && matchesModule && matchesSeverity && matchesDate;
+    const loadPublicNotifications = useCallback(async () => {
+        try {
+            setPublicNotificationsLoading(true);
+            const response = await NotificationService.getPublicNotifications(publicNotificationRequestFilters);
+            setPublicNotifications(response.notifications || []);
+            setPublicNotificationPagination(response.pagination || null);
+        } catch (err) {
+            console.error('Error loading public notifications:', err);
+            message.error('Không thể tải thông báo công khai');
+        } finally {
+            setPublicNotificationsLoading(false);
+        }
+    }, [publicNotificationRequestFilters]);
+
+    const loadAnalytics = useCallback(async () => {
+        try {
+            setAnalyticsLoading(true);
+            const data = await SystemLogService.getAnalytics(analyticsTimeRange);
+            setAnalyticsData(data);
+        } catch (err) {
+            console.error('Error loading analytics:', err);
+            message.error('Không thể tải dữ liệu thống kê');
+        } finally {
+            setAnalyticsLoading(false);
+        }
+    }, [analyticsTimeRange]);
+
+    const loadNotificationSettings = useCallback(async () => {
+        try {
+            setSettingsLoading(true);
+            const settings = await NotificationService.getNotificationSettings();
+            setNotificationSettings(settings);
+        } catch (err) {
+            console.error('Error loading notification settings:', err);
+            message.error('Không thể tải cài đặt thông báo');
+        } finally {
+            setSettingsLoading(false);
+        }
+    }, []);
+
+    const handleMarkNotificationAsRead = useCallback(async (notificationId: string) => {
+        try {
+            await NotificationService.markAsRead(notificationId);
+            message.success('Đã đánh dấu thông báo là đã đọc');
+            loadNotifications();
+            loadStats();
+        } catch (err) {
+            console.error('Error marking notification as read:', err);
+            message.error('Không thể đánh dấu thông báo');
+        }
+    }, [loadNotifications, loadStats]);
+
+    const handleApplyNotificationSearch = useCallback(() => {
+        setNotificationFilters((prev) => ({
+            ...prev,
+            search: notificationSearchTerm.trim() ? notificationSearchTerm.trim() : undefined,
+            page: 1
+        }));
+    }, [notificationSearchTerm]);
+
+    const handleApplyPublicNotificationSearch = useCallback(() => {
+        setPublicNotificationFilters((prev) => ({
+            ...prev,
+            search: publicNotificationSearchTerm.trim() ? publicNotificationSearchTerm.trim() : undefined,
+            page: 1
+        }));
+    }, [publicNotificationSearchTerm]);
+
+    const handleResetNotificationFilters = useCallback(() => {
+        setNotificationFilters((prev) => ({
+            page: 1,
+            limit: prev.limit || 10
+        }));
+        setNotificationReadStatus('all');
+        setNotificationSearchTerm('');
+    }, []);
+
+    const handleResetPublicNotificationFilters = useCallback(() => {
+        setPublicNotificationFilters((prev) => ({
+            page: 1,
+            limit: prev.limit || 10
+        }));
+        setPublicNotificationReadStatus('all');
+        setPublicNotificationSearchTerm('');
+    }, []);
+
+    const handleMarkAllNotifications = useCallback(async () => {
+        try {
+            await NotificationService.markAllAsRead();
+            message.success('Đã đánh dấu toàn bộ thông báo là đã đọc');
+            loadNotifications();
+            loadStats();
+        } catch (err) {
+            console.error('Error marking all notifications as read:', err);
+            message.error('Không thể đánh dấu tất cả thông báo');
+        }
+    }, [loadNotifications, loadStats]);
+
+    const handleDeleteNotification = useCallback(async (notificationId: string) => {
+        try {
+            await NotificationService.deleteNotification(notificationId);
+            message.success('Đã xóa thông báo');
+            loadNotifications();
+            loadStats();
+        } catch (err) {
+            console.error('Error deleting notification:', err);
+            message.error('Không thể xóa thông báo');
+        }
+    }, [loadNotifications, loadStats]);
+
+    const handleSaveNotificationSettings = useCallback(async () => {
+        if (!notificationSettings) return;
+        try {
+            setSettingsSaving(true);
+            const updated = await NotificationService.updateNotificationSettings(notificationSettings);
+            setNotificationSettings(updated);
+            message.success('Đã cập nhật cài đặt thông báo');
+        } catch (err) {
+            console.error('Error saving notification settings:', err);
+            message.error('Không thể cập nhật cài đặt');
+        } finally {
+            setSettingsSaving(false);
+        }
+    }, [notificationSettings]);
+
+    const handleCleanupLogs = useCallback(async () => {
+        try {
+            setCleanupLogsLoading(true);
+            const result = await SystemLogService.cleanupOldLogs(logCleanupDays);
+            message.success(`Đã xóa ${result.deleted_count} log cũ`);
+            loadSystemLogs();
+            loadStats();
+        } catch (err: any) {
+            console.error('Error cleaning up logs:', err);
+            message.error(err?.message || 'Không thể dọn dẹp log');
+        } finally {
+            setCleanupLogsLoading(false);
+        }
+    }, [logCleanupDays, loadSystemLogs, loadStats]);
+
+    const handleCleanupExpiredNotifications = useCallback(async () => {
+        try {
+            setCleanupNotificationsLoading(true);
+            const result = await NotificationService.cleanupExpiredNotifications();
+            message.success(`Đã xóa ${result.deleted_count} thông báo hết hạn`);
+            loadNotifications();
+            loadStats();
+        } catch (err) {
+            console.error('Error cleaning up notifications:', err);
+            message.error('Không thể dọn dẹp thông báo hết hạn');
+        } finally {
+            setCleanupNotificationsLoading(false);
+        }
+    }, [loadNotifications, loadStats]);
+
+    const toggleNotificationSetting = useCallback((group: 'types' | 'categories' | 'priorities', value: string, enabled: boolean) => {
+        setNotificationSettings((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                [group]: prev[group].map((item) =>
+                    item.value === value ? { ...item, enabled } : item
+                )
+            };
         });
+    }, []);
 
-        setFilteredLogs(filtered);
-    }, [systemLogs, searchTerm, moduleFilter, severityFilter, dateFilter]);
+    const updateNotificationSettingSection = useCallback((
+        section: 'auto_cleanup' | 'real_time',
+        key: 'enabled' | 'days' | 'interval',
+        value: boolean | number
+    ) => {
+        setNotificationSettings((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                [section]: {
+                    ...prev[section],
+                    [key]: value
+                }
+            };
+        });
+    }, []);
 
-    // Pagination helpers
-    const getPaginatedLogs = () => {
-        const startIndex = (currentLogPage - 1) * logsPerPage;
-        return filteredLogs.slice(startIndex, startIndex + logsPerPage);
-    };
+    useEffect(() => {
+        loadSystemLogs();
+    }, [loadSystemLogs]);
 
-    // Helper functions
-    const getUserName = (userId: string) => {
-        // This would typically fetch from user service
-        return `User ${userId}`;
+    useEffect(() => {
+        loadStats();
+    }, [loadStats]);
+
+    useEffect(() => {
+        if (activeTab === 'notifications') {
+            loadNotifications();
+        }
+    }, [activeTab, loadNotifications]);
+
+    useEffect(() => {
+        if (activeTab === 'public-notifications') {
+            loadPublicNotifications();
+        }
+    }, [activeTab, loadPublicNotifications]);
+
+    useEffect(() => {
+        if (activeTab === 'analytics') {
+            loadAnalytics();
+        }
+    }, [activeTab, loadAnalytics]);
+
+    useEffect(() => {
+        if (activeTab === 'settings') {
+            loadNotificationSettings();
+        }
+    }, [activeTab, loadNotificationSettings]);
+
+    const getUserDisplayName = (user?: SystemLog['user_id']) => {
+        if (!user) return 'Hệ thống';
+        return user.full_name || user.username || user._id || 'Hệ thống';
     };
 
     // Export functions
@@ -192,6 +492,11 @@ const SystemLogs: React.FC = () => {
                 module: moduleFilter,
                 severity: severityFilter
             };
+
+            if (dateFilter) {
+                filters.start_date = dayjs(dateFilter).startOf('day').toISOString();
+                filters.end_date = dayjs(dateFilter).endOf('day').toISOString();
+            }
 
             const blob = await SystemLogService.exportLogs(format, filters);
             const filename = `system_logs_${new Date().toISOString().split('T')[0]}.${format}`;
@@ -227,8 +532,19 @@ const SystemLogs: React.FC = () => {
         }
     };
 
+    const formatDailyActivityDate = (entry: { _id: { day: number; month: number; year: number } }) => {
+        return dayjs()
+            .set('year', entry._id.year)
+            .set('month', entry._id.month - 1)
+            .set('date', entry._id.day)
+            .format('DD/MM/YYYY');
+    };
+
     // Render functions for each tab
-    const renderLogsTab = () => (
+    const renderLogsTab = () => {
+        const totalLogs = logsPagination?.total ?? systemLogs.length;
+
+        return (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
             {/* Filters */}
             <Card title="Bộ lọc" size="small">
@@ -240,6 +556,7 @@ const SystemLogs: React.FC = () => {
                             value={searchTerm}
                             onChange={(e) => {
                                 setSearchTerm(e.target.value);
+                                setCurrentLogPage(1);
                                 if (e.target.value.length > 2) {
                                     FrontendLoggingService.logSearch('system', e.target.value, 0);
                                 }
@@ -253,6 +570,7 @@ const SystemLogs: React.FC = () => {
                             value={moduleFilter}
                             onChange={(value) => {
                                 setModuleFilter(value);
+                                setCurrentLogPage(1);
                                 FrontendLoggingService.logFilterChange('system', 'module', value);
                             }}
                         >
@@ -271,7 +589,10 @@ const SystemLogs: React.FC = () => {
                             placeholder="Mức độ"
                             style={{ width: '100%' }}
                             value={severityFilter}
-                            onChange={setSeverityFilter}
+                            onChange={(value) => {
+                                setSeverityFilter(value);
+                                setCurrentLogPage(1);
+                            }}
                         >
                             <Option value="">Tất cả mức độ</Option>
                             <Option value="info">Thông tin</Option>
@@ -286,7 +607,10 @@ const SystemLogs: React.FC = () => {
                             style={{ width: '100%' }}
                             placeholder="Chọn ngày"
                             value={dateFilter ? dayjs(dateFilter) : null}
-                            onChange={(date) => setDateFilter(date ? date.format('YYYY-MM-DD') : '')}
+                            onChange={(date) => {
+                                setDateFilter(date ? date.format('YYYY-MM-DD') : '');
+                                setCurrentLogPage(1);
+                            }}
                         />
                     </Col>
                     <Col xs={24} sm={12} md={4}>
@@ -363,8 +687,8 @@ const SystemLogs: React.FC = () => {
             )}
 
             {/* Logs Table */}
-            <Card title={`Nhật ký hệ thống (${filteredLogs.length} bản ghi)`}>
-                {loading ? (
+            <Card title={`Nhật ký hệ thống (${totalLogs} bản ghi)`}>
+                {logsLoading ? (
                     <div style={{ textAlign: 'center', padding: '50px' }}>
                         <Spin size="large" />
                         <div style={{ marginTop: '16px' }}>
@@ -373,7 +697,8 @@ const SystemLogs: React.FC = () => {
                     </div>
                 ) : (
                     <Table
-                        dataSource={getPaginatedLogs()}
+                        dataSource={systemLogs}
+                        rowKey="_id"
                         columns={[
                             {
                                 title: 'Thời gian',
@@ -422,10 +747,10 @@ const SystemLogs: React.FC = () => {
                                 dataIndex: 'user_id',
                                 key: 'user_id',
                                 width: 120,
-                                render: (userId) => (
+                                render: (user) => (
                                     <Space>
                                         <Avatar size="small" icon={<UserOutlined />} />
-                                        <Text>{getUserName(userId)}</Text>
+                                        <Text>{getUserDisplayName(user as SystemLog['user_id'])}</Text>
                                     </Space>
                                 )
                             },
@@ -458,8 +783,15 @@ const SystemLogs: React.FC = () => {
                         pagination={{
                             current: currentLogPage,
                             pageSize: logsPerPage,
-                            total: filteredLogs.length,
-                            onChange: setCurrentLogPage,
+                            total: totalLogs,
+                            onChange: (page, pageSize) => {
+                                if (pageSize !== logsPerPage) {
+                                    setLogsPerPage(pageSize);
+                                    setCurrentLogPage(1);
+                                    return;
+                                }
+                                setCurrentLogPage(page);
+                            },
                             showSizeChanger: true,
                             showQuickJumper: true,
                             showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} bản ghi`
@@ -471,35 +803,721 @@ const SystemLogs: React.FC = () => {
             </Card>
         </Space>
     );
+    };
 
     const renderNotificationsTab = () => (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Card
+                title="Bộ lọc thông báo"
+                size="small"
+                extra={
+                    <Space>
+                        <Button onClick={handleResetNotificationFilters}>
+                            Đặt lại
+                        </Button>
+                        <Button type="primary" onClick={handleApplyNotificationSearch}>
+                            Tìm kiếm
+                        </Button>
+                        <Button icon={<CheckCircleOutlined />} onClick={handleMarkAllNotifications}>
+                            Đánh dấu tất cả đã đọc
+                        </Button>
+                    </Space>
+                }
+            >
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12} md={6}>
+                        <Input
+                            placeholder="Tìm kiếm thông báo..."
+                            prefix={<SearchOutlined />}
+                            value={notificationSearchTerm}
+                            onChange={(e) => setNotificationSearchTerm(e.target.value)}
+                            onPressEnter={handleApplyNotificationSearch}
+                            allowClear
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} md={4}>
+                        <Select
+                            placeholder="Loại thông báo"
+                            style={{ width: '100%' }}
+                            value={notificationFilters.type || 'all'}
+                            onChange={(value) => {
+                                setNotificationFilters((prev) => ({
+                                    ...prev,
+                                    type: value === 'all' ? undefined : value,
+                                    page: 1
+                                }));
+                            }}
+                        >
+                            <Option value="all">Tất cả loại</Option>
+                            {notificationTypeOptions.map((option) => (
+                                <Option key={option.value} value={option.value}>
+                                    {option.label}
+                                </Option>
+                            ))}
+                        </Select>
+                    </Col>
+                    <Col xs={24} sm={12} md={4}>
+                        <Select
+                            placeholder="Danh mục"
+                            style={{ width: '100%' }}
+                            value={notificationFilters.category || 'all'}
+                            onChange={(value) => {
+                                setNotificationFilters((prev) => ({
+                                    ...prev,
+                                    category: value === 'all' ? undefined : value,
+                                    page: 1
+                                }));
+                            }}
+                        >
+                            <Option value="all">Tất cả danh mục</Option>
+                            {notificationCategoryOptions.map((option) => (
+                                <Option key={option.value} value={option.value}>
+                                    {option.label}
+                                </Option>
+                            ))}
+                        </Select>
+                    </Col>
+                    <Col xs={24} sm={12} md={4}>
+                        <Select
+                            placeholder="Mức ưu tiên"
+                            style={{ width: '100%' }}
+                            value={notificationFilters.priority || 'all'}
+                            onChange={(value) => {
+                                setNotificationFilters((prev) => ({
+                                    ...prev,
+                                    priority: value === 'all' ? undefined : value,
+                                    page: 1
+                                }));
+                            }}
+                        >
+                            <Option value="all">Tất cả mức ưu tiên</Option>
+                            {notificationPriorityOptions.map((option) => (
+                                <Option key={option.value} value={option.value}>
+                                    {option.label}
+                                </Option>
+                            ))}
+                        </Select>
+                    </Col>
+                    <Col xs={24} sm={12} md={4}>
+                        <Select
+                            placeholder="Trạng thái"
+                            style={{ width: '100%' }}
+                            value={notificationReadStatus}
+                            onChange={(value) => {
+                                setNotificationReadStatus(value as 'all' | 'read' | 'unread');
+                            }}
+                        >
+                            <Option value="all">Tất cả</Option>
+                            <Option value="unread">Chưa đọc</Option>
+                            <Option value="read">Đã đọc</Option>
+                        </Select>
+                    </Col>
+                    <Col xs={24} sm={12} md={2}>
+                        <Select
+                            value={notificationFilters.limit || 10}
+                            onChange={(value) => {
+                                setNotificationFilters((prev) => ({
+                                    ...prev,
+                                    limit: value,
+                                    page: 1
+                                }));
+                            }}
+                            style={{ width: '100%' }}
+                        >
+                            {[10, 20, 50].map((size) => (
+                                <Option key={size} value={size}>
+                                    {size}/trang
+                                </Option>
+                            ))}
+                        </Select>
+                    </Col>
+                </Row>
+            </Card>
+
             <Card title="Thông báo hệ thống">
-                <Text>Nội dung thông báo hệ thống sẽ được hiển thị ở đây...</Text>
+                <Table
+                    dataSource={notifications}
+                    rowKey="_id"
+                    loading={notificationsLoading}
+                    locale={{
+                        emptyText: notificationsLoading ? <Spin /> : <Empty description="Không có thông báo" />
+                    }}
+                    pagination={{
+                        current: notificationPagination?.current_page || notificationFilters.page || 1,
+                        pageSize: notificationFilters.limit || 10,
+                        total: notificationPagination?.total_items || notifications.length,
+                        showSizeChanger: false,
+                        onChange: (page, pageSize) => {
+                            setNotificationFilters((prev) => ({
+                                ...prev,
+                                page,
+                                limit: pageSize
+                            }));
+                        },
+                        showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} thông báo`
+                    }}
+                    columns={[
+                        {
+                            title: 'Tiêu đề',
+                            dataIndex: 'title',
+                            key: 'title',
+                            render: (text: string, record: Notification) => (
+                                <Space direction="vertical" size={0}>
+                                    <Text strong>{text}</Text>
+                                    <Text type="secondary" ellipsis style={{ maxWidth: 320 }}>
+                                        {record.message}
+                                    </Text>
+                                </Space>
+                            )
+                        },
+                        {
+                            title: 'Loại',
+                            dataIndex: 'type',
+                            key: 'type',
+                            width: 140,
+                            render: (type: string) => {
+                                const { icon, color } = NotificationService.getNotificationIcon(type);
+                                return (
+                                    <Tag color={color}>
+                                        <i className={icon} style={{ marginRight: 6 }} />
+                                        {NotificationService.getTypeLabel(type)}
+                                    </Tag>
+                                );
+                            }
+                        },
+                        {
+                            title: 'Mức ưu tiên',
+                            dataIndex: 'priority',
+                            key: 'priority',
+                            width: 130,
+                            render: (priority: string) => (
+                                <Tag color={NotificationService.getPriorityColor(priority)}>
+                                    {priority.toUpperCase()}
+                                </Tag>
+                            )
+                        },
+                        {
+                            title: 'Danh mục',
+                            dataIndex: 'category',
+                            key: 'category',
+                            width: 140,
+                            render: (category: string) => (
+                                <Tag color="geekblue">
+                                    {NotificationService.getCategoryLabel(category)}
+                                </Tag>
+                            )
+                        },
+                        {
+                            title: 'Trạng thái',
+                            dataIndex: 'is_read',
+                            key: 'is_read',
+                            width: 130,
+                            render: (isRead: boolean) => (
+                                <Tag color={isRead ? 'default' : 'red'}>
+                                    {isRead ? 'ĐÃ ĐỌC' : 'CHƯA ĐỌC'}
+                                </Tag>
+                            )
+                        },
+                        {
+                            title: 'Thời gian',
+                            dataIndex: 'created_at',
+                            key: 'created_at',
+                            width: 210,
+                            render: (createdAt: string) => (
+                                <Space direction="vertical" size={0}>
+                                    <Text style={{ fontSize: 12 }}>
+                                        {NotificationService.formatDateTime(createdAt)}
+                                    </Text>
+                                    <Text type="secondary" style={{ fontSize: 11 }}>
+                                        {NotificationService.getRelativeTime(createdAt)}
+                                    </Text>
+                                </Space>
+                            )
+                        },
+                        {
+                            title: 'Thao tác',
+                            key: 'actions',
+                            width: 160,
+                            render: (_: any, record: Notification) => (
+                                <Space>
+                                    {!record.is_read && (
+                                        <Tooltip title="Đánh dấu đã đọc">
+                                            <Button
+                                                type="text"
+                                                icon={<CheckCircleOutlined />}
+                                                onClick={() => handleMarkNotificationAsRead(record._id)}
+                                            />
+                                        </Tooltip>
+                                    )}
+                                    <Tooltip title="Xóa thông báo">
+                                        <Button
+                                            type="text"
+                                            danger
+                                            icon={<DeleteOutlined />}
+                                            onClick={() => handleDeleteNotification(record._id)}
+                                        />
+                                    </Tooltip>
+                                </Space>
+                            )
+                        }
+                    ]}
+                />
             </Card>
         </Space>
     );
 
     const renderPublicNotificationsTab = () => (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Card
+                title="Bộ lọc thông báo công khai"
+                size="small"
+                extra={
+                    <Space>
+                        <Button onClick={handleResetPublicNotificationFilters}>
+                            Đặt lại
+                        </Button>
+                        <Button type="primary" onClick={handleApplyPublicNotificationSearch}>
+                            Tìm kiếm
+                        </Button>
+                    </Space>
+                }
+            >
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12} md={8}>
+                        <Input
+                            placeholder="Tìm kiếm thông báo công khai..."
+                            prefix={<SearchOutlined />}
+                            value={publicNotificationSearchTerm}
+                            onChange={(e) => setPublicNotificationSearchTerm(e.target.value)}
+                            onPressEnter={handleApplyPublicNotificationSearch}
+                            allowClear
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} md={4}>
+                        <Select
+                            placeholder="Loại"
+                            style={{ width: '100%' }}
+                            value={publicNotificationFilters.type || 'all'}
+                            onChange={(value) => {
+                                setPublicNotificationFilters((prev) => ({
+                                    ...prev,
+                                    type: value === 'all' ? undefined : value,
+                                    page: 1
+                                }));
+                            }}
+                        >
+                            <Option value="all">Tất cả</Option>
+                            {notificationTypeOptions.map((option) => (
+                                <Option key={option.value} value={option.value}>
+                                    {option.label}
+                                </Option>
+                            ))}
+                        </Select>
+                    </Col>
+                    <Col xs={24} sm={12} md={4}>
+                        <Select
+                            placeholder="Mức ưu tiên"
+                            style={{ width: '100%' }}
+                            value={publicNotificationFilters.priority || 'all'}
+                            onChange={(value) => {
+                                setPublicNotificationFilters((prev) => ({
+                                    ...prev,
+                                    priority: value === 'all' ? undefined : value,
+                                    page: 1
+                                }));
+                            }}
+                        >
+                            <Option value="all">Tất cả</Option>
+                            {notificationPriorityOptions.map((option) => (
+                                <Option key={option.value} value={option.value}>
+                                    {option.label}
+                                </Option>
+                            ))}
+                        </Select>
+                    </Col>
+                    <Col xs={24} sm={12} md={4}>
+                        <Select
+                            placeholder="Trạng thái"
+                            style={{ width: '100%' }}
+                            value={publicNotificationReadStatus}
+                            onChange={(value) => setPublicNotificationReadStatus(value as 'all' | 'read' | 'unread')}
+                        >
+                            <Option value="all">Tất cả</Option>
+                            <Option value="unread">Chưa đọc</Option>
+                            <Option value="read">Đã đọc</Option>
+                        </Select>
+                    </Col>
+                    <Col xs={24} sm={12} md={4}>
+                        <Select
+                            value={publicNotificationFilters.limit || 10}
+                            onChange={(value) => {
+                                setPublicNotificationFilters((prev) => ({
+                                    ...prev,
+                                    limit: value,
+                                    page: 1
+                                }));
+                            }}
+                            style={{ width: '100%' }}
+                        >
+                            {[10, 20, 50].map((size) => (
+                                <Option key={size} value={size}>
+                                    {size}/trang
+                                </Option>
+                            ))}
+                        </Select>
+                    </Col>
+                </Row>
+            </Card>
+
             <Card title="Thông báo công khai">
-                <Text>Nội dung thông báo công khai sẽ được hiển thị ở đây...</Text>
+                <List
+                    loading={publicNotificationsLoading}
+                    dataSource={publicNotifications}
+                    locale={{
+                        emptyText: publicNotificationsLoading ? <Spin /> : <Empty description="Chưa có thông báo" />
+                    }}
+                    pagination={{
+                        current: publicNotificationPagination?.current_page || publicNotificationFilters.page || 1,
+                        pageSize: publicNotificationFilters.limit || publicNotificationPagination?.items_per_page || 10,
+                        total: publicNotificationPagination?.total_items || publicNotifications.length,
+                        showSizeChanger: false,
+                        onChange: (page, pageSize) => {
+                            setPublicNotificationFilters((prev) => ({
+                                ...prev,
+                                page,
+                                limit: pageSize
+                            }));
+                        }
+                    }}
+                    renderItem={(item) => (
+                        <List.Item
+                            actions={[
+                                <Tag color={NotificationService.getNotificationIcon(item.type).color} key="type">
+                                    {NotificationService.getTypeLabel(item.type)}
+                                </Tag>,
+                                <Tag color={NotificationService.getPriorityColor(item.priority)} key="priority">
+                                    {item.priority.toUpperCase()}
+                                </Tag>
+                            ]}
+                        >
+                            <List.Item.Meta
+                                title={
+                                    <Space>
+                                        <BellOutlined />
+                                        <Text strong>{item.title}</Text>
+                                        <Tag>{NotificationService.getCategoryLabel(item.category)}</Tag>
+                                    </Space>
+                                }
+                                description={
+                                    <Space direction="vertical" size={4}>
+                                        <Text>{item.message}</Text>
+                                        <Text type="secondary">
+                                            {item.user_id && typeof item.user_id === 'object'
+                                                ? `Bởi: ${item.user_id.full_name || item.user_id.username}`
+                                                : 'Thông báo công khai'}
+                                        </Text>
+                                    </Space>
+                                }
+                            />
+                            <Space direction="vertical" size={2} align="end">
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    {NotificationService.formatDateTime(item.created_at)}
+                                </Text>
+                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                    {NotificationService.getRelativeTime(item.created_at)}
+                                </Text>
+                            </Space>
+                        </List.Item>
+                    )}
+                />
             </Card>
         </Space>
     );
 
-    const renderAnalyticsTab = () => (
+    const renderAnalyticsTab = () => {
+        const severityData = analyticsData?.severity_distribution || [];
+        const moduleData = analyticsData?.module_distribution || [];
+        const dailyActivity = analyticsData?.daily_activity || [];
+        const topUsers = analyticsData?.top_users || [];
+        const totalSeverity = severityData.reduce((sum, item) => sum + item.count, 0) || 1;
+        const totalModules = moduleData.reduce((sum, item) => sum + item.count, 0) || 1;
+
+        return (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
-            <Card title="Thống kê">
-                <Text>Biểu đồ và thống kê sẽ được hiển thị ở đây...</Text>
+                <Card
+                    title="Thống kê hệ thống"
+                    extra={
+                        <Select
+                            value={analyticsTimeRange}
+                            onChange={(value) => setAnalyticsTimeRange(value as 'today' | 'week' | 'month' | 'quarter')}
+                            style={{ width: 160 }}
+                            options={analyticsRangeOptions}
+                        />
+                    }
+                >
+                    {analyticsLoading ? (
+                        <div style={{ textAlign: 'center', padding: 32 }}>
+                            <Spin size="large" />
+                        </div>
+                    ) : analyticsData ? (
+                        (() => {
+                            const periodStart = analyticsData.period_start ? dayjs(analyticsData.period_start) : dayjs();
+                            const periodEnd = analyticsData.period_end ? dayjs(analyticsData.period_end) : dayjs();
+                            return (
+                        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                            <Alert
+                                type="info"
+                                showIcon
+                                message={`Khoảng thời gian: ${periodStart.format('DD/MM/YYYY HH:mm')} - ${periodEnd.format('DD/MM/YYYY HH:mm')}`}
+                            />
+                            <Row gutter={[16, 16]}>
+                                <Col xs={24} md={12}>
+                                    <Card title="Phân bố theo mức độ" size="small">
+                                        <List
+                                            dataSource={severityData}
+                                            renderItem={(item) => (
+                                                <List.Item>
+                                                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                                                        <Space>
+                                                            <Tag color={getSeverityColor(item._id)}>
+                                                                {item._id.toUpperCase()}
+                                                            </Tag>
+                                                            <Text>{item.count} sự kiện</Text>
+                                                        </Space>
+                                                        <div style={{ width: 160 }}>
+                                                            <Progress
+                                                                percent={Math.round((item.count / totalSeverity) * 100)}
+                                                                showInfo={false}
+                                                                size="small"
+                                                            />
+                                                        </div>
+                                                    </Space>
+                                                </List.Item>
+                                            )}
+                                        />
             </Card>
+                                </Col>
+                                <Col xs={24} md={12}>
+                                    <Card title="Phân bố theo module" size="small">
+                                        <List
+                                            dataSource={moduleData}
+                                            renderItem={(item) => (
+                                                <List.Item>
+                                                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                                                        <Space>
+                                                            <Tag color="blue">{item._id}</Tag>
+                                                            <Text>{item.count} sự kiện</Text>
+                                                        </Space>
+                                                        <div style={{ width: 160 }}>
+                                                            <Progress
+                                                                percent={Math.round((item.count / totalModules) * 100)}
+                                                                showInfo={false}
+                                                                size="small"
+                                                            />
+                                                        </div>
+                                                    </Space>
+                                                </List.Item>
+                                            )}
+                                        />
+                                    </Card>
+                                </Col>
+                            </Row>
+                            <Row gutter={[16, 16]}>
+                                <Col xs={24} md={12}>
+                                    <Card title="Hoạt động theo ngày" size="small">
+                                        <List
+                                            dataSource={dailyActivity}
+                                            renderItem={(item) => (
+                                                <List.Item>
+                                                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                                                        <Text>{formatDailyActivityDate(item)}</Text>
+                                                        <Tag color="green">{item.count} sự kiện</Tag>
+                                                    </Space>
+                                                </List.Item>
+                                            )}
+                                        />
+                                    </Card>
+                                </Col>
+                                <Col xs={24} md={12}>
+                                    <Card title="Top người dùng hoạt động" size="small">
+                                        <List
+                                            dataSource={topUsers}
+                                            renderItem={(item, index) => (
+                                                <List.Item>
+                                                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                                                        <Space>
+                                                            <Badge count={index + 1} />
+                                                            <Text>{item.user_name || item.username || 'Không rõ'}</Text>
+                                                        </Space>
+                                                        <Tag color="purple">{item.count} hành động</Tag>
+                                                    </Space>
+                                                </List.Item>
+                                            )}
+                                        />
+                                    </Card>
+                                </Col>
+                            </Row>
         </Space>
     );
+                        })()
+                    ) : (
+                        <Empty description="Không có dữ liệu thống kê" />
+                    )}
+                </Card>
+            </Space>
+        );
+    };
 
     const renderSettingsTab = () => (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
-            <Card title="Cài đặt hệ thống">
-                <Text>Các cài đặt hệ thống sẽ được hiển thị ở đây...</Text>
+            <Card
+                title="Cài đặt thông báo"
+                extra={
+                    <Button
+                        type="primary"
+                        onClick={handleSaveNotificationSettings}
+                        loading={settingsSaving}
+                        disabled={!notificationSettings}
+                    >
+                        Lưu cài đặt
+                    </Button>
+                }
+            >
+                {settingsLoading ? (
+                    <div style={{ textAlign: 'center', padding: 32 }}>
+                        <Spin />
+                    </div>
+                ) : notificationSettings ? (
+                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                        <div>
+                            <Divider orientation="left">Loại thông báo</Divider>
+                            <Row gutter={[16, 16]}>
+                                {notificationSettings.types.map((item) => (
+                                    <Col xs={24} sm={12} md={6} key={item.value}>
+                                        <Space>
+                                            <Switch
+                                                checked={item.enabled}
+                                                onChange={(checked) => toggleNotificationSetting('types', item.value, checked)}
+                                            />
+                                            <Tag color={item.color}>{item.label}</Tag>
+                                        </Space>
+                                    </Col>
+                                ))}
+                            </Row>
+                        </div>
+                        <div>
+                            <Divider orientation="left">Danh mục</Divider>
+                            <Row gutter={[16, 16]}>
+                                {notificationSettings.categories.map((item) => (
+                                    <Col xs={24} sm={12} md={6} key={item.value}>
+                                        <Space>
+                                            <Switch
+                                                checked={item.enabled}
+                                                onChange={(checked) => toggleNotificationSetting('categories', item.value, checked)}
+                                            />
+                                            <Text>{item.label}</Text>
+                                        </Space>
+                                    </Col>
+                                ))}
+                            </Row>
+                        </div>
+                        <div>
+                            <Divider orientation="left">Mức ưu tiên</Divider>
+                            <Row gutter={[16, 16]}>
+                                {notificationSettings.priorities.map((item) => (
+                                    <Col xs={24} sm={12} md={6} key={item.value}>
+                                        <Space>
+                                            <Switch
+                                                checked={item.enabled}
+                                                onChange={(checked) => toggleNotificationSetting('priorities', item.value, checked)}
+                                            />
+                                            <Tag color={item.color}>{item.label}</Tag>
+                                        </Space>
+                                    </Col>
+                                ))}
+                            </Row>
+                        </div>
+                        <Row gutter={[16, 16]}>
+                            <Col xs={24} md={12}>
+                                <Card size="small" title="Dọn dẹp tự động">
+                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                        <Space>
+                                            <Switch
+                                                checked={notificationSettings.auto_cleanup.enabled}
+                                                onChange={(checked) => updateNotificationSettingSection('auto_cleanup', 'enabled', checked)}
+                                            />
+                                            <Text>Bật dọn dẹp thông báo hết hạn</Text>
+                                        </Space>
+                                        <InputNumber
+                                            style={{ width: '100%' }}
+                                            min={1}
+                                            value={notificationSettings.auto_cleanup.days}
+                                            onChange={(value) => updateNotificationSettingSection('auto_cleanup', 'days', Number(value) || 1)}
+                                            addonAfter="ngày"
+                                        />
+                                    </Space>
+                                </Card>
+                            </Col>
+                            <Col xs={24} md={12}>
+                                <Card size="small" title="Thông báo thời gian thực">
+                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                        <Space>
+                                            <Switch
+                                                checked={notificationSettings.real_time.enabled}
+                                                onChange={(checked) => updateNotificationSettingSection('real_time', 'enabled', checked)}
+                                            />
+                                            <Text>Bật cập nhật thời gian thực</Text>
+                                        </Space>
+                                        <InputNumber
+                                            style={{ width: '100%' }}
+                                            min={5}
+                                            value={notificationSettings.real_time.interval}
+                                            onChange={(value) => updateNotificationSettingSection('real_time', 'interval', Number(value) || 5)}
+                                            addonAfter="giây"
+                                        />
+                                    </Space>
+                                </Card>
+                            </Col>
+                        </Row>
+                    </Space>
+                ) : (
+                    <Empty description="Không có dữ liệu cài đặt" />
+                )}
+            </Card>
+
+            <Card title="Bảo trì dữ liệu">
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} md={12}>
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                            <Text strong>Dọn dẹp nhật ký hệ thống</Text>
+                            <InputNumber
+                                style={{ width: '100%' }}
+                                min={1}
+                                value={logCleanupDays}
+                                onChange={(value) => setLogCleanupDays(Number(value) || 1)}
+                                addonAfter="ngày"
+                            />
+                            <Button type="primary" onClick={handleCleanupLogs} loading={cleanupLogsLoading}>
+                                Thực hiện dọn dẹp
+                            </Button>
+                        </Space>
+                    </Col>
+                    <Col xs={24} md={12}>
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                            <Text strong>Dọn dẹp thông báo hết hạn</Text>
+                            <Text type="secondary">
+                                Xóa các thông báo đã quá hạn hiển thị để giải phóng dung lượng lưu trữ.
+                            </Text>
+                            <Button
+                                danger
+                                onClick={handleCleanupExpiredNotifications}
+                                loading={cleanupNotificationsLoading}
+                            >
+                                Dọn dẹp thông báo
+                            </Button>
+                        </Space>
+                    </Col>
+                </Row>
             </Card>
         </Space>
     );

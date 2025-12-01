@@ -16,6 +16,7 @@ import {
   SafetyOutlined,
   LogoutOutlined,
   ProjectOutlined,
+  LockOutlined,
   DashboardOutlined
 } from '@ant-design/icons';
 import styles from './ManagerSidebar.module.css';
@@ -90,6 +91,37 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
       icon: <ProjectOutlined />,
       label: 'Quản lý dự án',
     },
+    {
+      key: '/manager/hikvision-events',
+      icon: <LockOutlined />,
+      label: 'Kiểm soát truy cập',
+    },
+    // Các tính năng sẽ được thêm sau
+    // {
+    //   key: '/manager/employees',
+    //   icon: <TeamOutlined />,
+    //   label: 'Quản lý nhân viên',
+    // },
+    // {
+    //   key: '/manager/reports',
+    //   icon: <FileTextOutlined />,
+    //   label: 'Báo cáo',
+    // },
+    // {
+    //   key: '/manager/analytics',
+    //   icon: <BarChartOutlined />,
+    //   label: 'Phân tích',
+    // },
+    // {
+    //   key: '/manager/schedule',
+    //   icon: <CalendarOutlined />,
+    //   label: 'Lịch trình',
+    // },
+    // {
+    //   key: '/manager/settings',
+    //   icon: <SettingOutlined />,
+    //   label: 'Cài đặt',
+    // },
   ];
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
