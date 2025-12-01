@@ -15,6 +15,9 @@ import {
 } from 'antd';
 import { BarChartOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
 import * as ppeService from '../../../services/ppeService';
+import ReportExportService from '../../../services/ReportExportService';
+import type { ExportOptions } from '../../../services/ReportExportService';
+import * as XLSX from 'xlsx';
 
 interface CreateReportModalProps {
   isOpen: boolean;
@@ -123,23 +126,138 @@ const CreateReportModal: React.FC<CreateReportModalProps> = ({
     return descriptions[type] || '';
   };
 
-  // Simple export functions
+  // Export functions
   const exportToPDF = async (report: any) => {
-    // For now, just show a message - can be implemented later with proper PDF generation
-    message.info('Tính năng xuất PDF đang được phát triển. Dữ liệu báo cáo đã được tải về.');
-    console.log('PDF Export Data:', report);
+    try {
+      const exportData = {
+        logs: Array.isArray(report.data) ? report.data : [],
+        summary: {
+          'Loại báo cáo': getReportTypeLabel(report.filters.reportType),
+          'Tổng số bản ghi': Array.isArray(report.data) ? report.data.length : 0,
+          'Khoảng thời gian': report.subtitle,
+        },
+        analytics: report.filters.includeCharts ? {
+          totalLogs: Array.isArray(report.data) ? report.data.length : 0,
+        } : undefined,
+      };
+
+      const options: ExportOptions = {
+        title: report.title,
+        subtitle: report.subtitle,
+        dateRange: report.dateRange,
+        includeCharts: report.filters.includeCharts,
+        includeAnalytics: report.filters.includeCharts,
+      };
+
+      await ReportExportService.exportToPDF(exportData, options);
+      message.success('Báo cáo PDF đã được tạo thành công');
+    } catch (error: any) {
+      console.error('Error exporting to PDF:', error);
+      message.error(error.message || 'Lỗi khi xuất báo cáo PDF');
+    }
   };
 
   const exportToExcel = async (report: any) => {
-    // For now, just show a message - can be implemented later with proper Excel generation
-    message.info('Tính năng xuất Excel đang được phát triển. Dữ liệu báo cáo đã được tải về.');
-    console.log('Excel Export Data:', report);
+    try {
+      const workbook = XLSX.utils.book_new();
+      
+      // Summary sheet
+      const summaryData = [
+        ['Báo Cáo', report.title],
+        ['Ngày tạo', new Date().toLocaleString('vi-VN')],
+        ['Khoảng thời gian', report.subtitle],
+        [''],
+        ['Tổng Quan', ''],
+        ['Loại báo cáo', getReportTypeLabel(report.filters.reportType)],
+        ['Tổng số bản ghi', Array.isArray(report.data) ? report.data.length : 0],
+      ];
+      
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Tổng Quan');
+      
+      // Data sheet
+      if (Array.isArray(report.data) && report.data.length > 0) {
+        // Get headers from first item
+        const firstItem = report.data[0];
+        const headers = Object.keys(firstItem);
+        const dataRows = report.data.map((item: any) => 
+          headers.map(header => {
+            const value = item[header];
+            // Handle nested objects
+            if (typeof value === 'object' && value !== null) {
+              return JSON.stringify(value);
+            }
+            return value;
+          })
+        );
+        
+        const dataSheet = XLSX.utils.aoa_to_sheet([
+          headers.map(h => h.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())),
+          ...dataRows
+        ]);
+        
+        // Set column widths
+        dataSheet['!cols'] = headers.map(() => ({ wch: 20 }));
+        
+        XLSX.utils.book_append_sheet(workbook, dataSheet, 'Chi Tiết');
+      }
+      
+      // Save the Excel file
+      const filename = `bao_cao_${report.filters.reportType}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, filename);
+      message.success('Báo cáo Excel đã được tạo thành công');
+    } catch (error: any) {
+      console.error('Error exporting to Excel:', error);
+      message.error(error.message || 'Lỗi khi xuất báo cáo Excel');
+    }
   };
 
   const exportToCSV = async (report: any) => {
-    // For now, just show a message - can be implemented later with proper CSV generation
-    message.info('Tính năng xuất CSV đang được phát triển. Dữ liệu báo cáo đã được tải về.');
-    console.log('CSV Export Data:', report);
+    try {
+      if (!Array.isArray(report.data) || report.data.length === 0) {
+        message.warning('Không có dữ liệu để xuất');
+        return;
+      }
+
+      // Get headers from first item
+      const firstItem = report.data[0];
+      const headers = Object.keys(firstItem);
+      
+      // Create CSV content
+      const csvHeaders = headers.map(h => h.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())).join(',');
+      const csvRows = report.data.map((item: any) => 
+        headers.map(header => {
+          const value = item[header];
+          // Handle nested objects and escape commas
+          if (typeof value === 'object' && value !== null) {
+            return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+          }
+          // Escape commas and quotes in string values
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value || '';
+        }).join(',')
+      );
+      
+      const csvContent = [csvHeaders, ...csvRows].join('\n');
+      
+      // Create blob and download
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `bao_cao_${report.filters.reportType}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      message.success('Báo cáo CSV đã được tạo thành công');
+    } catch (error: any) {
+      console.error('Error exporting to CSV:', error);
+      message.error(error.message || 'Lỗi khi xuất báo cáo CSV');
+    }
   };
 
   return (

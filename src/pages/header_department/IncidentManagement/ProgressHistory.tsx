@@ -155,8 +155,8 @@ const ProgressHistory: React.FC = () => {
           type="error"
           showIcon
           action={
-            <Button size="small" danger>
-              <Link to="/header-department/incident-management">Quay lại danh sách</Link>
+            <Button size="small" danger onClick={() => navigate('/admin/incident-management')}>
+              Quay lại danh sách
             </Button>
           }
         />
@@ -182,8 +182,17 @@ const ProgressHistory: React.FC = () => {
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <Space style={{ marginBottom: '16px' }}>
-          <Button icon={<ArrowLeftOutlined />}>
-            <Link to="/header-department/incident-management">Quay lại</Link>
+          <Button 
+            icon={<ArrowLeftOutlined />} 
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/admin/incident-management');
+              }
+            }}
+          >
+            Quay lại
           </Button>
         </Space>
         <Title level={2}>

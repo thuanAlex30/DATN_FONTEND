@@ -245,50 +245,50 @@ const LandingPage: React.FC = () => {
 
       <Content className={styles.content}>
         <section className={styles.heroSection}>
-          <div className={styles.heroBackground}>
-            <div className={styles.heroSlider} aria-hidden="true">
-              {heroSlides.map((src, index) => (
-                <div
-                  key={src}
-                  className={styles.heroSlide}
-                  style={{
-                    backgroundImage: `url(${src})`,
-                    animationDelay: `${index * HERO_SLIDE_INTERVAL}s`,
-                    animationDuration: `${heroSlides.length * HERO_SLIDE_INTERVAL}s`
-                  }}
-                />
-              ))}
-            </div>
-            <div className={`${styles.heroContent} ${isVisible ? styles.visible : ''}`}>
-              <div className={styles.heroBadge}>
-                <RocketOutlined />
-                <span>{BRAND_NAME}</span>
-                <span>+1.000 doanh nghiệp</span>
-              </div>
-
-              <Title level={1} className={styles.heroTitle}>
-                Nền tảng quản lý <span>an toàn lao động tại công trường</span> 
-              </Title>
-
-              <Paragraph className={styles.heroDescription}>
-                Kết nối con người, quy trình và dữ liệu trong một nền tảng duy nhất. Chuẩn hóa vận hành, tự động hóa
-                nhắc việc và hiển thị KPI realtime trên mọi thiết bị.
-              </Paragraph>
-
-              <ul className={styles.heroHighlights}>
-                {heroHighlights.map((item) => (
-                  <li key={item.label} className={styles.heroHighlight}>
-                    <span className={styles.heroHighlightIcon}>{item.icon}</span>
-                    <span>{item.label}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className={styles.heroMetrics}>
-                {heroMetrics.map((metric) => (
-                  <div key={metric.label} className={styles.heroMetric}>
-                    <div className={styles.heroMetricValue}>{metric.value}</div>
-                    <div className={styles.heroMetricLabel}>{metric.label}</div>
+          <div className={styles.heroContainer}>
+            <Row gutter={[48, 32]} align="middle">
+              {/* Left Side - Text Content */}
+              <Col xs={24} lg={12}>
+                <div className={styles.heroContent}>
+                  <Title level={1} className={styles.heroTitle}>
+                    Quản Lý An Toàn Lao Động
+                  </Title>
+                  <Title level={2} className={styles.heroSubtitle}>
+                    Chuyên nghiệp & Hiệu quả
+                  </Title>
+                  <Paragraph className={styles.heroDescription}>
+                    Khám phá hệ thống quản lý toàn diện giúp tổ chức của bạn đảm bảo an toàn lao động,
+                    quản lý đào tạo, theo dõi thiết bị bảo hộ và xử lý sự cố một cách hiệu quả.
+                  </Paragraph>
+                  <Button
+                    type="primary"
+                    size="large"
+                    className={styles.ctaButton}
+                    onClick={() => navigate('/pricing')}
+                  >
+                    Tham gia hệ thống của chúng tôi
+                  </Button>
+                </div>
+              </Col>
+              
+              {/* Right Side - Image/Illustration */}
+              <Col xs={24} lg={12}>
+                <div className={styles.heroImage}>
+                  <img 
+                    src="/hero-image.jpg" 
+                    alt="Quản lý an toàn lao động"
+                    className={styles.heroImageImg}
+                    onError={(e) => {
+                      // Fallback nếu ảnh không tồn tại
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const placeholder = target.nextElementSibling as HTMLElement;
+                      if (placeholder) placeholder.style.display = 'flex';
+                    }}
+                  />
+                  {/* Fallback placeholder nếu ảnh không tồn tại */}
+                  <div className={styles.heroImagePlaceholder}>
+                    <SafetyOutlined className={styles.heroImageIcon} />
                   </div>
                 ))}
               </div>

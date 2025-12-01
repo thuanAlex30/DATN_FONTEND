@@ -300,22 +300,12 @@ const IncidentList: React.FC = () => {
       key: 'action',
       render: (_: unknown, record: IncidentItem) => (
         <Space wrap>
-          <Tooltip title="Phân loại sự cố">
-            <Button 
-              type="link" 
-              size="small" 
-              icon={<WarningOutlined />}
-              href={`/header-department/incident-management/${record._id}/classify`}
-            >
-              Phân loại
-            </Button>
-          </Tooltip>
           <Tooltip title="Phân công xử lý">
             <Button 
               type="link" 
               size="small" 
               icon={<InfoCircleOutlined />}
-              href={`/header-department/incident-management/${record._id}/assign`}
+              href={`/admin/incidents/${record._id}/assign`}
             >
               Phân công
             </Button>
@@ -325,7 +315,7 @@ const IncidentList: React.FC = () => {
               type="link" 
               size="small" 
               icon={<SearchOutlined />}
-              href={`/header-department/incident-management/${record._id}/investigate`}
+              href={`/admin/incidents/${record._id}/investigate`}
             >
               Điều tra
             </Button>
@@ -335,7 +325,7 @@ const IncidentList: React.FC = () => {
               type="link" 
               size="small" 
               icon={<ClockCircleOutlined />}
-              href={`/header-department/incident-management/${record._id}/progress-history`}
+              href={`/admin/incidents/${record._id}/progress-history`}
             >
               Tiến độ
             </Button>
@@ -356,7 +346,7 @@ const IncidentList: React.FC = () => {
               size="small" 
               danger
               icon={<CloseCircleOutlined />}
-              href={`/header-department/incident-management/${record._id}/close`}
+              href={`/admin/incidents/${record._id}/close`}
             >
               Đóng
             </Button>

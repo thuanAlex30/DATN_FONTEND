@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Input, Card, Typography, Spin, Empty, Space } from 'antd';
+import { Button, Input, Card, Typography, Space } from 'antd';
 import { 
   MessageOutlined, 
   SendOutlined, 
   CloseOutlined, 
   DeleteOutlined,
-  RobotOutlined 
+  RobotOutlined,
+  UserOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons';
 import chatbotService, { type ChatMessage } from '../../services/chatbotService';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -47,16 +49,17 @@ const Chatbot: React.FC = () => {
       setSessionId(localSessionId);
       
       // Thử tạo session trên server (không bắt buộc)
+      // Chatbot có thể hoạt động mà không cần đăng nhập
       try {
         const response = await chatbotService.createSession();
         if (response.data.success) {
           // Nếu server trả về sessionId, dùng sessionId từ server
           setSessionId(response.data.data.sessionId);
         }
-      } catch (error) {
+      } catch (error: any) {
         // Lỗi không quan trọng, vẫn dùng localSessionId
-        // Khi chưa đăng nhập, API có thể trả về 401 nhưng không sao
-        console.log('Session creation on server failed (optional):', error);
+        // Chatbot có thể hoạt động mà không cần server session
+        console.log('Session creation on server failed (optional, chatbot still works):', error?.message || error);
       }
     };
     createSession();
@@ -133,9 +136,31 @@ const Chatbot: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
+      
+      // Xử lý lỗi chi tiết hơn
+      let errorContent = 'Xin lỗi, có lỗi xảy ra khi kết nối đến server.';
+      
+      if (error.response) {
+        // Server trả về response nhưng có lỗi
+        const status = error.response.status;
+        if (status === 500) {
+          errorContent = 'Xin lỗi, server đang gặp sự cố. Vui lòng thử lại sau.';
+        } else if (status === 429) {
+          errorContent = 'Bạn đã gửi quá nhiều tin nhắn. Vui lòng đợi một chút rồi thử lại.';
+        } else if (status >= 400 && status < 500) {
+          errorContent = error.response.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
+        }
+      } else if (error.request) {
+        // Request được gửi nhưng không nhận được response
+        errorContent = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng và đảm bảo backend đang chạy.';
+      } else {
+        // Lỗi khi setup request
+        errorContent = 'Có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại.';
+      }
+      
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: 'Xin lỗi, có lỗi xảy ra khi kết nối đến server. Vui lòng kiểm tra kết nối mạng và thử lại.',
+        content: errorContent,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -161,6 +186,23 @@ const Chatbot: React.FC = () => {
       handleSendMessage();
     }
   };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setInputMessage(suggestion);
+    // Focus vào input sau khi set
+    setTimeout(() => {
+      const textArea = document.querySelector('.chatbot-input-area textarea') as HTMLTextAreaElement;
+      textArea?.focus();
+    }, 0);
+  };
+
+  const suggestions = [
+    'PPE là gì?',
+    'Cách báo cáo sự cố?',
+    'Các gói dịch vụ có giá bao nhiêu?',
+    'Hướng dẫn sử dụng hệ thống',
+    'Quy trình đăng ký tài khoản'
+  ];
 
   return (
     <>
@@ -190,8 +232,22 @@ const Chatbot: React.FC = () => {
               className="chatbot-card"
               title={
                 <Space>
-                  <RobotOutlined style={{ color: '#1890ff' }} />
-                  <Text strong>CHMS AI - Trợ lý ảo</Text>
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 18
+                  }}>
+                    <RobotOutlined />
+                  </div>
+                  <div>
+                    <Text strong style={{ color: 'white', fontSize: 15 }}>CHMS AI</Text>
+                    <div style={{ fontSize: 11, opacity: 0.9, lineHeight: 1.2 }}>Trợ lý ảo thông minh</div>
+                  </div>
                 </Space>
               }
               extra={
@@ -235,61 +291,112 @@ const Chatbot: React.FC = () => {
                 }}
               >
                 {messages.length === 0 ? (
-                  <Empty
-                    description={
-                      <div>
-                        <Text type="secondary">
-                          Xin chào! Tôi là trợ lý ảo của hệ thống. Tôi có thể giúp bạn:
-                        </Text>
-                        <ul style={{ textAlign: 'left', marginTop: '12px', paddingLeft: '20px' }}>
-                          <li>Tìm hiểu về các tính năng của hệ thống</li>
-                          <li>Tư vấn về an toàn lao động</li>
-                          <li>Hướng dẫn sử dụng các chức năng</li>
-                          <li>Tìm kiếm thông tin liên quan đến an toàn lao động</li>
-                        </ul>
+                  <div className="chatbot-empty-state">
+                    <div className="empty-icon">
+                      <RobotOutlined />
+                    </div>
+                    <Text strong style={{ fontSize: 16, color: '#2d3748', display: 'block', marginBottom: 8 }}>
+                      Xin chào! 👋
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 14, display: 'block', marginBottom: 24, lineHeight: 1.6 }}>
+                      Tôi là trợ lý AI của hệ thống. Tôi có thể giúp bạn:
+                    </Text>
+                    <ul style={{ 
+                      textAlign: 'left', 
+                      margin: '0 auto 24px',
+                      paddingLeft: '24px',
+                      maxWidth: '300px',
+                      color: '#4a5568',
+                      lineHeight: 1.8
+                    }}>
+                      <li>Tìm hiểu về các tính năng của hệ thống</li>
+                      <li>Tư vấn về an toàn lao động và PPE</li>
+                      <li>Hướng dẫn sử dụng các chức năng</li>
+                      <li>Tư vấn về gói dịch vụ và bảng giá</li>
+                    </ul>
+                    <div className="chatbot-suggestions">
+                      <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
+                        <ThunderboltOutlined /> Câu hỏi đề xuất:
+                      </Text>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 4 }}>
+                        {suggestions.map((suggestion, index) => (
+                          <div
+                            key={index}
+                            className="chatbot-suggestion-chip"
+                            onClick={() => handleSuggestionClick(suggestion)}
+                          >
+                            {suggestion}
+                          </div>
+                        ))}
                       </div>
-                    }
-                    style={{ marginTop: '40px' }}
-                  />
+                    </div>
+                  </div>
                 ) : (
                   messages.map((message, index) => (
                     <motion.div
                       key={index}
                       className={`chatbot-message ${message.role}`}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2 }}
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
                     >
-                      <div className="chatbot-message-content">
-                        {message.content.split('\n').map((line, i) => (
-                          <React.Fragment key={i}>
-                            {line}
-                            {i < message.content.split('\n').length - 1 && <br />}
-                          </React.Fragment>
-                        ))}
+                      <div className="chatbot-message-avatar">
+                        {message.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
                       </div>
-                      <div className="chatbot-message-time">
-                        {message.timestamp?.toLocaleTimeString('vi-VN', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                      <div className="chatbot-message-wrapper">
+                        <div className="chatbot-message-content">
+                          {message.content.split('\n').map((line, i) => {
+                            // Simple markdown parsing for **bold**
+                            const parts = line.split(/(\*\*.*?\*\*)/g);
+                            return (
+                              <React.Fragment key={i}>
+                                {parts.map((part, j) => {
+                                  if (part.startsWith('**') && part.endsWith('**')) {
+                                    return <strong key={j}>{part.slice(2, -2)}</strong>;
+                                  }
+                                  return <span key={j}>{part}</span>;
+                                })}
+                                {i < message.content.split('\n').length - 1 && <br />}
+                              </React.Fragment>
+                            );
+                          })}
+                        </div>
+                        <div className="chatbot-message-time">
+                          {message.timestamp?.toLocaleTimeString('vi-VN', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
                       </div>
                     </motion.div>
                   ))
                 )}
                 {loading && (
-                  <div className="chatbot-message assistant">
-                    <Spin size="small" />
-                    <Text type="secondary" style={{ marginLeft: '8px' }}>
-                      Đang suy nghĩ...
-                    </Text>
-                  </div>
+                  <motion.div
+                    className="chatbot-message assistant"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <div className="chatbot-message-avatar">
+                      <RobotOutlined />
+                    </div>
+                    <div className="chatbot-loading">
+                      <div className="chatbot-loading-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                      <Text type="secondary" style={{ fontSize: 13, marginLeft: 8 }}>
+                        Đang suy nghĩ...
+                      </Text>
+                    </div>
+                  </motion.div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
 
               {/* Input Area */}
-              <div className="chatbot-input-area" style={{ padding: '12px', borderTop: '1px solid #f0f0f0' }}>
+              <div className="chatbot-input-area">
                 <Space.Compact style={{ width: '100%' }}>
                   <TextArea
                     value={inputMessage}

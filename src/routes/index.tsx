@@ -4,13 +4,9 @@ import AuthGuard from '../components/AuthGuard';
 import AdminLayout from '../pages/Admin/layout/AdminLayout';
 import LoginPage from '../pages/Login';
 import UnauthorizedPage from '../pages/Unauthorized';
-import LandingPage from '../pages/Landing';
-import AboutPage from '../pages/About';
-import ContactPage from '../pages/Contact';
-import FAQPage from '../pages/FAQ';
 import HomePage from '../pages/Home';
-import Homepage from '../pages/Homepage';
 import DashboardPage from '../pages/Admin/Dashboard';
+import SystemAdminHome from '../pages/Admin/SystemAdminHome';
 import UserManagementPage from '../pages/Admin/UserManagement';
 import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
@@ -30,19 +26,6 @@ import HeaderDepartmentTrainingManagementPage from '../pages/header_department/T
 import HeaderDepartmentDashboard from '../pages/header_department/Dashboard';
 import HeaderDepartmentLayout from '../components/HeaderDepartment/HeaderDepartmentLayout';
 import ReportIncident from '../pages/Employee/ReportIncident';
-=======
-import IncidentManagementPage from '../pages/Admin/IncidentManagement';
-import CertificateManagementPage from '../pages/Admin/CertificateManagement';
-import ManagerIncidentHandling from '../pages/Manager/IncidentHandling';
-import ClassifyIncident from '../pages/Admin/IncidentManagement/ClassifyIncident';
-import AssignIncident from '../pages/Admin/IncidentManagement/AssignIncident';
-import InvestigateIncident from '../pages/Admin/IncidentManagement/InvestigateIncident';
-import UpdateProgress from '../pages/Admin/IncidentManagement/UpdateProgress';
-import CloseIncident from '../pages/Admin/IncidentManagement/CloseIncident';
-import ProgressHistory from '../pages/Admin/IncidentManagement/ProgressHistory';
-import UpdateEmployeeIncident from '../pages/Admin/IncidentManagement/UpdateEmployeeIncident';
-import ReportIncident from '../pages/Manager/ReportIncident';
->>>>>>> origin/anh-thy
 import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
 import EmployeePPE from '../pages/Employee/PPE';
@@ -53,6 +36,15 @@ import ManagerPPEManagement from '../pages/Manager/PPEManagement';
 import ManagerProjectManagement from '../pages/Manager/ProjectManagement';
 import ManagerTraining from '../pages/Manager/Training';
 import WebSocketTest from '../pages/WebSocketTest';
+import LandingPage from '../pages/Landing';
+import PricingPage from '../pages/Pricing';
+import OrderFormPage from '../pages/Pricing/OrderForm';
+import PaymentSuccess from '../pages/Pricing/PaymentSuccess';
+import PaymentFailed from '../pages/Pricing/PaymentFailed';
+import PaymentCancelled from '../pages/Pricing/PaymentCancelled';
+import AboutPage from '../pages/About';
+import ContactPage from '../pages/Contact';
+import FAQPage from '../pages/FAQ';
 import { projectManagementRoutes } from './projectManagementRoutes';
 import ProjectManagementRouteWrapper from './ProjectManagementRouteWrapper';
 
@@ -64,27 +56,20 @@ interface ProjectManagementRoute {
 const AppRoutes = () => {
     return (
         <Routes>
-            {/* Landing page - trang công khai */}
-            <Route path="/" element={<LandingPage />} />
-            
             {/* Public routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/pricing/order" element={<OrderFormPage />} />
+            <Route path="/pricing/payment-success" element={<PaymentSuccess />} />
+            <Route path="/pricing/payment-failed" element={<PaymentFailed />} />
+            <Route path="/pricing/payment-cancelled" element={<PaymentCancelled />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             
-            {/* Homepage chung cho tất cả users */}
-            <Route 
-                path="/homepage" 
-                element={
-                    <AuthGuard>
-                        <Homepage />
-                    </AuthGuard>
-                } 
-            />
-            
-            {/* Home route for non-admin users (legacy - giữ lại để tương thích) */}
+            {/* Home route for non-admin users */}
             <Route 
                 path="/home" 
                 element={
@@ -142,9 +127,9 @@ const AppRoutes = () => {
 
             {/* Employee routes */}
             <Route 
-                path="/manager/incidents/report" 
+                path="/employee/incidents/report" 
                 element={
-                    <AuthGuard requiredRole="manager">
+                    <AuthGuard requiredRole="employee">
                         <ReportIncident />
                     </AuthGuard>
                 } 
@@ -187,7 +172,18 @@ const AppRoutes = () => {
                 element={<WebSocketTest />} 
             />
             
-            
+            {/* System Admin Home - Global scope */}
+            <Route 
+                path="/system-admin/home" 
+                element={
+                    <AuthGuard minRoleLevel={100} tenantScope="global">
+                        <AdminLayout>
+                            <SystemAdminHome />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+
             {/* Protected admin routes */}
             <Route 
                 path="/admin/dashboard" 
@@ -407,7 +403,7 @@ const AppRoutes = () => {
             ))}
             
             {/* Fallback for non-existent routes */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
     );
 };
