@@ -4,6 +4,7 @@ import { SendOutlined, ClearOutlined, WifiOutlined, DisconnectOutlined } from '@
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import websocketClient from '../../services/websocketClient';
+import { ENV } from '../../config/env';
 import { toast } from 'react-toastify';
 
 const { Title, Text } = Typography;
@@ -112,7 +113,7 @@ const WebSocketTest: React.FC = () => {
 
   const reconnectWebSocket = () => {
     if (token) {
-      websocketClient.connect('ws://localhost:3000', token);
+      websocketClient.connect(ENV.WS_BASE_URL, token);
       toast.info('Attempting to reconnect...');
     } else {
       toast.error('No authentication token available');

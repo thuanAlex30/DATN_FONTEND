@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import websocketClient from '../services/websocketClient';
+import { ENV } from '../config/env';
 
 /**
  * Custom hook for WebSocket functionality
@@ -7,7 +8,7 @@ import websocketClient from '../services/websocketClient';
  * @param {string} serverUrl - WebSocket server URL
  * @returns {Object} WebSocket hook data and methods
  */
-export const useWebSocket = (authToken: string | null, serverUrl = 'http://localhost:3000') => {
+export const useWebSocket = (authToken: string | null, serverUrl = ENV.WS_BASE_URL) => {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [socketId, setSocketId] = useState<string | null>(null);
