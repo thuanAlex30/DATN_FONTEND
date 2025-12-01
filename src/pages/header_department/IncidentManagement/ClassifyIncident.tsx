@@ -76,29 +76,10 @@ const ClassifyIncident: React.FC = () => {
                 rules={[{ required: true, message: 'Vui lòng chọn mức độ!' }]}
               >
                 <Select placeholder="Chọn mức độ">
-                  <Select.Option value="low">Thấp</Select.Option>
-                  <Select.Option value="medium">Trung bình</Select.Option>
-                  <Select.Option value="high">Cao</Select.Option>
-                  <Select.Option value="critical">Nghiêm trọng</Select.Option>
+                  <Select.Option value="nhẹ">Nhẹ</Select.Option>
+                  <Select.Option value="nặng">Nặng</Select.Option>
+                  <Select.Option value="rất nghiêm trọng">Rất nghiêm trọng</Select.Option>
                 </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="category"
-                label="Danh mục"
-                rules={[{ required: true, message: 'Vui lòng nhập danh mục!' }]}
-              >
-                <Input placeholder="Nhập danh mục sự cố" />
-              </Form.Item>
-
-              <Form.Item
-                name="description"
-                label="Mô tả chi tiết"
-              >
-                <Input.TextArea 
-                  rows={4} 
-                  placeholder="Mô tả chi tiết về sự cố..." 
-                />
               </Form.Item>
 
               {error && (

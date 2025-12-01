@@ -28,7 +28,7 @@ const CloseIncident: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm();
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (values: any) => {
     if (!id) return;
     try {
       setLoading(true);
@@ -68,23 +68,12 @@ const CloseIncident: React.FC = () => {
               onFinish={handleSubmit}
             >
               <Form.Item
-                name="resolution"
-                label="Giải pháp khắc phục"
-                rules={[{ required: true, message: 'Vui lòng nhập giải pháp khắc phục!' }]}
+                name="note"
+                label="Ghi chú đóng sự cố"
               >
                 <Input.TextArea 
                   rows={6} 
-                  placeholder="Mô tả chi tiết giải pháp đã thực hiện để khắc phục sự cố..." 
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="notes"
-                label="Ghi chú bổ sung"
-              >
-                <Input.TextArea 
-                  rows={3} 
-                  placeholder="Ghi chú bổ sung (nếu có)..." 
+                  placeholder="Mô tả chi tiết về việc đóng sự cố (tùy chọn)..." 
                 />
               </Form.Item>
 

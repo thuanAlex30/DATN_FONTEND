@@ -38,39 +38,54 @@ const IncidentManagement: React.FC = () => {
       try {
         const statsResponse = await incidentService.getIncidentStats();
         if (statsResponse.data && statsResponse.data.success) {
+          const statsData = statsResponse.data.data;
           setStats({
-            total: statsResponse.data.data.total || 0,
-            inProgress: statsResponse.data.data.inProgress || 0,
-            resolved: statsResponse.data.data.resolved || 0,
-            critical: statsResponse.data.data.critical || 0
+            total: statsData.total || 0,
+            inProgress: (statsData.byStatus?.['Đang xử lý'] || 0),
+            resolved: (statsData.byStatus?.['Đã đóng'] || 0),
+            critical: (statsData.bySeverity?.['rất nghiêm trọng'] || statsData.bySeverity?.['nặng'] || 0)
           });
           return;
         }
-      } catch (statsError) {
+      } catch (statsError: any) {
+        // Don't fallback if it's a rate limit error - just wait
+        if (statsError.response?.status === 429) {
+          console.warn('Rate limit reached for stats API');
+          setError('Quá nhiều yêu cầu. Vui lòng thử lại sau vài giây.');
+          return;
+        }
         console.log('Stats API failed, falling back to incidents list');
       }
       
-      // Fallback to incidents list
-      const response = await incidentService.getIncidents();
-      const incidents = Array.isArray(response.data) ? response.data : [];
-      
-      const total = incidents.length;
-      const inProgress = incidents.filter((incident: any) => 
-        incident.status === 'in_progress' || incident.status === 'investigating'
-      ).length;
-      const resolved = incidents.filter((incident: any) => 
-        incident.status === 'resolved' || incident.status === 'closed'
-      ).length;
-      const critical = incidents.filter((incident: any) => 
-        incident.severity === 'critical' || incident.priority === 'high'
-      ).length;
+      // Fallback to incidents list only if stats API failed for non-rate-limit reasons
+      try {
+        const response = await incidentService.getIncidents();
+        const incidents = Array.isArray(response.data) ? response.data : [];
+        
+        const total = incidents.length;
+        const inProgress = incidents.filter((incident: any) => 
+          incident.status === 'Đang xử lý'
+        ).length;
+        const resolved = incidents.filter((incident: any) => 
+          incident.status === 'Đã đóng'
+        ).length;
+        const critical = incidents.filter((incident: any) => 
+          incident.severity === 'rất nghiêm trọng' || incident.severity === 'nặng'
+        ).length;
 
-      setStats({
-        total,
-        inProgress,
-        resolved,
-        critical
-      });
+        setStats({
+          total,
+          inProgress,
+          resolved,
+          critical
+        });
+      } catch (fallbackError: any) {
+        if (fallbackError.response?.status === 429) {
+          setError('Quá nhiều yêu cầu. Vui lòng thử lại sau vài giây.');
+        } else {
+          throw fallbackError;
+        }
+      }
     } catch (err: any) {
       setError(err.message || 'Không thể tải thống kê sự cố');
       console.error('Error loading incident stats:', err);
@@ -80,7 +95,19 @@ const IncidentManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    loadIncidentStats();
+    let isMounted = true;
+    
+    const loadData = async () => {
+      if (isMounted) {
+        await loadIncidentStats();
+      }
+    };
+    
+    loadData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading) {

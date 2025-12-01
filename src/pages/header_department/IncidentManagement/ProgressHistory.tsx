@@ -84,15 +84,20 @@ const ProgressHistory: React.FC = () => {
     fetchIncident();
   }, [id]);
 
-  const handleAddProgress = async () => {
+  const handleAddProgress = async (values: any) => {
+    if (!id) return;
     try {
-      // Add progress entry logic here
+      await incidentService.updateIncidentProgress(id, { note: values.note });
       message.success('Thêm tiến độ thành công');
       setIsModalOpen(false);
       form.resetFields();
       // Refresh incident data
-    } catch (err) {
-      message.error('Không thể thêm tiến độ');
+      const response = await incidentService.getIncidentById(id);
+      const incidentData = response.data?.success ? response.data.data : response.data;
+      setIncident(incidentData || null);
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || 'Không thể thêm tiến độ';
+      message.error(errorMessage);
     }
   };
 
@@ -155,7 +160,7 @@ const ProgressHistory: React.FC = () => {
           type="error"
           showIcon
           action={
-            <Button size="small" danger onClick={() => navigate('/admin/incident-management')}>
+            <Button size="small" danger onClick={() => navigate('/header-department/incident-management')}>
               Quay lại danh sách
             </Button>
           }
@@ -298,30 +303,14 @@ const ProgressHistory: React.FC = () => {
         <Form
           form={form}
           layout="vertical"
-            onFinish={() => handleAddProgress()}
+          onFinish={handleAddProgress}
         >
           <Form.Item
-            name="action"
-            label="Hành động"
-            rules={[{ required: true, message: 'Vui lòng chọn hành động!' }]}
-          >
-            <Select placeholder="Chọn hành động">
-              <Select.Option value="ghi nhận">Ghi nhận</Select.Option>
-              <Select.Option value="phân loại">Phân loại</Select.Option>
-              <Select.Option value="phân công">Phân công</Select.Option>
-              <Select.Option value="điều tra">Điều tra</Select.Option>
-              <Select.Option value="khắc phục">Khắc phục</Select.Option>
-              <Select.Option value="cập nhật tiến độ">Cập nhật tiến độ</Select.Option>
-              <Select.Option value="đóng sự cố">Đóng sự cố</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
             name="note"
-            label="Ghi chú"
-            rules={[{ required: true, message: 'Vui lòng nhập ghi chú!' }]}
+            label="Ghi chú tiến độ"
+            rules={[{ required: true, message: 'Vui lòng nhập ghi chú tiến độ!' }]}
           >
-            <Input.TextArea rows={4} placeholder="Nhập ghi chú về tiến độ..." />
+            <Input.TextArea rows={6} placeholder="Nhập ghi chú về tiến độ xử lý sự cố..." />
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>

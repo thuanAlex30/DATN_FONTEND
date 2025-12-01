@@ -149,7 +149,7 @@ const InvestigateIncident: React.FC = () => {
           type="error"
           showIcon
           action={
-            <Button onClick={() => navigate('/admin/incident-management')}>
+            <Button onClick={() => navigate('/header-department/incident-management')}>
               Quay lại danh sách
             </Button>
           }
@@ -340,38 +340,14 @@ const InvestigateIncident: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name="rootCause"
-                label="Nguyên nhân gốc rễ"
-                rules={[{ required: true, message: 'Vui lòng nhập nguyên nhân gốc rễ!' }]}
-              >
-                <Input.TextArea 
-                  rows={4} 
-                  placeholder="Xác định nguyên nhân gốc rễ của sự cố..." 
-                />
-              </Form.Item>
-
-              <Form.Item
                 name="recommendations"
-                label="Khuyến nghị"
-                rules={[{ required: true, message: 'Vui lòng nhập khuyến nghị!' }]}
+                label="Giải pháp khắc phục"
+                rules={[{ required: true, message: 'Vui lòng nhập giải pháp khắc phục!' }]}
               >
                 <Input.TextArea 
-                  rows={4} 
-                  placeholder="Đưa ra các khuyến nghị để khắc phục và ngăn ngừa sự cố tương tự..." 
+                  rows={6} 
+                  placeholder="Mô tả giải pháp khắc phục sự cố..." 
                 />
-              </Form.Item>
-
-              <Form.Item
-                name="priority"
-                label="Mức độ ưu tiên"
-                rules={[{ required: true, message: 'Vui lòng chọn mức độ ưu tiên!' }]}
-              >
-                <Select placeholder="Chọn mức độ ưu tiên">
-                  <Select.Option value="low">Thấp</Select.Option>
-                  <Select.Option value="medium">Trung bình</Select.Option>
-                  <Select.Option value="high">Cao</Select.Option>
-                  <Select.Option value="urgent">Khẩn cấp</Select.Option>
-                </Select>
               </Form.Item>
 
               {error && (

@@ -68,16 +68,17 @@ const UpdateEmployeeIncident: React.FC = () => {
       try {
         setLoading(true);
         const response = await incidentService.getIncidentById(id);
-        setIncident(response.data);
+        const incidentData = response.data?.success ? response.data.data : response.data;
+        setIncident(incidentData);
         
-        // Set form values
+        // Set form values (if these fields exist in the incident model)
         form.setFieldsValue({
-          affectedEmployeeId: response.data.affectedEmployeeId,
-          employeeStatus: response.data.employeeStatus,
-          medicalReport: response.data.medicalReport,
-          witnesses: response.data.witnesses,
-          incidentType: response.data.incidentType,
-          additionalNotes: response.data.additionalNotes
+          affectedEmployeeId: incidentData?.affectedEmployeeId,
+          employeeStatus: incidentData?.employeeStatus,
+          medicalReport: incidentData?.medicalReport,
+          witnesses: incidentData?.witnesses,
+          incidentType: incidentData?.incidentType,
+          additionalNotes: incidentData?.additionalNotes
         });
       } catch (err: any) {
         setError('Không thể tải thông tin sự cố');
@@ -109,18 +110,20 @@ const UpdateEmployeeIncident: React.FC = () => {
 
     try {
       setSubmitting(true);
-      await incidentService.updateEmployeeIncident(id, values);
+      // Use updateIncident to update employee-related fields
+      await incidentService.updateIncident(id, values);
       message.success('Cập nhật thông tin nhân viên thành công!');
-      navigate('/admin/incidents');
+      navigate('/header-department/incident-management');
     } catch (err: any) {
-      message.error('Cập nhật thất bại: ' + (err.response?.data?.error || err.message));
+      const errorMessage = err?.response?.data?.message || err.message || 'Cập nhật thất bại';
+      message.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleBack = () => {
-    navigate('/admin/incidents');
+    navigate('/header-department/incident-management');
   };
 
   if (loading) {

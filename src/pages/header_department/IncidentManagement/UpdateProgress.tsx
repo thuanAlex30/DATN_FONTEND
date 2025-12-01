@@ -18,7 +18,7 @@ import {
   ArrowLeftOutlined,
   CheckCircleOutlined
 } from '@ant-design/icons';
-// import incidentService from '../../../services/incidentService';
+import incidentService from '../../../services/incidentService';
 
 const { Title } = Typography;
 
@@ -34,12 +34,9 @@ const UpdateProgress: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      // await incidentService.updateProgress(id, { 
-      //   action: values.action,
-      //   note: values.note,
-      //   status: values.status
-      // });
-      console.log('Update progress:', values);
+      await incidentService.updateIncidentProgress(id, { 
+        note: values.note || values.progress
+      });
       message.success('Cập nhật tiến độ thành công');
       navigate('/header-department/incident-management');
     } catch (err: any) {
@@ -74,52 +71,13 @@ const UpdateProgress: React.FC = () => {
               onFinish={handleSubmit}
             >
               <Form.Item
-                name="action"
-                label="Hành động thực hiện"
-                rules={[{ required: true, message: 'Vui lòng chọn hành động!' }]}
-              >
-                <Select placeholder="Chọn hành động">
-                  <Select.Option value="ghi nhận">Ghi nhận</Select.Option>
-                  <Select.Option value="phân loại">Phân loại</Select.Option>
-                  <Select.Option value="phân công">Phân công</Select.Option>
-                  <Select.Option value="điều tra">Điều tra</Select.Option>
-                  <Select.Option value="khắc phục">Khắc phục</Select.Option>
-                  <Select.Option value="cập nhật tiến độ">Cập nhật tiến độ</Select.Option>
-                  <Select.Option value="đóng sự cố">Đóng sự cố</Select.Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="status"
-                label="Trạng thái hiện tại"
-                rules={[{ required: true, message: 'Vui lòng chọn trạng thái!' }]}
-              >
-                <Select placeholder="Chọn trạng thái">
-                  <Select.Option value="open">Mở</Select.Option>
-                  <Select.Option value="in_progress">Đang xử lý</Select.Option>
-                  <Select.Option value="resolved">Đã giải quyết</Select.Option>
-                  <Select.Option value="closed">Đã đóng</Select.Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
                 name="note"
                 label="Ghi chú tiến độ"
-                rules={[{ required: true, message: 'Vui lòng nhập ghi chú!' }]}
+                rules={[{ required: true, message: 'Vui lòng nhập ghi chú tiến độ!' }]}
               >
                 <Input.TextArea 
-                  rows={6} 
+                  rows={8} 
                   placeholder="Mô tả chi tiết tiến độ xử lý sự cố..." 
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="nextSteps"
-                label="Bước tiếp theo"
-              >
-                <Input.TextArea 
-                  rows={3} 
-                  placeholder="Mô tả các bước tiếp theo cần thực hiện..." 
                 />
               </Form.Item>
 

@@ -62,10 +62,18 @@ const IncidentList: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+    let abortController = new AbortController();
+    
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
         const res = await incidentService.getIncidents();
+        
+        if (!isMounted) return;
+        
         console.log('IncidentList API Response:', res);
         
         // ApiResponse.success() returns { success: true, data: [...], message: "...", timestamp: "..." }
@@ -74,14 +82,36 @@ const IncidentList: React.FC = () => {
         console.log('Final incidents data:', incidentsData);
         setIncidents(incidentsData);
       } catch (err: any) {
+        if (!isMounted) return;
+        
+        // Don't show error for 429 (rate limit) - it's temporary
+        if (err.response?.status === 429) {
+          console.warn('Rate limit reached, will retry automatically');
+          // Retry after 2 seconds
+          setTimeout(() => {
+            if (isMounted) {
+              fetchData();
+            }
+          }, 2000);
+          return;
+        }
+        
         console.error('IncidentList fetch error:', err);
         setError('Không thể tải danh sách sự cố');
         message.error('Không thể tải danh sách sự cố');
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
+    
     fetchData();
+    
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
   }, []);
 
   // Filter incidents
@@ -305,7 +335,7 @@ const IncidentList: React.FC = () => {
               type="link" 
               size="small" 
               icon={<InfoCircleOutlined />}
-              href={`/admin/incidents/${record._id}/assign`}
+              href={`/header-department/incident-management/${record._id}/assign`}
             >
               Phân công
             </Button>
@@ -315,7 +345,7 @@ const IncidentList: React.FC = () => {
               type="link" 
               size="small" 
               icon={<SearchOutlined />}
-              href={`/admin/incidents/${record._id}/investigate`}
+              href={`/header-department/incident-management/${record._id}/investigate`}
             >
               Điều tra
             </Button>
@@ -325,19 +355,19 @@ const IncidentList: React.FC = () => {
               type="link" 
               size="small" 
               icon={<ClockCircleOutlined />}
-              href={`/admin/incidents/${record._id}/progress-history`}
+              href={`/header-department/incident-management/${record._id}/progress-history`}
             >
               Tiến độ
             </Button>
           </Tooltip>
-          <Tooltip title="Cập nhật thông tin nhân viên">
+          <Tooltip title="Cập nhật tiến độ">
             <Button 
               type="link" 
               size="small" 
-              icon={<UserOutlined />}
-              href={`/admin/incidents/${record._id}/update-employee`}
+              icon={<ClockCircleOutlined />}
+              href={`/header-department/incident-management/${record._id}/progress`}
             >
-              Cập nhật NV
+              Cập nhật
             </Button>
           </Tooltip>
           <Tooltip title="Đóng sự cố">
@@ -346,7 +376,7 @@ const IncidentList: React.FC = () => {
               size="small" 
               danger
               icon={<CloseCircleOutlined />}
-              href={`/admin/incidents/${record._id}/close`}
+              href={`/header-department/incident-management/${record._id}/close`}
             >
               Đóng
             </Button>
@@ -411,10 +441,9 @@ const IncidentList: React.FC = () => {
               allowClear
               size="large"
             >
-              <Select.Option value="open">Mở</Select.Option>
-              <Select.Option value="in_progress">Đang xử lý</Select.Option>
-              <Select.Option value="resolved">Đã giải quyết</Select.Option>
-              <Select.Option value="closed">Đã đóng</Select.Option>
+              <Select.Option value="Mới ghi nhận">Mới ghi nhận</Select.Option>
+              <Select.Option value="Đang xử lý">Đang xử lý</Select.Option>
+              <Select.Option value="Đã đóng">Đã đóng</Select.Option>
             </Select>
           </Col>
           <Col xs={24} md={6}>
@@ -426,10 +455,9 @@ const IncidentList: React.FC = () => {
               allowClear
               size="large"
             >
-              <Select.Option value="critical">Nghiêm trọng</Select.Option>
-              <Select.Option value="high">Cao</Select.Option>
-              <Select.Option value="medium">Trung bình</Select.Option>
-              <Select.Option value="low">Thấp</Select.Option>
+              <Select.Option value="nhẹ">Nhẹ</Select.Option>
+              <Select.Option value="nặng">Nặng</Select.Option>
+              <Select.Option value="rất nghiêm trọng">Rất nghiêm trọng</Select.Option>
             </Select>
           </Col>
           <Col xs={24} md={4} style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>

@@ -66,11 +66,13 @@ const EscalateIncident: React.FC = () => {
       try {
         // Fetch incident details
         const incidentRes = await incidentService.getIncidentById(id);
-        setIncident(incidentRes.data);
+        const incidentData = incidentRes.data?.success ? incidentRes.data.data : incidentRes.data;
+        setIncident(incidentData);
 
         // Fetch escalations
         const escalationsRes = await incidentService.getIncidentEscalations(id);
-        setEscalations(escalationsRes.data || []);
+        const escalationsData = escalationsRes.data?.success ? escalationsRes.data.data : (Array.isArray(escalationsRes.data) ? escalationsRes.data : []);
+        setEscalations(escalationsData);
       } catch (err: any) {
         console.error('Error fetching data:', err);
       }
