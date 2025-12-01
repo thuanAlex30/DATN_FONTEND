@@ -409,3 +409,4 @@
 •	Failed courses can be retaken, which resets the enrollment status back to "enrolled" and allows the user to start fresh.
 
 
+

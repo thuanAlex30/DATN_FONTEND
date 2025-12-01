@@ -137,16 +137,16 @@ const reasonHighlights = [
 ];
 
 const trustedClients = [
-  { name: 'LUG', src: 'https://logo.clearbit.com/lug.vn' },
-  { name: 'Sonha', src: 'https://logo.clearbit.com/sonha.com.vn' },
-  { name: 'Duc Viet Foods', src: 'https://logo.clearbit.com/ducvietfoods.vn' },
-  { name: 'Hong Ha', src: 'https://logo.clearbit.com/hongha.com.vn' },
-  { name: 'DHK Jewelry', src: dhkLogo },
-  { name: 'Viglacera', src: 'https://logo.clearbit.com/viglacera.com.vn' },
-  { name: 'Emspo', src: 'https://logo.clearbit.com/emspo.com.vn' },
-  { name: 'Dirty Coins', src: 'https://logo.clearbit.com/dirtycoins.vn' },
-  { name: 'Beemart', src: 'https://logo.clearbit.com/beemart.vn' },
-  { name: 'Maxx Sport', src: maxxLogo }
+  { name: 'Vietracimex Infra', src: 'https://nqs.1cdn.vn/2023/06/08/dautu.kinhtechungkhoan.vn-stores-news_dataimages-2023-062023-08-18-_220230608181438.png' },
+  { name: 'Viteccons', src: 'https://nhathuduc.com.vn/pl/img/29/logo-viteccons-02.jpg' },
+  { name: 'Coteccons (CTD)', src: 'https://finance.vietstock.vn/image/CTD' },
+  { name: 'Central Cons', src: 'https://tse4.mm.bing.net/th/id/OIP.0__3T40cyOLhyymX6eLqxwHaB8?pid=Api&P=0&h=220' },
+  { name: 'Hòa Bình Construction', src: 'https://cdn.haitrieu.com/wp-content/uploads/2022/08/logo-hoa-binh-1024x1020.png' },
+  { name: 'Cofico', src: 'https://liphoco.com/wp-content/uploads/2023/03/cofico.png' },
+  { name: 'Kusto Home', src: 'https://tse1.mm.bing.net/th/id/OIP.BBs6SrZdj8zoP6N4WIR_iQHaDW?pid=Api&P=0&h=220' },
+  { name: 'Nova E&C (Novaland)', src: 'https://novalandnovaworld.vn/wp-content/uploads/2022/09/141306novae-c-full.png' },
+  { name: 'APC Corporation', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/APC-logo.svg/1200px-APC-logo.svg.png' },
+  { name: 'Ricons', src: 'https://cms.vietnamreport.net/source/LogoBusiness/logo%20Ricons%202004new-01.png' }
 ];
 
 const trustedClientRows = Array.from(
@@ -298,7 +298,6 @@ const LandingPage: React.FC = () => {
                   type="primary"
                   size="large"
                   className={styles.joinSystemButton}
-                  onClick={() => navigate('/contact')}
                   icon={<RocketOutlined />}
                 >
                   Tham gia hệ thống của chúng tôi
