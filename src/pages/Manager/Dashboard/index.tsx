@@ -6,7 +6,6 @@ import type { RootState } from '../../../store';
 import { ManagerLayout } from '../../../components/Manager';
 import { DashboardOutlined } from '@ant-design/icons';
 import NotificationPanel from '../../../components/NotificationPanel';
-import DebugUserInfo from '../../../components/DebugUserInfo';
 import { projectRiskService } from '../../../services/projectRiskService';
 import { projectMilestoneService } from '../../../services/projectMilestoneService';
 import styles from './Dashboard.module.css';
@@ -219,9 +218,6 @@ const ManagerDashboard: React.FC = () => {
           onClose={() => setIsNotificationPanelOpen(false)}
         />
       )}
-
-      {/* Debug User Info */}
-      <DebugUserInfo />
 
       {/* Test PPE Access Button */}
       <div style={{ 

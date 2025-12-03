@@ -15,10 +15,6 @@ import {
   SafetyOutlined,
   BankOutlined,
   FileTextOutlined,
-  ProjectOutlined,
-  BookOutlined,
-  SafetyCertificateOutlined,
-  ExclamationCircleOutlined,
   LogoutOutlined,
   WifiOutlined,
   TeamOutlined,
@@ -57,6 +53,11 @@ const Sidebar = () => {
                     label: 'Dashboard',
                 },
                 {
+                    key: '/admin/department-management',
+                    icon: <BankOutlined />,
+                    label: 'Phòng ban & vị trí',
+                },
+                {
                     key: '/admin/system-logs',
                     icon: <FileTextOutlined />,
                     label: 'Nhật ký hệ thống',
@@ -82,7 +83,9 @@ const Sidebar = () => {
         },
     ];
 
-    // Menu items for company_admin and other admin roles
+    // Menu items cho company_admin (và các admin không phải system_admin):
+    // Chỉ giữ: Quản lý hệ thống, Dashboard, Quản lý người dùng, Vai trò & quyền hạn,
+    // Phòng ban & vị trí, Nhật ký hệ thống
     const adminMenuItems: MenuProps['items'] = [
         {
             key: 'system-management',
@@ -100,65 +103,19 @@ const Sidebar = () => {
                     label: 'Quản lý người dùng',
                 },
                 {
+                    key: '/admin/department-management',
+                    icon: <BankOutlined />,
+                    label: 'Phòng ban & vị trí',
+                },
+                {
                     key: '/admin/role-management',
                     icon: <SafetyOutlined />,
                     label: 'Vai trò & quyền hạn',
                 },
                 {
-                    key: '/admin/department-position',
-                    icon: <BankOutlined />,
-                    label: 'Phòng ban & vị trí',
-                },
-                {
                     key: '/admin/system-logs',
                     icon: <FileTextOutlined />,
                     label: 'Nhật ký hệ thống',
-                },
-            ],
-        },
-        {
-            key: 'project-management',
-            label: 'Quản lý dự án',
-            type: 'group',
-            children: [
-                {
-                    key: '/admin/project-management',
-                    icon: <ProjectOutlined />,
-                    label: 'Dự án',
-                },
-            ],
-        },
-        {
-            key: 'training-incident',
-            label: 'Đào tạo & Sự cố',
-            type: 'group',
-            children: [
-                {
-                    key: '/admin/training-management',
-                    icon: <BookOutlined />,
-                    label: 'Quản lý đào tạo',
-                },
-                {
-                    key: '/admin/incident-management',
-                    icon: <ExclamationCircleOutlined />,
-                    label: 'Quản lý sự cố',
-                },
-            ],
-        },
-        {
-            key: 'ppe-management',
-            label: 'Thiết bị bảo hộ',
-            type: 'group',
-            children: [
-                {
-                    key: '/admin/ppe-management',
-                    icon: <SafetyCertificateOutlined />,
-                    label: 'Quản lý PPE',
-                },
-                {
-                    key: '/admin/certificate-management',
-                    icon: <SafetyCertificateOutlined />,
-                    label: 'Gói chứng chỉ',
                 },
             ],
         },
@@ -199,7 +156,7 @@ const Sidebar = () => {
                     items={menuItems}
                     onClick={handleMenuClick}
                     className={styles.menu}
-                    defaultOpenKeys={isSystemAdmin ? ['system-management', 'customer-feedback'] : ['system-management', 'project-management', 'training-incident', 'ppe-management']}
+                    defaultOpenKeys={isSystemAdmin ? ['system-management', 'customer-feedback'] : ['system-management']}
                 />
             </div>
 

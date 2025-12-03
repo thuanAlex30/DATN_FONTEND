@@ -107,10 +107,8 @@ const Homepage: React.FC = () => {
       actions.push(
         { label: 'Dashboard', path: '/admin/dashboard', icon: <DashboardOutlined />, color: '#1890ff' },
         { label: 'Quản lý người dùng', path: '/admin/user-management', icon: <UserOutlined />, color: '#52c41a' },
-        { label: 'Quản lý dự án', path: '/admin/project-management', icon: <ProjectOutlined />, color: '#722ed1' },
-        { label: 'Quản lý đào tạo', path: '/admin/training-management', icon: <BookOutlined />, color: '#fa8c16' },
-        { label: 'Quản lý sự cố', path: '/admin/incident-management', icon: <ExclamationCircleOutlined />, color: '#eb2f96' },
-        { label: 'Quản lý PPE', path: '/admin/ppe-management', icon: <SafetyOutlined />, color: '#13c2c2' }
+        { label: 'Vai trò & quyền hạn', path: '/admin/role-management', icon: <SafetyOutlined />, color: '#fa8c16' },
+        { label: 'Nhật ký hệ thống', path: '/admin/system-logs', icon: <FileTextOutlined />, color: '#eb2f96' },
       );
     } else if (userRole === 'manager' || userRole === 'leader') {
       actions.push(
@@ -314,11 +312,6 @@ const Homepage: React.FC = () => {
                 {(user as any)?.department && (
                   <Text>
                     <strong>Phòng ban:</strong> {(user as any).department.department_name}
-                  </Text>
-                )}
-                {(user as any)?.position && (
-                  <Text>
-                    <strong>Chức vụ:</strong> {(user as any).position.position_name}
                   </Text>
                 )}
               </Space>

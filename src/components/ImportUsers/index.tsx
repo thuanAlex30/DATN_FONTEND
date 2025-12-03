@@ -59,10 +59,8 @@ const ImportUsers: React.FC = () => {
     
     try {
       console.log(`📤 Starting upload: ${file.name} (${file.size} bytes)`);
-      const formData = new FormData();
-      formData.append('file', file);
 
-      const response = await userService.importUsers(formData);
+      const response = await userService.importUsers(file);
       console.log('✅ Upload successful:', response);
       setResult(response.data);
       setShowResult(true);
@@ -96,7 +94,6 @@ const ImportUsers: React.FC = () => {
         birth_date: '1990-01-15',
         address: '123 Đường ABC Hà Nội',
         department_name: 'Ban Giám đốc',
-        position_name: 'Manager'
       },
       {
         username: 'manager001',
@@ -107,7 +104,6 @@ const ImportUsers: React.FC = () => {
         birth_date: '1985-05-20',
         address: '456 Đường XYZ TP.HCM',
         department_name: 'Ban Giám đốc',
-        position_name: 'Manager'
       },
       {
         username: 'user001',
@@ -118,7 +114,6 @@ const ImportUsers: React.FC = () => {
         birth_date: '1992-08-10',
         address: '789 Đường DEF Đà Nẵng',
         department_name: 'Ban Giám đốc',
-        position_name: 'Employee'
       }
     ];
 
@@ -141,11 +136,10 @@ const ImportUsers: React.FC = () => {
       ['- birth_date: Ngày sinh (YYYY-MM-DD)'],
       ['- address: Địa chỉ'],
       ['- department_name: Tên phòng ban'],
-      ['- position_name: Tên vị trí'],
       [''],
       ['Lưu ý:'],
       ['- Role sẽ được tự động gán: Manager -> leader, Employee -> employee'],
-      ['- department_name và position_name phải khớp với hệ thống'],
+      ['- department_name phải khớp với hệ thống'],
       ['- Username và email phải duy nhất trong hệ thống'],
       ['- File Excel phải có định dạng .xlsx hoặc .xls']
     ];

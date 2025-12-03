@@ -383,8 +383,11 @@ class NotificationService {
     // Get notification settings
     static async getNotificationSettings(): Promise<NotificationSettings> {
         try {
-            const response = await api.get('/notifications/settings');
-            return response.data.data;
+            const response = await api.get('/notifications/settings', {
+                timeout: 8000 // tránh treo lâu, để frontend fallback
+            });
+            // Handle both response.data and response.data.data structures
+            return response.data?.data ?? response.data ?? response;
         } catch (error) {
             console.error('Error getting notification settings:', error);
             throw error;
@@ -394,8 +397,11 @@ class NotificationService {
     // Update notification settings
     static async updateNotificationSettings(settings: NotificationSettings) {
         try {
-            const response = await api.put('/notifications/settings', { settings });
-            return response.data.data;
+            const response = await api.put('/notifications/settings', { settings }, {
+                timeout: 10000 // 10 seconds timeout
+            });
+            // Handle both response.data and response.data.data structures
+            return response.data?.data ?? response.data ?? response;
         } catch (error) {
             console.error('Error updating notification settings:', error);
             throw error;

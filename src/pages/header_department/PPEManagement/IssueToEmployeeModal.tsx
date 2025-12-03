@@ -28,7 +28,8 @@ import {
 } from '@ant-design/icons';
 import * as ppeService from '../../../services/ppeService';
 import departmentService from '../../../services/departmentService';
-import userService, { type User } from '../../../services/userService';
+import userService from '../../../services/userService';
+import type { User } from '../../../types/user';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -88,87 +89,64 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
 
   const loadEmployees = async () => {
     try {
-      console.log('🔄 Starting loadEmployees...');
       setLoading(true);
       
       // Validate managerId
       if (!managerId) {
-        console.error('❌ Manager ID không hợp lệ:', managerId);
         message.error('Manager ID không hợp lệ');
         return;
       }
       
-      console.log('📋 Manager ID:', managerId);
-      
       // Lấy thông tin manager để lấy department_id
-      console.log('🔍 Getting manager info...');
       const managerResponse = await userService.getUserById(managerId) as any;
-      console.log('👤 Manager info:', managerResponse);
       
       if (!managerResponse || !managerResponse.success || !managerResponse.data) {
-        console.error('❌ Không tìm thấy thông tin Manager');
         message.error('Không tìm thấy thông tin Manager');
         return;
       }
       
       const manager = managerResponse.data;
-      console.log('🏢 Manager department:', manager?.department);
       
       // Check for department - could be id or _id depending on API response structure
       const departmentId = manager.department?.id || manager.department?._id || manager.department_id;
-      console.log('🔍 Department ID extracted:', departmentId);
       
       if (!departmentId) {
-        console.error('❌ Manager chưa được phân công phòng ban:', manager.department);
         message.error('Manager chưa được phân công phòng ban');
         return;
       }
       
-      console.log('🏢 Department ID:', departmentId);
-      console.log('📞 Calling getDepartmentEmployees...');
-      
       const response = await departmentService.getDepartmentEmployees(departmentId);
-      console.log('📊 Department employees response:', response);
       
       if (response.success && response.data?.employees) {
-        console.log('✅ Response success, employees count:', response.data.employees.length);
-        console.log('📋 Raw employees data:', response.data.employees);
-        
         // Map the response data to match User interface
-        const mappedEmployees = response.data.employees.map((emp: any) => ({
-          id: emp.id,
+        const mappedEmployees: User[] = response.data.employees.map((emp: any) => ({
+          id: emp.id || emp._id,
           username: emp.username,
           full_name: emp.full_name,
           email: emp.email,
           phone: emp.phone,
           role: emp.role ? {
-            id: emp.role.id,
-            role_name: emp.role.name
+            _id: emp.role._id || emp.role.id,
+            role_name: emp.role.role_name || emp.role.name,
+            role_code: emp.role.role_code,
+            role_level: emp.role.role_level,
+            is_active: emp.role.is_active
           } : undefined,
           department: emp.department ? {
-            id: emp.department.id,
-            department_name: emp.department.name || emp.department.department_name
+            _id: emp.department._id || emp.department.id,
+            department_name: emp.department.department_name || emp.department.name,
+            is_active: emp.department.is_active ?? true
           } : undefined,
-          position: emp.position ? {
-            id: emp.position.id,
-            position_name: emp.position.name
-          } : undefined,
-          is_active: emp.is_active,
+          is_active: emp.is_active ?? true,
           created_at: emp.created_at
         }));
         
-        console.log('🔄 Mapped employees:', mappedEmployees);
         setEmployees(mappedEmployees);
-        console.log('✅ Loaded employees:', mappedEmployees.length);
       } else {
-        console.warn('⚠️ No employees found or invalid response:', response);
-        console.warn('⚠️ Response success:', response.success);
-        console.warn('⚠️ Response data:', response.data);
         message.error('Không thể tải danh sách nhân viên');
         setEmployees([]);
       }
     } catch (error: any) {
-      console.error('Error loading employees:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Lỗi khi tải danh sách nhân viên';
       message.error(errorMessage);
       setEmployees([]);
@@ -184,15 +162,11 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
         setManagerPPE(response.data.ppe_summary);
       }
     } catch (error) {
-      console.error('Error loading manager PPE:', error);
       message.error('Lỗi khi tải PPE của Manager');
     }
   };
 
   const handleItemChange = (itemId: string) => {
-    console.log('handleItemChange called with itemId:', itemId);
-    console.log('managerPPE:', managerPPE);
-    
     // Tìm PPE data với nhiều cách khác nhau để handle structure
     const ppeData = managerPPE.find(p => {
       // Nếu item là object có id
@@ -210,16 +184,12 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       return false;
     });
     
-    console.log('Found ppeData:', ppeData);
-    
     if (ppeData) {
       setSelectedItem(ppeData.item);
       setAvailableQuantity(ppeData.remaining);
-      console.log('Set availableQuantity to:', ppeData.remaining);
     } else {
       setSelectedItem(null);
       setAvailableQuantity(0);
-      console.log('No PPE data found, reset to 0');
     }
   };
 
@@ -234,29 +204,19 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       
       // Tự động set số lượng = số nhân viên được chọn
       const selectedCount = selectedEmployeesList.length;
-      console.log('🔍 handleEmployeeChange - selectedCount:', selectedCount);
-      console.log('🔍 handleEmployeeChange - selectedEmployeesList:', selectedEmployeesList);
       
       if (selectedCount > 0) {
         form.setFieldsValue({ quantity: selectedCount });
-        console.log('🔍 handleEmployeeChange - set quantity to:', selectedCount);
       } else {
         form.setFieldsValue({ quantity: undefined });
-        console.log('🔍 handleEmployeeChange - reset quantity');
       }
     } catch (error) {
-      console.error('Error handling employee change:', error);
       setSelectedEmployees([]);
       form.setFieldsValue({ quantity: undefined });
     }
   };
 
   const handleSubmit = async (values: any) => {
-    console.log('🔍 handleSubmit - values:', values);
-    console.log('🔍 handleSubmit - values.quantity:', values.quantity);
-    console.log('🔍 handleSubmit - availableQuantity:', availableQuantity);
-    console.log('🔍 handleSubmit - selectedEmployees.length:', selectedEmployees.length);
-    
     // Kiểm tra số lượng PPE có đủ cho tất cả nhân viên không
     const totalPPENeeded = selectedEmployees.length; // Mỗi nhân viên cần 1 PPE
     if (totalPPENeeded > availableQuantity) {
@@ -267,7 +227,6 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
     setLoading(true);
     try {
       const userIds: string[] = Array.isArray(values.employee_id) ? values.employee_id : [values.employee_id];
-      console.log('🔍 handleSubmit - userIds:', userIds);
       
       // Phát PPE cho từng nhân viên - mỗi nhân viên nhận 1 PPE
       const promises = userIds.map((userId: string) => {
@@ -279,7 +238,6 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
           expected_return_date: values.expected_return_date.toISOString(),
           notes: values.notes || ''
         };
-        console.log('🔍 handleSubmit - issuanceData for user', userId, ':', issuanceData);
         return ppeService.issueToEmployee(issuanceData);
       });
       
@@ -303,7 +261,6 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
         message.error('Phát PPE cho tất cả nhân viên đều thất bại');
       }
     } catch (error) {
-      console.error('Error issuing PPE to employees:', error);
       message.error('Lỗi khi phát PPE cho Employee');
     } finally {
       setLoading(false);
