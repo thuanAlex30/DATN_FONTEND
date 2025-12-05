@@ -34,10 +34,16 @@ const IncidentManagement: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // Try to get stats from dedicated API first
       try {
-        const statsResponse = await incidentService.getIncidentStats();
-        if (statsResponse.data && statsResponse.data.success) {
+        // Add timeout wrapper
+        const statsPromise = incidentService.getIncidentStats();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 20000)
+        );
+        
+        const statsResponse = await Promise.race([statsPromise, timeoutPromise]) as any;
+        
+        if (statsResponse?.data && statsResponse.data.success) {
           const statsData = statsResponse.data.data;
           setStats({
             total: statsData.total || 0,
@@ -48,47 +54,40 @@ const IncidentManagement: React.FC = () => {
           return;
         }
       } catch (statsError: any) {
-        // Don't fallback if it's a rate limit error - just wait
+        if (statsError.code === 'ECONNABORTED' || statsError.message?.includes('timeout') || statsError.message === 'Request timeout') {
+          console.error('Stats API timeout');
+          // Don't set error, just use default values to allow page to load
+          setStats({
+            total: 0,
+            inProgress: 0,
+            resolved: 0,
+            critical: 0
+          });
+          setError('Yêu cầu mất quá nhiều thời gian. Dữ liệu có thể không đầy đủ.');
+          return;
+        }
         if (statsError.response?.status === 429) {
           console.warn('Rate limit reached for stats API');
           setError('Quá nhiều yêu cầu. Vui lòng thử lại sau vài giây.');
           return;
         }
-        console.log('Stats API failed, falling back to incidents list');
-      }
-      
-      // Fallback to incidents list only if stats API failed for non-rate-limit reasons
-      try {
-        const response = await incidentService.getIncidents();
-        const incidents = Array.isArray(response.data) ? response.data : [];
-        
-        const total = incidents.length;
-        const inProgress = incidents.filter((incident: any) => 
-          incident.status === 'Đang xử lý'
-        ).length;
-        const resolved = incidents.filter((incident: any) => 
-          incident.status === 'Đã đóng'
-        ).length;
-        const critical = incidents.filter((incident: any) => 
-          incident.severity === 'rất nghiêm trọng' || incident.severity === 'nặng'
-        ).length;
-
+        console.log('Stats API failed, using default values');
         setStats({
-          total,
-          inProgress,
-          resolved,
-          critical
+          total: 0,
+          inProgress: 0,
+          resolved: 0,
+          critical: 0
         });
-      } catch (fallbackError: any) {
-        if (fallbackError.response?.status === 429) {
-          setError('Quá nhiều yêu cầu. Vui lòng thử lại sau vài giây.');
-        } else {
-          throw fallbackError;
-        }
       }
     } catch (err: any) {
-      setError(err.message || 'Không thể tải thống kê sự cố');
       console.error('Error loading incident stats:', err);
+      setStats({
+        total: 0,
+        inProgress: 0,
+        resolved: 0,
+        critical: 0
+      });
+      setError(err.message || 'Không thể tải thống kê sự cố');
     } finally {
       setLoading(false);
     }
@@ -110,7 +109,7 @@ const IncidentManagement: React.FC = () => {
     };
   }, []);
 
-  if (loading) {
+  if (loading && stats.total === 0 && stats.inProgress === 0 && stats.resolved === 0 && stats.critical === 0) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <Spin size="large" />

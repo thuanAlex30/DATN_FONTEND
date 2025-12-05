@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { 
   Layout, 
   Menu, 
@@ -19,6 +20,7 @@ import {
   LockOutlined,
   DashboardOutlined
 } from '@ant-design/icons';
+import { logout } from '../../store/slices/authSlice';
 import styles from './ManagerSidebar.module.css';
 
 const { Sider } = Layout;
@@ -31,11 +33,13 @@ interface ManagerSidebarProps {
 const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
 
   const handleLogout = () => {
     if (onLogout) {
       onLogout();
     } else {
+      dispatch(logout());
       navigate('/login');
     }
   };

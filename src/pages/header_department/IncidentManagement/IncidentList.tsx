@@ -22,7 +22,6 @@ import {
   CloseCircleOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
-  UserOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 
@@ -63,7 +62,7 @@ const IncidentList: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    let abortController = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout>;
     
     const fetchData = async () => {
       try {
@@ -74,25 +73,26 @@ const IncidentList: React.FC = () => {
         
         if (!isMounted) return;
         
-        console.log('IncidentList API Response:', res);
-        
-        // ApiResponse.success() returns { success: true, data: [...], message: "...", timestamp: "..." }
         const incidentsData = res.data?.success ? res.data.data : (Array.isArray(res.data) ? res.data : []);
         
-        console.log('Final incidents data:', incidentsData);
         setIncidents(incidentsData);
       } catch (err: any) {
         if (!isMounted) return;
         
-        // Don't show error for 429 (rate limit) - it's temporary
         if (err.response?.status === 429) {
           console.warn('Rate limit reached, will retry automatically');
-          // Retry after 2 seconds
-          setTimeout(() => {
+          timeoutId = setTimeout(() => {
             if (isMounted) {
               fetchData();
             }
           }, 2000);
+          return;
+        }
+        
+        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+          console.error('Request timeout:', err);
+          setError('Yêu cầu mất quá nhiều thời gian. Vui lòng thử lại.');
+          message.error('Yêu cầu mất quá nhiều thời gian. Vui lòng thử lại.');
           return;
         }
         
@@ -106,11 +106,15 @@ const IncidentList: React.FC = () => {
       }
     };
     
-    fetchData();
+    timeoutId = setTimeout(() => {
+      fetchData();
+    }, 300);
     
     return () => {
       isMounted = false;
-      abortController.abort();
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, []);
 

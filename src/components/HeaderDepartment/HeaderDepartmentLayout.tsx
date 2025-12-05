@@ -11,7 +11,6 @@ interface HeaderDepartmentLayoutProps {
   title?: string;
   icon?: React.ReactNode;
   showUserInfo?: boolean;
-  showNotifications?: boolean;
   onLogout?: () => void;
   headerExtra?: React.ReactNode;
   className?: string;
@@ -22,7 +21,6 @@ const HeaderDepartmentLayout: React.FC<HeaderDepartmentLayoutProps> = ({
   title,
   icon,
   showUserInfo = true,
-  showNotifications = true,
   onLogout,
   headerExtra,
   className
@@ -36,7 +34,6 @@ const HeaderDepartmentLayout: React.FC<HeaderDepartmentLayoutProps> = ({
             title={title}
             icon={icon}
             showUserInfo={showUserInfo}
-            showNotifications={showNotifications}
             onLogout={onLogout}
             extra={headerExtra}
           />

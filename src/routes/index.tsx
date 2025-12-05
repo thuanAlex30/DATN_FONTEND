@@ -7,6 +7,7 @@ import UnauthorizedPage from '../pages/Unauthorized';
 import HomePage from '../pages/Home';
 import DashboardPage from '../pages/Admin/Dashboard';
 import SystemAdminHome from '../pages/Admin/SystemAdminHome';
+import CustomersPage from '../pages/Admin/Customers';
 import UserManagementPage from '../pages/Admin/UserManagement';
 import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
@@ -27,6 +28,7 @@ import HeaderDepartmentDashboard from '../pages/header_department/Dashboard';
 import HeaderDepartmentHikvisionEventsPage from '../pages/header_department/HikvisionEvents';
 import HeaderDepartmentLayout from '../components/HeaderDepartment/HeaderDepartmentLayout';
 import ReportIncident from '../pages/Employee/ReportIncident';
+import ManagerReportIncident from '../pages/Manager/ReportIncident';
 import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
 import EmployeePPE from '../pages/Employee/PPE';
@@ -134,6 +136,14 @@ const AppRoutes = () => {
                     </AuthGuard>
                 } 
             />
+            <Route 
+                path="/manager/incidents/report" 
+                element={
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
+                        <ManagerReportIncident />
+                    </AuthGuard>
+                } 
+            />
 
             {/* Employee routes */}
             <Route 
@@ -189,6 +199,18 @@ const AppRoutes = () => {
                     <AuthGuard minRoleLevel={100} tenantScope="global">
                         <AdminLayout>
                             <SystemAdminHome />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+
+            {/* System Admin - Participating Customers */}
+            <Route 
+                path="/system-admin/customers" 
+                element={
+                    <AuthGuard minRoleLevel={100} tenantScope="global">
+                        <AdminLayout>
+                            <CustomersPage />
                         </AdminLayout>
                     </AuthGuard>
                 } 

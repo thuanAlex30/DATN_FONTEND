@@ -7,7 +7,9 @@ import {
   SettingOutlined,
   MenuOutlined
 } from '@ant-design/icons';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { logout } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import styles from './ManagerHeader.module.css';
 
@@ -32,6 +34,17 @@ const ManagerHeader: React.FC<ManagerHeaderProps> = ({
   extra
 }) => {
   const { user } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    if (onLogout) {
+      onLogout();
+    } else {
+      dispatch(logout());
+      navigate('/login');
+    }
+  };
 
   const userMenuItems = [
     {
@@ -57,11 +70,9 @@ const ManagerHeader: React.FC<ManagerHeaderProps> = ({
 
   const handleUserMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
-      onLogout?.();
+      handleLogout();
     } else if (key === 'profile') {
-      // Handle profile navigation
     } else if (key === 'settings') {
-      // Handle settings navigation
     }
   };
 

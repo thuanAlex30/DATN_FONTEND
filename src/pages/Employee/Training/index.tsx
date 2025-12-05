@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -29,6 +29,7 @@ import {
   GroupOutlined
 } from '@ant-design/icons';
 import type { RootState } from '../../../store';
+import { logout } from '../../../store/slices/authSlice';
 import { useCourses, useTrainingSessions, useTrainingEnrollments } from '../../../hooks/useTraining';
 import { api } from '../../../services/api';
 import { EmployeeLayout } from '../../../components/Employee';
@@ -40,6 +41,7 @@ const { Search } = Input;
 
 const EmployeeTraining: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'available' | 'enrolled' | 'completed'>('available');
   const [searchTerm, setSearchTerm] = useState('');
@@ -136,6 +138,7 @@ const EmployeeTraining: React.FC = () => {
   };
 
   const handleLogout = () => {
+    dispatch(logout());
     navigate('/login');
   };
 
@@ -235,19 +238,17 @@ const EmployeeTraining: React.FC = () => {
   };
 
 
-  const getEnrollmentStatus = (courseId: string) => {
+  const getEnrollmentStatus = (courseId: string): 'completed' | 'enrolled' | 'failed' | 'cancelled' | 'submitted' | 'not_enrolled' => {
     const enrollment = userEnrollments.find(enrollment => {
       const session = sessions.find(s => s._id === enrollment.session_id?._id);
       return session?.course_id?._id === courseId;
     });
     
-    // If status is 'enrolled' but has no score, might be submitted and waiting for grading
-    // We'll check this by looking at enrollment status and score
     if (enrollment?.status === 'enrolled' && enrollment?.score === null || enrollment?.score === undefined) {
-      return 'submitted'; // Đã nộp, chờ chấm
+      return 'submitted';
     }
     
-    return enrollment?.status || 'not_enrolled';
+    return (enrollment?.status as 'completed' | 'enrolled' | 'failed' | 'cancelled' | 'submitted') || 'not_enrolled';
   };
 
   const getEnrollmentScore = (courseId: string) => {

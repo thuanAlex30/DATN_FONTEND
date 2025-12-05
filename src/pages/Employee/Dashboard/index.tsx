@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import type { RootState } from '../../../store';
+import { logout } from '../../../store/slices/authSlice';
 import { EmployeeLayout } from '../../../components/Employee';
 import { HomeOutlined } from '@ant-design/icons';
 import NotificationPanel from '../../../components/NotificationPanel';
@@ -12,6 +13,7 @@ import styles from './Dashboard.module.css';
 const EmployeeDashboard: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const { unreadCount } = useSelector((state: RootState) => state.websocket);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
       const [assignedTasks, setAssignedTasks] = useState({
@@ -22,6 +24,7 @@ const EmployeeDashboard: React.FC = () => {
       });
 
   const handleLogout = () => {
+    dispatch(logout());
     navigate('/login');
   };
 

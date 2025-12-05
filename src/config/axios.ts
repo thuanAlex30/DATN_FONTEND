@@ -94,12 +94,30 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     
     if (ENV.IS_DEVELOPMENT) {
-      console.error(`❌ API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url}`, {
-        status: error.response?.status,
+      const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
+      const url = error.config?.url || 'UNKNOWN_URL';
+      const status = error.response?.status;
+      const statusText = error.response?.statusText;
+      
+      console.error(`❌ API Error: ${method} ${url}`, {
+        status,
+        statusText,
         message: error.message,
         data: error.response?.data,
+        code: error.code,
         timestamp: new Date().toISOString(),
       });
+      
+      // Log additional error details for debugging
+      if (status && status >= 500) {
+        console.error('❌ Server error details:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          baseURL: error.config?.baseURL,
+          headers: error.config?.headers,
+          responseData: error.response?.data,
+        });
+      }
     }
     
     // Handle 401 Unauthorized with token refresh

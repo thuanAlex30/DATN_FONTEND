@@ -1,23 +1,69 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, Space, Table, Tag, Avatar, Row, Col, Statistic, Input, Select, Modal, Form, message, Popconfirm, Checkbox, Divider } from 'antd';
-import { SafetyOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, FilterOutlined, UserOutlined, KeyOutlined } from '@ant-design/icons';
+import { 
+    Card, 
+    Typography, 
+    Button, 
+    Space, 
+    Table, 
+    Tag, 
+    Avatar, 
+    Row, 
+    Col, 
+    Statistic, 
+    Input, 
+    Select, 
+    Modal, 
+    Form, 
+    message, 
+    Popconfirm, 
+    Checkbox, 
+    Divider,
+    Switch,
+    Badge,
+    Tooltip,
+    Empty,
+    Spin,
+    Alert
+} from 'antd';
+import { 
+    SafetyOutlined, 
+    PlusOutlined, 
+    EditOutlined, 
+    DeleteOutlined, 
+    SearchOutlined, 
+    FilterOutlined, 
+    UserOutlined, 
+    KeyOutlined,
+    SaveOutlined,
+    CloseOutlined,
+    CheckCircleOutlined,
+    ExclamationCircleOutlined
+} from '@ant-design/icons';
 import RoleService from '../../../services/roleService';
 import type { Role, PermissionGroup } from '../../../types/role';
+
+const { Title, Text } = Typography;
+const { Search } = Input;
 
 const RoleManagementPage: React.FC = () => {
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [searchText, setSearchText] = useState('');
+    const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined);
+    const [stats, setStats] = useState({
+        total_roles: 0,
+        active_roles: 0,
+        inactive_roles: 0,
+        total_users: 0
+    });
 
     const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
     const [currentPermissions, setCurrentPermissions] = useState<Record<string, boolean>>({});
-    const [isModalOpen, setIsModalOpen] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<Role | null>(null);
     const [saving, setSaving] = useState(false);
-    const [formData, setFormData] = useState({
-        role_name: '',
-        description: ''
-    });
+    const [form] = Form.useForm();
 
     const permissionDefinitions: PermissionGroup = {
         user: {
@@ -67,25 +113,42 @@ const RoleManagementPage: React.FC = () => {
         }
     };
 
-    // Load roles from API
     useEffect(() => {
-        const loadRoles = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-        const response = await RoleService.getRoles({ page: 1, limit: 50 });
-        const loadedRoles = response.data?.roles ?? response.data?.data?.roles ?? [];
-        setRoles(Array.isArray(loadedRoles) ? loadedRoles : []);
-            } catch (err) {
-                console.error('Error loading roles:', err);
-                setError('Không thể tải danh sách vai trò. Vui lòng thử lại.');
-            } finally {
-                setLoading(false);
-            }
-        };
-
         loadRoles();
-    }, []);
+        loadStats();
+    }, [searchText, filterActive]);
+
+    const loadRoles = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await RoleService.getRoles({ 
+                page: 1, 
+                limit: 100,
+                search: searchText || undefined,
+                is_active: filterActive
+            });
+            const loadedRoles = response.data?.roles ?? response.data?.data?.roles ?? [];
+            setRoles(Array.isArray(loadedRoles) ? loadedRoles : []);
+        } catch (err) {
+            console.error('Error loading roles:', err);
+            setError('Không thể tải danh sách vai trò. Vui lòng thử lại.');
+            message.error('Không thể tải danh sách vai trò');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadStats = async () => {
+        try {
+            const response = await RoleService.getRoleStats();
+            if (response.success && response.data) {
+                setStats(response.data);
+            }
+        } catch (err) {
+            console.error('Error loading stats:', err);
+        }
+    };
 
     const selectRole = (roleId: string) => {
         setSelectedRoleId(roleId);
@@ -109,89 +172,84 @@ const RoleManagementPage: React.FC = () => {
             setSaving(true);
             await RoleService.updateRolePermissions(selectedRoleId, currentPermissions);
             
-            // Update local state
             setRoles(prev => prev.map(role => 
                 role.id === selectedRoleId 
                     ? { ...role, permissions: { ...currentPermissions } }
                     : role
             ));
             
-            alert('Đã lưu quyền hạn thành công!');
+            message.success('Đã lưu quyền hạn thành công!');
         } catch (error: any) {
             console.error('Error saving permissions:', error);
             const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi lưu quyền hạn. Vui lòng thử lại.';
-            alert(`Lỗi: ${errorMessage}`);
+            message.error(errorMessage);
         } finally {
             setSaving(false);
         }
     };
 
-    const openModal = (modalId: string) => {
-        setIsModalOpen(modalId);
+    const openModal = () => {
+        setIsModalOpen(true);
     };
 
     const closeModal = () => {
-        setIsModalOpen(null);
+        setIsModalOpen(false);
         setEditingRole(null);
-        setFormData({ role_name: '', description: '' });
+        form.resetFields();
     };
 
     const editRole = (roleId: string) => {
         const role = roles.find(r => r.id === roleId);
         if (role) {
             setEditingRole(role);
-            setFormData({
+            form.setFieldsValue({
                 role_name: role.role_name,
-                description: role.description
+                description: role.description,
+                is_active: role.is_active
             });
-            openModal('addRoleModal');
+            openModal();
         }
     };
 
     const deleteRole = async (roleId: string) => {
-        const role = roles.find(r => r.id === roleId);
-        if (role && window.confirm(`Bạn có chắc chắn muốn xóa vai trò "${role.role_name}"?`)) {
-            try {
-                await RoleService.deleteRole(roleId);
-                setRoles(prev => prev.filter(r => r.id !== roleId));
-                if (selectedRoleId === roleId) {
-                    setSelectedRoleId(null);
-                }
-                alert('Đã xóa vai trò thành công!');
-            } catch (error: any) {
-                console.error('Error deleting role:', error);
-                const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi xóa vai trò. Vui lòng thử lại.';
-                alert(`Lỗi: ${errorMessage}`);
+        try {
+            await RoleService.deleteRole(roleId);
+            setRoles(prev => prev.filter(r => r.id !== roleId));
+            if (selectedRoleId === roleId) {
+                setSelectedRoleId(null);
             }
+            message.success('Đã xóa vai trò thành công!');
+            loadStats();
+        } catch (error: any) {
+            console.error('Error deleting role:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi xóa vai trò. Vui lòng thử lại.';
+            message.error(errorMessage);
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
+    const handleSubmit = async (values: any) => {
         try {
             setSaving(true);
             
             if (editingRole) {
-                // Update existing role
                 await RoleService.updateRole(editingRole.id, {
-                    role_name: formData.role_name,
-                    description: formData.description
+                    role_name: values.role_name,
+                    description: values.description,
+                    is_active: values.is_active
                 });
                 
                 setRoles(prev => prev.map(role => 
                     role.id === editingRole.id 
-                        ? { ...role, role_name: formData.role_name, description: formData.description }
+                        ? { ...role, role_name: values.role_name, description: values.description, is_active: values.is_active }
                         : role
                 ));
-                alert('Đã cập nhật vai trò thành công!');
+                message.success('Đã cập nhật vai trò thành công!');
             } else {
-                // Add new role
                 const newRoleData = {
-                    role_name: formData.role_name,
-                    description: formData.description,
+                    role_name: values.role_name,
+                    description: values.description,
                     permissions: {},
-                    is_active: true
+                    is_active: values.is_active ?? true
                 };
                 
                 const response = await RoleService.createRole(newRoleData);
@@ -200,213 +258,368 @@ const RoleManagementPage: React.FC = () => {
                     throw new Error('Không nhận được dữ liệu vai trò mới từ máy chủ');
                 }
                 setRoles(prev => [...prev, createdRole]);
-                alert('Đã tạo vai trò mới thành công!');
+                message.success('Đã tạo vai trò mới thành công!');
             }
             
             closeModal();
+            loadStats();
         } catch (error: any) {
             console.error('Error saving role:', error);
             const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi lưu vai trò. Vui lòng thử lại.';
-            alert(`Lỗi: ${errorMessage}`);
+            message.error(errorMessage);
         } finally {
             setSaving(false);
         }
     };
 
+    const toggleRoleStatus = async (roleId: string, isActive: boolean) => {
+        try {
+            await RoleService.toggleRoleStatus(roleId, isActive);
+            setRoles(prev => prev.map(role => 
+                role.id === roleId ? { ...role, is_active: isActive } : role
+            ));
+            message.success(`Đã ${isActive ? 'kích hoạt' : 'vô hiệu hóa'} vai trò thành công!`);
+            loadStats();
+        } catch (error: any) {
+            console.error('Error toggling role status:', error);
+            message.error('Có lỗi xảy ra khi thay đổi trạng thái vai trò');
+        }
+    };
+
     const selectedRole = roles.find(r => r.id === selectedRoleId);
 
-    if (loading) {
-        return (
-            <div className="role-management-container">
-                <div className="loading-container">
-                    <div className="loading-spinner"></div>
-                    <p>Đang tải danh sách vai trò...</p>
-                </div>
-            </div>
-        );
-    }
+    const filteredRoles = roles.filter(role => {
+        const matchesSearch = !searchText || 
+            role.role_name.toLowerCase().includes(searchText.toLowerCase()) ||
+            role.description?.toLowerCase().includes(searchText.toLowerCase());
+        const matchesFilter = filterActive === undefined || role.is_active === filterActive;
+        return matchesSearch && matchesFilter;
+    });
 
-    if (error) {
-        return (
-            <div className="role-management-container">
-                <div className="error-container">
-                    <i className="fas fa-exclamation-triangle"></i>
-                    <p>{error}</p>
-                    <button className="btn btn-primary" onClick={() => window.location.reload()}>
-                        Thử lại
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    const columns = [
+        {
+            title: 'Vai trò',
+            dataIndex: 'role_name',
+            key: 'role_name',
+            render: (text: string, record: Role) => (
+                <Space>
+                    <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
+                    <div>
+                        <div style={{ fontWeight: 500 }}>{text}</div>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            {record.description || 'Không có mô tả'}
+                        </Text>
+                    </div>
+                </Space>
+            ),
+        },
+        {
+            title: 'Trạng thái',
+            dataIndex: 'is_active',
+            key: 'is_active',
+            render: (isActive: boolean, record: Role) => (
+                <Space>
+                    <Badge status={isActive ? 'success' : 'default'} />
+                    <Switch
+                        checked={isActive}
+                        onChange={(checked) => toggleRoleStatus(record.id, checked)}
+                        size="small"
+                    />
+                    <Text type={isActive ? undefined : 'secondary'}>
+                        {isActive ? 'Hoạt động' : 'Không hoạt động'}
+                    </Text>
+                </Space>
+            ),
+        },
+        {
+            title: 'Số người dùng',
+            dataIndex: 'user_count',
+            key: 'user_count',
+            render: (count: number) => (
+                <Tag color="blue">
+                    <UserOutlined /> {count || 0}
+                </Tag>
+            ),
+        },
+        {
+            title: 'Thao tác',
+            key: 'actions',
+            render: (_: any, record: Role) => (
+                <Space>
+                    <Tooltip title="Chọn để quản lý quyền">
+                        <Button
+                            type={selectedRoleId === record.id ? 'primary' : 'default'}
+                            icon={<KeyOutlined />}
+                            onClick={() => selectRole(record.id)}
+                        >
+                            Quyền hạn
+                        </Button>
+                    </Tooltip>
+                    <Tooltip title="Chỉnh sửa">
+                        <Button
+                            icon={<EditOutlined />}
+                            onClick={() => editRole(record.id)}
+                        />
+                    </Tooltip>
+                    <Popconfirm
+                        title="Xóa vai trò"
+                        description={`Bạn có chắc chắn muốn xóa vai trò "${record.role_name}"?`}
+                        onConfirm={() => deleteRole(record.id)}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                        okButtonProps={{ danger: true }}
+                    >
+                        <Tooltip title="Xóa">
+                            <Button
+                                danger
+                                icon={<DeleteOutlined />}
+                            />
+                        </Tooltip>
+                    </Popconfirm>
+                </Space>
+            ),
+        },
+    ];
 
     return (
-        <div className="role-management-container">
-                {/* Header */}
-                <div className="header">
-                    <div>
-                        <h1><i className="fas fa-user-shield"></i> Quản lý vai trò & quyền hạn</h1>
-                        <div className="breadcrumb">
-                            <a href="/admin/dashboard">Dashboard</a> / Vai trò & quyền hạn
-                        </div>
-                    </div>
-                    <a href="/admin/dashboard" className="btn btn-secondary">
-                        <i className="fas fa-arrow-left"></i> Quay lại
-                    </a>
-                </div>
+        <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
+            <Card>
+                <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
+                    <Col>
+                        <Title level={2} style={{ margin: 0 }}>
+                            <SafetyOutlined style={{ marginRight: 8 }} />
+                            Quản lý vai trò & quyền hạn
+                        </Title>
+                        <Text type="secondary">Quản lý các vai trò và phân quyền trong hệ thống</Text>
+                    </Col>
+                    <Col>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            size="large"
+                            onClick={openModal}
+                        >
+                            Thêm vai trò mới
+                        </Button>
+                    </Col>
+                </Row>
 
-                <div className="main-grid">
-                    {/* Role List */}
-                    <div className="role-list-section">
-                        <div className="section-header">
-                            <h3 className="section-title">Danh sách vai trò</h3>
-                            <button className="btn btn-primary btn-sm" onClick={() => openModal('addRoleModal')}>
-                                <i className="fas fa-plus"></i> Thêm vai trò
-                            </button>
-                        </div>
-                        
-                        <div className="role-list">
-                            {roles.map(role => (
-                                <div 
-                                    key={role.id}
-                                    className={`role-item ${selectedRoleId === role.id ? 'active' : ''}`}
-                                    onClick={() => selectRole(role.id)}
-                                >
-                                    <div className="role-header">
-                                        <div className="role-name">{role.role_name}</div>
-                                        <span className={`role-badge role-${role.role_name.toLowerCase()}`}>
-                                            {role.role_name}
-                                        </span>
-                                    </div>
-                                    <div className="role-description">{role.description}</div>
-                                    <div className="role-stats">
-                                        <span><i className="fas fa-users"></i> {role.user_count} người dùng</span>
-                                        <span><i className="fas fa-check-circle"></i> {role.is_active ? 'Hoạt động' : 'Không hoạt động'}</span>
-                                    </div>
-                                    <div className="role-actions">
-                                        <button 
-                                            className="btn btn-warning btn-sm" 
-                                            onClick={(e) => { e.stopPropagation(); editRole(role.id); }}
-                                        >
-                                            <i className="fas fa-edit"></i>
-                                        </button>
-                                        <button 
-                                            className="btn btn-danger btn-sm" 
-                                            onClick={(e) => { e.stopPropagation(); deleteRole(role.id); }}
-                                        >
-                                            <i className="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Permission Management */}
-                    <div className="permission-section">
-                        <div className="section-header">
-                            <h3 className="section-title">
-                                {selectedRole ? `Quyền hạn của vai trò: ${selectedRole.role_name}` : 'Chọn vai trò để quản lý quyền hạn'}
-                            </h3>
-                            <div>
-                                {selectedRoleId && (
-                                    <button 
-                                        className="btn btn-success btn-sm" 
-                                        onClick={savePermissions}
-                                        disabled={saving}
-                                    >
-                                        <i className="fas fa-save"></i> {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        
-                        <div className="permission-content">
-                            {!selectedRoleId ? (
-                                <div className="empty-state">
-                                    <i className="fas fa-shield-alt"></i>
-                                    <p>Vui lòng chọn một vai trò để quản lý quyền hạn</p>
-                                </div>
-                            ) : (
-                                <div className="permission-groups">
-                                    {Object.entries(permissionDefinitions).map(([groupKey, group]) => (
-                                        <div key={groupKey} className="permission-group">
-                                            <div className="permission-group-header">
-                                                <div className="group-title">
-                                                    <i className={group.icon}></i>
-                                                    {group.title}
-                                                </div>
-                                            </div>
-                                            <div className="permission-list">
-                                                {Object.entries(group.permissions).map(([permKey, perm]) => (
-                                                    <div key={permKey} className="permission-item">
-                                                        <div className="permission-info">
-                                                            <div className="permission-name">{perm.name}</div>
-                                                            <div className="permission-desc">{perm.desc}</div>
-                                                        </div>
-                                                        <div 
-                                                            className={`permission-toggle ${currentPermissions[permKey] ? 'active' : ''}`}
-                                                            onClick={() => togglePermission(permKey)}
-                                                        ></div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Add/Edit Role Modal */}
-                {isModalOpen === 'addRoleModal' && (
-                    <div className="modal active" onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
-                        <div className="modal-content">
-                            <div className="modal-header">
-                                <h2 className="modal-title">
-                                    {editingRole ? 'Chỉnh sửa vai trò' : 'Thêm vai trò mới'}
-                                </h2>
-                                <span className="close-modal" onClick={closeModal}>&times;</span>
-                            </div>
-                            
-                            <form onSubmit={handleSubmit}>
-                                <div className="form-group">
-                                    <label className="form-label">Tên vai trò *</label>
-                                    <input 
-                                        type="text" 
-                                        className="form-input" 
-                                        value={formData.role_name}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, role_name: e.target.value }))}
-                                        required 
-                                        placeholder="Nhập tên vai trò"
-                                    />
-                                </div>
-                                
-                                <div className="form-group">
-                                    <label className="form-label">Mô tả</label>
-                                    <textarea 
-                                        className="form-input" 
-                                        value={formData.description}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                                        rows={3} 
-                                        placeholder="Mô tả vai trò này"
-                                    />
-                                </div>
-                                
-                                <div className="form-actions">
-                                    <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                                        Hủy
-                                    </button>
-                                    <button type="submit" className="btn btn-primary" disabled={saving}>
-                                        <i className="fas fa-save"></i> {saving ? 'Đang lưu...' : (editingRole ? 'Cập nhật' : 'Tạo vai trò')}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+                {error && (
+                    <Alert
+                        message="Lỗi"
+                        description={error}
+                        type="error"
+                        showIcon
+                        closable
+                        style={{ marginBottom: 16 }}
+                        onClose={() => setError(null)}
+                    />
                 )}
-            </div>
+
+                <Row gutter={16} style={{ marginBottom: 24 }}>
+                    <Col span={6}>
+                        <Card>
+                            <Statistic
+                                title="Tổng số vai trò"
+                                value={stats.total_roles}
+                                prefix={<SafetyOutlined />}
+                            />
+                        </Card>
+                    </Col>
+                    <Col span={6}>
+                        <Card>
+                            <Statistic
+                                title="Vai trò hoạt động"
+                                value={stats.active_roles}
+                                valueStyle={{ color: '#3f8600' }}
+                                prefix={<CheckCircleOutlined />}
+                            />
+                        </Card>
+                    </Col>
+                    <Col span={6}>
+                        <Card>
+                            <Statistic
+                                title="Vai trò không hoạt động"
+                                value={stats.inactive_roles}
+                                valueStyle={{ color: '#cf1322' }}
+                                prefix={<ExclamationCircleOutlined />}
+                            />
+                        </Card>
+                    </Col>
+                    <Col span={6}>
+                        <Card>
+                            <Statistic
+                                title="Tổng người dùng"
+                                value={stats.total_users}
+                                prefix={<UserOutlined />}
+                            />
+                        </Card>
+                    </Col>
+                </Row>
+
+                <Card>
+                    <Row gutter={16} style={{ marginBottom: 16 }}>
+                        <Col span={12}>
+                            <Search
+                                placeholder="Tìm kiếm vai trò..."
+                                allowClear
+                                enterButton={<SearchOutlined />}
+                                size="large"
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                onSearch={loadRoles}
+                            />
+                        </Col>
+                        <Col span={12}>
+                            <Select
+                                placeholder="Lọc theo trạng thái"
+                                allowClear
+                                style={{ width: '100%' }}
+                                size="large"
+                                value={filterActive}
+                                onChange={(value) => setFilterActive(value)}
+                            >
+                                <Select.Option value={true}>Hoạt động</Select.Option>
+                                <Select.Option value={false}>Không hoạt động</Select.Option>
+                            </Select>
+                        </Col>
+                    </Row>
+
+                    <Spin spinning={loading}>
+                        <Table
+                            columns={columns}
+                            dataSource={filteredRoles}
+                            rowKey="id"
+                            pagination={{
+                                pageSize: 10,
+                                showSizeChanger: true,
+                                showTotal: (total) => `Tổng ${total} vai trò`,
+                            }}
+                            rowClassName={(record) => selectedRoleId === record.id ? 'ant-table-row-selected' : ''}
+                        />
+                    </Spin>
+                </Card>
+
+                {selectedRoleId && (
+                    <Card 
+                        title={
+                            <Space>
+                                <KeyOutlined />
+                                <span>Quyền hạn của vai trò: {selectedRole?.role_name}</span>
+                            </Space>
+                        }
+                        extra={
+                            <Button
+                                type="primary"
+                                icon={<SaveOutlined />}
+                                onClick={savePermissions}
+                                loading={saving}
+                            >
+                                Lưu thay đổi
+                            </Button>
+                        }
+                        style={{ marginTop: 16 }}
+                    >
+                        {Object.entries(permissionDefinitions).map(([groupKey, group]) => (
+                            <Card
+                                key={groupKey}
+                                type="inner"
+                                title={
+                                    <Space>
+                                        <span>{group.title}</span>
+                                    </Space>
+                                }
+                                style={{ marginBottom: 16 }}
+                            >
+                                <Row gutter={[16, 16]}>
+                                    {Object.entries(group.permissions).map(([permKey, perm]) => (
+                                        <Col span={12} key={permKey}>
+                                            <Card size="small" hoverable>
+                                                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 500, marginBottom: 4 }}>
+                                                            {perm.name}
+                                                        </div>
+                                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                                            {perm.desc}
+                                                        </Text>
+                                                    </div>
+                                                    <Switch
+                                                        checked={currentPermissions[permKey] || false}
+                                                        onChange={() => togglePermission(permKey)}
+                                                    />
+                                                </Space>
+                                            </Card>
+                                        </Col>
+                                    ))}
+                                </Row>
+                            </Card>
+                        ))}
+                    </Card>
+                )}
+
+                {!selectedRoleId && (
+                    <Card style={{ marginTop: 16 }}>
+                        <Empty
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            description="Vui lòng chọn một vai trò để quản lý quyền hạn"
+                        />
+                    </Card>
+                )}
+            </Card>
+
+            <Modal
+                title={editingRole ? 'Chỉnh sửa vai trò' : 'Thêm vai trò mới'}
+                open={isModalOpen}
+                onCancel={closeModal}
+                footer={null}
+                width={600}
+            >
+                <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleSubmit}
+                >
+                    <Form.Item
+                        name="role_name"
+                        label="Tên vai trò"
+                        rules={[{ required: true, message: 'Vui lòng nhập tên vai trò' }]}
+                    >
+                        <Input placeholder="Nhập tên vai trò" />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="description"
+                        label="Mô tả"
+                    >
+                        <Input.TextArea 
+                            rows={4} 
+                            placeholder="Mô tả vai trò này"
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="is_active"
+                        label="Trạng thái"
+                        valuePropName="checked"
+                        initialValue={true}
+                    >
+                        <Switch checkedChildren="Hoạt động" unCheckedChildren="Không hoạt động" />
+                    </Form.Item>
+
+                    <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+                        <Space>
+                            <Button onClick={closeModal}>
+                                Hủy
+                            </Button>
+                            <Button type="primary" htmlType="submit" loading={saving}>
+                                {editingRole ? 'Cập nhật' : 'Tạo vai trò'}
+                            </Button>
+                        </Space>
+                    </Form.Item>
+                </Form>
+            </Modal>
+        </div>
     );
 };
 

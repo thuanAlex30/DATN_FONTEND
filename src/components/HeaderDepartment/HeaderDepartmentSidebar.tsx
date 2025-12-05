@@ -1,6 +1,7 @@
 import React from 'react';
 import { Layout, Menu } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import {
   DashboardOutlined,
   SafetyOutlined,
@@ -11,6 +12,7 @@ import {
   ProjectOutlined,
   LockOutlined,
 } from '@ant-design/icons';
+import { logout } from '../../store/slices/authSlice';
 import styles from './HeaderDepartmentSidebar.module.css';
 
 const { Sider } = Layout;
@@ -22,6 +24,16 @@ interface HeaderDepartmentSidebarProps {
 const HeaderDepartmentSidebar: React.FC<HeaderDepartmentSidebarProps> = ({ onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
+
+  const handleLogout = () => {
+    if (onLogout) {
+      onLogout();
+    } else {
+      dispatch(logout());
+      navigate('/login');
+    }
+  };
 
   const menuItems = [
     {
@@ -63,7 +75,7 @@ const HeaderDepartmentSidebar: React.FC<HeaderDepartmentSidebarProps> = ({ onLog
 
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
-      onLogout?.();
+      handleLogout();
     } else {
       navigate(key);
     }

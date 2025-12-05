@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { 
   Layout, 
   Menu, 
@@ -20,6 +20,7 @@ import {
   ProjectOutlined,
   SafetyCertificateOutlined
 } from '@ant-design/icons';
+import { logout } from '../../store/slices/authSlice';
 import styles from './EmployeeSidebar.module.css';
 
 const { Sider } = Layout;
@@ -32,11 +33,13 @@ interface EmployeeSidebarProps {
 const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
   const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
 
   const handleLogout = () => {
     if (onLogout) {
       onLogout();
     } else {
+      dispatch(logout());
       navigate('/login');
     }
   };

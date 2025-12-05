@@ -1,13 +1,14 @@
 import React from 'react';
-import { Layout, Typography, Badge, Button, Dropdown, Avatar } from 'antd';
+import { Layout, Typography, Button, Dropdown, Avatar } from 'antd';
 import {
-  BellOutlined,
   UserOutlined,
   LogoutOutlined,
   SettingOutlined,
   MenuOutlined
 } from '@ant-design/icons';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { logout } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import styles from './HeaderDepartmentHeader.module.css';
 
@@ -18,7 +19,6 @@ interface HeaderDepartmentHeaderProps {
   title?: string;
   icon?: React.ReactNode;
   showUserInfo?: boolean;
-  showNotifications?: boolean;
   onLogout?: () => void;
   extra?: React.ReactNode;
 }
@@ -27,11 +27,21 @@ const HeaderDepartmentHeader: React.FC<HeaderDepartmentHeaderProps> = ({
   title,
   icon,
   showUserInfo = true,
-  showNotifications = true,
   onLogout,
   extra
 }) => {
   const { user } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    if (onLogout) {
+      onLogout();
+    } else {
+      dispatch(logout());
+      navigate('/login');
+    }
+  };
 
   const userMenuItems = [
     {
@@ -57,7 +67,9 @@ const HeaderDepartmentHeader: React.FC<HeaderDepartmentHeaderProps> = ({
 
   const handleUserMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
-      onLogout?.();
+      handleLogout();
+    } else if (key === 'profile') {
+    } else if (key === 'settings') {
     }
   };
 
@@ -83,16 +95,6 @@ const HeaderDepartmentHeader: React.FC<HeaderDepartmentHeaderProps> = ({
         <div className={styles.headerRight}>
           {extra && <div className={styles.headerExtra}>{extra}</div>}
 
-          {showNotifications && (
-            <Badge count={0} size="small">
-              <Button
-                type="text"
-                icon={<BellOutlined />}
-                className={styles.notificationButton}
-              />
-            </Badge>
-          )}
-
           {showUserInfo && user && (
             <Dropdown
               menu={{
@@ -102,13 +104,12 @@ const HeaderDepartmentHeader: React.FC<HeaderDepartmentHeaderProps> = ({
               placement="bottomRight"
               trigger={['click']}
             >
-              <div className={styles.userInfo}>
+              <div className={styles.userInfo} style={{ cursor: 'pointer' }}>
                 <Avatar
                   size="small"
                   icon={<UserOutlined />}
                   className={styles.userAvatar}
                 />
-                <span className={styles.userName}>{user.full_name}</span>
               </div>
             </Dropdown>
           )}

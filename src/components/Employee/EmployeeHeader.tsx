@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -15,6 +15,7 @@ import {
   BellOutlined,
   UserOutlined
 } from '@ant-design/icons';
+import { logout } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import styles from './EmployeeHeader.module.css';
 
@@ -39,12 +40,14 @@ const EmployeeHeader: React.FC<EmployeeHeaderProps> = ({
 }) => {
   const { user } = useSelector((state: RootState) => state.auth);
   const { unreadCount } = useSelector((state: RootState) => state.websocket);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     if (onLogout) {
       onLogout();
     } else {
+      dispatch(logout());
       navigate('/login');
     }
   };
