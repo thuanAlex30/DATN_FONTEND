@@ -44,6 +44,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { resources, loading, error } = useSelector((state: RootState) => state.projectResource);
   const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [editingResource, setEditingResource] = useState<any | null>(null);
 
   useEffect(() => {
     if (projectId) {
@@ -64,13 +65,19 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
   };
 
   const handleEditResource = (resource: any) => {
-    // TODO: Implement edit resource functionality
-    console.log('Edit resource:', resource);
+    setEditingResource(resource);
+    setCreateModalVisible(true);
   };
 
   const handleCreateSuccess = () => {
     // Refresh the resources list
     dispatch(fetchProjectResources(projectId));
+    setEditingResource(null);
+  };
+
+  const handleModalCancel = () => {
+    setCreateModalVisible(false);
+    setEditingResource(null);
   };
 
 
@@ -285,7 +292,7 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
               type="text"
               icon={<EditOutlined />}
               size="small"
-              onClick={() => handleEditResource(resource)}
+              onClick={() => handleEditResource(record)}
               className="text-blue-500 hover:text-blue-600"
             />
           </Tooltip>
@@ -314,7 +321,11 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
-        <Spin size="large" tip="Đang tải danh sách tài nguyên..." />
+        <Spin size="large">
+          <div className="text-center mt-4">
+            <Text type="secondary">Đang tải danh sách tài nguyên...</Text>
+          </div>
+        </Spin>
       </div>
     );
   }
@@ -501,9 +512,10 @@ const ProjectResources: React.FC<ProjectResourcesProps> = ({ projectId }) => {
 
       <CreateResourceModal
         visible={createModalVisible}
-        onCancel={() => setCreateModalVisible(false)}
+        onCancel={handleModalCancel}
         onSuccess={handleCreateSuccess}
         projectId={projectId}
+        editingResource={editingResource}
       />
     </motion.div>
   );

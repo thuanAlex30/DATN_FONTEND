@@ -79,11 +79,29 @@ const ProjectIncidents: React.FC<ProjectIncidentsProps> = ({ projectId }) => {
           projectService.getProjectById(projectId)
         ]);
         
-        setIncidents(incidentsResponse.data);
-        setProject(projectResponse.data);
+        // Handle different response structures
+        // API returns { success: true, data: [...], message: "..." }
+        // axios wraps it in response.data, so we need response.data.data
+        let incidentsData = incidentsResponse.data;
+        if (incidentsData && incidentsData.data && Array.isArray(incidentsData.data)) {
+          incidentsData = incidentsData.data;
+        } else if (!Array.isArray(incidentsData)) {
+          // Fallback: if data is not an array, set empty array
+          incidentsData = [];
+        }
+        
+        setIncidents(incidentsData);
+        
+        // Handle project response similarly
+        let projectData: any = projectResponse.data;
+        if (projectData && typeof projectData === 'object' && 'data' in projectData && projectData.data) {
+          projectData = projectData.data;
+        }
+        setProject(projectData);
       } catch (err: any) {
         setError('Không thể tải dữ liệu sự cố');
         console.error('Error fetching incidents:', err);
+        setIncidents([]); // Set empty array on error
       } finally {
         setLoading(false);
       }

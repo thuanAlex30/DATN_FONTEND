@@ -25,7 +25,8 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons';
 import * as ppeService from '../../../services/ppeService';
-import userService, { type User } from '../../../services/userService';
+import userService from '../../../services/userService';
+import type { User } from '../../../types/user';
 import dayjs from 'dayjs';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store';
@@ -46,6 +47,7 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [managers, setManagers] = useState<User[]>([]);
   const [ppeItems, setPpeItems] = useState<ppeService.PPEItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<ppeService.PPEItem | null>(null);
@@ -62,27 +64,184 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
 
   const loadManagers = async () => {
     try {
+      setLoading(true);
       const allUsers = await userService.getAllUsers();
-      const managers = allUsers.filter((user: any) => user.role?.role_name === 'manager');
+      
+      // Filter users with role "manager" or "warehouse_staff" (case-insensitive)
+      const managers = allUsers.filter((user: any) => {
+        const roleName = user.role?.role_name?.toLowerCase() || '';
+        const roleCode = user.role?.role_code?.toLowerCase() || '';
+        
+        // Check if user has manager or warehouse_staff role
+        const isManager = roleName === 'manager' || roleCode === 'manager';
+        const isWarehouseStaff = roleName === 'warehouse_staff' || roleCode === 'warehouse_staff' || 
+                                 roleName === 'warehouse staff' || roleCode === 'warehouse_staff';
+        
+        return isManager || isWarehouseStaff;
+      });
+      
+      console.log('[IssueToManagerModal] Total users:', allUsers.length);
+      console.log('[IssueToManagerModal] Filtered managers/warehouse_staff:', managers.length);
+      console.log('[IssueToManagerModal] Managers data:', managers.map((m: any) => ({
+        name: m.full_name,
+        role: m.role?.role_name || m.role?.role_code
+      })));
+      
       setManagers(managers);
+      
+      if (managers.length === 0) {
+        message.warning('Không tìm thấy Manager hoặc Warehouse Staff nào trong hệ thống');
+      }
     } catch (error) {
       console.error('Error loading managers:', error);
       message.error('Lỗi khi tải danh sách Manager');
+      setManagers([]);
+    } finally {
+      setLoading(false);
     }
   };
 
   const loadPPEItems = async () => {
     try {
-      const items = await ppeService.getPPEItems();
+      setLoadingItems(true);
+      console.log('[IssueToManagerModal] Starting to load PPE items...');
+      
+      const itemsRes = await ppeService.getPPEItems();
+      console.log('[IssueToManagerModal] Raw response from getPPEItems:', itemsRes);
+      console.log('[IssueToManagerModal] Response type:', typeof itemsRes);
+      console.log('[IssueToManagerModal] Is array:', Array.isArray(itemsRes));
+      
+      // Handle different response formats
+      let items: any[] = [];
+      
+      if (Array.isArray(itemsRes)) {
+        items = itemsRes;
+        console.log('[IssueToManagerModal] Response is array, length:', items.length);
+      } else if (itemsRes && typeof itemsRes === 'object') {
+        console.log('[IssueToManagerModal] Response is object, keys:', Object.keys(itemsRes));
+        if ('data' in itemsRes && Array.isArray((itemsRes as any).data)) {
+          items = (itemsRes as any).data;
+          console.log('[IssueToManagerModal] Found items in data, length:', items.length);
+        } else if ('items' in itemsRes && Array.isArray((itemsRes as any).items)) {
+          items = (itemsRes as any).items;
+          console.log('[IssueToManagerModal] Found items in items, length:', items.length);
+        } else if ('success' in itemsRes && (itemsRes as any).data) {
+          const data = (itemsRes as any).data;
+          if (Array.isArray(data)) {
+            items = data;
+            console.log('[IssueToManagerModal] Found items in success.data, length:', items.length);
+          } else if (data && Array.isArray(data.items)) {
+            items = data.items;
+            console.log('[IssueToManagerModal] Found items in success.data.items, length:', items.length);
+          }
+        }
+      }
+      
+      console.log('[IssueToManagerModal] Items before normalization:', items);
+      
+      // Normalize items - ensure id field exists and consistent structure
+      items = items.map((item: any) => {
+        // Handle category_id as object or string
+        const categoryId = typeof item.category_id === 'object' && item.category_id
+          ? (item.category_id.id || (item.category_id as any)._id || item.category_id)
+          : item.category_id;
+        
+        const normalizedItem = {
+          ...item,
+          id: item.id || item._id || (item as any).id,
+          item_name: item.item_name || item.name || '',
+          item_code: item.item_code || item.code || '',
+          category_id: categoryId,
+          quantity_available: item.quantity_available || item.available_quantity || item.remaining_quantity || 0,
+          quantity_allocated: item.quantity_allocated || item.allocated_quantity || item.actual_allocated_quantity || 0,
+          total_quantity: item.total_quantity || item.quantity_available || 0,
+          remaining_quantity: item.remaining_quantity || item.quantity_available || 0,
+        };
+        console.log('[IssueToManagerModal] Normalized item:', {
+          original: item,
+          normalized: normalizedItem
+        });
+        return normalizedItem;
+      });
+      
+      // Filter out items without id - but log them first
+      const itemsWithoutId = items.filter((item: any) => !item.id);
+      if (itemsWithoutId.length > 0) {
+        console.warn('[IssueToManagerModal] Items without id (will be filtered out):', itemsWithoutId);
+      }
+      
+      items = items.filter((item: any) => item.id);
+      
+      // If items is still empty, try to get from inventory report as fallback
+      if (items.length === 0) {
+        console.log('[IssueToManagerModal] No items found, trying inventory report as fallback...');
+        try {
+          const inventoryReport = await ppeService.getInventoryReport();
+          console.log('[IssueToManagerModal] Inventory report response:', inventoryReport);
+          if (inventoryReport && (inventoryReport as any).items && Array.isArray((inventoryReport as any).items)) {
+            items = (inventoryReport as any).items;
+            console.log('[IssueToManagerModal] Using items from inventory report:', items.length);
+          } else if (inventoryReport && (inventoryReport as any).inventoryReport && (inventoryReport as any).inventoryReport.items) {
+            items = (inventoryReport as any).inventoryReport.items;
+            console.log('[IssueToManagerModal] Using items from inventoryReport.items:', items.length);
+          }
+          
+          // Normalize items from inventory report
+          if (items.length > 0) {
+            items = items.map((item: any) => {
+              const categoryId = typeof item.category_id === 'object' && item.category_id
+                ? (item.category_id.id || (item.category_id as any)._id || item.category_id)
+                : item.category_id;
+              
+              return {
+                ...item,
+                id: item.id || item._id || (item as any).id,
+                item_name: item.item_name || item.name || '',
+                item_code: item.item_code || item.code || '',
+                category_id: categoryId,
+                quantity_available: item.quantity_available || item.available_quantity || item.remaining_quantity || 0,
+                quantity_allocated: item.quantity_allocated || item.allocated_quantity || item.actual_allocated_quantity || 0,
+                total_quantity: item.total_quantity || item.quantity_available || 0,
+                remaining_quantity: item.remaining_quantity || item.quantity_available || 0,
+              };
+            }).filter((item: any) => item.id);
+          }
+        } catch (err) {
+          console.warn('[IssueToManagerModal] Could not load items from inventory report:', err);
+        }
+      }
+      
+      console.log('[IssueToManagerModal] Final PPE items count:', items.length);
+      console.log('[IssueToManagerModal] Final PPE items data:', items);
+      
       setPpeItems(items);
-    } catch (error) {
-      console.error('Error loading PPE items:', error);
-      message.error('Lỗi khi tải danh sách thiết bị PPE');
+      
+      if (items.length === 0) {
+        console.warn('[IssueToManagerModal] No PPE items found after processing');
+        message.warning('Không có thiết bị PPE nào trong hệ thống. Vui lòng tạo thiết bị trước.');
+      } else {
+        console.log('[IssueToManagerModal] Successfully loaded', items.length, 'PPE items');
+      }
+    } catch (error: any) {
+      console.error('[IssueToManagerModal] Error loading PPE items:', error);
+      console.error('[IssueToManagerModal] Error details:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status
+      });
+      const errorMessage = error?.response?.data?.message || error?.message || 'Lỗi khi tải danh sách thiết bị PPE';
+      message.error(errorMessage);
+      setPpeItems([]);
+    } finally {
+      setLoadingItems(false);
     }
   };
 
   const handleItemChange = (itemId: string) => {
-    const item = ppeItems.find(i => i.id === itemId);
+    const item = ppeItems.find(i => {
+      const currentId = i.id || (i as any)._id;
+      return currentId === itemId || currentId?.toString() === itemId?.toString();
+    });
     setSelectedItem(item || null);
   };
 
@@ -161,21 +320,46 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
               rules={[{ required: true, message: 'Vui lòng chọn Manager' }]}
             >
               <Select
-                placeholder="Chọn Manager"
+                placeholder="Chọn Manager hoặc Warehouse Staff"
                 showSearch
                 optionFilterProp="children"
                 onChange={handleManagerChange}
                 suffixIcon={<UserOutlined />}
+                loading={loading}
+                notFoundContent={loading ? <span>Đang tải...</span> : <span>Không tìm thấy Manager hoặc Warehouse Staff</span>}
+                filterOption={(input, option: any) => {
+                  const children = option?.children;
+                  if (typeof children === 'string') {
+                    return children.toLowerCase().includes(input.toLowerCase());
+                  }
+                  if (Array.isArray(children)) {
+                    const text = children.map((c: any) => 
+                      typeof c === 'string' ? c : c?.props?.children || ''
+                    ).join(' ').toLowerCase();
+                    return text.includes(input.toLowerCase());
+                  }
+                  return false;
+                }}
               >
-                {managers.map(manager => (
-                  <Option key={manager.id} value={manager.id}>
-                    <Space>
-                      <UserOutlined />
-                      <span>{manager.full_name}</span>
-                      <Text type="secondary">({manager.department?.department_name || 'N/A'})</Text>
-                    </Space>
-                  </Option>
-                ))}
+                {managers.map(manager => {
+                  const roleName = manager.role?.role_name || manager.role?.role_code || 'N/A';
+                  const roleDisplay = roleName === 'warehouse_staff' || roleName === 'warehouse staff' 
+                    ? 'Warehouse Staff' 
+                    : 'Manager';
+                  
+                  return (
+                    <Option key={manager.id} value={manager.id}>
+                      <Space>
+                        <UserOutlined />
+                        <span>{manager.full_name}</span>
+                        <Text type="secondary">({roleDisplay})</Text>
+                        {manager.department?.department_name && (
+                          <Text type="secondary">- {manager.department.department_name}</Text>
+                        )}
+                      </Space>
+                    </Option>
+                  );
+                })}
               </Select>
             </Form.Item>
           </Col>
@@ -192,16 +376,47 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
                 optionFilterProp="children"
                 onChange={handleItemChange}
                 suffixIcon={<SafetyOutlined />}
+                loading={loadingItems}
+                notFoundContent={
+                  loadingItems ? (
+                    <span>Đang tải...</span>
+                  ) : (
+                    <span>Không có thiết bị PPE. Vui lòng tạo thiết bị trước.</span>
+                  )
+                }
+                filterOption={(input, option: any) => {
+                  const children = option?.children;
+                  if (typeof children === 'string') {
+                    return children.toLowerCase().includes(input.toLowerCase());
+                  }
+                  if (Array.isArray(children)) {
+                    const text = children.map((c: any) => 
+                      typeof c === 'string' ? c : c?.props?.children || ''
+                    ).join(' ').toLowerCase();
+                    return text.includes(input.toLowerCase());
+                  }
+                  return false;
+                }}
               >
-                {ppeItems.map(item => (
-                  <Option key={item.id} value={item.id}>
-                    <Space>
-                      <SafetyOutlined />
-                      <span>{item.item_name}</span>
-                      <Text type="secondary">({item.item_code})</Text>
-                    </Space>
-                  </Option>
-                ))}
+                {ppeItems.map(item => {
+                  const itemId = item.id || (item as any)._id;
+                  const itemName = item.item_name || 'Không có tên';
+                  const itemCode = item.item_code || 'N/A';
+                  const availableQty = item.quantity_available || 0;
+                  
+                  return (
+                    <Option key={itemId} value={itemId}>
+                      <Space>
+                        <SafetyOutlined />
+                        <span>{itemName}</span>
+                        <Text type="secondary">({itemCode})</Text>
+                        <Text type="secondary" style={{ fontSize: '11px' }}>
+                          - Còn: {availableQty}
+                        </Text>
+                      </Space>
+                    </Option>
+                  );
+                })}
               </Select>
             </Form.Item>
           </Col>

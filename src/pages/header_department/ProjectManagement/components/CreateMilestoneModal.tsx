@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Modal,
   Form,
@@ -15,7 +15,7 @@ import { PlusOutlined, CalendarOutlined, UserOutlined, FlagOutlined } from '@ant
 import type { RootState, AppDispatch } from '../../../../store';
 import { useSelector, useDispatch } from 'react-redux';
 import { createMilestone, fetchProjectMilestones } from '../../../../store/slices/projectMilestoneSlice';
-import userService from '../../../../services/userService';
+import projectService from '../../../../services/projectService';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -49,12 +49,49 @@ const CreateMilestoneModal: React.FC<CreateMilestoneModalProps> = ({
   const [managers, setManagers] = useState<any[]>([]);
   const [loadingManagers, setLoadingManagers] = useState(false);
 
+  const loadManagers = useCallback(async () => {
+    try {
+      setLoadingManagers(true);
+      // Load available employees để chọn làm người phụ trách
+      const employeesResponse = await projectService.getAvailableEmployees();
+      
+      if (employeesResponse.success && employeesResponse.data) {
+        const employeesData = Array.isArray(employeesResponse.data) 
+          ? employeesResponse.data 
+          : (employeesResponse.data.data || []);
+        
+        if (Array.isArray(employeesData) && employeesData.length > 0) {
+          const mappedManagers = employeesData.map((employee: any) => ({
+            id: employee.id || employee._id,
+            name: employee.full_name || employee.name || employee.fullName || '',
+            email: employee.email || ''
+          }));
+          setManagers(mappedManagers);
+        } else {
+          setManagers([]);
+        }
+      } else {
+        console.error('Failed to load employees:', employeesResponse.message);
+        setManagers([]);
+      }
+    } catch (error) {
+      console.error('Error loading employees:', error);
+      message.error('Lỗi khi tải danh sách nhân viên');
+      setManagers([]);
+    } finally {
+      setLoadingManagers(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (visible) {
-      loadManagers();
       form.resetFields();
+      // Only load managers if not already loaded
+      if (managers.length === 0 && !loadingManagers) {
+        loadManagers();
+      }
     }
-  }, [visible, form]);
+  }, [visible, managers.length, loadingManagers, loadManagers]);
 
   // Update form default value when managers are loaded
   useEffect(() => {
@@ -64,47 +101,6 @@ const CreateMilestoneModal: React.FC<CreateMilestoneModalProps> = ({
       });
     }
   }, [managers, visible, form]);
-
-  const loadManagers = async () => {
-    try {
-      setLoadingManagers(true);
-      // Load potential managers from API
-      const managersResponse = await userService.getPotentialManagers();
-      
-      console.log('CreateMilestoneModal - managersResponse:', managersResponse);
-      console.log('CreateMilestoneModal - managersResponse.success:', managersResponse.success);
-      console.log('CreateMilestoneModal - managersResponse.data:', managersResponse.data);
-      
-      if (managersResponse.success) {
-        const managersData = managersResponse.data?.managers || managersResponse.data;
-        console.log('CreateMilestoneModal - managersData:', managersData);
-        console.log('CreateMilestoneModal - managersData length:', managersData?.length);
-        
-        if (Array.isArray(managersData) && managersData.length > 0) {
-          const mappedManagers = managersData.map((manager: any) => ({
-            id: manager.id,
-            name: manager.full_name,
-            email: manager.email
-          }));
-          console.log('CreateMilestoneModal - mappedManagers:', mappedManagers);
-          setManagers(mappedManagers);
-        } else {
-          console.log('CreateMilestoneModal - No managers data or empty array');
-          setManagers([]);
-        }
-      } else {
-        console.error('Failed to load managers:', managersResponse.message);
-        message.error('Không thể tải danh sách manager');
-        setManagers([]);
-      }
-    } catch (error) {
-      console.error('Error loading managers:', error);
-      message.error('Lỗi khi tải danh sách manager');
-      setManagers([]);
-    } finally {
-      setLoadingManagers(false);
-    }
-  };
 
   const handleSubmit = async (values: MilestoneFormData) => {
     try {

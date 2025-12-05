@@ -35,7 +35,7 @@ export interface ProjectBasicInfo {
   project_type: 'CONSTRUCTION' | 'MAINTENANCE' | 'RENOVATION' | 'INSPECTION';
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   leader_id: string;
-  site_id: string;
+  project_location: string;
 }
 
 const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
@@ -54,30 +54,15 @@ const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
       if (visible) {
         setLoading(true);
         try {
-          // Load managers (users with management roles)
-          const { default: userService } = await import('../../../../services/userService');
-          const managersResponse = await userService.getUsers({ 
-            role_id: 'manager',
-            is_active: true 
-          });
-          
-          if (managersResponse.success) {
-            setManagers(managersResponse.data.users.map((user: any) => ({
-              id: user.id,
-              full_name: user.full_name,
-              email: user.email
-            })));
-          }
-
-          // Load sites
+          // Load available employees để chọn làm trưởng dự án
           const { default: projectService } = await import('../../../../services/projectService');
-          const sitesResponse = await projectService.getAllSites({ is_active: true });
-          
-          if (sitesResponse.success && sitesResponse.data) {
-            setSites(sitesResponse.data.map((site: any) => ({
-              id: site.id,
-              site_name: site.site_name,
-              address: site.address
+          const employeesResponse = await projectService.getAvailableEmployees();
+
+          if (employeesResponse.success && employeesResponse.data) {
+            setManagers(employeesResponse.data.map((user: any) => ({
+              id: user.id || user._id,
+              full_name: user.full_name || user.name || user.fullName,
+              email: user.email
             })));
           }
         } catch (error) {
@@ -100,12 +85,12 @@ const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
       const projectData: ProjectBasicInfo = {
         project_name: values.project_name,
         description: values.description,
-        start_date: values.start_date.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]'),
-        end_date: values.end_date.format('YYYY-MM-DDTHH:mm:ss.SSS[Z]'),
+        start_date: values.start_date.format('YYYY-MM-DD'),
+        end_date: values.end_date.format('YYYY-MM-DD'),
         project_type: values.project_type,
         priority: values.priority,
         leader_id: values.leader_id,
-        site_id: values.site_id
+        project_location: values.project_location
       };
 
       console.log('Project basic info:', projectData);
@@ -327,7 +312,7 @@ const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
             title={
               <Space>
                 <UserOutlined />
-                Phụ trách dự án
+                Phụ trách & Địa điểm dự án
               </Space>
             }
             style={{ marginBottom: 16 }}
@@ -364,29 +349,18 @@ const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
               
               <Col span={12}>
                 <Form.Item
-                  name="site_id"
-                  label="Địa điểm"
-                  rules={[{ required: true, message: 'Vui lòng chọn địa điểm!' }]}
+                  name="project_location"
+                  label="Địa điểm dự án"
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập địa điểm dự án!' },
+                    { min: 3, message: 'Địa điểm phải có ít nhất 3 ký tự!' }
+                  ]}
                 >
-                  <Select 
-                    size="large" 
-                    placeholder="Chọn địa điểm"
-                    showSearch
-                    optionFilterProp="children"
-                    filterOption={(input, option) =>
-                      (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
-                    }
-                  >
-                    {sites.map(site => (
-                      <Option key={site.id} value={site.id}>
-                        <Space>
-                          <EnvironmentOutlined />
-                          <span>{site.site_name}</span>
-                          <Text type="secondary">({site.address})</Text>
-                        </Space>
-                      </Option>
-                    ))}
-                  </Select>
+                  <Input
+                    size="large"
+                    placeholder="Nhập địa điểm (ví dụ: Đà Nẵng, KCN Hòa Khánh...)"
+                    prefix={<EnvironmentOutlined />}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -409,7 +383,7 @@ const ProjectBasicInfoForm: React.FC<ProjectBasicInfoFormProps> = ({
             loading={loading}
             style={{ minWidth: 120 }}
           >
-            Tiếp theo
+            Tạo dự án
           </Button>
         </Space>
       </div>

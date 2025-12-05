@@ -53,6 +53,7 @@ export interface PPEIssuance {
     id: string;
     full_name: string;
   };
+  issuance_level?: 'admin_to_manager' | 'manager_to_employee';
   status: 'pending_confirmation' | 'issued' | 'returned' | 'overdue' | 'damaged' | 'replacement_needed' | 'pending_manager_return';
   actual_return_date?: string;
   return_condition?: 'good' | 'damaged' | 'worn';
@@ -181,8 +182,22 @@ export const deletePPECategory = async (id: string): Promise<void> => {
 
 // PPE Items API
 export const getPPEItems = async (): Promise<PPEItem[]> => {
-  const response = await api.get('/ppe/items');
-  return response.data.data;
+  try {
+    const response = await api.get('/ppe/items');
+    // Handle different response formats
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else if (response.data && response.data.data) {
+      return Array.isArray(response.data.data) ? response.data.data : [];
+    } else if (response.data && response.data.items) {
+      return Array.isArray(response.data.items) ? response.data.items : [];
+    }
+    return [];
+  } catch (error: any) {
+    console.error('Error fetching PPE items:', error);
+    // Return empty array on error instead of throwing
+    return [];
+  }
 };
 
 export const getPPEItemById = async (id: string): Promise<PPEItem> => {

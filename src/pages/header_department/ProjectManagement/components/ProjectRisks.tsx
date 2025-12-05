@@ -13,8 +13,11 @@ import {
   Empty,
   Tooltip,
   Modal,
-  message
+  message,
+  Progress
 } from 'antd';
+import { projectRiskService } from '../../../../services/projectRiskService';
+import dayjs from 'dayjs';
 import { 
   PlusOutlined, 
   EditOutlined, 
@@ -24,7 +27,10 @@ import {
   UserOutlined,
   CalculatorOutlined,
   ThunderboltOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  ClockCircleOutlined
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import type { RootState, AppDispatch } from '../../../../store';
@@ -47,6 +53,10 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
   const [showRiskModal, setShowRiskModal] = useState(false);
   const [editingRisk, setEditingRisk] = useState<ProjectRisk | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [selectedRisk, setSelectedRisk] = useState<ProjectRisk | null>(null);
+  const [riskProgressLogs, setRiskProgressLogs] = useState<any[]>([]);
+  const [loadingRiskLogs, setLoadingRiskLogs] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -97,6 +107,30 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
   const handleModalClose = () => {
     setShowRiskModal(false);
     setEditingRisk(null);
+  };
+
+  const handleViewRisk = async (risk: ProjectRisk) => {
+    setSelectedRisk(risk);
+    setViewModalVisible(true);
+    
+    // Load progress logs
+    const riskId = risk._id || risk.id;
+    if (riskId) {
+      setLoadingRiskLogs(true);
+      try {
+        const response = await projectRiskService.getRiskProgressLogs(riskId);
+        if (response.success && response.data) {
+          setRiskProgressLogs(response.data);
+        } else {
+          setRiskProgressLogs([]);
+        }
+      } catch (error: any) {
+        console.error('Error loading risk progress logs:', error);
+        setRiskProgressLogs([]);
+      } finally {
+        setLoadingRiskLogs(false);
+      }
+    }
   };
 
   const getRiskLevelInfo = (level: string) => {
@@ -243,12 +277,15 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
         </Card>
       ) : (
         <Row gutter={[16, 16]}>
-          {risks.map((risk) => {
-            const riskLevelInfo = getRiskLevelInfo(typeof risk.probability === 'object' ? 'medium' : risk.probability.toString());
-            const statusInfo = getStatusInfo(risk.status);
+          {risks.filter(risk => risk != null).map((risk) => {
+            // Convert probability from 0-1 to 1-5 scale for display
+            const probabilityValue = risk.probability != null ? Math.round(risk.probability * 5) : 3;
+            const probabilityLevel = probabilityValue <= 2 ? 'low' : probabilityValue <= 3 ? 'medium' : 'high';
+            const riskLevelInfo = getRiskLevelInfo(probabilityLevel);
+            const statusInfo = getStatusInfo(risk.status || '');
             
             return (
-              <Col key={risk._id} xs={24} sm={24} md={12} lg={8} xl={6}>
+              <Col key={risk._id || risk.id} xs={24} sm={24} md={12} lg={8} xl={6}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -257,6 +294,13 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
                   <Card
                     hoverable
                     actions={[
+                      <Tooltip key="view" title="Xem chi tiết">
+                        <Button 
+                          type="text" 
+                          icon={<EyeOutlined />}
+                          onClick={() => handleViewRisk(risk)}
+                        />
+                      </Tooltip>,
                       <Tooltip key="edit" title="Chỉnh sửa">
                         <Button 
                           type="text" 
@@ -269,7 +313,7 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
                           type="text" 
                           danger
                           icon={<DeleteOutlined />}
-                          onClick={() => handleDeleteRisk(risk._id)}
+                          onClick={() => handleDeleteRisk(risk._id || risk.id)}
                         />
                       </Tooltip>
                     ]}
@@ -317,31 +361,47 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
                             <Space>
                               <ExclamationCircleOutlined style={{ color: '#1890ff' }} />
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Xác suất: {typeof risk.probability === 'object' ? 'Trung bình' : risk.probability}
+                                Xác suất: {probabilityValue}/5
                               </Text>
                             </Space>
                             
                             <Space>
                               <ThunderboltOutlined style={{ color: '#faad14' }} />
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Tác động: {typeof risk.impact_score === 'object' ? 'Trung bình' : risk.impact_score}
+                                Tác động: {risk.impact_score != null ? risk.impact_score : 'N/A'}/5
                               </Text>
                             </Space>
                             
                             <Space>
                               <CalculatorOutlined style={{ color: '#52c41a' }} />
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Điểm rủi ro: {typeof risk.risk_score === 'object' ? 'Trung bình' : risk.risk_score}
+                                Điểm rủi ro: {risk.risk_score != null ? risk.risk_score.toFixed(1) : 'N/A'}/5
                               </Text>
                             </Space>
                             
                             <Space>
                               <UserOutlined style={{ color: '#1890ff' }} />
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Người phụ trách: {typeof risk.owner_id === 'object' && risk.owner_id ? risk.owner_id.full_name : (risk.owner_id || 'N/A')}
+                                Người phụ trách: {(risk as any).owner_id?.full_name || (risk.owner_id ? 'Đã phân công' : 'Chưa phân công')}
                               </Text>
                             </Space>
                           </Space>
+                          
+                          {/* Hiển thị tiến độ */}
+                          <div style={{ marginTop: '12px', padding: '8px', background: '#f5f5f5', borderRadius: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <Text strong style={{ fontSize: '12px' }}>Tiến độ giải quyết:</Text>
+                              <Text strong style={{ fontSize: '12px', color: (risk as any).progress >= 100 ? '#52c41a' : '#1890ff' }}>
+                                {(risk as any).progress || 0}%
+                              </Text>
+                            </div>
+                            <Progress 
+                              percent={(risk as any).progress || 0} 
+                              size="small" 
+                              status={(risk as any).progress >= 100 ? 'success' : 'active'}
+                              strokeColor={(risk as any).progress >= 100 ? '#52c41a' : '#1890ff'}
+                            />
+                          </div>
                           
                           {risk.mitigation_plan && (
                             <Card 
@@ -403,6 +463,159 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
         editingRisk={editingRisk}
         mode={modalMode}
       />
+
+      {/* View Risk Detail Modal with Progress Logs */}
+      <Modal
+        title={
+          <Space>
+            <EyeOutlined />
+            <span>Chi tiết rủi ro - {selectedRisk?.risk_name}</span>
+          </Space>
+        }
+        open={viewModalVisible}
+        onCancel={() => {
+          setViewModalVisible(false);
+          setSelectedRisk(null);
+          setRiskProgressLogs([]);
+        }}
+        footer={[
+          <Button key="close" onClick={() => {
+            setViewModalVisible(false);
+            setSelectedRisk(null);
+            setRiskProgressLogs([]);
+          }}>
+            Đóng
+          </Button>
+        ]}
+        width={800}
+      >
+        {selectedRisk && (
+          <div>
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Title level={5}>{selectedRisk.risk_name}</Title>
+                <Text>{selectedRisk.description || 'Không có mô tả'}</Text>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Trạng thái:</Text>
+                <br />
+                <Tag color={getStatusInfo(selectedRisk.status || '').color}>
+                  {getStatusInfo(selectedRisk.status || '').label}
+                </Tag>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Điểm rủi ro:</Text>
+                <br />
+                <Tag color={selectedRisk.risk_score >= 15 ? 'red' : selectedRisk.risk_score >= 10 ? 'orange' : 'blue'}>
+                  {selectedRisk.risk_score}
+                </Tag>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Người phụ trách:</Text>
+                <br />
+                <Text>
+                  {(selectedRisk as any).owner_id?.full_name || 'Chưa phân công'}
+                </Text>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Hạn giải quyết:</Text>
+                <br />
+                <Text>{dayjs(selectedRisk.target_resolution_date).format('DD/MM/YYYY')}</Text>
+              </Col>
+              
+              <Col span={24}>
+                <Text strong>Tiến độ giải quyết:</Text>
+                <br />
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <Text type="secondary" style={{ fontSize: '14px' }}>Tiến độ hiện tại</Text>
+                    <Text strong style={{ fontSize: '14px', color: (selectedRisk as any).progress >= 100 ? '#52c41a' : '#1890ff' }}>
+                      {(selectedRisk as any).progress || 0}%
+                    </Text>
+                  </div>
+                  <Progress 
+                    percent={(selectedRisk as any).progress || 0} 
+                    status={(selectedRisk as any).progress >= 100 ? 'success' : 'active'}
+                    strokeColor={(selectedRisk as any).progress >= 100 ? '#52c41a' : '#1890ff'}
+                  />
+                </div>
+              </Col>
+              
+              {selectedRisk.mitigation_plan && (
+                <Col span={24}>
+                  <Text strong>Kế hoạch giảm thiểu:</Text>
+                  <br />
+                  <Text>{selectedRisk.mitigation_plan}</Text>
+                </Col>
+              )}
+            </Row>
+            
+            {/* Lịch sử báo cáo từ Manager */}
+            <div style={{ marginTop: '24px', borderTop: '1px solid #f0f0f0', paddingTop: '16px' }}>
+              <Title level={5}>
+                <HistoryOutlined style={{ marginRight: '8px' }} />
+                Lịch sử báo cáo từ Manager
+              </Title>
+              {loadingRiskLogs ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <Spin size="small" />
+                </div>
+              ) : riskProgressLogs.length === 0 ? (
+                <Empty description="Chưa có báo cáo nào từ Manager" size="small" />
+              ) : (
+                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  {riskProgressLogs.map((log: any, index: number) => (
+                    <Card
+                      key={log.id || log._id || index}
+                      style={{ marginBottom: '12px', borderRadius: '8px' }}
+                      size="small"
+                    >
+                      <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Space>
+                            <ClockCircleOutlined style={{ color: '#1890ff' }} />
+                            <Text strong>
+                              {dayjs(log.report_date || log.log_date || log.created_at).format('DD/MM/YYYY HH:mm')}
+                            </Text>
+                          </Space>
+                          <Tag color="blue">{log.progress_percentage || 0}%</Tag>
+                        </div>
+                        {log.user_id && (
+                          <div>
+                            <UserOutlined style={{ marginRight: '8px', color: '#8c8c8c' }} />
+                            <Text type="secondary">
+                              {typeof log.user_id === 'object' 
+                                ? log.user_id?.full_name || log.user_id?.email || 'N/A'
+                                : 'N/A'}
+                            </Text>
+                          </div>
+                        )}
+                        {log.work_description && (
+                          <div style={{ marginTop: '8px', padding: '12px', background: '#f5f5f5', borderRadius: '4px' }}>
+                            <Text strong style={{ display: 'block', marginBottom: '4px', color: '#1890ff' }}>
+                              Ghi chú gửi Header Department:
+                            </Text>
+                            <Text>{log.work_description}</Text>
+                          </div>
+                        )}
+                        {log.hours_worked > 0 && (
+                          <div>
+                            <Text type="secondary">Giờ làm việc: {log.hours_worked}h</Text>
+                          </div>
+                        )}
+                      </Space>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
     </motion.div>
   );
 };

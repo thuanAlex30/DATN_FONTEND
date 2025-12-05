@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../../../store';
 import { createRisk, updateRisk } from '../../../../store/slices/projectRiskSlice';
 import type { CreateRiskData, UpdateRiskData } from '../../../../types/projectRisk';
-import userService from '../../../../services/userService';
+import projectService from '../../../../services/projectService';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -43,11 +43,14 @@ const RiskFormModal: React.FC<RiskFormModalProps> = ({
   useEffect(() => {
     if (visible) {
       if (mode === 'edit' && editingRisk) {
+        // Convert probability from 0-1 to 1-5 scale for form display
+        const probabilityForForm = editingRisk.probability != null ? Math.round(editingRisk.probability * 5) : 3;
+        
         form.setFieldsValue({
           risk_name: editingRisk.risk_name,
           description: editingRisk.description,
           risk_category: editingRisk.risk_category,
-          probability: editingRisk.probability,
+          probability: probabilityForForm, // Convert 0-1 to 1-5 for display
           impact_score: editingRisk.impact_score,
           mitigation_plan: editingRisk.mitigation_plan,
           owner_id: editingRisk.owner_id,
@@ -63,29 +66,31 @@ const RiskFormModal: React.FC<RiskFormModalProps> = ({
   const loadManagers = async () => {
     try {
       setLoadingManagers(true);
-      const managersResponse = await userService.getPotentialManagers();
+      // Load available employees để chọn làm người phụ trách
+      const employeesResponse = await projectService.getAvailableEmployees();
       
-      if (managersResponse.success) {
-        const managersData = managersResponse.data?.managers || managersResponse.data;
+      if (employeesResponse.success && employeesResponse.data) {
+        const employeesData = Array.isArray(employeesResponse.data) 
+          ? employeesResponse.data 
+          : (employeesResponse.data.data || []);
         
-        if (Array.isArray(managersData) && managersData.length > 0) {
-          const mappedManagers = managersData.map((manager: any) => ({
-            id: manager.id,
-            name: manager.full_name,
-            email: manager.email
+        if (Array.isArray(employeesData) && employeesData.length > 0) {
+          const mappedManagers = employeesData.map((employee: any) => ({
+            id: employee.id || employee._id,
+            name: employee.full_name || employee.name || employee.fullName || '',
+            email: employee.email || ''
           }));
           setManagers(mappedManagers);
         } else {
           setManagers([]);
         }
       } else {
-        console.error('Failed to load managers:', managersResponse.message);
-        message.error('Không thể tải danh sách manager');
+        console.error('Failed to load employees:', employeesResponse.message);
         setManagers([]);
       }
     } catch (error) {
-      console.error('Error loading managers:', error);
-      message.error('Lỗi khi tải danh sách manager');
+      console.error('Error loading employees:', error);
+      message.error('Lỗi khi tải danh sách nhân viên');
       setManagers([]);
     } finally {
       setLoadingManagers(false);
@@ -96,11 +101,19 @@ const RiskFormModal: React.FC<RiskFormModalProps> = ({
     try {
       const values = await form.validateFields();
       
+      // Normalize probability from 1-5 to 0-1 (backend requires 0-1)
+      const normalizedProbability = values.probability / 5;
+      
+      // Calculate risk_score: probability (0-1) * impact_score (1-5) = 0-5
+      // But ensure it doesn't exceed 5
+      const calculatedRiskScore = Math.min(normalizedProbability * values.impact_score, 5);
+      
       const riskData = {
         ...values,
         project_id: projectId,
-        target_resolution_date: values.target_resolution_date?.toISOString(),
-        risk_score: values.probability * values.impact_score,
+        probability: normalizedProbability, // Convert 1-5 to 0-1
+        target_resolution_date: values.target_resolution_date ? dayjs(values.target_resolution_date).toDate().toISOString() : undefined,
+        risk_score: calculatedRiskScore,
       };
 
       if (mode === 'create') {

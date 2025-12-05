@@ -241,8 +241,66 @@ const PPEManagement: React.FC = () => {
         ppeService.getPPEIssuances()
       ]);
       
-      setPpeCategories(categoriesRes || []);
-      setPpeItems(itemsRes || []);
+      // Ensure data is an array - handle both direct array and wrapped response
+      let categories: PPECategory[] = [];
+      let items: PPEItem[] = [];
+      
+      if (Array.isArray(categoriesRes)) {
+        categories = categoriesRes;
+      } else if (categoriesRes && typeof categoriesRes === 'object' && 'data' in categoriesRes) {
+        categories = Array.isArray((categoriesRes as any).data) ? (categoriesRes as any).data : [];
+      }
+      
+      if (Array.isArray(itemsRes)) {
+        items = itemsRes;
+      } else if (itemsRes && typeof itemsRes === 'object') {
+        // Handle different response formats
+        if ('data' in itemsRes) {
+          items = Array.isArray((itemsRes as any).data) ? (itemsRes as any).data : [];
+        } else if ('items' in itemsRes) {
+          // Handle inventoryReport format
+          items = Array.isArray((itemsRes as any).items) ? (itemsRes as any).items : [];
+        }
+      }
+      
+      // If items is still empty, try to get from inventory report as fallback
+      if (items.length === 0) {
+        try {
+          const inventoryReport = await ppeService.getInventoryReport();
+          if (inventoryReport && (inventoryReport as any).items && Array.isArray((inventoryReport as any).items)) {
+            items = (inventoryReport as any).items;
+            console.log('[PPE Management] Using items from inventory report:', items.length);
+          }
+        } catch (err) {
+          console.warn('[PPE Management] Could not load items from inventory report:', err);
+        }
+      }
+      
+      // Normalize items data - ensure consistent structure
+      items = items.map((item: any) => {
+        // Handle category_id as object or string
+        const categoryId = typeof item.category_id === 'object' && item.category_id
+          ? (item.category_id.id || (item.category_id as any)._id || item.category_id)
+          : item.category_id;
+        
+        return {
+          ...item,
+          id: item.id || item._id,
+          category_id: categoryId,
+          // Ensure all required fields exist
+          item_name: item.item_name || '',
+          item_code: item.item_code || '',
+          quantity_available: item.quantity_available || 0,
+          quantity_allocated: item.quantity_allocated || 0,
+        };
+      });
+      
+      console.log('[PPE Management] Loaded categories:', categories.length);
+      console.log('[PPE Management] Loaded items:', items.length);
+      console.log('[PPE Management] Items data:', items);
+      
+      setPpeCategories(categories);
+      setPpeItems(items);
       
       // Filter to show only Admin->Manager issuances in "Phát PPE" tab
       const allIssuances = issuancesRes || [];
@@ -271,9 +329,16 @@ const PPEManagement: React.FC = () => {
       
       console.log('[Admin PPE] Total issuances:', allIssuances.length);
       console.log('[Admin PPE] Admin->Manager issuances:', adminToManagerPPE.length);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading PPE data:', err);
-      message.error('Không thể tải dữ liệu PPE');
+      const errorMessage = err?.response?.data?.message || err?.message || 'Không thể tải dữ liệu PPE';
+      message.error(errorMessage);
+      
+      // Set empty arrays on error to prevent undefined issues
+      setPpeCategories([]);
+      setPpeItems([]);
+      setPpeIssuances([]);
+      setAdminIssuedPPE([]);
     } finally {
       setLoading(prev => ({ ...prev, categories: false, items: false, issuances: false }));
     }
@@ -307,18 +372,32 @@ const PPEManagement: React.FC = () => {
 
   // Get filtered items
   const getFilteredItems = () => {
+    if (!ppeItems || !Array.isArray(ppeItems)) {
+      console.warn('[PPE Management] ppeItems is not an array:', ppeItems);
+      return [];
+    }
+    
     let filtered = ppeItems;
     
     if (searchTerm) {
-      filtered = filtered.filter(item =>
-        item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.item_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.brand || '').toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(item => {
+        const itemName = item.item_name?.toLowerCase() || '';
+        const itemCode = item.item_code?.toLowerCase() || '';
+        const brand = (item.brand || '').toLowerCase();
+        const search = searchTerm.toLowerCase();
+        return itemName.includes(search) || itemCode.includes(search) || brand.includes(search);
+      });
     }
     
     if (selectedCategoryFilter) {
-      filtered = filtered.filter(item => item.category_id === selectedCategoryFilter);
+      filtered = filtered.filter(item => {
+        // Handle both string and object category_id
+        const itemCategoryId = typeof item.category_id === 'object' && item.category_id 
+          ? (item.category_id.id || (item.category_id as any)._id)
+          : item.category_id;
+        return itemCategoryId === selectedCategoryFilter || 
+               (itemCategoryId && itemCategoryId.toString() === selectedCategoryFilter);
+      });
     }
     
     return filtered;
@@ -394,8 +473,6 @@ const PPEManagement: React.FC = () => {
             department_id: { id: dept.id || dept._id, department_name: dept.department_name },
             // convenience fields for table renderers
             department_name: dept.department_name,
-            position: mgr.position_id?.position_name || mgr.position || null,
-            position_id: mgr.position_id,
             is_active: mgr.is_active ?? true,
             created_at: mgr.created_at,
           } as any;
@@ -1038,7 +1115,7 @@ const PPEManagement: React.FC = () => {
           <div>
             <div style={{ fontWeight: 'bold' }}>{text}</div>
             <div style={{ fontSize: '12px', color: '#666' }}>
-              {record.department_name || 'Không xác định'} - {record.position || 'Không xác định'}
+              {record.department_name || 'Không xác định'}
             </div>
           </div>
         </Space>
@@ -1628,13 +1705,24 @@ const PPEManagement: React.FC = () => {
               <Table
                 columns={itemColumns}
                 dataSource={getFilteredItems()}
-                rowKey={(record) => record.id || (record as any)._id}
+                rowKey={(record) => record.id || (record as any)._id || `item-${Math.random()}`}
                 pagination={{
                   pageSize: 10,
                   showSizeChanger: true,
                   showQuickJumper: true,
                   showTotal: (total, range) => 
                     `${range[0]}-${range[1]} của ${total} thiết bị`,
+                }}
+                locale={{
+                  emptyText: (
+                    <div style={{ padding: '40px', textAlign: 'center' }}>
+                      <SafetyOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+                      <div style={{ color: '#999', fontSize: '16px' }}>Chưa có thiết bị nào</div>
+                      <div style={{ color: '#999', fontSize: '14px', marginTop: '8px' }}>
+                        Nhấn "Thêm thiết bị" để tạo thiết bị mới
+                      </div>
+                    </div>
+                  )
                 }}
               />
             )}

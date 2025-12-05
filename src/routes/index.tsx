@@ -211,9 +211,7 @@ const AppRoutes = () => {
                 path="/header-department/dashboard" 
                 element={
                     <AuthGuard minRoleLevel={80} tenantScope="tenant" departmentScope="hierarchy">
-                        <HeaderDepartmentLayout>
-                            <HeaderDepartmentDashboard />
-                        </HeaderDepartmentLayout>
+                        <HeaderDepartmentDashboard />
                     </AuthGuard>
                 } 
             />

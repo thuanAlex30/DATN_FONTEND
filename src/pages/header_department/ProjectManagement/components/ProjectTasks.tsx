@@ -15,7 +15,10 @@ import {
   Alert,
   Spin,
   Divider,
-  Badge
+  Badge,
+  Modal,
+  Space,
+  Empty
 } from 'antd';
 import {
   PlusOutlined,
@@ -31,11 +34,15 @@ import {
   FlagOutlined,
   FileTextOutlined,
   TeamOutlined,
-  EnvironmentOutlined
+  EnvironmentOutlined,
+  EyeOutlined,
+  HistoryOutlined
 } from '@ant-design/icons';
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectTasks, deleteTask } from '../../../../store/slices/projectTaskSlice';
 import TaskFormModal from './TaskFormModal';
+import { projectTaskService } from '../../../../services/projectTaskService';
+import dayjs from 'dayjs';
 
 interface ProjectTasksProps {
   projectId: string;
@@ -48,6 +55,10 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
   const { tasks, loading, error } = useSelector((state: RootState) => state.projectTask);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [taskProgressLogs, setTaskProgressLogs] = useState<any[]>([]);
+  const [loadingTaskLogs, setLoadingTaskLogs] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -79,16 +90,43 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
     dispatch(fetchProjectTasks(projectId));
   };
 
+  const handleViewTask = async (task: any) => {
+    setSelectedTask(task);
+    setViewModalVisible(true);
+    
+    // Load progress logs
+    const taskId = task._id || task.id;
+    if (taskId) {
+      setLoadingTaskLogs(true);
+      try {
+        const response = await projectTaskService.getTaskProgressLogs(taskId);
+        if (response.success && response.data) {
+          setTaskProgressLogs(response.data);
+        } else {
+          setTaskProgressLogs([]);
+        }
+      } catch (error: any) {
+        console.error('Error loading task progress logs:', error);
+        setTaskProgressLogs([]);
+      } finally {
+        setLoadingTaskLogs(false);
+      }
+    }
+  };
+
 
   const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'completed':
+    const statusUpper = status?.toUpperCase();
+    switch (statusUpper) {
+      case 'COMPLETED':
         return { color: 'success', icon: <CheckCircleOutlined />, text: 'Hoàn thành' };
-      case 'in_progress':
+      case 'IN_PROGRESS':
         return { color: 'processing', icon: <PlayCircleOutlined />, text: 'Đang thực hiện' };
-      case 'pending':
+      case 'PENDING':
         return { color: 'warning', icon: <PauseCircleOutlined />, text: 'Chờ thực hiện' };
-      case 'cancelled':
+      case 'ON_HOLD':
+        return { color: 'default', icon: <PauseCircleOutlined />, text: 'Tạm dừng' };
+      case 'CANCELLED':
         return { color: 'error', icon: <ExclamationCircleOutlined />, text: 'Đã hủy' };
       default:
         return { color: 'default', icon: <FileTextOutlined />, text: 'Không xác định' };
@@ -96,12 +134,14 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
   };
 
   const getPriorityConfig = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return { color: 'red', icon: <FlagOutlined />, text: 'Cao' };
-      case 'medium':
+    const priorityUpper = priority?.toUpperCase();
+    switch (priorityUpper) {
+      case 'URGENT':
+      case 'HIGH':
+        return { color: 'red', icon: <FlagOutlined />, text: priorityUpper === 'URGENT' ? 'Khẩn cấp' : 'Cao' };
+      case 'MEDIUM':
         return { color: 'orange', icon: <FlagOutlined />, text: 'Trung bình' };
-      case 'low':
+      case 'LOW':
         return { color: 'green', icon: <FlagOutlined />, text: 'Thấp' };
       default:
         return { color: 'default', icon: <FlagOutlined />, text: 'Không xác định' };
@@ -120,13 +160,17 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
   // Calculate statistics
   const stats = {
     total: tasks?.length || 0,
-    completed: tasks?.filter(t => t.status === 'completed').length || 0,
-    inProgress: tasks?.filter(t => t.status === 'in_progress').length || 0,
-    pending: tasks?.filter(t => t.status === 'pending').length || 0,
-    highPriority: tasks?.filter(t => t.priority === 'high').length || 0,
+    completed: tasks?.filter(t => t.status?.toUpperCase() === 'COMPLETED').length || 0,
+    inProgress: tasks?.filter(t => t.status?.toUpperCase() === 'IN_PROGRESS').length || 0,
+    pending: tasks?.filter(t => t.status?.toUpperCase() === 'PENDING').length || 0,
+    highPriority: tasks?.filter(t => {
+      const priority = t.priority?.toUpperCase();
+      return priority === 'HIGH' || priority === 'URGENT';
+    }).length || 0,
     overdue: tasks?.filter(t => {
-      if (!t.end_date) return false;
-      return new Date(t.end_date) < new Date() && t.status !== 'completed';
+      if (!t.planned_end_date) return false;
+      const status = t.status?.toUpperCase();
+      return new Date(t.planned_end_date) < new Date() && status !== 'COMPLETED';
     }).length || 0
   };
 
@@ -266,13 +310,14 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
       ) : (
         <div className="space-y-4">
           {tasks.map((task, index) => {
-            const statusConfig = getStatusConfig(task.status);
-            const priorityConfig = getPriorityConfig(task.priority);
-            const isOverdue = task.end_date && new Date(task.end_date) < new Date() && task.status !== 'completed';
+            const statusConfig = getStatusConfig(task.status || '');
+            const priorityConfig = getPriorityConfig(task.priority || '');
+            const statusUpper = task.status?.toUpperCase();
+            const isOverdue = task.planned_end_date && new Date(task.planned_end_date) < new Date() && statusUpper !== 'COMPLETED';
             
             return (
               <motion.div
-                key={task.id}
+                key={task.id || task._id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -282,6 +327,14 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
                     isOverdue ? 'border-red-300 bg-red-50' : ''
                   }`}
                   actions={[
+                    <Tooltip title="Xem chi tiết">
+                      <Button
+                        type="text"
+                        icon={<EyeOutlined />}
+                        onClick={() => handleViewTask(task)}
+                        className="text-green-500 hover:text-green-700"
+                      />
+                    </Tooltip>,
                     <Tooltip title="Chỉnh sửa">
                       <Button
                         type="text"
@@ -293,7 +346,7 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
                     <Popconfirm
                       title="Xóa nhiệm vụ"
                       description="Bạn có chắc chắn muốn xóa nhiệm vụ này?"
-                      onConfirm={() => handleDeleteTask(task.id)}
+                      onConfirm={() => handleDeleteTask(task.id || task._id)}
                       okText="Xóa"
                       cancelText="Hủy"
                     >
@@ -353,7 +406,7 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
                               Thời gian
                             </Text>
                             <div className="text-sm">
-                              {formatDate(task.start_date)} - {formatDate(task.end_date)}
+                              {formatDate(task.planned_start_date)} - {formatDate(task.planned_end_date)}
                             </div>
                           </div>
                         </div>
@@ -366,7 +419,7 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
                               Ước tính
                             </Text>
                             <div className="text-sm">
-                              {task.estimated_hours || 0}h
+                              {task.planned_duration_hours || 0}h
                             </div>
                           </div>
                         </div>
@@ -379,7 +432,7 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
                               Giai đoạn
                             </Text>
                             <div className="text-sm">
-                              {task.phase_id || 'N/A'}
+                              {(task as any).phase_id?.phase_name || (task as any).phase_name || 'N/A'}
                             </div>
                           </div>
                         </div>
@@ -392,7 +445,9 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
                               Người phụ trách
                             </Text>
                             <div className="text-sm">
-                              Chưa phân công
+                              {(task as any).responsible_user_id?.full_name || 
+                               (task as any).responsible_user?.full_name || 
+                               (task.responsible_user_id ? 'Đã phân công' : 'Chưa phân công')}
                             </div>
                           </div>
                         </div>
@@ -406,11 +461,11 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
                           Tiến độ
                         </Text>
                         <Text className="text-sm font-medium">
-                          {task.progress || 0}%
+                          {task.progress_percentage || 0}%
                         </Text>
                       </div>
                       <Progress
-                        percent={task.progress || 0}
+                        percent={task.progress_percentage || 0}
                         strokeColor={{
                           '0%': '#108ee9',
                           '100%': '#87d068',
@@ -435,6 +490,162 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
         projectId={projectId}
         task={editingTask}
       />
+
+      {/* View Task Detail Modal with Progress Logs */}
+      <Modal
+        title={
+          <Space>
+            <EyeOutlined />
+            <span>Chi tiết nhiệm vụ - {selectedTask?.task_name}</span>
+          </Space>
+        }
+        open={viewModalVisible}
+        onCancel={() => {
+          setViewModalVisible(false);
+          setSelectedTask(null);
+          setTaskProgressLogs([]);
+        }}
+        footer={[
+          <Button key="close" onClick={() => {
+            setViewModalVisible(false);
+            setSelectedTask(null);
+            setTaskProgressLogs([]);
+          }}>
+            Đóng
+          </Button>
+        ]}
+        width={800}
+      >
+        {selectedTask && (
+          <div>
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Title level={5}>{selectedTask.task_name}</Title>
+                <Text>{selectedTask.description || 'Không có mô tả'}</Text>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Trạng thái:</Text>
+                <br />
+                <Tag color={getStatusConfig(selectedTask.status || '').color}>
+                  {getStatusConfig(selectedTask.status || '').text}
+                </Tag>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Ưu tiên:</Text>
+                <br />
+                <Tag color={getPriorityConfig(selectedTask.priority || '').color}>
+                  {getPriorityConfig(selectedTask.priority || '').text}
+                </Tag>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Người phụ trách:</Text>
+                <br />
+                <Text>
+                  {(selectedTask as any).responsible_user_id?.full_name || 
+                   (selectedTask as any).responsible_user?.full_name || 
+                   'Chưa phân công'}
+                </Text>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Tiến độ:</Text>
+                <br />
+                <Progress 
+                  percent={selectedTask.progress_percentage || 0} 
+                  status={selectedTask.progress_percentage === 100 ? 'success' : 'active'}
+                />
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Ngày bắt đầu:</Text>
+                <br />
+                <Text>{dayjs(selectedTask.planned_start_date).format('DD/MM/YYYY')}</Text>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Ngày hết hạn:</Text>
+                <br />
+                <Text>{dayjs(selectedTask.planned_end_date).format('DD/MM/YYYY')}</Text>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Giờ ước tính:</Text>
+                <br />
+                <Text>{selectedTask.planned_duration_hours || 0} giờ</Text>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Giờ thực tế:</Text>
+                <br />
+                <Text>{selectedTask.actual_duration_hours || 0} giờ</Text>
+              </Col>
+            </Row>
+            
+            {/* Lịch sử báo cáo từ Manager */}
+            <div style={{ marginTop: '24px', borderTop: '1px solid #f0f0f0', paddingTop: '16px' }}>
+              <Title level={5}>
+                <HistoryOutlined style={{ marginRight: '8px' }} />
+                Lịch sử báo cáo từ Manager
+              </Title>
+              {loadingTaskLogs ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <Spin size="small" />
+                </div>
+              ) : taskProgressLogs.length === 0 ? (
+                <Empty description="Chưa có báo cáo nào từ Manager" size="small" />
+              ) : (
+                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  {taskProgressLogs.map((log: any, index: number) => (
+                    <Card
+                      key={log.id || log._id || index}
+                      style={{ marginBottom: '12px', borderRadius: '8px' }}
+                      size="small"
+                    >
+                      <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Space>
+                            <ClockCircleOutlined style={{ color: '#1890ff' }} />
+                            <Text strong>
+                              {dayjs(log.report_date || log.log_date || log.created_at).format('DD/MM/YYYY HH:mm')}
+                            </Text>
+                          </Space>
+                          <Tag color="blue">{log.progress_percentage || 0}%</Tag>
+                        </div>
+                        {log.user_id && (
+                          <div>
+                            <UserOutlined style={{ marginRight: '8px', color: '#8c8c8c' }} />
+                            <Text type="secondary">
+                              {typeof log.user_id === 'object' 
+                                ? log.user_id?.full_name || log.user_id?.email || 'N/A'
+                                : 'N/A'}
+                            </Text>
+                          </div>
+                        )}
+                        {log.work_description && (
+                          <div style={{ marginTop: '8px', padding: '12px', background: '#f5f5f5', borderRadius: '4px' }}>
+                            <Text strong style={{ display: 'block', marginBottom: '4px', color: '#1890ff' }}>
+                              Ghi chú gửi Header Department:
+                            </Text>
+                            <Text>{log.work_description}</Text>
+                          </div>
+                        )}
+                        {log.hours_worked > 0 && (
+                          <div>
+                            <Text type="secondary">Giờ làm việc: {log.hours_worked}h</Text>
+                          </div>
+                        )}
+                      </Space>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
     </motion.div>
   );
 };

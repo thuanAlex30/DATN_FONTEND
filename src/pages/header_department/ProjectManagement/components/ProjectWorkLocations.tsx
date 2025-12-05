@@ -298,24 +298,24 @@ const ProjectWorkLocations: React.FC<ProjectWorkLocationsProps> = ({ projectId }
       dataIndex: 'safety_equipment_required',
       key: 'safety_equipment_required',
       width: 200,
-      render: (equipment: { equipment_name: string; is_mandatory: boolean }[]) => (
-        <div>
+      render: (equipment: { equipment_name: string; is_mandatory: boolean }[], record: WorkLocation) => (
+        <div key={`equipment-${record._id}`}>
           {equipment && equipment.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {equipment.slice(0, 2).map((item, index) => (
-                <Tag key={index} color="red" size="small">
+                <Tag key={`${record._id}-equipment-${index}-${item.equipment_name}`} color="red" size="small">
                   <SafetyOutlined className="mr-1" />
                   {item.equipment_name}
                 </Tag>
               ))}
               {equipment.length > 2 && (
-                <Tag color="red" size="small">
+                <Tag key={`${record._id}-equipment-more`} color="red" size="small">
                   +{equipment.length - 2}
                 </Tag>
               )}
             </div>
           ) : (
-            <Tag color="green" size="small">
+            <Tag key={`${record._id}-equipment-safe`} color="green" size="small">
               <CheckCircleOutlined className="mr-1" />
               An toàn
             </Tag>
@@ -466,7 +466,7 @@ const ProjectWorkLocations: React.FC<ProjectWorkLocationsProps> = ({ projectId }
         <Table
           columns={columns}
           dataSource={workLocations}
-          rowKey="_id"
+          rowKey={(record) => record._id || record.id || `location-${workLocations.indexOf(record)}`}
           loading={loading}
           pagination={{
             pageSize: 10,
@@ -598,12 +598,12 @@ const ProjectWorkLocations: React.FC<ProjectWorkLocationsProps> = ({ projectId }
               }
             >
               {ppeItems.map(item => (
-                <Select.Option key={item.id} value={item.item_name}>
-                  <Space key={`space-${item.id}`}>
-                    <SafetyOutlined key={`icon-${item.id}`} />
-                    <div key={`content-${item.id}`}>
-                      <div key={`name-${item.id}`}>{item.item_name}</div>
-                      <Text key={`desc-${item.id}`} type="secondary" style={{ fontSize: '12px' }}>
+                <Select.Option key={item.id || item._id} value={item.item_name}>
+                  <Space>
+                    <SafetyOutlined />
+                    <div>
+                      <div>{item.item_name}</div>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
                         {item.item_code} - {item.brand} {item.model}
                       </Text>
                     </div>

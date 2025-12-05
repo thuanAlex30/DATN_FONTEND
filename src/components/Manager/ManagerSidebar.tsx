@@ -41,88 +41,42 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
   };
 
   const menuItems: MenuProps['items'] = [
-    {
-      key: '/home',
-      icon: <HomeOutlined />,
-      label: 'Trang chủ',
-    },
-    {
-      key: '/manager/dashboard',
-      icon: <DashboardOutlined />,
-      label: 'Dashboard',
-    },
-    {
-      key: '/manager/profile',
-      icon: <UserOutlined />,
-      label: 'Thông tin cá nhân',
-    },
-    {
-      key: '/manager/incidents/report',
-      icon: <ExclamationCircleOutlined />,
-      label: 'Báo cáo sự cố',
-    },
-    {
-      key: '/manager/training',
-      icon: <BookOutlined />,
-      label: 'Quản lý đào tạo',
-    },
-    {
-      key: '/employee/training',
-      icon: <BookOutlined />,
-      label: 'Đào tạo',
-    },
-    {
-      key: '/manager/ppe',
-      icon: <SafetyOutlined />,
-      label: 'Quản lý PPE',
-    },
-    {
-      key: '/employee/ppe',
-      icon: <SafetyOutlined />,
-      label: 'PPE cá nhân',
-    },
-    {
-      key: '/manager/project-management',
-      icon: <ProjectOutlined />,
-      label: 'Quản lý dự án',
-    },
-    {
-      key: '/employee/project-management',
-      icon: <ProjectOutlined />,
-      label: 'Quản lý dự án',
-    },
-    {
-      key: '/manager/hikvision-events',
-      icon: <LockOutlined />,
-      label: 'Kiểm soát truy cập',
-    },
-    // Các tính năng sẽ được thêm sau
-    // {
-    //   key: '/manager/employees',
-    //   icon: <TeamOutlined />,
-    //   label: 'Quản lý nhân viên',
-    // },
-    // {
-    //   key: '/manager/reports',
-    //   icon: <FileTextOutlined />,
-    //   label: 'Báo cáo',
-    // },
-    // {
-    //   key: '/manager/analytics',
-    //   icon: <BarChartOutlined />,
-    //   label: 'Phân tích',
-    // },
-    // {
-    //   key: '/manager/schedule',
-    //   icon: <CalendarOutlined />,
-    //   label: 'Lịch trình',
-    // },
-    // {
-    //   key: '/manager/settings',
-    //   icon: <SettingOutlined />,
-    //   label: 'Cài đặt',
-    // },
-  ];
+  {
+    key: '/manager/dashboard',
+    icon: <DashboardOutlined />,
+    label: 'Dashboard',
+  },
+  {
+    key: '/manager/profile',
+    icon: <UserOutlined />,
+    label: 'Thông tin cá nhân',
+  },
+  {
+    key: '/manager/incidents/report',
+    icon: <ExclamationCircleOutlined />,
+    label: 'Báo cáo sự cố',
+  },
+  {
+    key: '/manager/training',
+    icon: <BookOutlined />,
+    label: 'Quản lý đào tạo',
+  },
+  {
+    key: '/manager/ppe',
+    icon: <SafetyOutlined />,
+    label: 'Quản lý PPE',
+  },
+  {
+    key: '/manager/project-management',
+    icon: <ProjectOutlined />,
+    label: 'Quản lý dự án',
+  },
+  {
+    key: '/manager/hikvision-events',
+    icon: <LockOutlined />,
+    label: 'Kiểm soát truy cập',
+  },
+];
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
     navigate(key as string);
@@ -136,10 +90,10 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
       {/* Header */}
       <div className={styles.sidebarHeader}>
         <Space direction="vertical" size="small" style={{ width: '100%' }}>
-          <Title level={3} style={{ margin: 0, color: '#1890ff' }}>
-            <SafetyOutlined /> An toàn lao động
+          <Title level={3} style={{ margin: 0, background: 'linear-gradient(135deg, #1890ff 0%, #722ed1 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 700, fontSize: '20px' }}>
+            <SafetyOutlined style={{ marginRight: '8px', fontSize: '22px' }} /> An toàn lao động
           </Title>
-          <div style={{ fontSize: '12px', color: '#666' }}>
+          <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, letterSpacing: '0.02em' }}>
             Manager Dashboard
           </div>
         </Space>

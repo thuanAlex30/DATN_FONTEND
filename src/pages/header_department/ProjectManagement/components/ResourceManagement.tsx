@@ -279,26 +279,26 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ projectId }) =>
       key: 'actions',
       render: (_: any, record: ProjectResource) => (
         <Space>
-          <Tooltip title="Xem chi tiết">
+          <Tooltip key="view" title="Xem chi tiết">
             <Button 
               type="text" 
               icon={<EyeOutlined />} 
               onClick={() => handleView(record)}
             />
           </Tooltip>
-          <Tooltip title="Chỉnh sửa">
+          <Tooltip key="edit" title="Chỉnh sửa">
             <Button 
               type="text" 
               icon={<EditOutlined />} 
               onClick={() => handleEdit(record)}
             />
           </Tooltip>
-          <Tooltip title="Xóa">
+          <Tooltip key="delete" title="Xóa">
             <Button 
               type="text" 
               danger 
               icon={<DeleteOutlined />} 
-              onClick={() => handleDelete(record._id)}
+              onClick={() => handleDelete(record._id || record.id)}
             />
           </Tooltip>
         </Space>
@@ -357,7 +357,7 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ projectId }) =>
         <Table
           columns={columns}
           dataSource={resources}
-          rowKey="id"
+          rowKey={(record) => record._id || record.id || `resource-${Math.random()}`}
           loading={loading}
           pagination={{
             pageSize: 10,

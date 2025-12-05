@@ -18,7 +18,9 @@ import {
   Space,
   Tooltip,
   Statistic,
-  Avatar
+  Avatar,
+  Spin,
+  Empty
 } from 'antd';
 import {
   PlusOutlined,
@@ -29,7 +31,8 @@ import {
   ClockCircleOutlined,
   ExclamationCircleOutlined,
   UserOutlined,
-  TeamOutlined
+  TeamOutlined,
+  HistoryOutlined
 } from '@ant-design/icons';
 import { projectTaskService } from '../../../../services/projectTaskService';
 import dayjs from 'dayjs';
@@ -67,6 +70,8 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId }) => {
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
   const [form] = Form.useForm();
+  const [taskProgressLogs, setTaskProgressLogs] = useState<any[]>([]);
+  const [loadingTaskLogs, setLoadingTaskLogs] = useState(false);
 
   // Load tasks
   const loadTasks = async () => {
@@ -152,9 +157,28 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId }) => {
   };
 
   // Handle view task
-  const handleView = (task: ProjectTask) => {
+  const handleView = async (task: ProjectTask) => {
     setSelectedTask(task);
     setViewModalVisible(true);
+    
+    // Load progress logs
+    const taskId = (task as any)._id || task.id;
+    if (taskId) {
+      setLoadingTaskLogs(true);
+      try {
+        const response = await projectTaskService.getTaskProgressLogs(taskId);
+        if (response.success && response.data) {
+          setTaskProgressLogs(response.data);
+        } else {
+          setTaskProgressLogs([]);
+        }
+      } catch (error: any) {
+        console.error('Error loading task progress logs:', error);
+        setTaskProgressLogs([]);
+      } finally {
+        setLoadingTaskLogs(false);
+      }
+    }
   };
 
   // Handle edit task
@@ -700,6 +724,66 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId }) => {
                 </Col>
               )}
             </Row>
+            
+            {/* Lịch sử báo cáo từ Manager */}
+            <div style={{ marginTop: '24px', borderTop: '1px solid #f0f0f0', paddingTop: '16px' }}>
+              <Title level={5}>
+                <HistoryOutlined style={{ marginRight: '8px' }} />
+                Lịch sử báo cáo từ Manager
+              </Title>
+              {loadingTaskLogs ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <Spin size="small" />
+                </div>
+              ) : taskProgressLogs.length === 0 ? (
+                <Empty description="Chưa có báo cáo nào từ Manager" size="small" />
+              ) : (
+                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  {taskProgressLogs.map((log: any, index: number) => (
+                    <Card
+                      key={log.id || log._id || index}
+                      style={{ marginBottom: '12px', borderRadius: '8px' }}
+                      size="small"
+                    >
+                      <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Space>
+                            <ClockCircleOutlined style={{ color: '#1890ff' }} />
+                            <Text strong>
+                              {dayjs(log.report_date || log.log_date || log.created_at).format('DD/MM/YYYY HH:mm')}
+                            </Text>
+                          </Space>
+                          <Tag color="blue">{log.progress_percentage || 0}%</Tag>
+                        </div>
+                        {log.user_id && (
+                          <div>
+                            <UserOutlined style={{ marginRight: '8px', color: '#8c8c8c' }} />
+                            <Text type="secondary">
+                              {typeof log.user_id === 'object' 
+                                ? log.user_id?.full_name || log.user_id?.email || 'N/A'
+                                : 'N/A'}
+                            </Text>
+                          </div>
+                        )}
+                        {log.work_description && (
+                          <div style={{ marginTop: '8px', padding: '12px', background: '#f5f5f5', borderRadius: '4px' }}>
+                            <Text strong style={{ display: 'block', marginBottom: '4px', color: '#1890ff' }}>
+                              Ghi chú gửi Header Department:
+                            </Text>
+                            <Text>{log.work_description}</Text>
+                          </div>
+                        )}
+                        {log.hours_worked > 0 && (
+                          <div>
+                            <Text type="secondary">Giờ làm việc: {log.hours_worked}h</Text>
+                          </div>
+                        )}
+                      </Space>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </Modal>
