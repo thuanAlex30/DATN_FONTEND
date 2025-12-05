@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layout, Menu } from 'antd';
+import { Layout, Menu, Button } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import {
@@ -74,11 +74,7 @@ const HeaderDepartmentSidebar: React.FC<HeaderDepartmentSidebarProps> = ({ onLog
   ];
 
   const handleMenuClick = ({ key }: { key: string }) => {
-    if (key === 'logout') {
-      handleLogout();
-    } else {
-      navigate(key);
-    }
+    navigate(key);
   };
 
   return (
@@ -102,18 +98,16 @@ const HeaderDepartmentSidebar: React.FC<HeaderDepartmentSidebarProps> = ({ onLog
       />
 
       <div className={styles.footer}>
-        <Menu
-          mode="inline"
-          items={[
-            {
-              key: 'logout',
-              icon: <LogoutOutlined />,
-              label: 'Đăng xuất',
-            },
-          ]}
-          onClick={handleMenuClick}
-          className={styles.footerMenu}
-        />
+        <Button
+          type="primary"
+          danger
+          icon={<LogoutOutlined />}
+          onClick={handleLogout}
+          className={styles.logoutButton}
+          block
+        >
+          Đăng xuất
+        </Button>
       </div>
     </Sider>
   );

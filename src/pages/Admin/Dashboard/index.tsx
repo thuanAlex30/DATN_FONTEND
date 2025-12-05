@@ -563,7 +563,7 @@ const DashboardPage: React.FC = () => {
                                         size="large"
                                         block
                                         icon={<BankOutlined />}
-                                        href="/admin/user-management"
+                                        href="/admin/department-management"
                                         className={styles.quickActionButton}
                                     >
                                         <BankOutlined className={styles.quickActionIcon} />
