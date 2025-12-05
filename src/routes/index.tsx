@@ -6,10 +6,10 @@ import LoginPage from '../pages/Login';
 import UnauthorizedPage from '../pages/Unauthorized';
 import HomePage from '../pages/Home';
 import DashboardPage from '../pages/Admin/Dashboard';
+import DepartmentManagementPage from '../pages/Admin/DepartmentManagement';
 import SystemAdminHome from '../pages/Admin/SystemAdminHome';
 import CustomersPage from '../pages/Admin/Customers';
 import UserManagementPage from '../pages/Admin/UserManagement';
-import DepartmentPositionPage from '../pages/Admin/DepartmentPosition';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
 import ProjectManagement from '../pages/header_department/ProjectManagement';
 import RoleManagementPage from '../pages/Admin/RoleManagement';
@@ -310,11 +310,11 @@ const AppRoutes = () => {
                 } 
             />
             <Route 
-                path="/admin/department-position" 
+                path="/admin/department-management" 
                 element={
                     <AuthGuard minRoleLevel={90} tenantScope="tenant">
                         <AdminLayout>
-                            <DepartmentPositionPage />
+                            <DepartmentManagementPage />
                         </AdminLayout>
                     </AuthGuard>
                 } 

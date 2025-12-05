@@ -159,6 +159,36 @@ const SystemAdminHome: React.FC = () => {
 
   const { tenants, tasks, permission_alerts } = dashboardData;
 
+  // Safe defaults for all data fields
+  const tenantsData = tenants || {
+    tenants: 0,
+    active_tenants: 0,
+    suspended_tenants: 0,
+    inactive_tenants: 0,
+    total_users: 0,
+    total_active_users: 0,
+    total_departments: 0,
+    total_projects: 0,
+    total_tasks: 0
+  };
+
+  const tasksData = tasks || {
+    total: 0,
+    pending: 0,
+    in_progress: 0,
+    completed: 0,
+    on_hold: 0,
+    cancelled: 0,
+    overdue: 0
+  };
+
+  const permissionAlerts = permission_alerts || {
+    errors: [],
+    warnings: [],
+    total_errors: 0,
+    total_warnings: 0
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -174,13 +204,13 @@ const SystemAdminHome: React.FC = () => {
       </div>
 
       {/* Permission Alerts */}
-      {permission_alerts.total_errors > 0 || permission_alerts.total_warnings > 0 ? (
+      {permissionAlerts.total_errors > 0 || permissionAlerts.total_warnings > 0 ? (
         <Alert
           message="Cảnh báo quyền truy cập"
           description={
             <div>
               <Text>
-                Có {permission_alerts.total_errors} lỗi và {permission_alerts.total_warnings} cảnh báo về quyền truy cập.
+                Có {permissionAlerts.total_errors} lỗi và {permissionAlerts.total_warnings} cảnh báo về quyền truy cập.
               </Text>
               <Button 
                 type="link" 
@@ -207,9 +237,9 @@ const SystemAdminHome: React.FC = () => {
               <div className={styles.statisticContent}>
                 <DatabaseOutlined className={styles.statisticIcon} style={{ color: '#1890ff' }} />
                 <div className={styles.statisticTitle}>Tổng số Tenants</div>
-                <div className={styles.statisticValue}>{tenants.tenants}</div>
+                <div className={styles.statisticValue}>{tenantsData.tenants}</div>
                 <div className={styles.statisticSuffix}>
-                  {tenants.active_tenants} đang hoạt động
+                  {tenantsData.active_tenants} đang hoạt động
                 </div>
               </div>
             </Card>
@@ -219,9 +249,9 @@ const SystemAdminHome: React.FC = () => {
               <div className={styles.statisticContent}>
                 <TeamOutlined className={styles.statisticIcon} style={{ color: '#52c41a' }} />
                 <div className={styles.statisticTitle}>Tổng số Người dùng</div>
-                <div className={styles.statisticValue}>{tenants.total_users}</div>
+                <div className={styles.statisticValue}>{tenantsData.total_users}</div>
                 <div className={styles.statisticSuffix}>
-                  {tenants.total_active_users} đang hoạt động
+                  {tenantsData.total_active_users} đang hoạt động
                 </div>
               </div>
             </Card>
@@ -231,9 +261,9 @@ const SystemAdminHome: React.FC = () => {
               <div className={styles.statisticContent}>
                 <ProjectOutlined className={styles.statisticIcon} style={{ color: '#faad14' }} />
                 <div className={styles.statisticTitle}>Tổng số Dự án</div>
-                <div className={styles.statisticValue}>{tenants.total_projects}</div>
+                <div className={styles.statisticValue}>{tenantsData.total_projects}</div>
                 <div className={styles.statisticSuffix}>
-                  {tenants.total_departments} phòng ban
+                  {tenantsData.total_departments} phòng ban
                 </div>
               </div>
             </Card>
@@ -243,9 +273,9 @@ const SystemAdminHome: React.FC = () => {
               <div className={styles.statisticContent}>
                 <FileTextOutlined className={styles.statisticIcon} style={{ color: '#722ed1' }} />
                 <div className={styles.statisticTitle}>Tổng số Task</div>
-                <div className={styles.statisticValue}>{tasks.total}</div>
+                <div className={styles.statisticValue}>{tasksData.total}</div>
                 <div className={styles.statisticSuffix}>
-                  {tasks.completed} đã hoàn thành
+                  {tasksData.completed} đã hoàn thành
                 </div>
               </div>
             </Card>
@@ -263,28 +293,28 @@ const SystemAdminHome: React.FC = () => {
             <Col xs={12} sm={8} md={6}>
               <div className={styles.taskStatItem}>
                 <ClockCircleOutlined className={styles.taskStatIcon} style={{ color: '#faad14' }} />
-                <div className={styles.taskStatValue}>{tasks.pending}</div>
+                <div className={styles.taskStatValue}>{tasksData.pending}</div>
                 <div className={styles.taskStatLabel}>Đang chờ</div>
               </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
               <div className={styles.taskStatItem}>
                 <SettingOutlined className={styles.taskStatIcon} style={{ color: '#1890ff' }} />
-                <div className={styles.taskStatValue}>{tasks.in_progress}</div>
+                <div className={styles.taskStatValue}>{tasksData.in_progress}</div>
                 <div className={styles.taskStatLabel}>Đang thực hiện</div>
               </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
               <div className={styles.taskStatItem}>
                 <CheckCircleOutlined className={styles.taskStatIcon} style={{ color: '#52c41a' }} />
-                <div className={styles.taskStatValue}>{tasks.completed}</div>
+                <div className={styles.taskStatValue}>{tasksData.completed}</div>
                 <div className={styles.taskStatLabel}>Hoàn thành</div>
               </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
               <div className={styles.taskStatItem}>
                 <ExclamationCircleOutlined className={styles.taskStatIcon} style={{ color: '#f5222d' }} />
-                <div className={styles.taskStatValue}>{tasks.overdue}</div>
+                <div className={styles.taskStatValue}>{tasksData.overdue}</div>
                 <div className={styles.taskStatLabel}>Quá hạn</div>
               </div>
             </Col>
@@ -370,20 +400,20 @@ const SystemAdminHome: React.FC = () => {
       </div>
 
       {/* Permission Alerts */}
-      {(permission_alerts.errors.length > 0 || permission_alerts.warnings.length > 0) && (
+      {(permissionAlerts.errors.length > 0 || permissionAlerts.warnings.length > 0) && (
         <div className={styles.alertsSection}>
           <Row gutter={[16, 16]}>
-            {permission_alerts.errors.length > 0 && (
+            {permissionAlerts.errors.length > 0 && (
               <Col xs={24} lg={12}>
                 <Card className={styles.alertCard}>
                   <div className={styles.alertCardHeader}>
                     <Title level={4} className={styles.alertCardTitle}>
                       <ExclamationCircleOutlined style={{ color: '#f5222d', marginRight: 8 }} />
-                      Lỗi Quyền Truy cập ({permission_alerts.total_errors})
+                      Lỗi Quyền Truy cập ({permissionAlerts.total_errors})
                     </Title>
                   </div>
                   <div className={styles.alertList}>
-                    {permission_alerts.errors.slice(0, 5).map((alert) => (
+                    {permissionAlerts.errors.slice(0, 5).map((alert) => (
                       <div key={alert._id} className={styles.alertItem}>
                         <Tag color="red">Lỗi</Tag>
                         <div className={styles.alertContent}>
@@ -397,30 +427,30 @@ const SystemAdminHome: React.FC = () => {
                         </div>
                       </div>
                     ))}
-                    {permission_alerts.errors.length > 5 && (
+                    {permissionAlerts.errors.length > 5 && (
                       <Button 
                         type="link" 
                         block 
                         onClick={() => navigate('/admin/system-settings')}
                       >
-                        Xem tất cả ({permission_alerts.errors.length})
+                        Xem tất cả ({permissionAlerts.errors.length})
                       </Button>
                     )}
                   </div>
                 </Card>
               </Col>
             )}
-            {permission_alerts.warnings.length > 0 && (
+            {permissionAlerts.warnings.length > 0 && (
               <Col xs={24} lg={12}>
                 <Card className={styles.alertCard}>
                   <div className={styles.alertCardHeader}>
                     <Title level={4} className={styles.alertCardTitle}>
                       <WarningOutlined style={{ color: '#faad14', marginRight: 8 }} />
-                      Cảnh báo Quyền ({permission_alerts.total_warnings})
+                      Cảnh báo Quyền ({permissionAlerts.total_warnings})
                     </Title>
                   </div>
                   <div className={styles.alertList}>
-                    {permission_alerts.warnings.slice(0, 5).map((alert) => (
+                    {permissionAlerts.warnings.slice(0, 5).map((alert) => (
                       <div key={alert._id} className={styles.alertItem}>
                         <Tag color="orange">Cảnh báo</Tag>
                         <div className={styles.alertContent}>
@@ -434,13 +464,13 @@ const SystemAdminHome: React.FC = () => {
                         </div>
                       </div>
                     ))}
-                    {permission_alerts.warnings.length > 5 && (
+                    {permissionAlerts.warnings.length > 5 && (
                       <Button 
                         type="link" 
                         block 
                         onClick={() => navigate('/admin/system-settings')}
                       >
-                        Xem tất cả ({permission_alerts.warnings.length})
+                        Xem tất cả ({permissionAlerts.warnings.length})
                       </Button>
                     )}
                   </div>

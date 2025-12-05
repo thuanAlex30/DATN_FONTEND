@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import dayjs from 'dayjs';
 import { 
     Card, 
@@ -49,6 +50,7 @@ import {
     ThunderboltOutlined,
     DeleteOutlined
 } from '@ant-design/icons';
+import type { RootState } from '../../../store';
 import SystemLogService, { type AnalyticsData } from '../../../services/SystemLogService';
 import NotificationService, { 
     type Notification, 
@@ -65,6 +67,11 @@ const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 const SystemLogs: React.FC = () => {
+    const { user: currentUser } = useSelector((state: RootState) => state.auth);
+    const isCompanyAdmin =
+        currentUser?.role?.role_code === 'company_admin' ||
+        currentUser?.role?.role_name?.toLowerCase() === 'company admin' ||
+        (currentUser?.role?.role_level ?? 0) >= 90;
     const [activeTab, setActiveTab] = useState<'logs' | 'notifications' | 'public-notifications' | 'analytics' | 'settings'>('logs');
     const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
     const [logsPagination, setLogsPagination] = useState<SystemLogPagination | null>(null);
@@ -106,6 +113,8 @@ const SystemLogs: React.FC = () => {
     
     // Modals
     const [logDetailModal, setLogDetailModal] = useState<SystemLog | null>(null);
+    const [notificationDetail, setNotificationDetail] = useState<Notification | null>(null);
+    const [publicNotificationDetail, setPublicNotificationDetail] = useState<Notification | null>(null);
     
     // Stats
     const [stats, setStats] = useState<SystemLogStats>({
@@ -295,9 +304,49 @@ const SystemLogs: React.FC = () => {
             setSettingsLoading(true);
             const settings = await NotificationService.getNotificationSettings();
             setNotificationSettings(settings);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error loading notification settings:', err);
+            
+            // Nếu API không tồn tại (404), lỗi server, hoặc timeout -> dùng cài đặt mặc định
+            const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout');
+            if (isTimeout || err?.response?.status === 404 || err?.response?.status >= 500) {
+                console.log('API không khả dụng hoặc timeout, sử dụng cài đặt mặc định');
+                const defaultSettings: NotificationSettings = {
+                    types: [
+                        { value: 'info', label: 'Thông tin', color: 'blue', enabled: true },
+                        { value: 'success', label: 'Thành công', color: 'green', enabled: true },
+                        { value: 'warning', label: 'Cảnh báo', color: 'orange', enabled: true },
+                        { value: 'error', label: 'Lỗi', color: 'red', enabled: true }
+                    ],
+                    categories: [
+                        { value: 'system', label: 'Hệ thống', enabled: true },
+                        { value: 'training', label: 'Đào tạo', enabled: true },
+                        { value: 'safety', label: 'An toàn', enabled: true },
+                        { value: 'ppe', label: 'PPE', enabled: true },
+                        { value: 'project', label: 'Dự án', enabled: true },
+                        { value: 'user', label: 'Người dùng', enabled: true },
+                        { value: 'general', label: 'Chung', enabled: true }
+                    ],
+                    priorities: [
+                        { value: 'low', label: 'Thấp', color: 'default', enabled: true },
+                        { value: 'medium', label: 'Trung bình', color: 'blue', enabled: true },
+                        { value: 'high', label: 'Cao', color: 'orange', enabled: true },
+                        { value: 'urgent', label: 'Khẩn cấp', color: 'red', enabled: true }
+                    ],
+                    auto_cleanup: {
+                        enabled: false,
+                        days: 90
+                    },
+                    real_time: {
+                        enabled: true,
+                        interval: 30
+                    }
+                };
+                setNotificationSettings(defaultSettings);
+                message.warning('Sử dụng cài đặt mặc định (API cài đặt thông báo không phản hồi)');
+            } else {
             message.error('Không thể tải cài đặt thông báo');
+            }
         } finally {
             setSettingsLoading(false);
         }
@@ -547,7 +596,17 @@ const SystemLogs: React.FC = () => {
         return (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
             {/* Filters */}
-            <Card title="Bộ lọc" size="small">
+            <Card title={
+                <Space align="center">
+                    <SettingOutlined />
+                    <span>Bộ lọc</span>
+                    {isCompanyAdmin && (
+                        <Tag color="geekblue">
+                            Company Admin • Theo dõi hoạt động trong tenant
+                        </Tag>
+                    )}
+                </Space>
+            } size="small">
                 <Row gutter={[16, 16]}>
                     <Col xs={24} sm={12} md={8}>
                         <Input
@@ -962,12 +1021,18 @@ const SystemLogs: React.FC = () => {
                             dataIndex: 'title',
                             key: 'title',
                             render: (text: string, record: Notification) => (
-                                <Space direction="vertical" size={0}>
+                                <Button
+                                    type="link"
+                                    style={{ padding: 0, textAlign: 'left' }}
+                                    onClick={() => setNotificationDetail(record)}
+                                >
+                                    <Space direction="vertical" size={0} align="start">
                                     <Text strong>{text}</Text>
                                     <Text type="secondary" ellipsis style={{ maxWidth: 320 }}>
                                         {record.message}
                                     </Text>
                                 </Space>
+                                </Button>
                             )
                         },
                         {
@@ -1202,11 +1267,17 @@ const SystemLogs: React.FC = () => {
                         >
                             <List.Item.Meta
                                 title={
+                                    <Button
+                                        type="link"
+                                        style={{ padding: 0, textAlign: 'left' }}
+                                        onClick={() => setPublicNotificationDetail(item)}
+                                    >
                                     <Space>
                                         <BellOutlined />
                                         <Text strong>{item.title}</Text>
                                         <Tag>{NotificationService.getCategoryLabel(item.category)}</Tag>
                                     </Space>
+                                    </Button>
                                 }
                                 description={
                                     <Space direction="vertical" size={4}>
@@ -1688,6 +1759,64 @@ const SystemLogs: React.FC = () => {
                         }
                     ]}
                 />
+
+        {/* Notification detail modal */}
+        <Modal
+            title={notificationDetail?.title}
+            open={!!notificationDetail}
+            onCancel={() => setNotificationDetail(null)}
+            footer={null}
+            width={640}
+        >
+            {notificationDetail && (
+                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <Space>
+                        <Tag color={NotificationService.getNotificationIcon(notificationDetail.type).color}>
+                            {NotificationService.getTypeLabel(notificationDetail.type)}
+                        </Tag>
+                        <Tag color={NotificationService.getPriorityColor(notificationDetail.priority)}>
+                            {notificationDetail.priority.toUpperCase()}
+                        </Tag>
+                        <Tag>
+                            {NotificationService.getCategoryLabel(notificationDetail.category)}
+                        </Tag>
+                    </Space>
+                    <Text>{notificationDetail.message}</Text>
+                    <Text type="secondary">
+                        Thời gian: {NotificationService.formatDateTime(notificationDetail.created_at)}
+                    </Text>
+                </Space>
+            )}
+        </Modal>
+
+        {/* Public notification detail modal */}
+        <Modal
+            title={publicNotificationDetail?.title}
+            open={!!publicNotificationDetail}
+            onCancel={() => setPublicNotificationDetail(null)}
+            footer={null}
+            width={640}
+        >
+            {publicNotificationDetail && (
+                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <Space>
+                        <Tag color={NotificationService.getNotificationIcon(publicNotificationDetail.type).color}>
+                            {NotificationService.getTypeLabel(publicNotificationDetail.type)}
+                        </Tag>
+                        <Tag color={NotificationService.getPriorityColor(publicNotificationDetail.priority)}>
+                            {publicNotificationDetail.priority.toUpperCase()}
+                        </Tag>
+                        <Tag>
+                            {NotificationService.getCategoryLabel(publicNotificationDetail.category)}
+                        </Tag>
+                    </Space>
+                    <Text>{publicNotificationDetail.message}</Text>
+                    <Text type="secondary">
+                        Thời gian: {NotificationService.formatDateTime(publicNotificationDetail.created_at)}
+                    </Text>
+                </Space>
+            )}
+        </Modal>
             </Card>
 
             {/* Modals */}

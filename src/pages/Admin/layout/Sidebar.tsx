@@ -53,6 +53,11 @@ const Sidebar = () => {
                     label: 'Dashboard',
                 },
                 {
+                    key: '/admin/department-management',
+                    icon: <BankOutlined />,
+                    label: 'Phòng ban & vị trí',
+                },
+                {
                     key: '/admin/system-logs',
                     icon: <FileTextOutlined />,
                     label: 'Nhật ký hệ thống',
@@ -78,43 +83,9 @@ const Sidebar = () => {
         },
     ];
 
-    // Check if user is company_admin (role_level 90)
-    const isCompanyAdmin = user?.role?.role_level === 90 || 
-                          user?.role?.role_code?.toLowerCase() === 'company_admin' || 
-                          user?.role?.role_name?.toLowerCase() === 'company admin';
-
-    // Menu items for company_admin - chỉ các chức năng được phép truy cập
-    const companyAdminMenuItems: MenuProps['items'] = [
-        {
-            key: 'system-management',
-            label: 'Quản lý hệ thống',
-            type: 'group',
-            children: [
-                {
-                    key: '/admin/dashboard',
-                    icon: <DashboardOutlined />,
-                    label: 'Dashboard',
-                },
-                {
-                    key: '/admin/user-management',
-                    icon: <UserOutlined />,
-                    label: 'Quản lý người dùng',
-                },
-                {
-                    key: '/admin/role-management',
-                    icon: <SafetyOutlined />,
-                    label: 'Vai trò & quyền hạn',
-                },
-                {
-                    key: '/admin/department-position',
-                    icon: <BankOutlined />,
-                    label: 'Phòng ban & vị trí',
-                },
-            ],
-        },
-    ];
-
-    // Menu items for other admin roles (nếu có)
+    // Menu items cho company_admin (và các admin không phải system_admin):
+    // Chỉ giữ: Quản lý hệ thống, Dashboard, Quản lý người dùng, Vai trò & quyền hạn,
+    // Phòng ban & vị trí, Nhật ký hệ thống
     const adminMenuItems: MenuProps['items'] = [
         {
             key: 'system-management',
@@ -132,14 +103,19 @@ const Sidebar = () => {
                     label: 'Quản lý người dùng',
                 },
                 {
+                    key: '/admin/department-management',
+                    icon: <BankOutlined />,
+                    label: 'Phòng ban & vị trí',
+                },
+                {
                     key: '/admin/role-management',
                     icon: <SafetyOutlined />,
                     label: 'Vai trò & quyền hạn',
                 },
                 {
-                    key: '/admin/department-position',
-                    icon: <BankOutlined />,
-                    label: 'Phòng ban & vị trí',
+                    key: '/admin/system-logs',
+                    icon: <FileTextOutlined />,
+                    label: 'Nhật ký hệ thống',
                 },
             ],
         },
@@ -147,8 +123,6 @@ const Sidebar = () => {
 
     const menuItems: MenuProps['items'] = isSystemAdmin 
         ? systemAdminMenuItems 
-        : isCompanyAdmin 
-        ? companyAdminMenuItems 
         : adminMenuItems;
 
     const handleMenuClick = ({ key }: { key: string }) => {

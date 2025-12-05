@@ -2,7 +2,6 @@
 export * from './auth';
 export * from './department';
 export * from './incident';
-export * from './position';
 export * from './role';
 
 // Explicit re-exports to resolve conflicts
@@ -15,35 +14,15 @@ export type { CreateAssignmentData as TaskCreateAssignmentData, UpdateAssignment
 export type { 
   Project, 
   CreateProjectData, 
-  UpdateProjectData,
-  ProjectPhase,
-  ProjectMilestone,
-  ProjectResource,
-  ProjectRisk,
-  ProjectTask,
-  ProjectStatusReport,
-  ProjectChangeRequest,
-  QualityCheckpoint
+  UpdateProjectData
 } from './project';
 
 export type { 
   User, 
   UserQuery, 
-  CreateUserData, 
-  UpdateUserData 
+  UserCreate, 
+  UserUpdate 
 } from './user';
-
-export type { 
-  Training, 
-  TrainingSession, 
-  TrainingRecord,
-  CreateTrainingData,
-  UpdateTrainingData,
-  CreateTrainingSessionData,
-  UpdateTrainingSessionData,
-  CreateTrainingRecordData,
-  UpdateTrainingRecordData
-} from './training';
 
 // Project Management Types
 export * from './projectChangeRequest';

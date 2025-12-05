@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
+import {
   Card, 
   Typography, 
   Button, 
@@ -16,14 +16,7 @@ import {
   Popconfirm,
   Tabs,
   Spin,
-  Alert,
-  Tooltip,
-  Badge,
-  Modal,
-  Form,
-  DatePicker,
-  InputNumber,
-  Descriptions
+  Badge
 } from 'antd';
 import { 
   SafetyOutlined, 
@@ -37,7 +30,6 @@ import {
   ExclamationCircleOutlined,
   WarningOutlined,
   UserOutlined,
-  HistoryOutlined,
   DatabaseOutlined,
   TeamOutlined,
   ToolOutlined,
@@ -46,25 +38,9 @@ import {
   SendOutlined,
   UndoOutlined,
   ReloadOutlined,
-  InfoCircleOutlined,
   LockOutlined
 } from '@ant-design/icons';
-import PDFPreviewModal from '../../../components/PDFPreviewModal';
-import { generatePDF } from '../../../utils/pdfGenerator';
 import * as ppeService from '../../../services/ppeService';
-import departmentService from '../../../services/departmentService';
-import CategoryEditModal from './CategoryEditModal';
-import CategoryDetailModal from './CategoryDetailModal';
-import ImportCategoriesModal from './ImportCategoriesModal';
-import ImportItemsModal from './ImportItemsModal';
-import AssignPPEModal from './AssignPPEModal';
-import InventoryUpdateModal from './InventoryUpdateModal';
-import CreateAssignmentModal from './CreateAssignmentModal';
-import CreateMaintenanceModal from './CreateMaintenanceModal';
-import CreateReportModal from './CreateReportModal';
-import PPEEditModal from './PPEEditModal';
-import IssueToManagerModal from './IssueToManagerModal';
-import IssueToEmployeeModal from './IssueToEmployeeModal';
 import type { 
   PPECategory, 
   PPEItem, 
@@ -72,20 +48,12 @@ import type {
 } from '../../../services/ppeService';
 import dayjs from 'dayjs';
 import { usePPEWebSocket } from '../../../hooks/usePPEWebSocket';
-import { useSelector } from 'react-redux';
-import type { RootState } from '../../../store';
-import PPEAssignmentDetailsModal from './components/PPEAssignmentDetailsModal';
-// Advanced Features Components
-import BatchIssuanceModal from '../../../components/PPEAdvanced/BatchIssuanceModal';
-import ExpiryManagementModal from '../../../components/PPEAdvanced/ExpiryManagementModal';
-import OptimisticLockingModal from '../../../components/PPEAdvanced/OptimisticLockingModal';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Search } = Input;
 
 const ConsolidatedPPEManagement: React.FC = () => {
-  const { user, token } = useSelector((state: RootState) => state.auth);
   const [activeTab, setActiveTab] = useState('assets');
   const [activeSubTab, setActiveSubTab] = useState('categories');
   
@@ -97,11 +65,11 @@ const ConsolidatedPPEManagement: React.FC = () => {
   const [ppeItems, setPpeItems] = useState<PPEItem[]>([]);
   const [ppeIssuances, setPpeIssuances] = useState<PPEIssuance[]>([]);
   const [adminIssuedPPE, setAdminIssuedPPE] = useState<PPEIssuance[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [assignments, setAssignments] = useState<any[]>([]);
-  const [maintenance, setMaintenance] = useState<any[]>([]);
-  const [reports, setReports] = useState<any[]>([]);
+  const [users] = useState<any[]>([]);
+  const [inventory] = useState<any[]>([]);
+  const [assignments] = useState<any[]>([]);
+  const [maintenance] = useState<any[]>([]);
+  const [reports] = useState<any[]>([]);
   
   // Loading states
   const [loading, setLoading] = useState({
@@ -1183,7 +1151,7 @@ const ConsolidatedPPEManagement: React.FC = () => {
                             <div>
                               <div style={{ fontWeight: 'bold' }}>{text}</div>
                               <div style={{ fontSize: '12px', color: '#666' }}>
-                                {record.department_name || 'Không xác định'} - {record.position || 'Không xác định'}
+                                {record.department_name || 'Không xác định'}
                               </div>
                             </div>
                           </Space>

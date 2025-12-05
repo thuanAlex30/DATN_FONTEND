@@ -84,7 +84,7 @@ class RoleService {
   /**
    * Update role permissions
    */
-  static async updateRolePermissions(id: string, permissions: Record<string, boolean>): Promise<SingleRoleResponse> {
+  static async updateRolePermissions(id: string, permissions: Record<string, string[]>): Promise<SingleRoleResponse> {
     try {
       const response = await api.patch(`/roles/${id}/permissions`, { permissions });
       return response.data;

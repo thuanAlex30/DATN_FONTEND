@@ -18,7 +18,6 @@ import type { RootState } from '../../../store';
 import { logout } from '../../../store/slices/authSlice';
 import { ManagerLayout } from '../../../components/Manager';
 import NotificationPanel from '../../../components/NotificationPanel';
-import DebugUserInfo from '../../../components/DebugUserInfo';
 import { projectRiskService } from '../../../services/projectRiskService';
 import { projectMilestoneService } from '../../../services/projectMilestoneService';
 import styles from './Dashboard.module.css';
@@ -271,9 +270,24 @@ const ManagerDashboard: React.FC = () => {
         />
       )}
 
-      {/* Debug User Info */}
-      <DebugUserInfo />
-
+      {/* Test PPE Access Button */}
+      <div style={{ 
+        position: 'fixed', 
+        bottom: 20, 
+        right: 20, 
+        zIndex: 9999 
+      }}>
+        <Button 
+          type="primary" 
+          onClick={() => navigate('/manager/ppe')}
+          style={{ 
+            background: '#52c41a',
+            borderColor: '#52c41a'
+          }}
+        >
+          🧪 Test PPE Access
+        </Button>
+      </div>
     </ManagerLayout>
   );
 };
