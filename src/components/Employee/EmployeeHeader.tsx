@@ -1,28 +1,23 @@
 import React from 'react';
+import { Layout, Typography, Badge, Button, Dropdown, Avatar } from 'antd';
+import {
+  BellOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  SettingOutlined,
+  MenuOutlined
+} from '@ant-design/icons';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import {
-  Card,
-  Row,
-  Col,
-  Button,
-  Space,
-  Typography,
-  Badge
-} from 'antd';
-import {
-  LogoutOutlined,
-  BellOutlined,
-  UserOutlined
-} from '@ant-design/icons';
 import { logout } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import styles from './EmployeeHeader.module.css';
 
-const { Title, Text } = Typography;
+const { Header } = Layout;
+const { Title } = Typography;
 
 interface EmployeeHeaderProps {
-  title: string;
+  title?: string;
   icon?: React.ReactNode;
   showUserInfo?: boolean;
   showNotifications?: boolean;
@@ -52,51 +47,92 @@ const EmployeeHeader: React.FC<EmployeeHeaderProps> = ({
     }
   };
 
+  const userMenuItems = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Hồ sơ cá nhân',
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Cài đặt',
+    },
+    {
+      type: 'divider' as const,
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Đăng xuất',
+      danger: true,
+    },
+  ];
+
+  const handleUserMenuClick = ({ key }: { key: string }) => {
+    if (key === 'logout') {
+      handleLogout();
+    } else if (key === 'profile') {
+      navigate('/employee/profile');
+    } else if (key === 'settings') {
+      // Navigate to settings if needed
+    }
+  };
+
   return (
-    <Card className={styles.headerCard}>
-      <Row justify="space-between" align="middle">
-        <Col>
-          <Space>
-            {icon && <span className={styles.headerIcon}>{icon}</span>}
-            <Title level={2} className={styles.headerTitle}>
-              {title}
-            </Title>
-          </Space>
-        </Col>
-        <Col>
-          <Space size="middle">
-            {showNotifications && (
-              <Badge count={unreadCount} size="small">
-                <Button 
-                  type="text" 
-                  icon={<BellOutlined />}
-                  className={styles.notificationButton}
-                  title="Thông báo"
-                />
-              </Badge>
-            )}
-            {showUserInfo && (
-              <Space>
-                <UserOutlined className={styles.userIcon} />
-                <Text className={styles.userText}>
-                  Xin chào, {user?.full_name || 'Người dùng'}
-                </Text>
-              </Space>
-            )}
-            {extra}
-            <Button 
-              type="primary"
-              danger
-              icon={<LogoutOutlined />}
-              onClick={handleLogout}
-              className={styles.logoutButton}
+    <Header className={styles.header}>
+      <div className={styles.headerContent}>
+        <div className={styles.headerLeft}>
+          <Button
+            type="text"
+            icon={<MenuOutlined />}
+            className={styles.mobileMenuButton}
+          />
+          {title && (
+            <div className={styles.titleSection}>
+              {icon && <span className={styles.titleIcon}>{icon}</span>}
+              <Title level={4} className={styles.title}>
+                {title}
+              </Title>
+            </div>
+          )}
+        </div>
+
+        <div className={styles.headerRight}>
+          {extra && <div className={styles.headerExtra}>{extra}</div>}
+          
+          {showNotifications && (
+            <Badge count={unreadCount} size="small">
+              <Button
+                type="text"
+                icon={<BellOutlined />}
+                className={styles.notificationButton}
+              />
+            </Badge>
+          )}
+
+          {showUserInfo && user && (
+            <Dropdown
+              menu={{
+                items: userMenuItems,
+                onClick: handleUserMenuClick,
+              }}
+              placement="bottomRight"
+              trigger={['click']}
             >
-              Đăng xuất
-            </Button>
-          </Space>
-        </Col>
-      </Row>
-    </Card>
+              <div className={styles.userInfo}>
+                <Avatar
+                  size="small"
+                  icon={<UserOutlined />}
+                  className={styles.userAvatar}
+                />
+                <span className={styles.userName}>{user.full_name}</span>
+              </div>
+            </Dropdown>
+          )}
+        </div>
+      </div>
+    </Header>
   );
 };
 

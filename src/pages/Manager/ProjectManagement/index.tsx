@@ -41,7 +41,7 @@ import projectService from '../../../services/projectService';
 import { projectTaskService } from '../../../services/projectTaskService';
 import { projectRiskService } from '../../../services/projectRiskService';
 import { projectMilestoneService } from '../../../services/projectMilestoneService';
-import incidentService from '../../../services/incidentService';
+import { clearProjectRiskCache, clearProjectTaskCache, clearProjectMilestoneCache } from '../../../utils/apiCache';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 
@@ -98,15 +98,6 @@ interface Milestone {
   progress?: number;
 }
 
-interface Incident {
-  _id: string;
-  incident_title: string;
-  project_id?: any;
-  status: string;
-  assignedTo?: any;
-  reported_date: string;
-}
-
 const ManagerProjectManagement: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const navigate = useNavigate();
@@ -148,7 +139,6 @@ const ManagerProjectManagement: React.FC = () => {
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
   const [assignedRisks, setAssignedRisks] = useState<Risk[]>([]);
   const [assignedMilestones, setAssignedMilestones] = useState<Milestone[]>([]);
-  const [assignedIncidents, setAssignedIncidents] = useState<Incident[]>([]);
   
   // Stats
   const [stats, setStats] = useState({
@@ -156,7 +146,6 @@ const ManagerProjectManagement: React.FC = () => {
     totalTasks: 0,
     totalRisks: 0,
     totalMilestones: 0,
-    totalIncidents: 0,
     pendingTasks: 0,
     highPriorityRisks: 0,
     overdueMilestones: 0
@@ -180,8 +169,7 @@ const ManagerProjectManagement: React.FC = () => {
       await Promise.all([
         loadAssignedTasks(),
         loadAssignedRisks(),
-        loadAssignedMilestones(),
-        loadAssignedIncidents()
+        loadAssignedMilestones()
       ]);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -366,9 +354,24 @@ const ManagerProjectManagement: React.FC = () => {
       for (const project of currentProjects) {
         const response = await projectRiskService.getAssignedRisks(user?.id || '', project.id);
         if (response.success && response.data) {
+          // Log để debug
+          console.log('loadAssignedRisks - Response data:', response.data.map((r: any) => ({
+            id: r.id || r._id,
+            risk_name: r.risk_name,
+            progress: r.progress,
+            status: r.status
+          })));
           allRisks.push(...response.data);
         }
       }
+      
+      // Log để debug
+      console.log('loadAssignedRisks - All risks before setState:', allRisks.map((r: any) => ({
+        id: r.id || r._id,
+        risk_name: r.risk_name,
+        progress: r.progress,
+        status: r.status
+      })));
       
       setAssignedRisks(allRisks);
       setStats(prev => ({
@@ -390,9 +393,24 @@ const ManagerProjectManagement: React.FC = () => {
       for (const project of currentProjects) {
         const response = await projectMilestoneService.getAssignedMilestones(user?.id || '', project.id);
         if (response.success && response.data) {
+          // Log để debug
+          console.log('loadAssignedMilestones - Response data:', response.data.map((m: any) => ({
+            id: m.id || m._id,
+            milestone_name: m.milestone_name,
+            progress: m.progress,
+            status: m.status
+          })));
           allMilestones.push(...response.data);
         }
       }
+      
+      // Log để debug
+      console.log('loadAssignedMilestones - All milestones before setState:', allMilestones.map((m: any) => ({
+        id: m.id || m._id,
+        milestone_name: m.milestone_name,
+        progress: m.progress,
+        status: m.status
+      })));
       
       setAssignedMilestones(allMilestones);
       const overdue = allMilestones.filter(m => {
@@ -410,31 +428,6 @@ const ManagerProjectManagement: React.FC = () => {
     }
   };
 
-  const loadAssignedIncidents = async () => {
-    try {
-      // Lấy tất cả incidents được phân công cho Manager
-      const response = await incidentService.getIncidents();
-      if (response.data && response.data.success && response.data.data) {
-        const userId = String(user?.id || '');
-        const managerIncidents = response.data.data.filter((incident: Incident) => {
-          if (!incident.assignedTo) return false;
-          
-          let assignedId: string | null = null;
-          if (typeof incident.assignedTo === 'object' && incident.assignedTo) {
-            assignedId = String(incident.assignedTo?.id || incident.assignedTo?._id || '');
-          } else if (incident.assignedTo) {
-            assignedId = String(incident.assignedTo);
-          }
-          
-          return assignedId && assignedId === userId;
-        });
-        setAssignedIncidents(managerIncidents);
-        setStats(prev => ({ ...prev, totalIncidents: managerIncidents.length }));
-      }
-    } catch (error) {
-      console.error('Error loading assigned incidents:', error);
-    }
-  };
 
   const handleOpenTaskReport = (task: Task) => {
     if (task.status === 'PENDING') {
@@ -463,6 +456,8 @@ const ManagerProjectManagement: React.FC = () => {
       }
       
       const progressValue = Number(values.progress) || 0;
+      // Clear cache trước khi cập nhật
+      clearProjectTaskCache();
       // Cập nhật tiến độ
       await projectTaskService.updateTaskProgress(taskId, progressValue, values.notes);
       // Thêm log tiến độ (gửi lại báo cáo cho Header Department)
@@ -473,10 +468,14 @@ const ManagerProjectManagement: React.FC = () => {
         work_description: values.notes || 'Báo cáo tiến độ',
         log_date: new Date().toISOString()
       });
+      // Clear cache sau khi cập nhật
+      clearProjectTaskCache();
       message.success('Đã gửi báo cáo tiến độ');
       setTaskReportModalOpen(false);
       setSelectedTask(null);
       taskReportForm.resetFields();
+      // Đợi một chút để đảm bảo database đã được cập nhật
+      await new Promise(resolve => setTimeout(resolve, 100));
       loadAssignedTasks();
     } catch (error: any) {
       if (!error?.errorFields) {
@@ -514,6 +513,8 @@ const ManagerProjectManagement: React.FC = () => {
       }
       
       const progressValue = Number(values.progress) || 0;
+      // Clear cache trước khi cập nhật
+      clearProjectRiskCache();
       // Cập nhật tiến độ
       await projectRiskService.updateRiskProgress(riskId, String(progressValue));
       // Thêm log tiến độ (gửi lại báo cáo cho Header Department)
@@ -524,10 +525,14 @@ const ManagerProjectManagement: React.FC = () => {
         work_description: values.notes || 'Báo cáo tiến độ rủi ro',
         log_date: new Date().toISOString()
       });
+      // Clear cache sau khi cập nhật
+      clearProjectRiskCache();
       message.success('Đã gửi báo cáo rủi ro');
       setRiskReportModalOpen(false);
       setSelectedRisk(null);
       riskReportForm.resetFields();
+      // Đợi một chút để đảm bảo database đã được cập nhật
+      await new Promise(resolve => setTimeout(resolve, 100));
       loadAssignedRisks();
     } catch (error: any) {
       if (!error?.errorFields) {
@@ -558,6 +563,8 @@ const ManagerProjectManagement: React.FC = () => {
       setMilestoneReportLoading(true);
       const progressValue = Number(values.progress) || 0;
       const milestoneId = selectedMilestone.id || (selectedMilestone as any)._id;
+      // Clear cache trước khi cập nhật
+      clearProjectMilestoneCache();
       // Cập nhật tiến độ
       await projectMilestoneService.updateMilestoneProgress(milestoneId, String(progressValue));
       // Thêm log tiến độ (gửi lại báo cáo cho Header Department)
@@ -568,10 +575,14 @@ const ManagerProjectManagement: React.FC = () => {
         work_description: values.notes || 'Báo cáo tiến độ cột mốc',
         log_date: new Date().toISOString()
       });
+      // Clear cache sau khi cập nhật
+      clearProjectMilestoneCache();
       message.success('Đã gửi báo cáo cột mốc');
       setMilestoneReportModalOpen(false);
       setSelectedMilestone(null);
       milestoneReportForm.resetFields();
+      // Đợi một chút để đảm bảo database đã được cập nhật
+      await new Promise(resolve => setTimeout(resolve, 100));
       loadAssignedMilestones();
     } catch (error: any) {
       if (!error?.errorFields) {
@@ -967,8 +978,23 @@ const ManagerProjectManagement: React.FC = () => {
       title: 'Tiến độ',
       dataIndex: 'progress',
       key: 'progress',
-      render: (progress: number, record: Risk) => {
-        const progressValue = progress || (record as any).progress || 0;
+      render: (progress: number | undefined, record: Risk) => {
+        // Lấy progress từ nhiều nguồn có thể
+        const progressFromDataIndex = progress;
+        const progressFromRecord = (record as any).progress;
+        const progressFromRecordProgress = (record as any).progress_percentage;
+        
+        // Log chỉ khi có vấn đề
+        if (progressFromDataIndex === undefined && progressFromRecord === undefined && progressFromRecordProgress === undefined) {
+          console.warn('Risk progress not found:', {
+            recordId: record.id || (record as any)._id,
+            recordName: record.risk_name,
+            recordKeys: Object.keys(record),
+            fullRecord: record
+          });
+        }
+        
+        const progressValue = progressFromDataIndex ?? progressFromRecord ?? progressFromRecordProgress ?? 0;
         return (
           <Space direction="vertical" size="small" style={{ width: '100%' }}>
             <Progress 
@@ -1069,8 +1095,23 @@ const ManagerProjectManagement: React.FC = () => {
       title: 'Tiến độ',
       dataIndex: 'progress',
       key: 'progress',
-      render: (progress: number, record: Milestone) => {
-        const progressValue = progress || (record as any).progress || 0;
+      render: (progress: number | undefined, record: Milestone) => {
+        // Lấy progress từ nhiều nguồn có thể
+        const progressFromDataIndex = progress;
+        const progressFromRecord = (record as any).progress;
+        const progressFromRecordProgress = (record as any).progress_percentage;
+        
+        // Log chỉ khi có vấn đề
+        if (progressFromDataIndex === undefined && progressFromRecord === undefined && progressFromRecordProgress === undefined) {
+          console.warn('Milestone progress not found:', {
+            recordId: record.id || (record as any)._id,
+            recordName: record.milestone_name,
+            recordKeys: Object.keys(record),
+            fullRecord: record
+          });
+        }
+        
+        const progressValue = progressFromDataIndex ?? progressFromRecord ?? progressFromRecordProgress ?? 0;
         return (
           <Space direction="vertical" size="small" style={{ width: '100%' }}>
             <Progress 
@@ -1126,43 +1167,6 @@ const ManagerProjectManagement: React.FC = () => {
     }
   ];
 
-  const incidentColumns = [
-    {
-      title: 'Tiêu đề sự cố',
-      dataIndex: 'incident_title',
-      key: 'incident_title',
-      render: (text: string, record: Incident) => (
-        <Space>
-          <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
-          <div>
-            <Text strong>{text}</Text>
-            <br />
-            {record.project_id && (
-              <Text type="secondary" style={{ fontSize: '12px' }}>
-                {typeof record.project_id === 'object' ? record.project_id?.project_name : 'N/A'}
-              </Text>
-            )}
-          </div>
-        </Space>
-      )
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {getStatusLabel(status)}
-        </Tag>
-      )
-    },
-    {
-      title: 'Ngày báo cáo',
-      dataIndex: 'reported_date',
-      key: 'reported_date',
-      render: (date: string) => dayjs(date).format('DD/MM/YYYY')
-    }
-  ];
 
   return (
     <ManagerLayout
@@ -1525,53 +1529,6 @@ const ManagerProjectManagement: React.FC = () => {
               </div>
             </TabPane>
 
-            <TabPane
-              tab={
-                <span>
-                  <ExclamationCircleOutlined />
-                  Sự cố ({stats.totalIncidents})
-                </span>
-              }
-              key="incidents"
-            >
-              <div style={{ padding: '24px' }}>
-                <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Title level={4} style={{ margin: 0 }}>Sự cố được phân công xử lý</Title>
-                  <Button
-                    icon={<ReloadOutlined />}
-                    onClick={loadAssignedIncidents}
-                    loading={loading}
-                    style={{ borderRadius: '8px' }}
-                  >
-                    Làm mới
-                  </Button>
-                </div>
-                {loading ? (
-                  <div style={{ textAlign: 'center', padding: '40px' }}>
-                    <Spin size="large" />
-                  </div>
-                ) : assignedIncidents.length === 0 ? (
-                  <Empty
-                    description="Chưa có sự cố nào được phân công"
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  />
-                ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <Table
-                      columns={incidentColumns}
-                      dataSource={assignedIncidents}
-                      rowKey={(record: Incident, index) =>
-                        record._id ||
-                        (record as any).id ||
-                        `incident-${index}`
-                      }
-                      pagination={{ pageSize: 10, showSizeChanger: true }}
-                      scroll={{ x: 'max-content' }}
-                    />
-                  </div>
-                )}
-        </div>
-            </TabPane>
           </Tabs>
         </Card>
         <Modal

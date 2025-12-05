@@ -1,52 +1,141 @@
-.headerCard {
-  margin-bottom: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #f0f0f0;
+.header {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+  padding: 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 0 rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 72px;
+  line-height: 72px;
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
 }
 
-.headerIcon {
-  color: #1890ff;
-  font-size: 24px;
+.headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  padding: 0 32px;
+  max-width: 100%;
+}
+
+.headerLeft {
   display: flex;
   align-items: center;
+  gap: 16px;
 }
 
-.headerTitle {
+.mobileMenuButton {
+  display: none;
+}
+
+.titleSection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.titleIcon {
+  font-size: 20px;
+  color: #1890ff;
+}
+
+.title {
   margin: 0 !important;
-  color: #2c3e50 !important;
-  font-weight: 600;
+  color: #1a202c;
+  font-weight: 700;
+  font-size: 18px !important;
+  letter-spacing: -0.02em;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.headerExtra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .notificationButton {
-  color: #666;
-  border: none;
-  box-shadow: none;
-  transition: all 0.3s ease;
+  color: #64748b;
+  font-size: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .notificationButton:hover {
   color: #1890ff;
-  background: rgba(24, 144, 255, 0.1);
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, rgba(64, 169, 255, 0.1) 100%);
+  transform: scale(1.05);
 }
 
-.userIcon {
-  color: #1890ff;
-  font-size: 16px;
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
 }
 
-.userText {
-  color: #666;
-  font-weight: 500;
-}
-
-.logoutButton {
-  border-radius: 8px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.logoutButton:hover {
+.userInfo:hover {
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.8) 100%);
+  border-color: rgba(226, 232, 240, 0.8);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.userAvatar {
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.userInfo:hover .userAvatar {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+}
+
+.userName {
+  font-size: 14px;
+  font-weight: 500;
+  color: #262626;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .headerContent {
+    padding: 0 16px;
+  }
+  
+  .mobileMenuButton {
+    display: block;
+  }
+  
+  .title {
+    font-size: 16px !important;
+  }
+  
+  .userName {
+    display: none;
+  }
+  
+  .headerExtra {
+    gap: 8px;
+  }
 }
