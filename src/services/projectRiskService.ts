@@ -22,7 +22,8 @@ export interface ProjectRisk {
     full_name: string;
     id: string;
   };
-  status: 'IDENTIFIED' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  status: 'IDENTIFIED' | 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  progress?: number;
   identified_date: string;
   target_resolution_date: string;
   schedule_impact_days: number;
@@ -274,6 +275,42 @@ export const projectRiskService = {
         data: null, 
         success: false, 
         message: 'Failed to remove risk owner' 
+      };
+    }
+  },
+
+  // Get risk progress logs
+  getRiskProgressLogs: async (riskId: string): Promise<{ data: any[]; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get(`${API_BASE}/risks/${riskId}/progress-logs`);
+      return { 
+        data: response.data.data || [], 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching risk progress logs:', error);
+      return { 
+        data: [], 
+        success: false, 
+        message: 'Failed to fetch risk progress logs' 
+      };
+    }
+  },
+
+  // Add risk progress log
+  addRiskProgressLog: async (riskId: string, data: any): Promise<{ data: any | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.post(`${API_BASE}/risks/${riskId}/progress-logs`, data);
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error adding risk progress log:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to add risk progress log' 
       };
     }
   }

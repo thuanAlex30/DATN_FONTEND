@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, Select, InputNumber, DatePicker, Button, message, Card, Divider } from 'antd';
-import { PlusOutlined, UserOutlined, ToolOutlined, ExperimentOutlined, HomeOutlined, LaptopOutlined, CalendarOutlined, EnvironmentOutlined, FileTextOutlined } from '@ant-design/icons';
-import type { CreateProjectResourceData } from '../../../../services/projectResourceService';
+import { PlusOutlined, EditOutlined, UserOutlined, ToolOutlined, ExperimentOutlined, CalendarOutlined, EnvironmentOutlined, FileTextOutlined } from '@ant-design/icons';
+import type { CreateProjectResourceData, UpdateProjectResourceData } from '../../../../services/projectResourceService';
+import dayjs from 'dayjs';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -11,44 +12,84 @@ interface CreateResourceModalProps {
   onCancel: () => void;
   onSuccess: (resource: any) => void;
   projectId: string;
+  editingResource?: any | null;
 }
 
 const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
   visible,
   onCancel,
   onSuccess,
-  projectId
+  projectId,
+  editingResource = null
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const isEditMode = !!editingResource;
+
+  useEffect(() => {
+    if (visible && editingResource) {
+      form.setFieldsValue({
+        resource_name: editingResource.resource_name,
+        resource_type: editingResource.resource_type,
+        planned_quantity: editingResource.planned_quantity,
+        unit_measure: editingResource.unit_measure,
+        required_date: editingResource.required_date ? dayjs(editingResource.required_date) : null,
+        location: editingResource.location,
+        description: editingResource.description,
+        notes: editingResource.notes
+      });
+    } else if (visible && !editingResource) {
+      form.resetFields();
+    }
+  }, [visible, editingResource, form]);
 
   const handleSubmit = async (values: any) => {
     try {
       setLoading(true);
       
-      const resourceData: CreateProjectResourceData = {
-        project_id: projectId,
-        resource_type: values.resource_type,
-        resource_name: values.resource_name,
-        description: values.description,
-        planned_quantity: values.planned_quantity,
-        unit_measure: values.unit_measure,
-        required_date: values.required_date.format('YYYY-MM-DD'),
-        location: values.location,
-        notes: values.notes
-      };
-
       // Import service dynamically to avoid circular imports
       const { default: projectResourceService } = await import('../../../../services/projectResourceService');
-      const newResource = await projectResourceService.createResource(resourceData);
       
-      message.success('Tạo tài nguyên thành công!');
+      if (isEditMode && editingResource) {
+        // Update existing resource
+        const updateData: UpdateProjectResourceData = {
+          resource_type: values.resource_type,
+          resource_name: values.resource_name,
+          description: values.description,
+          planned_quantity: values.planned_quantity,
+          unit_measure: values.unit_measure,
+          required_date: values.required_date ? values.required_date.format('YYYY-MM-DD') : undefined,
+          location: values.location,
+          notes: values.notes
+        };
+
+        const updatedResource = await projectResourceService.updateResource(editingResource._id || editingResource.id, updateData);
+        message.success('Cập nhật tài nguyên thành công!');
+        onSuccess(updatedResource);
+      } else {
+        // Create new resource
+        const resourceData: CreateProjectResourceData = {
+          project_id: projectId,
+          resource_type: values.resource_type,
+          resource_name: values.resource_name,
+          description: values.description,
+          planned_quantity: values.planned_quantity,
+          unit_measure: values.unit_measure,
+          required_date: values.required_date.format('YYYY-MM-DD'),
+          location: values.location,
+          notes: values.notes
+        };
+
+        const newResource = await projectResourceService.createResource(resourceData);
+        message.success('Tạo tài nguyên thành công!');
+        onSuccess(newResource);
+      }
+      
       form.resetFields();
-      onSuccess(newResource);
       onCancel();
     } catch (error: any) {
-      console.error('Error creating resource:', error);
-      message.error(error.response?.data?.message || 'Không thể tạo tài nguyên');
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} resource:`, error);
+      message.error(error.response?.data?.message || `Không thể ${isEditMode ? 'cập nhật' : 'tạo'} tài nguyên`);
     } finally {
       setLoading(false);
     }
@@ -61,11 +102,12 @@ const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
 
   const getResourceTypeIcon = (type: string) => {
     switch (type) {
-      case 'HUMAN': return <UserOutlined className="text-blue-500" />;
+      case 'PERSONNEL': return <UserOutlined className="text-blue-500" />;
       case 'EQUIPMENT': return <ToolOutlined className="text-green-500" />;
       case 'MATERIAL': return <ExperimentOutlined className="text-orange-500" />;
-      case 'FACILITY': return <HomeOutlined className="text-purple-500" />;
-      case 'TECHNOLOGY': return <LaptopOutlined className="text-cyan-500" />;
+      case 'TOOL': return <ToolOutlined className="text-green-500" />;
+      case 'VEHICLE': return <EnvironmentOutlined className="text-purple-500" />;
+      case 'SUBCONTRACTOR': return <UserOutlined className="text-cyan-500" />;
       default: return <PlusOutlined className="text-gray-500" />;
     }
   };
@@ -74,12 +116,16 @@ const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
     <Modal
       title={
         <div className="flex items-center space-x-3 py-2">
-          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <PlusOutlined className="text-white text-lg" />
+          <div className={`w-10 h-10 bg-gradient-to-r ${isEditMode ? 'from-green-500 to-emerald-600' : 'from-blue-500 to-purple-600'} rounded-lg flex items-center justify-center`}>
+            {isEditMode ? <EditOutlined className="text-white text-lg" /> : <PlusOutlined className="text-white text-lg" />}
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-800 m-0">Tạo Tài nguyên Mới</h3>
-            <p className="text-sm text-gray-500 m-0">Thêm tài nguyên vào dự án của bạn</p>
+            <h3 className="text-lg font-semibold text-gray-800 m-0">
+              {isEditMode ? 'Chỉnh sửa Tài nguyên' : 'Tạo Tài nguyên Mới'}
+            </h3>
+            <p className="text-sm text-gray-500 m-0">
+              {isEditMode ? 'Cập nhật thông tin tài nguyên' : 'Thêm tài nguyên vào dự án của bạn'}
+            </p>
           </div>
         </div>
       }
@@ -144,7 +190,7 @@ const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
                 className="rounded-lg"
                 optionLabelProp="label"
               >
-                <Option value="HUMAN" label={
+                <Option value="PERSONNEL" label={
                   <div className="flex items-center space-x-2">
                     <UserOutlined className="text-blue-500" />
                     <span>Nhân lực</span>
@@ -177,26 +223,37 @@ const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
                     <span>Vật liệu</span>
                   </div>
                 </Option>
-                <Option value="FACILITY" label={
+                <Option value="TOOL" label={
                   <div className="flex items-center space-x-2">
-                    <HomeOutlined className="text-purple-500" />
-                    <span>Cơ sở hạ tầng</span>
+                    <ToolOutlined className="text-green-500" />
+                    <span>Công cụ</span>
                   </div>
                 }>
                   <div className="flex items-center space-x-2">
-                    <HomeOutlined className="text-purple-500" />
-                    <span>Cơ sở hạ tầng</span>
+                    <ToolOutlined className="text-green-500" />
+                    <span>Công cụ</span>
                   </div>
                 </Option>
-                <Option value="TECHNOLOGY" label={
+                <Option value="VEHICLE" label={
                   <div className="flex items-center space-x-2">
-                    <LaptopOutlined className="text-cyan-500" />
-                    <span>Công nghệ</span>
+                    <EnvironmentOutlined className="text-purple-500" />
+                    <span>Phương tiện</span>
                   </div>
                 }>
                   <div className="flex items-center space-x-2">
-                    <LaptopOutlined className="text-cyan-500" />
-                    <span>Công nghệ</span>
+                    <EnvironmentOutlined className="text-purple-500" />
+                    <span>Phương tiện</span>
+                  </div>
+                </Option>
+                <Option value="SUBCONTRACTOR" label={
+                  <div className="flex items-center space-x-2">
+                    <UserOutlined className="text-cyan-500" />
+                    <span>Nhà thầu phụ</span>
+                  </div>
+                }>
+                  <div className="flex items-center space-x-2">
+                    <UserOutlined className="text-cyan-500" />
+                    <span>Nhà thầu phụ</span>
                   </div>
                 </Option>
               </Select>
@@ -349,10 +406,23 @@ const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
             htmlType="submit" 
             loading={loading}
             size="large"
-            className="px-8 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+            className={`px-8 rounded-lg border-0 shadow-lg hover:shadow-xl transition-all duration-200 ${
+              isEditMode 
+                ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700' 
+                : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700'
+            }`}
           >
-            <PlusOutlined className="mr-2" />
-            Tạo tài nguyên
+            {isEditMode ? (
+              <>
+                <EditOutlined className="mr-2" />
+                Cập nhật tài nguyên
+              </>
+            ) : (
+              <>
+                <PlusOutlined className="mr-2" />
+                Tạo tài nguyên
+              </>
+            )}
           </Button>
         </div>
       </Form>

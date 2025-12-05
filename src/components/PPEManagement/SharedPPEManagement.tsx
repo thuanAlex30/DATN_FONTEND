@@ -325,7 +325,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     }
   };
 
-  // Employee xác nhận nhận PPE từ Manager
+  // Employee xác nhận nhận PPE từ Manager hoặc Manager xác nhận nhận PPE từ Header Department
   const handleConfirmReceived = (issuance: PPEIssuance) => {
     setSelectedIssuance(issuance);
     confirmForm.setFieldsValue({
@@ -339,16 +339,30 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
 
     setLoading(true);
     try {
-      await ppeService.confirmReceivedPPE(selectedIssuance.id, {
-        confirmation_notes: values.confirmation_notes || ''
-      });
+      // Kiểm tra nếu là Manager xác nhận nhận PPE từ Header Department
+      if (isManager && selectedIssuance.issuance_level === 'admin_to_manager') {
+        // Manager xác nhận nhận PPE từ Header Department
+        // Sử dụng API confirmReceivedPPE nhưng với logic khác (cần backend hỗ trợ)
+        // Tạm thời dùng API confirmReceivedPPE, backend sẽ cần mở rộng để hỗ trợ admin_to_manager
+        await ppeService.confirmReceivedPPE(selectedIssuance.id, {
+          confirmation_notes: values.confirmation_notes || ''
+        });
+      } else {
+        // Employee xác nhận nhận PPE từ Manager
+        await ppeService.confirmReceivedPPE(selectedIssuance.id, {
+          confirmation_notes: values.confirmation_notes || ''
+        });
+      }
 
       message.success('Xác nhận nhận PPE thành công!');
       confirmForm.resetFields();
       setConfirmModalVisible(false);
       setSelectedIssuance(null);
       loadUserPPE();
-      if (!isManager) {
+      if (isManager) {
+        loadManagerPPE();
+        loadEmployeePPE();
+      } else {
         loadEmployeePPEHistory();
       }
     } catch (error: any) {
@@ -401,6 +415,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     if (isManager && managerPPE.length > 0) {
       const allIssuances = managerPPE.flatMap(ppe => ppe.issuances || []);
       return allIssuances.filter(issuance => 
+        issuance.status === 'pending_confirmation' || // PPE từ Header Department chờ xác nhận
         issuance.status === 'issued' || 
         issuance.status === 'overdue' ||
         issuance.status === 'damaged' ||
@@ -495,7 +510,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       )
     },
     {
-      title: 'Đã nhận từ Admin',
+      title: 'Đã nhận từ Header Department',
       dataIndex: 'total_received',
       key: 'total_received',
       render: (value: number) => (
@@ -515,7 +530,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       )
     },
     {
-      title: 'Đã trả cho Admin',
+      title: 'Đã trả cho Header Department',
       dataIndex: 'total_returned',
       key: 'total_returned',
       render: (value: number) => (
@@ -551,26 +566,34 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     {
       title: 'Thao tác',
       key: 'action',
-      render: (record: ManagerPPE) => (
-        <Space>
-          <Button
-            type="primary"
-            size="small"
-            icon={<SendOutlined />}
-            onClick={() => setIssueModalVisible(true)}
-            disabled={record.remaining === 0}
-          >
-            Phát cho Employee
-          </Button>
-          <Button
-            size="small"
-            icon={<HistoryOutlined />}
-            onClick={() => handleViewHistory(record.issuances[0])}
-          >
-            Lịch sử
-          </Button>
-        </Space>
-      )
+      render: (record: ManagerPPE) => {
+        // Kiểm tra xem có PPE nào chưa xác nhận nhận từ Header Department không
+        const hasUnconfirmedPPE = record.issuances.some(issuance => 
+          issuance.status === 'pending_confirmation' && issuance.issuance_level === 'admin_to_manager'
+        );
+        
+        return (
+          <Space>
+            <Button
+              type="primary"
+              size="small"
+              icon={<SendOutlined />}
+              onClick={() => setIssueModalVisible(true)}
+              disabled={record.remaining === 0 || hasUnconfirmedPPE}
+              title={hasUnconfirmedPPE ? 'Vui lòng xác nhận nhận PPE từ Header Department trước khi phát cho Employee' : ''}
+            >
+              Phát cho Employee
+            </Button>
+            <Button
+              size="small"
+              icon={<HistoryOutlined />}
+              onClick={() => handleViewHistory(record.issuances[0])}
+            >
+              Lịch sử
+            </Button>
+          </Space>
+        );
+      }
     }
   ];
 
@@ -682,16 +705,14 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
             <Tooltip title={
               record.status === 'returned' ? 'Đã trả' :
               (record.remaining_quantity || record.quantity) <= 0 ? 'Không còn PPE để trả' :
-              'Trả cho Admin'
+              'Xem chi tiết'
             }>
               <Button
-                type="primary"
                 size="small"
-                icon={<UndoOutlined />}
-                onClick={() => handleReturnToAdmin(record)}
-                disabled={record.status === 'returned' || (record.remaining_quantity || record.quantity) <= 0}
+                icon={<EyeOutlined />}
+                onClick={() => handleViewHistory(record)}
               >
-                Trả cho Admin
+                Chi tiết
               </Button>
             </Tooltip>
           )}
@@ -709,74 +730,149 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
 
   return (
     <LayoutComponent>
-      <div style={{ padding: '24px' }}>
-        <div style={{ marginBottom: '24px' }}>
-          <Title level={2}>
-            <SafetyOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-            Quản lý PPE - {isManager ? 'Manager' : 'Employee'}
-          </Title>
-          <Text type="secondary">
+      <div style={{ 
+        padding: '24px',
+        maxWidth: '100%',
+        width: '100%',
+        overflowX: 'hidden',
+        minHeight: '100vh',
+        backgroundColor: '#f0f2f5',
+        boxSizing: 'border-box'
+      }}>
+        {/* Header Section */}
+        <Card 
+          style={{ 
+            marginBottom: '32px',
+            borderRadius: '16px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 0 rgba(0,0,0,0.05)',
+            border: '1px solid rgba(226, 232, 240, 0.6)',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%)',
+            backdropFilter: 'blur(20px)'
+          }}
+          bodyStyle={{ padding: '28px 32px' }}
+        >
+          <div style={{ marginBottom: '12px' }}>
+            <Title level={2} style={{ 
+              margin: 0,
+              background: 'linear-gradient(135deg, #1890ff 0%, #722ed1 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              fontWeight: 700,
+              fontSize: '28px',
+              letterSpacing: '-0.02em'
+            }}>
+              <SafetyOutlined style={{ marginRight: '12px', fontSize: '28px' }} />
+              Quản lý PPE - {isManager ? 'Manager' : 'Employee'}
+            </Title>
+          </div>
+          <Text type="secondary" style={{ fontSize: '15px', color: '#64748b', fontWeight: 500 }}>
             {isManager 
-              ? 'Quản lý PPE nhận từ Admin và phân phối cho Employee'
+              ? 'Quản lý PPE nhận từ Header Department và phân phối cho Employee'
               : 'Quản lý PPE cá nhân được phát từ Manager'
             }
           </Text>
-        </div>
+        </Card>
 
         {/* WebSocket Status */}
         <Alert
           message={`WebSocket: ${isConnected ? 'Đã kết nối' : 'Mất kết nối'}`}
           type={isConnected ? 'success' : 'warning'}
           showIcon
-          style={{ marginBottom: '16px' }}
+          style={{ 
+            marginBottom: '20px',
+            borderRadius: '6px'
+          }}
         />
 
-        {/* Statistics Cards */}
-        <Row gutter={16} style={{ marginBottom: '24px' }}>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Đang sử dụng"
-                value={getActiveIssuances().length}
-                prefix={<SafetyOutlined style={{ color: '#1890ff' }} />}
-                valueStyle={{ color: '#1890ff' }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Đã trả"
-                value={getReturnedIssuances()}
-                prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                valueStyle={{ color: '#52c41a' }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Quá hạn"
-                value={ppeIssuances.filter(issuance => 
-                  issuance.status === 'overdue' || 
-                  isOverdue(issuance.expected_return_date)
-                ).length}
-                prefix={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
-                valueStyle={{ color: '#ff4d4f' }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="Tổng PPE"
-                value={ppeIssuances.length}
-                prefix={<InboxOutlined style={{ color: '#722ed1' }} />}
-                valueStyle={{ color: '#722ed1' }}
-              />
-            </Card>
-          </Col>
-        </Row>
+        {/* Statistics Cards - General */}
+        <Card 
+          title="Tổng quan chung"
+          style={{ 
+            marginBottom: '24px',
+            borderRadius: '8px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}
+          bodyStyle={{ padding: '20px' }}
+        >
+          <Row gutter={[16, 16]}>
+            <Col xs={12} sm={12} md={6} lg={6} xl={6}>
+              <Card 
+                size="small"
+                style={{ 
+                  borderRadius: '6px',
+                  border: '1px solid #e8e8e8',
+                  height: '100%'
+                }}
+                bodyStyle={{ padding: '16px' }}
+              >
+                <Statistic
+                  title="Đang sử dụng"
+                  value={getActiveIssuances().length}
+                  prefix={<SafetyOutlined style={{ color: '#1890ff' }} />}
+                  valueStyle={{ color: '#1890ff', fontSize: '24px' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={12} md={6} lg={6} xl={6}>
+              <Card 
+                size="small"
+                style={{ 
+                  borderRadius: '6px',
+                  border: '1px solid #e8e8e8',
+                  height: '100%'
+                }}
+                bodyStyle={{ padding: '16px' }}
+              >
+                <Statistic
+                  title="Đã trả"
+                  value={getReturnedIssuances()}
+                  prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                  valueStyle={{ color: '#52c41a', fontSize: '24px' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={12} md={6} lg={6} xl={6}>
+              <Card 
+                size="small"
+                style={{ 
+                  borderRadius: '6px',
+                  border: '1px solid #e8e8e8',
+                  height: '100%'
+                }}
+                bodyStyle={{ padding: '16px' }}
+              >
+                <Statistic
+                  title="Quá hạn"
+                  value={ppeIssuances.filter(issuance => 
+                    issuance.status === 'overdue' || 
+                    isOverdue(issuance.expected_return_date)
+                  ).length}
+                  prefix={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
+                  valueStyle={{ color: '#ff4d4f', fontSize: '24px' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={12} md={6} lg={6} xl={6}>
+              <Card 
+                size="small"
+                style={{ 
+                  borderRadius: '6px',
+                  border: '1px solid #e8e8e8',
+                  height: '100%'
+                }}
+                bodyStyle={{ padding: '16px' }}
+              >
+                <Statistic
+                  title="Tổng PPE"
+                  value={ppeIssuances.length}
+                  prefix={<InboxOutlined style={{ color: '#722ed1' }} />}
+                  valueStyle={{ color: '#722ed1', fontSize: '24px' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </Card>
 
         {/* Employee-specific statistics */}
         {!isManager && (
@@ -816,83 +912,161 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
 
         {/* Manager-specific statistics */}
         {isManager && (
-          <Row gutter={16} style={{ marginBottom: '24px' }}>
-            <Col xs={12} sm={8} md={6}>
-              <Card>
-                <Statistic
-                  title="Tổng thiết bị"
-                  value={ppeStats.totalItems}
-                  prefix={<SafetyOutlined style={{ color: '#1890ff' }} />}
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <Card>
-                <Statistic
-                  title="Đã nhận từ Admin"
-                  value={ppeStats.totalReceived}
-                  prefix={<InboxOutlined style={{ color: '#52c41a' }} />}
-                  valueStyle={{ color: '#52c41a' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <Card>
-                <Statistic
-                  title="Đã phát cho Employee"
-                  value={ppeStats.totalIssuedToEmployees}
-                  prefix={<SendOutlined style={{ color: '#722ed1' }} />}
-                  valueStyle={{ color: '#722ed1' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <Card>
-                <Statistic
-                  title="Đã trả cho Admin"
-                  value={ppeStats.totalReturned}
-                  prefix={<CheckCircleOutlined style={{ color: '#13c2c2' }} />}
-                  valueStyle={{ color: '#13c2c2' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <Card>
-                <Statistic
-                  title="Còn lại"
-                  value={ppeStats.totalRemaining}
-                  prefix={<NumberOutlined style={{ color: ppeStats.totalRemaining > 0 ? '#faad14' : '#ff4d4f' }} />}
-                  valueStyle={{ color: ppeStats.totalRemaining > 0 ? '#faad14' : '#ff4d4f' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <Card>
-                <Statistic
-                  title="Chờ Employee xác nhận"
-                  value={ppeStats.pendingConfirmationCount}
-                  prefix={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
-                  valueStyle={{ color: '#fa8c16' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <Card>
-                <Statistic
-                  title="Chờ xác nhận"
-                  value={employeePPE.filter((issuance: PPEIssuance) => issuance.status === 'pending_manager_return').length}
-                  prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
-                  valueStyle={{ color: '#faad14' }}
-                />
-              </Card>
-            </Col>
-          </Row>
+          <Card 
+            title="Thống kê chi tiết - Manager"
+            style={{ 
+              marginBottom: '24px',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}
+            bodyStyle={{ padding: '20px' }}
+          >
+            <Row gutter={[16, 16]}>
+              <Col xs={12} sm={12} md={8} lg={6} xl={4}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    borderRadius: '6px',
+                    border: '1px solid #e8e8e8',
+                    height: '100%'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Statistic
+                    title={<span style={{ fontSize: '13px' }}>Tổng thiết bị</span>}
+                    value={ppeStats.totalItems}
+                    prefix={<SafetyOutlined style={{ color: '#1890ff' }} />}
+                    valueStyle={{ color: '#1890ff', fontSize: '22px' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} sm={12} md={8} lg={6} xl={4}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    borderRadius: '6px',
+                    border: '1px solid #e8e8e8',
+                    height: '100%'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Statistic
+                    title={<span style={{ fontSize: '13px' }}>Đã nhận từ Header Department</span>}
+                    value={ppeStats.totalReceived}
+                    prefix={<InboxOutlined style={{ color: '#52c41a' }} />}
+                    valueStyle={{ color: '#52c41a', fontSize: '22px' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} sm={12} md={8} lg={6} xl={4}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    borderRadius: '6px',
+                    border: '1px solid #e8e8e8',
+                    height: '100%'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Statistic
+                    title={<span style={{ fontSize: '13px' }}>Đã phát cho Employee</span>}
+                    value={ppeStats.totalIssuedToEmployees}
+                    prefix={<SendOutlined style={{ color: '#722ed1' }} />}
+                    valueStyle={{ color: '#722ed1', fontSize: '22px' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} sm={12} md={8} lg={6} xl={4}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    borderRadius: '6px',
+                    border: '1px solid #e8e8e8',
+                    height: '100%'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Statistic
+                    title={<span style={{ fontSize: '13px' }}>Đã trả cho Header Department</span>}
+                    value={ppeStats.totalReturned}
+                    prefix={<CheckCircleOutlined style={{ color: '#13c2c2' }} />}
+                    valueStyle={{ color: '#13c2c2', fontSize: '22px' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} sm={12} md={8} lg={6} xl={4}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    borderRadius: '6px',
+                    border: '1px solid #e8e8e8',
+                    height: '100%'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Statistic
+                    title={<span style={{ fontSize: '13px' }}>Còn lại</span>}
+                    value={ppeStats.totalRemaining}
+                    prefix={<NumberOutlined style={{ color: ppeStats.totalRemaining > 0 ? '#faad14' : '#ff4d4f' }} />}
+                    valueStyle={{ color: ppeStats.totalRemaining > 0 ? '#faad14' : '#ff4d4f', fontSize: '22px' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} sm={12} md={8} lg={6} xl={4}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    borderRadius: '6px',
+                    border: '1px solid #e8e8e8',
+                    height: '100%'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Statistic
+                    title={<span style={{ fontSize: '13px' }}>Chờ Employee xác nhận</span>}
+                    value={ppeStats.pendingConfirmationCount}
+                    prefix={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
+                    valueStyle={{ color: '#fa8c16', fontSize: '22px' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} sm={12} md={8} lg={6} xl={4}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    borderRadius: '6px',
+                    border: '1px solid #e8e8e8',
+                    height: '100%'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Statistic
+                    title={<span style={{ fontSize: '13px' }}>Chờ xác nhận</span>}
+                    value={employeePPE.filter((issuance: PPEIssuance) => issuance.status === 'pending_manager_return').length}
+                    prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
+                    valueStyle={{ color: '#faad14', fontSize: '22px' }}
+                  />
+                </Card>
+              </Col>
+            </Row>
+          </Card>
         )}
 
         {/* Main Content */}
-        <Card>
-          <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <Card 
+          style={{ 
+            borderRadius: '8px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            overflow: 'hidden'
+          }}
+          bodyStyle={{ padding: 0 }}
+        >
+          <Tabs 
+            activeKey={activeTab} 
+            onChange={setActiveTab}
+            style={{ padding: '0 24px' }}
+            tabBarStyle={{ marginBottom: 0, paddingTop: '16px' }}
+          >
             <TabPane
               tab={
                 <span>
@@ -902,9 +1076,18 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
               }
               key="overview"
             >
-              <Row gutter={16}>
-                <Col span={24}>
-                  <Card title="PPE hiện tại" size="small">
+              <div style={{ padding: '24px' }}>
+                <Row gutter={16}>
+                  <Col span={24}>
+                    <Card 
+                      title="PPE hiện tại" 
+                      size="small"
+                      style={{ 
+                        borderRadius: '6px',
+                        border: '1px solid #e8e8e8'
+                      }}
+                      bodyStyle={{ padding: '20px' }}
+                    >
                     {loading ? (
                       <div style={{ textAlign: 'center', padding: '40px' }}>
                         <Spin size="large" />
@@ -918,13 +1101,21 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                           const isOverdueItem = isOverdue(issuance.expected_return_date);
                           
                           return (
-                            <Col xs={24} sm={12} lg={8} key={issuance.id}>
+                            <Col xs={24} sm={12} lg={8} xl={6} key={issuance.id}>
                               <Card
                                 hoverable
+                                style={{ 
+                                  borderRadius: '8px',
+                                  border: '1px solid #e8e8e8',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                                  height: '100%',
+                                  transition: 'all 0.3s ease'
+                                }}
+                                bodyStyle={{ padding: '16px' }}
                                 title={
-                                  <Space>
-                                    <SafetyOutlined style={{ color: '#1890ff' }} />
-                                    <span style={{ fontWeight: 'bold' }}>
+                                  <Space style={{ width: '100%' }}>
+                                    <SafetyOutlined style={{ color: '#1890ff', fontSize: '18px' }} />
+                                    <span style={{ fontWeight: 'bold', fontSize: '14px' }}>
                                       {item?.item_name || 'Không xác định'}
                                     </span>
                                   </Space>
@@ -933,75 +1124,90 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                   <Tag 
                                     color={getStatusColor(issuance.status)} 
                                     icon={getStatusIcon(issuance.status)}
+                                    style={{ margin: 0 }}
                                   >
                                     {getStatusLabel(issuance.status)}
                                   </Tag>
                                 }
                                 actions={[
-                                  <Tooltip title="Xem chi tiết">
+                                  <Tooltip title="Xem chi tiết" key="view">
                                     <Button 
                                       type="text"
                                       icon={<EyeOutlined />}
                                       onClick={() => handleViewHistory(issuance)}
+                                      style={{ border: 'none' }}
                                     />
                                   </Tooltip>,
                                   issuance.status === 'pending_confirmation' ? (
-                                    <Tooltip title="Xác nhận nhận PPE">
+                                    <Tooltip title={isManager && issuance.issuance_level === 'admin_to_manager' ? 'Xác nhận nhận PPE từ Header Department' : 'Xác nhận nhận PPE'} key="confirm">
                                       <Button 
                                         type="primary"
                                         icon={<CheckCircleOutlined />}
                                         onClick={() => handleConfirmReceived(issuance)}
-                                        style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                                        style={{ 
+                                          backgroundColor: '#52c41a', 
+                                          borderColor: '#52c41a',
+                                          borderRadius: '4px'
+                                        }}
                                       />
                                     </Tooltip>
                                   ) : (
-                                    <Tooltip title={issuance.status === 'pending_manager_return' ? 'Đã trả, chờ Manager xác nhận' : issuance.status === 'returned' ? 'Đã trả' : 'Trả PPE'}>
+                                    <Tooltip title={issuance.status === 'pending_manager_return' ? 'Đã trả, chờ Manager xác nhận' : issuance.status === 'returned' ? 'Đã trả' : isManager && issuance.issuance_level === 'admin_to_manager' ? 'Trả PPE về Header Department' : 'Trả PPE'} key="return">
                                       <Button 
                                         type="primary"
                                         icon={<UndoOutlined />}
                                         onClick={() => handleReturnToAdmin(issuance)}
                                         disabled={issuance.status === 'pending_manager_return' || issuance.status === 'returned'}
+                                        style={{ borderRadius: '4px' }}
                                       />
                                     </Tooltip>
                                   ),
-                                  <Tooltip title="Báo cáo sự cố">
+                                  <Tooltip title="Báo cáo sự cố" key="report">
                                     <Button 
                                       type="primary"
                                       danger
                                       icon={<ExclamationCircleOutlined />}
                                       onClick={() => handleReportPPE(issuance)}
                                       disabled={issuance.status === 'pending_confirmation'}
+                                      style={{ borderRadius: '4px' }}
                                     />
                                   </Tooltip>
                                 ]}
                               >
-                                <Space direction="vertical" style={{ width: '100%' }}>
-                                  <div>
-                                    <BarcodeOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                                    <Text strong>Mã: </Text>
-                                    <Text>{item?.item_code || 'N/A'}</Text>
+                                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <BarcodeOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
+                                    <Text strong style={{ fontSize: '13px' }}>Mã: </Text>
+                                    <Text style={{ fontSize: '13px' }}>{item?.item_code || 'N/A'}</Text>
                                   </div>
-                                  <div>
-                                    <NumberOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                                    <Text strong>Số lượng: </Text>
-                                    <Badge count={issuance.quantity} style={{ backgroundColor: '#52c41a' }} />
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <NumberOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
+                                    <Text strong style={{ fontSize: '13px' }}>Số lượng: </Text>
+                                    <Badge 
+                                      count={issuance.quantity} 
+                                      style={{ backgroundColor: '#52c41a' }}
+                                      overflowCount={999}
+                                    />
                                   </div>
-                                  <div>
-                                    <CalendarOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                                    <Text strong>Ngày phát: </Text>
-                                    <Text>{formatDateTime(issuance.issued_date)}</Text>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    <CalendarOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
+                                    <Text strong style={{ fontSize: '13px' }}>Ngày phát: </Text>
+                                    <Text style={{ fontSize: '13px' }}>{formatDateTime(issuance.issued_date)}</Text>
                                   </div>
-                                  <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                     <ClockCircleOutlined style={{ 
-                                      marginRight: '8px', 
-                                      color: isOverdueItem ? '#ff4d4f' : '#1890ff' 
+                                      color: isOverdueItem ? '#ff4d4f' : '#1890ff',
+                                      fontSize: '16px'
                                     }} />
-                                    <Text strong>Hạn trả: </Text>
-                                    <Text style={{ color: isOverdueItem ? '#ff4d4f' : 'inherit' }}>
+                                    <Text strong style={{ fontSize: '13px' }}>Hạn trả: </Text>
+                                    <Text style={{ 
+                                      color: isOverdueItem ? '#ff4d4f' : 'inherit',
+                                      fontSize: '13px'
+                                    }}>
                                       {formatDateTime(issuance.expected_return_date)}
                                     </Text>
                                     {isOverdueItem && (
-                                      <Tag color="red" style={{ marginLeft: '8px' }}>
+                                      <Tag color="red" style={{ marginLeft: '4px', fontSize: '11px' }}>
                                         QUÁ HẠN
                                       </Tag>
                                     )}
@@ -1014,22 +1220,31 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                         
                         {getActiveIssuances().length === 0 && (
                           <Col span={24}>
-                            <Empty
-                              image={<InboxOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
-                              description={
-                                <div>
-                                  <Title level={4} style={{ color: '#8c8c8c' }}>Chưa có PPE</Title>
-                                  <Text type="secondary">Bạn chưa được phát PPE nào</Text>
-                                </div>
-                              }
-                            />
+                            <div style={{ 
+                              textAlign: 'center', 
+                              padding: '60px 20px',
+                              backgroundColor: '#fafafa',
+                              borderRadius: '8px',
+                              border: '1px dashed #d9d9d9'
+                            }}>
+                              <Empty
+                                image={<InboxOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                                description={
+                                  <div>
+                                    <Title level={4} style={{ color: '#8c8c8c', marginTop: '16px' }}>Chưa có PPE</Title>
+                                    <Text type="secondary" style={{ fontSize: '14px' }}>Bạn chưa được phát PPE nào</Text>
+                                  </div>
+                                }
+                              />
+                            </div>
                           </Col>
                         )}
                       </Row>
                     )}
-                  </Card>
-                </Col>
-              </Row>
+                    </Card>
+                  </Col>
+                </Row>
+              </div>
             </TabPane>
 
             {isManager && (
@@ -1037,28 +1252,40 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                 tab={
                   <span>
                     <InboxOutlined />
-                    PPE từ Admin
+                    PPE từ Header Department
                   </span>
                 }
                 key="from-admin"
               >
-                <div style={{ marginBottom: '16px' }}>
-                  <Button
-                    type="primary"
-                    icon={<ReloadOutlined />}
-                    onClick={loadManagerPPE}
-                    loading={loading}
-                  >
-                    Làm mới
-                  </Button>
+                <div style={{ padding: '24px' }}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <Button
+                      type="primary"
+                      icon={<ReloadOutlined />}
+                      onClick={loadManagerPPE}
+                      loading={loading}
+                      style={{ borderRadius: '6px' }}
+                    >
+                      Làm mới
+                    </Button>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <Table
+                      columns={managerPPEColumns}
+                      dataSource={managerPPE}
+                      rowKey={(record) => record.item.id}
+                      pagination={{ 
+                        pageSize: 10,
+                        showSizeChanger: true,
+                        showTotal: (total) => `Tổng ${total} bản ghi`,
+                        style: { marginTop: '16px' }
+                      }}
+                      loading={loading}
+                      scroll={{ x: 'max-content' }}
+                      style={{ borderRadius: '6px' }}
+                    />
+                  </div>
                 </div>
-                <Table
-                  columns={managerPPEColumns}
-                  dataSource={managerPPE}
-                  rowKey={(record) => record.item.id}
-                  pagination={{ pageSize: 10 }}
-                  loading={loading}
-                />
               </TabPane>
             )}
 
@@ -1072,31 +1299,44 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                 }
                 key="employee-ppe"
               >
-                <div style={{ marginBottom: '16px' }}>
-                  <Space>
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      onClick={() => setIssueModalVisible(true)}
-                    >
-                      Phát PPE cho Employee
-                    </Button>
-                    <Button
-                      icon={<ReloadOutlined />}
-                      onClick={loadEmployeePPE}
+                <div style={{ padding: '24px' }}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <Space>
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => setIssueModalVisible(true)}
+                        style={{ borderRadius: '6px' }}
+                      >
+                        Phát PPE cho Employee
+                      </Button>
+                      <Button
+                        icon={<ReloadOutlined />}
+                        onClick={loadEmployeePPE}
+                        loading={loading}
+                        style={{ borderRadius: '6px' }}
+                      >
+                        Làm mới
+                      </Button>
+                    </Space>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <Table
+                      columns={employeePPEColumns}
+                      dataSource={employeePPE}
+                      rowKey={(record) => record.id}
+                      pagination={{ 
+                        pageSize: 10,
+                        showSizeChanger: true,
+                        showTotal: (total) => `Tổng ${total} bản ghi`,
+                        style: { marginTop: '16px' }
+                      }}
                       loading={loading}
-                    >
-                      Làm mới
-                    </Button>
-                  </Space>
+                      scroll={{ x: 'max-content' }}
+                      style={{ borderRadius: '6px' }}
+                    />
+                  </div>
                 </div>
-                <Table
-                  columns={employeePPEColumns}
-                  dataSource={employeePPE}
-                  rowKey={(record) => record.id}
-                  pagination={{ pageSize: 10 }}
-                  loading={loading}
-                />
               </TabPane>
             )}
 
@@ -1109,7 +1349,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
               }
               key="history"
             >
-              <div>
+              <div style={{ padding: '24px' }}>
                 {loading ? (
                   <div style={{ textAlign: 'center', padding: '40px' }}>
                     <Spin size="large" />
@@ -1413,7 +1653,11 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
             
             <Alert
               message="Xác nhận nhận PPE"
-              description="Bạn có chắc chắn đã nhận PPE này từ Manager? Sau khi xác nhận, PPE sẽ được chuyển sang trạng thái 'Đang sử dụng'."
+              description={
+                isManager && selectedIssuance?.issuance_level === 'admin_to_manager'
+                  ? "Bạn có chắc chắn đã nhận PPE này từ Header Department? Sau khi xác nhận, bạn có thể phát PPE cho Employee."
+                  : "Bạn có chắc chắn đã nhận PPE này từ Manager? Sau khi xác nhận, PPE sẽ được chuyển sang trạng thái 'Đang sử dụng'."
+              }
               type="info"
               showIcon
               style={{ marginBottom: 16 }}

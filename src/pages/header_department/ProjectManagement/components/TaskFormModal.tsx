@@ -14,8 +14,8 @@ import {
 } from 'antd';
 import { motion } from 'framer-motion';
 import projectTaskService from '../../../../services/projectTaskService';
-import userService from '../../../../services/userService';
-import type { User } from '../../../../services/userService';
+import projectService from '../../../../services/projectService';
+import dayjs from 'dayjs';
 // import projectPhaseService, { type ProjectPhase } from '../../../../services/projectPhaseService';
 import type { CreateTaskData, UpdateTaskData } from '../../../../types/projectTask';
 
@@ -39,7 +39,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   // const [phases, setPhases] = useState<ProjectPhase[]>([]);
 
@@ -55,8 +55,8 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
           description: task.description,
           priority: task.priority,
           status: task.status,
-          start_date: task.planned_start_date ? new Date(task.planned_start_date) : null,
-          end_date: task.planned_end_date ? new Date(task.planned_end_date) : null,
+          start_date: task.planned_start_date ? dayjs(task.planned_start_date) : null,
+          end_date: task.planned_end_date ? dayjs(task.planned_end_date) : null,
           estimated_hours: task.planned_duration_hours,
           progress: task.progress_percentage,
           task_type: task.task_type,
@@ -72,11 +72,33 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
   const loadUsers = async () => {
     try {
       setLoadingUsers(true);
-      const usersData = await userService.getPotentialManagers();
-      setUsers(usersData.data.managers);
+      // Load available employees để chọn làm người phụ trách
+      const employeesResponse = await projectService.getAvailableEmployees();
+      
+      if (employeesResponse.success && employeesResponse.data) {
+        const employeesData = Array.isArray(employeesResponse.data) 
+          ? employeesResponse.data 
+          : (employeesResponse.data.data || []);
+        
+        if (Array.isArray(employeesData) && employeesData.length > 0) {
+          const mappedUsers = employeesData.map((employee: any) => ({
+            id: employee.id || employee._id,
+            full_name: employee.full_name || employee.name || employee.fullName || '',
+            username: employee.username || employee.email || '',
+            email: employee.email || ''
+          }));
+          setUsers(mappedUsers);
+        } else {
+          setUsers([]);
+        }
+      } else {
+        console.error('Failed to load employees:', employeesResponse.message);
+        setUsers([]);
+      }
     } catch (error) {
-      console.error('Error loading managers:', error);
-      message.error('Không thể tải danh sách người phụ trách');
+      console.error('Error loading employees:', error);
+      message.error('Lỗi khi tải danh sách nhân viên');
+      setUsers([]);
     } finally {
       setLoadingUsers(false);
     }
@@ -99,8 +121,8 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
         description: values.description,
         priority: values.priority?.toUpperCase(),
         status: values.status?.toUpperCase(),
-        planned_start_date: values.start_date?.toISOString(),
-        planned_end_date: values.end_date?.toISOString(),
+        planned_start_date: values.start_date ? dayjs(values.start_date).toDate().toISOString() : undefined,
+        planned_end_date: values.end_date ? dayjs(values.end_date).toDate().toISOString() : undefined,
         planned_duration_hours: values.estimated_hours,
         progress_percentage: values.progress,
         task_type: values.task_type || 'INSPECTION',

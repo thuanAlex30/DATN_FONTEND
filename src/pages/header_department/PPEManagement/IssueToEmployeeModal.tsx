@@ -185,6 +185,19 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
     });
     
     if (ppeData) {
+      // Kiểm tra xem có PPE nào chưa xác nhận nhận từ Header Department không
+      const hasUnconfirmedPPE = ppeData.issuances?.some((issuance: any) => 
+        issuance.status === 'pending_confirmation' && issuance.issuance_level === 'admin_to_manager'
+      );
+      
+      if (hasUnconfirmedPPE) {
+        message.warning('Vui lòng xác nhận nhận PPE từ Header Department trước khi phát cho Employee');
+        form.setFieldsValue({ item_id: undefined });
+        setSelectedItem(null);
+        setAvailableQuantity(0);
+        return;
+      }
+      
       setSelectedItem(ppeData.item);
       setAvailableQuantity(ppeData.remaining);
     } else {
@@ -477,7 +490,13 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                 onChange={handleItemChange}
                 suffixIcon={<SafetyOutlined />}
               >
-                {managerPPE.filter(ppe => ppe.remaining > 0).map(ppe => (
+                {managerPPE.filter(ppe => {
+                  // Chỉ hiển thị PPE đã xác nhận nhận từ Header Department
+                  const hasUnconfirmedPPE = ppe.issuances?.some((issuance: any) => 
+                    issuance.status === 'pending_confirmation' && issuance.issuance_level === 'admin_to_manager'
+                  );
+                  return ppe.remaining > 0 && !hasUnconfirmedPPE;
+                }).map(ppe => (
                   <Option key={ppe.item.id} value={ppe.item.id}>
                     <Space>
                       <SafetyOutlined />

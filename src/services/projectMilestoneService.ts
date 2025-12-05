@@ -14,6 +14,7 @@ export interface ProjectMilestone {
   milestone_type: 'PHASE_COMPLETION' | 'DELIVERY' | 'REVIEW' | 'MILESTONE';
   completion_criteria: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'DELAYED';
+  progress?: number;
   responsible_user_id: {
     email: string;
     full_name: string;
@@ -231,6 +232,42 @@ export const projectMilestoneService = {
         data: null, 
         success: false, 
         message: 'Failed to remove milestone responsible' 
+      };
+    }
+  },
+
+  // Get milestone progress logs
+  getMilestoneProgressLogs: async (milestoneId: string): Promise<{ data: any[]; success: boolean; message?: string }> => {
+    try {
+      const response = await api.get(`${API_BASE}/milestones/${milestoneId}/progress-logs`);
+      return { 
+        data: response.data.data || [], 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error fetching milestone progress logs:', error);
+      return { 
+        data: [], 
+        success: false, 
+        message: 'Failed to fetch milestone progress logs' 
+      };
+    }
+  },
+
+  // Add milestone progress log
+  addMilestoneProgressLog: async (milestoneId: string, data: any): Promise<{ data: any | null; success: boolean; message?: string }> => {
+    try {
+      const response = await api.post(`${API_BASE}/milestones/${milestoneId}/progress-logs`, data);
+      return { 
+        data: response.data.data || null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error adding milestone progress log:', error);
+      return { 
+        data: null, 
+        success: false, 
+        message: 'Failed to add milestone progress log' 
       };
     }
   }

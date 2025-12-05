@@ -33,11 +33,15 @@ import {
   ExclamationCircleOutlined,
   MoreOutlined,
   AppstoreOutlined,
-  UnorderedListOutlined
+  UnorderedListOutlined,
+  EyeOutlined,
+  HistoryOutlined
 } from '@ant-design/icons';
 import type { RootState, AppDispatch } from '../../../../store';
 import { fetchProjectMilestones, deleteMilestone } from '../../../../store/slices/projectMilestoneSlice';
 import CreateMilestoneModal from './CreateMilestoneModal';
+import { projectMilestoneService } from '../../../../services/projectMilestoneService';
+import dayjs from 'dayjs';
 
 interface ProjectMilestonesProps {
   projectId: string;
@@ -52,6 +56,10 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
   const [selectedView, setSelectedView] = useState<'grid' | 'list'>('grid');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [selectedMilestone, setSelectedMilestone] = useState<any>(null);
+  const [milestoneProgressLogs, setMilestoneProgressLogs] = useState<any[]>([]);
+  const [loadingMilestoneLogs, setLoadingMilestoneLogs] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -192,7 +200,37 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
     });
   };
 
-  const menu = (milestoneId: string) => [
+  const handleViewMilestone = async (milestone: any) => {
+    setSelectedMilestone(milestone);
+    setViewModalVisible(true);
+    
+    // Load progress logs
+    const milestoneId = milestone.id || milestone._id;
+    if (milestoneId) {
+      setLoadingMilestoneLogs(true);
+      try {
+        const response = await projectMilestoneService.getMilestoneProgressLogs(milestoneId);
+        if (response.success && response.data) {
+          setMilestoneProgressLogs(response.data);
+        } else {
+          setMilestoneProgressLogs([]);
+        }
+      } catch (error: any) {
+        console.error('Error loading milestone progress logs:', error);
+        setMilestoneProgressLogs([]);
+      } finally {
+        setLoadingMilestoneLogs(false);
+      }
+    }
+  };
+
+  const menu = (milestoneId: string, milestone: any) => [
+    {
+      key: 'view',
+      label: 'Xem chi tiết',
+      icon: <EyeOutlined />,
+      onClick: () => handleViewMilestone(milestone),
+    },
     {
       key: 'edit',
       label: 'Chỉnh sửa',
@@ -322,7 +360,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
           {filteredMilestones.map((milestone) => {
             const statusInfo = getStatusInfo(milestone.status);
             const typeInfo = getMilestoneTypeInfo(milestone.milestone_type);
-            const progress = getProgressFromStatus(milestone.status);
+            const progress = milestone.progress || getProgressFromStatus(milestone.status);
             
             return (
               <Col 
@@ -336,7 +374,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                 <Card
                   hoverable
                   actions={[
-                    <Tooltip key="edit" title="Chỉnh sửa">
+                    <Tooltip key={`edit-${milestone._id}`} title="Chỉnh sửa">
                       <Button 
                         type="text" 
                         icon={<EditOutlined />} 
@@ -344,7 +382,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                         title="Chỉnh sửa milestone"
                       />
                     </Tooltip>,
-                    <Dropdown key="more" menu={{ items: menu(milestone._id) }} trigger={['click']}>
+                    <Dropdown key={`more-${milestone._id}`} menu={{ items: menu(milestone._id) }} trigger={['click']}>
                       <Button type="text" icon={<MoreOutlined />} />
                     </Dropdown>
                   ]}
@@ -362,15 +400,15 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                       />
                     }
                     title={
-                      <Space>
-                        <Text strong>{milestone.milestone_name}</Text>
+                      <Space key={`title-${milestone._id}`}>
+                        <Text key={`text-${milestone._id}`} strong>{milestone.milestone_name}</Text>
                         {milestone.is_critical && (
-                          <Badge key="critical-badge" status="error" text="Quan trọng" />
+                          <Badge key={`critical-badge-${milestone._id}`} status="error" text="Quan trọng" />
                         )}
                       </Space>
                     }
                     description={
-                      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                      <Space key={`desc-${milestone._id}`} direction="vertical" size="small" style={{ width: '100%' }}>
                         <Paragraph 
                           ellipsis={{ rows: 2 }} 
                           style={{ margin: 0, color: '#8c8c8c' }}
@@ -378,8 +416,8 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                           {milestone.description || 'Không có mô tả chi tiết'}
                         </Paragraph>
                         
-                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                          <Space key="planned-date-space">
+                        <Space key={`details-${milestone._id}`} direction="vertical" size="small" style={{ width: '100%' }}>
+                          <Space key={`planned-date-${milestone._id}`}>
                             <CalendarOutlined style={{ color: '#1890ff' }} />
                             <Text type="secondary" style={{ fontSize: '12px' }}>
                               Ngày dự kiến: {formatDate(milestone.planned_date)}
@@ -387,7 +425,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                           </Space>
                           
                           {milestone.actual_date && (
-                            <Space key="actual-date-space">
+                            <Space key={`actual-date-${milestone._id}`}>
                               <CheckCircleOutlined style={{ color: '#52c41a' }} />
                               <Text type="secondary" style={{ fontSize: '12px' }}>
                                 Hoàn thành: {formatDate(milestone.actual_date)}
@@ -395,7 +433,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                             </Space>
                           )}
                           
-                          <Space key="responsible-space">
+                          <Space key={`responsible-${milestone._id}`}>
                             <UserOutlined style={{ color: '#1890ff' }} />
                             <Text type="secondary" style={{ fontSize: '12px' }}>
                               Phụ trách: {(milestone as any).responsible_user?.full_name || 'Chưa phân công'}
@@ -415,8 +453,8 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                           <Progress 
                             percent={progress} 
                             size="small" 
-                            status={statusInfo.color === 'error' ? 'exception' : 'normal'}
-                            strokeColor={statusInfo.color === 'success' ? '#52c41a' : undefined}
+                            status={progress >= 100 ? 'success' : (statusInfo.color === 'error' ? 'exception' : 'active')}
+                            strokeColor={progress >= 100 ? '#52c41a' : (statusInfo.color === 'success' ? '#52c41a' : undefined)}
                           />
                         </div>
                       </Space>
@@ -435,6 +473,153 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
         onCancel={() => setShowCreateModal(false)}
         projectId={projectId}
       />
+
+      {/* View Milestone Detail Modal with Progress Logs */}
+      <Modal
+        title={
+          <Space>
+            <EyeOutlined />
+            <span>Chi tiết cột mốc - {selectedMilestone?.milestone_name}</span>
+          </Space>
+        }
+        open={viewModalVisible}
+        onCancel={() => {
+          setViewModalVisible(false);
+          setSelectedMilestone(null);
+          setMilestoneProgressLogs([]);
+        }}
+        footer={[
+          <Button key="close" onClick={() => {
+            setViewModalVisible(false);
+            setSelectedMilestone(null);
+            setMilestoneProgressLogs([]);
+          }}>
+            Đóng
+          </Button>
+        ]}
+        width={800}
+      >
+        {selectedMilestone && (
+          <div>
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Title level={5}>{selectedMilestone.milestone_name}</Title>
+                <Text>{selectedMilestone.description || 'Không có mô tả'}</Text>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Trạng thái:</Text>
+                <br />
+                <Tag color={getStatusInfo(selectedMilestone.status || '').color}>
+                  {getStatusInfo(selectedMilestone.status || '').label}
+                </Tag>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Ngày dự kiến:</Text>
+                <br />
+                <Text>{dayjs(selectedMilestone.planned_date).format('DD/MM/YYYY')}</Text>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Người phụ trách:</Text>
+                <br />
+                <Text>
+                  {typeof selectedMilestone.responsible_user_id === 'object'
+                    ? selectedMilestone.responsible_user_id?.full_name || 'Chưa phân công'
+                    : 'Chưa phân công'}
+                </Text>
+              </Col>
+              
+              <Col span={12}>
+                <Text strong>Tiến độ:</Text>
+                <br />
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <Text type="secondary" style={{ fontSize: '14px' }}>Tiến độ hiện tại</Text>
+                    <Text strong style={{ fontSize: '14px', color: (selectedMilestone.progress || 0) >= 100 ? '#52c41a' : '#1890ff' }}>
+                      {(selectedMilestone.progress || 0)}%
+                    </Text>
+                  </div>
+                  <Progress 
+                    percent={selectedMilestone.progress || 0} 
+                    status={(selectedMilestone.progress || 0) >= 100 ? 'success' : 'active'}
+                    strokeColor={(selectedMilestone.progress || 0) >= 100 ? '#52c41a' : '#1890ff'}
+                  />
+                </div>
+              </Col>
+              
+              {selectedMilestone.completion_criteria && (
+                <Col span={24}>
+                  <Text strong>Tiêu chí hoàn thành:</Text>
+                  <br />
+                  <Text>{selectedMilestone.completion_criteria}</Text>
+                </Col>
+              )}
+            </Row>
+            
+            {/* Lịch sử báo cáo từ Manager */}
+            <div style={{ marginTop: '24px', borderTop: '1px solid #f0f0f0', paddingTop: '16px' }}>
+              <Title level={5}>
+                <HistoryOutlined style={{ marginRight: '8px' }} />
+                Lịch sử báo cáo từ Manager
+              </Title>
+              {loadingMilestoneLogs ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <Spin size="small" />
+                </div>
+              ) : milestoneProgressLogs.length === 0 ? (
+                <Empty description="Chưa có báo cáo nào từ Manager" size="small" />
+              ) : (
+                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  {milestoneProgressLogs.map((log: any, index: number) => (
+                    <Card
+                      key={log.id || log._id || index}
+                      style={{ marginBottom: '12px', borderRadius: '8px' }}
+                      size="small"
+                    >
+                      <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Space>
+                            <ClockCircleOutlined style={{ color: '#1890ff' }} />
+                            <Text strong>
+                              {dayjs(log.report_date || log.log_date || log.created_at).format('DD/MM/YYYY HH:mm')}
+                            </Text>
+                          </Space>
+                          <Tag color="blue">{log.progress_percentage || 0}%</Tag>
+                        </div>
+                        {log.user_id && (
+                          <div>
+                            <UserOutlined style={{ marginRight: '8px', color: '#8c8c8c' }} />
+                            <Text type="secondary">
+                              {typeof log.user_id === 'object' 
+                                ? log.user_id?.full_name || log.user_id?.email || 'N/A'
+                                : 'N/A'}
+                            </Text>
+                          </div>
+                        )}
+                        {log.work_description && (
+                          <div style={{ marginTop: '8px', padding: '12px', background: '#f5f5f5', borderRadius: '4px' }}>
+                            <Text strong style={{ display: 'block', marginBottom: '4px', color: '#1890ff' }}>
+                              Ghi chú gửi Header Department:
+                            </Text>
+                            <Text>{log.work_description}</Text>
+                          </div>
+                        )}
+                        {log.hours_worked > 0 && (
+                          <div>
+                            <Text type="secondary">Giờ làm việc: {log.hours_worked}h</Text>
+                          </div>
+                        )}
+                      </Space>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
