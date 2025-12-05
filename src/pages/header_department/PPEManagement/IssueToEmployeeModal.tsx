@@ -384,7 +384,10 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
             <Table
               columns={columns}
               dataSource={managerPPE}
-              rowKey={(record) => record.item.id}
+              rowKey={(record) => {
+                const itemId = record.item?.id || record.item?._id || (typeof record.item === 'string' ? record.item : null);
+                return itemId || `ppe-${Math.random()}`;
+              }}
               pagination={false}
               size="small"
             />
@@ -431,8 +434,12 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                     ) : null
                   }
                 >
-                  {employees.filter(employee => employee.id || (employee as any)._id).map(employee => {
+                  {employees.filter(employee => {
                     const employeeId = employee.id || (employee as any)._id;
+                    return employeeId !== null && employeeId !== undefined;
+                  }).map(employee => {
+                    const employeeId = employee.id || (employee as any)._id;
+                    if (!employeeId) return null;
                     return (
                       <Option key={employeeId} value={employeeId}>
                         <Space>
@@ -444,7 +451,7 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                         </Space>
                       </Option>
                     );
-                  })}
+                  }).filter(Boolean)}
                 </Select>
                 
                 {/* Nút chọn tất cả nhân viên */}
@@ -495,16 +502,21 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                   const hasUnconfirmedPPE = ppe.issuances?.some((issuance: any) => 
                     issuance.status === 'pending_confirmation' && issuance.issuance_level === 'admin_to_manager'
                   );
-                  return ppe.remaining > 0 && !hasUnconfirmedPPE;
-                }).map(ppe => (
-                  <Option key={ppe.item.id} value={ppe.item.id}>
-                    <Space>
-                      <SafetyOutlined />
-                      <span>{ppe.item.item_name}</span>
-                      <Text type="secondary">(Còn: {ppe.remaining})</Text>
-                    </Space>
-                  </Option>
-                ))}
+                  const itemId = ppe.item?.id || ppe.item?._id || (typeof ppe.item === 'string' ? ppe.item : null);
+                  return ppe.remaining > 0 && !hasUnconfirmedPPE && itemId !== null && itemId !== undefined;
+                }).map(ppe => {
+                  const itemId = ppe.item?.id || ppe.item?._id || (typeof ppe.item === 'string' ? ppe.item : null);
+                  if (!itemId) return null;
+                  return (
+                    <Option key={itemId} value={itemId}>
+                      <Space>
+                        <SafetyOutlined />
+                        <span>{ppe.item.item_name}</span>
+                        <Text type="secondary">(Còn: {ppe.remaining})</Text>
+                      </Space>
+                    </Option>
+                  );
+                }).filter(Boolean)}
               </Select>
             </Form.Item>
 

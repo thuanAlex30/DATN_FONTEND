@@ -84,5 +84,8 @@ export const clearPPECache = () => apiCache.clearPattern('/ppe');
 export const clearDepartmentCache = () => apiCache.clearPattern('/departments');
 export const clearPositionCache = () => apiCache.clearPattern('/positions');
 export const clearProjectResourceCache = () => apiCache.clearPattern('/project-resources');
+export const clearProjectRiskCache = () => apiCache.clearPattern('/project-risks');
+export const clearProjectTaskCache = () => apiCache.clearPattern('/project-tasks');
+export const clearProjectMilestoneCache = () => apiCache.clearPattern('/project-milestones');
 
 export default apiCache;

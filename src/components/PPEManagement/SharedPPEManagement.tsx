@@ -1273,7 +1273,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                     <Table
                       columns={managerPPEColumns}
                       dataSource={managerPPE}
-                      rowKey={(record) => record.item.id}
+                      rowKey={(record) => record.item?.id || record.item?._id || record.item?.item_code || `ppe-${Math.random()}`}
                       pagination={{ 
                         pageSize: 10,
                         showSizeChanger: true,
@@ -1324,7 +1324,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                     <Table
                       columns={employeePPEColumns}
                       dataSource={employeePPE}
-                      rowKey={(record) => record.id}
+                      rowKey={(record) => record.id || record._id || `employee-ppe-${Math.random()}`}
                       pagination={{ 
                         pageSize: 10,
                         showSizeChanger: true,
@@ -1365,12 +1365,12 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                   </Empty>
                 ) : (
                   <Row gutter={[16, 16]}>
-                    {ppeHistory.map(issuance => {
+                    {ppeHistory.map((issuance, index) => {
                       const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
                         issuance.item_id : null;
                       
                       return (
-                        <Col xs={24} sm={12} lg={8} key={issuance.id}>
+                        <Col xs={24} sm={12} lg={8} key={issuance.id || issuance._id || `history-${index}`}>
                           <Card
                             hoverable
                             title={
