@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { 
-  Card, 
+  Card,   
   Typography, 
   Button, 
   Space,
@@ -28,7 +28,6 @@ import {
 } from '@ant-design/icons';
 import userService from '../../../services/userService';
 import departmentService from '../../../services/departmentService';
-import positionService from '../../../services/positionService';
 import RoleService from '../../../services/roleService';
 import type { User } from '../../../types/user';
 import type { RootState } from '../../../store';
@@ -37,10 +36,27 @@ const { Title } = Typography;
 const { Search } = Input;
 const { Option } = Select;
 
+type CreateUserPayload = {
+  username: string;
+  email: string;
+  full_name: string;
+  phone?: string;
+  department_id?: string;
+  role_id?: string;
+  address?: string;
+  password: string;
+};
+
+type UpdateUserPayload = Omit<CreateUserPayload, 'password'>;
+
 const UserManagement: React.FC = () => {
   // Redux state
   const { user: currentUser } = useSelector((state: RootState) => state.auth);
-  
+  const isCompanyAdmin =
+    currentUser?.role?.role_code === 'company_admin' ||
+    currentUser?.role?.role_name?.toLowerCase() === 'company admin' ||
+    (currentUser?.role?.role_level ?? 0) >= 90;
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,40 +64,160 @@ const UserManagement: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [departmentAssignmentFilter, setDepartmentAssignmentFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showImportUsers, setShowImportUsers] = useState(false);
   
   // Data for dropdowns
   const [departments, setDepartments] = useState<any[]>([]);
-  const [positions, setPositions] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const assignableRoles = useMemo(() => {
+    if (!Array.isArray(roles)) return [];
+
+    const blockedCodes = new Set(['system_admin', 'company_admin']);
+
+    return roles.filter(role => {
+      const levelRaw = role?.role_level ?? role?.roleLevel ?? role?.level;
+      const level = typeof levelRaw === 'number' ? levelRaw : Number(levelRaw ?? 0);
+      const code = (role?.role_code || role?.roleCode || '').toString().toLowerCase();
+      const name = (role?.role_name || role?.name || '').toString().toLowerCase();
+
+      // Chặn tuyệt đối 2 vai trò System Admin & Company Admin theo cả code, name và role_level
+      if (blockedCodes.has(code)) {
+        return false;
+      }
+      if (name === 'system admin' || name === 'company admin' || name === 'system_admin' || name === 'company_admin') {
+        return false;
+      }
+
+      // Không cho chọn các vai trò admin cấp cao (>= 90)
+      return level < 90;
+    });
+  }, [roles]);
   
   const [form] = Form.useForm();
   const itemsPerPage = 10;
 
   // Check if current user has permission to view users
   const hasUserReadPermission = () => {
-    if (!currentUser?.role?.permissions) return false;
-    return currentUser.role.permissions['user:read'] === true;
+    if (!currentUser?.role) return false;
+    
+    // Allow Company Admin and System Admin (role_level >= 90) to access
+    if (currentUser.role.role_level && currentUser.role.role_level >= 90) {
+      return true;
+    }
+    
+    // Fallback: Check role_name for Company Admin or System Admin
+    const roleName = currentUser.role.role_name?.toLowerCase() || '';
+    if (roleName === 'company admin' || roleName === 'system admin' || roleName === 'company_admin' || roleName === 'system_admin') {
+      return true;
+    }
+    
+    // Check specific permission in user_management array
+    if (currentUser.role.permissions) {
+      // Handle both formats: object with arrays or flat object
+      const userManagement = (currentUser.role.permissions as any).user_management;
+      if (Array.isArray(userManagement) && userManagement.includes('read_user')) {
+        return true;
+      }
+      // Fallback: check flat format
+      if ((currentUser.role.permissions as any)['user:read'] === true) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   // Check if current user has permission to create users
   const hasUserCreatePermission = () => {
-    if (!currentUser?.role?.permissions) return false;
-    return currentUser.role.permissions['user:create'] === true;
+    if (!currentUser?.role) return false;
+    
+    // Allow Company Admin and System Admin (role_level >= 90) to create
+    if (currentUser.role.role_level && currentUser.role.role_level >= 90) {
+      return true;
+    }
+    
+    // Fallback: Check role_name for Company Admin or System Admin
+    const roleName = currentUser.role.role_name?.toLowerCase() || '';
+    if (roleName === 'company admin' || roleName === 'system admin' || roleName === 'company_admin' || roleName === 'system_admin') {
+      return true;
+    }
+    
+    // Check specific permission in user_management array
+    if (currentUser.role.permissions) {
+      const userManagement = (currentUser.role.permissions as any).user_management;
+      if (Array.isArray(userManagement) && userManagement.includes('create_user')) {
+        return true;
+      }
+      // Fallback: check flat format
+      if ((currentUser.role.permissions as any)['user:create'] === true) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   // Check if current user has permission to update users
   const hasUserUpdatePermission = () => {
-    if (!currentUser?.role?.permissions) return false;
-    return currentUser.role.permissions['user:update'] === true;
+    if (!currentUser?.role) return false;
+    
+    // Allow Company Admin and System Admin (role_level >= 90) to update
+    if (currentUser.role.role_level && currentUser.role.role_level >= 90) {
+      return true;
+    }
+    
+    // Fallback: Check role_name for Company Admin or System Admin
+    const roleName = currentUser.role.role_name?.toLowerCase() || '';
+    if (roleName === 'company admin' || roleName === 'system admin' || roleName === 'company_admin' || roleName === 'system_admin') {
+      return true;
+    }
+    
+    // Check specific permission in user_management array
+    if (currentUser.role.permissions) {
+      const userManagement = (currentUser.role.permissions as any).user_management;
+      if (Array.isArray(userManagement) && userManagement.includes('update_user')) {
+        return true;
+      }
+      // Fallback: check flat format
+      if ((currentUser.role.permissions as any)['user:update'] === true) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   // Check if current user has permission to delete users
   const hasUserDeletePermission = () => {
-    if (!currentUser?.role?.permissions) return false;
-    return currentUser.role.permissions['user:delete'] === true;
+    if (!currentUser?.role) return false;
+    
+    // Allow Company Admin and System Admin (role_level >= 90) to delete
+    if (currentUser.role.role_level && currentUser.role.role_level >= 90) {
+      return true;
+    }
+    
+    // Fallback: Check role_name for Company Admin or System Admin
+    const roleName = currentUser.role.role_name?.toLowerCase() || '';
+    if (roleName === 'company admin' || roleName === 'system admin' || roleName === 'company_admin' || roleName === 'system_admin') {
+      return true;
+    }
+    
+    // Check specific permission in user_management array
+    if (currentUser.role.permissions) {
+      const userManagement = (currentUser.role.permissions as any).user_management;
+      if (Array.isArray(userManagement) && userManagement.includes('delete_user')) {
+        return true;
+      }
+      // Fallback: check flat format
+      if ((currentUser.role.permissions as any)['user:delete'] === true) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   // Load users
@@ -89,8 +225,35 @@ const UserManagement: React.FC = () => {
     try {
       setLoading(true);
       const users = await userService.getAllUsers();
-      setUsers(users);
-      setFilteredUsers(users);
+      // Transform users to match expected type structure
+      const transformedUsers = users.map(user => ({
+        ...user,
+        role: user.role ? {
+          _id: (user.role as any)._id || (user.role as any).id || '',
+          role_name: user.role.role_name,
+          role_code: (user.role as any).role_code,
+          role_level: (user.role as any).role_level,
+          scope_rules: (user.role as any).scope_rules,
+          permissions: (user.role as any).permissions || {},
+          is_active: (user.role as any).is_active
+        } : undefined
+      })) as User[];
+
+      // Ẩn các user có cấp vai trò >= 90 (chỉ hiển thị user có role_level < 90)
+      const visibleUsers = transformedUsers
+        .filter(u => (u.role?.role_level ?? 0) < 90)
+        // Sắp xếp: level cao hơn hiển thị trước, cùng level thì theo tên
+        .sort((a, b) => {
+          const levelA = a.role?.role_level ?? 0;
+          const levelB = b.role?.role_level ?? 0;
+          if (levelA !== levelB) {
+            return levelB - levelA; // desc
+          }
+          return (a.full_name || a.username || '').localeCompare(b.full_name || b.username || '');
+        });
+
+      setUsers(visibleUsers);
+      setFilteredUsers(visibleUsers);
     } catch (err) {
       message.error('Không thể tải danh sách người dùng');
       console.error('Error loading users:', err);
@@ -101,27 +264,35 @@ const UserManagement: React.FC = () => {
 
   // Load dropdown data
   const loadDropdownData = async () => {
+    const normalizeDepartments = (response: any) => {
+      const payload = response?.data ?? response;
+      if (Array.isArray(payload?.departments)) return payload.departments;
+      if (Array.isArray(payload?.data?.departments)) return payload.data.departments;
+      if (Array.isArray(payload?.data)) return payload.data;
+      if (Array.isArray(payload)) return payload;
+      return [];
+    };
+
+    const normalizeRoles = (response: any) => {
+      const payload = response?.data ?? response;
+      if (Array.isArray(payload?.roles)) return payload.roles;
+      if (Array.isArray(payload?.data?.roles)) return payload.data.roles;
+      if (Array.isArray(payload?.data)) return payload.data;
+      if (Array.isArray(payload)) return payload;
+      return [];
+    };
+
     try {
-      const [deptResponse, posResponse, roleResponse] = await Promise.all([
+      const [deptResponse, roleResponse] = await Promise.all([
         departmentService.getDepartments(),
-        positionService.getOptions(),
         RoleService.getRoles()
       ]);
-      
-      // Ensure data is always an array
-      setDepartments(Array.isArray(deptResponse.data.departments) ? deptResponse.data.departments : 
-                    Array.isArray(deptResponse.data) ? deptResponse.data : []);
-      
-      setPositions(Array.isArray(posResponse.data.positions) ? posResponse.data.positions : 
-                  Array.isArray(posResponse.data) ? posResponse.data : []);
-      
-      setRoles(Array.isArray(roleResponse.data.roles) ? roleResponse.data.roles : 
-              Array.isArray(roleResponse.data) ? roleResponse.data : []);
+
+      setDepartments(normalizeDepartments(deptResponse));
+      setRoles(normalizeRoles(roleResponse));
     } catch (err) {
       console.error('Error loading dropdown data:', err);
-      // Set empty arrays on error
       setDepartments([]);
-      setPositions([]);
       setRoles([]);
     }
   };
@@ -147,9 +318,17 @@ const UserManagement: React.FC = () => {
       filtered = filtered.filter(user => user.is_active === (statusFilter === 'active'));
     }
 
+    if (departmentAssignmentFilter) {
+      if (departmentAssignmentFilter === 'no_department') {
+        filtered = filtered.filter(user => !user.department?._id);
+      } else if (departmentAssignmentFilter === 'has_department') {
+        filtered = filtered.filter(user => !!user.department?._id);
+      }
+    }
+
     setFilteredUsers(filtered);
     setCurrentPage(1);
-  }, [users, searchTerm, statusFilter]);
+  }, [users, searchTerm, statusFilter, departmentAssignmentFilter]);
 
   // Handle search
   const handleSearch = (value: string) => {
@@ -178,7 +357,6 @@ const UserManagement: React.FC = () => {
       phone: user.phone,
       birthDate: (user as any).birth_date || '',
       departmentId: user.department?._id,
-      positionId: user.position?._id,
       roleId: user.role?._id,
       address: (user as any).address || ''
     });
@@ -197,22 +375,80 @@ const UserManagement: React.FC = () => {
     }
   };
 
+  // Handle toggle user active status (Company Admin quyền quản lý trạng thái tài khoản)
+  const handleToggleUserStatus = async (user: User) => {
+    if (!hasUserUpdatePermission()) return;
+    try {
+      await userService.updateUser(user.id, { is_active: !user.is_active } as any);
+      message.success(
+        `Đã ${user.is_active ? 'ngừng kích hoạt' : 'kích hoạt'} tài khoản cho ${user.full_name || user.username}`
+      );
+      loadUsers();
+    } catch (err) {
+      console.error('Error toggling user status:', err);
+      message.error('Không thể thay đổi trạng thái người dùng');
+    }
+  };
+
+  const buildCreatePayload = (values: any): CreateUserPayload => {
+    const payload: CreateUserPayload = {
+      username: values.username?.trim(),
+      email: values.email?.trim(),
+      full_name: values.fullName?.trim(),
+      phone: values.phone?.trim(),
+      department_id: values.departmentId || undefined,
+      role_id: values.roleId || undefined,
+      address: values.address?.trim(),
+      password: values.password
+    };
+
+    if (!payload.department_id) delete payload.department_id;
+    if (!payload.role_id) delete payload.role_id;
+    if (!payload.phone) delete payload.phone;
+    if (!payload.address) delete payload.address;
+
+    return payload;
+  };
+
+  const buildUpdatePayload = (values: any): UpdateUserPayload => {
+    const payload: UpdateUserPayload = {
+      username: values.username?.trim(),
+      email: values.email?.trim(),
+      full_name: values.fullName?.trim(),
+      phone: values.phone?.trim(),
+      department_id: values.departmentId || undefined,
+      role_id: values.roleId || undefined,
+      address: values.address?.trim()
+    };
+
+    if (!payload.department_id) delete payload.department_id;
+    if (!payload.role_id) delete payload.role_id;
+    if (!payload.phone) delete payload.phone;
+    if (!payload.address) delete payload.address;
+
+    return payload;
+  };
+
   // Handle form submit
   const handleFormSubmit = async (values: any) => {
     try {
       if (editingUser) {
-        await userService.updateUser(editingUser.id, values);
+        await userService.updateUser(
+          editingUser.id,
+          buildUpdatePayload(values)
+        );
         message.success('Cập nhật người dùng thành công');
       } else {
-        await userService.createUser(values);
+        await userService.createUser(buildCreatePayload(values));
         message.success('Tạo người dùng thành công');
       }
       
       setIsModalOpen(false);
       form.resetFields();
       loadUsers();
-    } catch (err) {
-      message.error('Có lỗi xảy ra khi lưu người dùng');
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || 'Có lỗi xảy ra khi lưu người dùng';
+      message.error(errorMessage);
       console.error('Error saving user:', err);
     }
   };
@@ -254,18 +490,24 @@ const UserManagement: React.FC = () => {
       key: 'department',
     },
     {
-      title: 'Vị trí',
-      dataIndex: ['position', 'position_name'],
-      key: 'position',
-    },
-    {
       title: 'Trạng thái',
       dataIndex: 'is_active',
       key: 'is_active',
-      render: (isActive: boolean) => (
-        <Tag color={isActive ? 'green' : 'red'}>
-          {isActive ? 'Hoạt động' : 'Không hoạt động'}
-        </Tag>
+      render: (isActive: boolean, record: User) => (
+        <Space>
+          <Tag color={isActive ? 'green' : 'red'}>
+            {isActive ? 'Hoạt động' : 'Không hoạt động'}
+          </Tag>
+          {hasUserUpdatePermission() && (
+            <Button
+              size="small"
+              type="link"
+              onClick={() => handleToggleUserStatus(record)}
+            >
+              {isActive ? 'Ngừng kích hoạt' : 'Kích hoạt'}
+            </Button>
+          )}
+        </Space>
       ),
     },
     {
@@ -320,11 +562,29 @@ const UserManagement: React.FC = () => {
   return (
     <div style={{ padding: '24px' }}>
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <Title level={2}>
-          <UserOutlined /> Quản lý người dùng
-        </Title>
-      </div>
+      <Card style={{ marginBottom: '24px' }}>
+        <Row justify="space-between" align="middle">
+          <Col>
+            <Space direction="vertical" size={4}>
+              <Title level={2} style={{ margin: 0 }}>
+                <UserOutlined /> Quản lý người dùng
+              </Title>
+              {isCompanyAdmin && (
+                <Tag color="geekblue">
+                  Company Admin • Quản lý tài khoản, phòng ban, vai trò trong tenant
+                </Tag>
+              )}
+            </Space>
+          </Col>
+          <Col>
+            {hasUserCreatePermission() && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddUser}>
+                Thêm người dùng
+              </Button>
+            )}
+          </Col>
+        </Row>
+      </Card>
 
       {/* Stats Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
@@ -378,13 +638,19 @@ const UserManagement: React.FC = () => {
               <Option value="inactive">Không hoạt động</Option>
             </Select>
           </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Select
+              placeholder="Lọc theo phòng ban"
+              style={{ width: '100%' }}
+              onChange={(value) => setDepartmentAssignmentFilter(value ?? '')}
+              allowClear
+            >
+              <Option value="has_department">Đã có phòng ban</Option>
+              <Option value="no_department">Chưa phân phòng ban</Option>
+            </Select>
+          </Col>
           <Col xs={24} sm={24} md={8}>
             <Space>
-              {hasUserCreatePermission() && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleAddUser}>
-                  Thêm người dùng
-                </Button>
-              )}
               <Button icon={<UploadIcon />} onClick={() => setShowImportUsers(true)}>
                 Import
               </Button>
@@ -484,26 +750,15 @@ const UserManagement: React.FC = () => {
                 rules={[{ required: true, message: 'Vui lòng chọn phòng ban!' }]}
               >
                 <Select placeholder="Chọn phòng ban">
-                  {Array.isArray(departments) && departments.map(dept => (
-                    <Option key={dept._id} value={dept._id}>
-                      {dept.department_name}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="positionId"
-                label="Vị trí"
-                rules={[{ required: true, message: 'Vui lòng chọn vị trí!' }]}
-              >
-                <Select placeholder="Chọn vị trí">
-                  {Array.isArray(positions) && positions.map(pos => (
-                    <Option key={pos._id} value={pos._id}>
-                      {pos.position_name}
-                    </Option>
-                  ))}
+                  {Array.isArray(departments) && departments.map(dept => {
+                    const value = dept?._id || dept?.id;
+                    if (!value) return null;
+                    return (
+                      <Option key={value} value={value}>
+                        {dept.department_name}
+                      </Option>
+                    );
+                  })}
                 </Select>
               </Form.Item>
             </Col>
@@ -515,11 +770,15 @@ const UserManagement: React.FC = () => {
             rules={[{ required: true, message: 'Vui lòng chọn vai trò!' }]}
           >
             <Select placeholder="Chọn vai trò">
-              {Array.isArray(roles) && roles.map(role => (
-                <Option key={role._id} value={role._id}>
-                  {role.role_name}
-                </Option>
-              ))}
+              {assignableRoles.map(role => {
+                const value = role?._id || role?.id;
+                if (!value) return null;
+                return (
+                  <Option key={value} value={value}>
+                    {role.role_name}
+                  </Option>
+                );
+              })}
             </Select>
           </Form.Item>
 
@@ -536,7 +795,13 @@ const UserManagement: React.FC = () => {
                 <Form.Item
                   name="password"
                   label="Mật khẩu"
-                  rules={[{ required: true, message: 'Vui lòng nhập mật khẩu!' }]}
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập mật khẩu!' },
+                    {
+                      pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{8,}$/,
+                      message: 'Mật khẩu phải >= 8 ký tự và gồm chữ hoa, chữ thường, số và ký tự đặc biệt'
+                    }
+                  ]}
                 >
                   <Input.Password />
                 </Form.Item>

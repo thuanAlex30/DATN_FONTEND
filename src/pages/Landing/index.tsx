@@ -19,12 +19,6 @@ import {
   InstagramOutlined,
   TwitterOutlined,
   CustomerServiceOutlined,
-  SafetyCertificateOutlined,
-  SolutionOutlined,
-  IdcardOutlined,
-  BarChartOutlined,
-  SkinOutlined,
-  FundProjectionScreenOutlined,
   AreaChartOutlined,
   AuditOutlined,
   ProjectOutlined,
@@ -33,8 +27,6 @@ import {
 } from '@ant-design/icons';
 import MarketingHeader from '../../components/MarketingHeader';
 import styles from './Landing.module.css';
-import dhkLogo from '../../assets/clients/dhk-jewelry.svg';
-import maxxLogo from '../../assets/clients/maxx-sport.svg';
 
 const { Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -299,6 +291,7 @@ const LandingPage: React.FC = () => {
                   size="large"
                   className={styles.joinSystemButton}
                   icon={<RocketOutlined />}
+                  onClick={() => navigate('/pricing')}
                 >
                   Tham gia hệ thống của chúng tôi
                 </Button>

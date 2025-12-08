@@ -1,13 +1,12 @@
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../../store/slices/authSlice';
+import type { RootState } from '../../../store';
 import { 
   Layout, 
   Menu, 
   Typography, 
-  Button, 
-  Space,
-  Badge
+  Button
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -16,12 +15,10 @@ import {
   SafetyOutlined,
   BankOutlined,
   FileTextOutlined,
-  ProjectOutlined,
-  BookOutlined,
-  SafetyCertificateOutlined,
-  ExclamationCircleOutlined,
   LogoutOutlined,
-  WifiOutlined
+  WifiOutlined,
+  TeamOutlined,
+  MessageOutlined
 } from '@ant-design/icons';
 import styles from './Sidebar.module.css'; 
 
@@ -31,13 +28,65 @@ const { Title, Text } = Typography;
 const Sidebar = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const { user } = useSelector((state: RootState) => state.auth);
 
     const handleLogout = () => {
         dispatch(logout());
         navigate('/login');
     };
 
-    const menuItems: MenuProps['items'] = [
+    // Check if user is system_admin
+    const isSystemAdmin = user?.role?.role_code?.toLowerCase() === 'system_admin' || 
+                          user?.role?.role_name?.toLowerCase() === 'system admin' ||
+                          user?.role?.role_level === 100;
+
+    // Menu items for system_admin - Dashboard, System Log, and Customer & Feedback
+    const systemAdminMenuItems: MenuProps['items'] = [
+        {
+            key: 'system-management',
+            label: 'Quản lý hệ thống',
+            type: 'group',
+            children: [
+                {
+                    key: '/system-admin/home',
+                    icon: <DashboardOutlined />,
+                    label: 'Dashboard',
+                },
+                {
+                    key: '/admin/department-management',
+                    icon: <BankOutlined />,
+                    label: 'Phòng ban & vị trí',
+                },
+                {
+                    key: '/admin/system-logs',
+                    icon: <FileTextOutlined />,
+                    label: 'Nhật ký hệ thống',
+                },
+            ],
+        },
+        {
+            key: 'customer-feedback',
+            label: 'Khách hàng & phản hồi',
+            type: 'group',
+            children: [
+                {
+                    key: '/system-admin/customers',
+                    icon: <TeamOutlined />,
+                    label: 'Khách hàng tham gia',
+                },
+                {
+                    key: '/system-admin/support-messages',
+                    icon: <MessageOutlined />,
+                    label: 'Tin nhắn hỗ trợ',
+                },
+            ],
+        },
+    ];
+
+    // Menu items cho company_admin (và các admin không phải system_admin):
+    // Chỉ giữ: Quản lý hệ thống, Dashboard, Quản lý người dùng, Vai trò & quyền hạn,
+    // Phòng ban & vị trí, Nhật ký hệ thống
+    const adminMenuItems: MenuProps['items'] = [
         {
             key: 'system-management',
             label: 'Quản lý hệ thống',
@@ -54,14 +103,14 @@ const Sidebar = () => {
                     label: 'Quản lý người dùng',
                 },
                 {
+                    key: '/admin/department-management',
+                    icon: <BankOutlined />,
+                    label: 'Phòng ban & vị trí',
+                },
+                {
                     key: '/admin/role-management',
                     icon: <SafetyOutlined />,
                     label: 'Vai trò & quyền hạn',
-                },
-                {
-                    key: '/admin/department-position',
-                    icon: <BankOutlined />,
-                    label: 'Phòng ban & vị trí',
                 },
                 {
                     key: '/admin/system-logs',
@@ -70,53 +119,11 @@ const Sidebar = () => {
                 },
             ],
         },
-        {
-            key: 'project-management',
-            label: 'Quản lý dự án',
-            type: 'group',
-            children: [
-                {
-                    key: '/admin/project-management',
-                    icon: <ProjectOutlined />,
-                    label: 'Dự án',
-                },
-            ],
-        },
-        {
-            key: 'training-incident',
-            label: 'Đào tạo & Sự cố',
-            type: 'group',
-            children: [
-                {
-                    key: '/admin/training-management',
-                    icon: <BookOutlined />,
-                    label: 'Quản lý đào tạo',
-                },
-                {
-                    key: '/admin/incident-management',
-                    icon: <ExclamationCircleOutlined />,
-                    label: 'Quản lý sự cố',
-                },
-            ],
-        },
-        {
-            key: 'ppe-management',
-            label: 'Thiết bị bảo hộ',
-            type: 'group',
-            children: [
-                {
-                    key: '/admin/ppe-management',
-                    icon: <SafetyCertificateOutlined />,
-                    label: 'Quản lý PPE',
-                },
-                {
-                    key: '/admin/certificate-management',
-                    icon: <SafetyCertificateOutlined />,
-                    label: 'Gói chứng chỉ',
-                },
-            ],
-        },
     ];
+
+    const menuItems: MenuProps['items'] = isSystemAdmin 
+        ? systemAdminMenuItems 
+        : adminMenuItems;
 
     const handleMenuClick = ({ key }: { key: string }) => {
         navigate(key);
@@ -151,7 +158,7 @@ const Sidebar = () => {
                     items={menuItems}
                     onClick={handleMenuClick}
                     className={styles.menu}
-                    defaultOpenKeys={['system-management', 'project-management', 'training-incident', 'ppe-management']}
+                    defaultOpenKeys={isSystemAdmin ? ['system-management', 'customer-feedback'] : ['system-management']}
                 />
             </div>
 

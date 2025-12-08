@@ -1,12 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { Button } from 'antd';
+import { Button, Spin, Card, Row, Col, Statistic } from 'antd';
+import { 
+  DashboardOutlined, 
+  ExclamationCircleOutlined, 
+  FlagOutlined, 
+  WarningOutlined, 
+  ClockCircleOutlined,
+  SafetyOutlined,
+  ProjectOutlined,
+  UserOutlined,
+  BookOutlined,
+  ThunderboltOutlined
+} from '@ant-design/icons';
 import type { RootState } from '../../../store';
+import { logout } from '../../../store/slices/authSlice';
 import { ManagerLayout } from '../../../components/Manager';
-import { DashboardOutlined } from '@ant-design/icons';
 import NotificationPanel from '../../../components/NotificationPanel';
-import DebugUserInfo from '../../../components/DebugUserInfo';
 import { projectRiskService } from '../../../services/projectRiskService';
 import { projectMilestoneService } from '../../../services/projectMilestoneService';
 import styles from './Dashboard.module.css';
@@ -14,8 +25,10 @@ import styles from './Dashboard.module.css';
 const ManagerDashboard: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const { unreadCount } = useSelector((state: RootState) => state.websocket);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [dashboardStats, setDashboardStats] = useState({
     totalRisks: 0,
     totalMilestones: 0,
@@ -26,14 +39,19 @@ const ManagerDashboard: React.FC = () => {
   });
 
   const handleLogout = () => {
+    dispatch(logout());
     navigate('/login');
   };
 
   // Fetch dashboard statistics for manager
   const fetchDashboardStats = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
     
     try {
+      setLoading(true);
       const [risksResponse, milestonesResponse] = await Promise.all([
         projectRiskService.getAllRisks(),
         projectMilestoneService.getAllMilestones()
@@ -54,12 +72,15 @@ const ManagerDashboard: React.FC = () => {
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchDashboardStats();
   }, [user]);
+
 
   return (
     <ManagerLayout
@@ -80,108 +101,138 @@ const ManagerDashboard: React.FC = () => {
     >
       <div className={styles.dashboardContent}>
         {/* Welcome Section */}
-        <div className={styles.welcomeSection}>
-          <h2>Xin chào, {user?.full_name || 'Quản lý'}!</h2>
-          <p>Chào mừng bạn đến với bảng điều khiển quản lý</p>
-        </div>
+        <Card className={styles.welcomeCard}>
+          <div className={styles.welcomeContent}>
+            <div className={styles.welcomeIcon}>
+              <ThunderboltOutlined />
+            </div>
+            <div>
+              <h2>Xin chào, {user?.full_name || 'Quản lý'}!</h2>
+              <p>Chào mừng bạn đến với bảng điều khiển quản lý</p>
+            </div>
+          </div>
+        </Card>
 
         {/* Statistics Grid */}
-        <div className={styles.statsGrid}>
-          <div className={styles.statCard}>
-            <div className={styles.statIcon}>
-              <i className="fas fa-exclamation-triangle"></i>
-            </div>
-            <div className={styles.statContent}>
-              <h3>{dashboardStats.totalRisks}</h3>
-              <p>Tổng rủi ro</p>
-              <span className={styles.statSubtext}>
-                {dashboardStats.highPriorityRisks} ưu tiên cao
-              </span>
-            </div>
+        {loading ? (
+          <div className={styles.loadingContainer}>
+            <Spin size="large" />
           </div>
-          
-          <div className={styles.statCard}>
-            <div className={styles.statIcon}>
-              <i className="fas fa-flag-checkered"></i>
-            </div>
-            <div className={styles.statContent}>
-              <h3>{dashboardStats.totalMilestones}</h3>
-              <p>Tổng cột mốc</p>
-              <span className={styles.statSubtext}>
-                {dashboardStats.completedMilestones} hoàn thành
-              </span>
-            </div>
-          </div>
-          
-          <div className={styles.statCard}>
-            <div className={styles.statIcon}>
-              <i className="fas fa-exclamation-circle"></i>
-            </div>
-            <div className={styles.statContent}>
-              <h3>{dashboardStats.highPriorityRisks}</h3>
-              <p>Rủi ro ưu tiên cao</p>
-              <span className={styles.statSubtext}>
-                Cần xử lý ngay
-              </span>
-            </div>
-          </div>
-          
-          <div className={styles.statCard}>
-            <div className={styles.statIcon}>
-              <i className="fas fa-clock"></i>
-            </div>
-            <div className={styles.statContent}>
-              <h3>{dashboardStats.overdueMilestones}</h3>
-              <p>Cột mốc quá hạn</p>
-              <span className={styles.statSubtext}>
-                Cần theo dõi
-              </span>
-            </div>
-          </div>
-        </div>
+        ) : (
+          <Row gutter={[16, 16]} className={styles.statsRow}>
+            <Col xs={24} sm={12} lg={6}>
+              <Card className={styles.statCard} hoverable>
+                <Statistic
+                  title="Tổng rủi ro"
+                  value={dashboardStats.totalRisks}
+                  prefix={<ExclamationCircleOutlined />}
+                  valueStyle={{ color: '#ff4d4f' }}
+                  suffix={
+                    dashboardStats.highPriorityRisks > 0 && (
+                      <span className={styles.badge}>{dashboardStats.highPriorityRisks} ưu tiên cao</span>
+                    )
+                  }
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card className={styles.statCard} hoverable>
+                <Statistic
+                  title="Tổng cột mốc"
+                  value={dashboardStats.totalMilestones}
+                  prefix={<FlagOutlined />}
+                  valueStyle={{ color: '#1890ff' }}
+                  suffix={
+                    <span className={styles.badge}>{dashboardStats.completedMilestones} hoàn thành</span>
+                  }
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card className={styles.statCard} hoverable>
+                <Statistic
+                  title="Rủi ro ưu tiên cao"
+                  value={dashboardStats.highPriorityRisks}
+                  prefix={<WarningOutlined />}
+                  valueStyle={{ color: '#faad14' }}
+                  suffix={<span className={styles.badge}>Cần xử lý ngay</span>}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Card className={styles.statCard} hoverable>
+                <Statistic
+                  title="Cột mốc quá hạn"
+                  value={dashboardStats.overdueMilestones}
+                  prefix={<ClockCircleOutlined />}
+                  valueStyle={{ color: '#ff4d4f' }}
+                  suffix={<span className={styles.badge}>Cần theo dõi</span>}
+                />
+              </Card>
+            </Col>
+          </Row>
+        )}
 
         {/* Quick Actions */}
-        <div className={styles.quickActions}>
-          <h3>Thao tác quản lý</h3>
-          <div className={styles.actionButtons}>
-            <button 
-              className={styles.actionButton}
-              onClick={() => navigate('/manager/ppe')}
-            >
-              <i className="fas fa-hard-hat"></i>
-              Quản lý PPE
-            </button>
-            <button 
-              className={styles.actionButton}
-              onClick={() => navigate('/manager/project-management')}
-            >
-              <i className="fas fa-project-diagram"></i>
-              Quản lý dự án
-            </button>
-            <button 
-              className={styles.actionButton}
-              onClick={() => navigate('/manager/ppe')}
-            >
-              <i className="fas fa-user-hard-hat"></i>
-              PPE của tôi
-            </button>
-            <button 
-              className={styles.actionButton}
-              onClick={() => navigate('/manager/training')}
-            >
-              <i className="fas fa-book"></i>
-              Đào tạo
-            </button>
-          </div>
-        </div>
+        <Card title={<span className={styles.sectionTitle}>Thao tác quản lý</span>} className={styles.quickActionsCard}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} lg={6}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<SafetyOutlined />}
+                className={styles.actionButton}
+                onClick={() => navigate('/manager/ppe')}
+                block
+              >
+                Quản lý PPE
+              </Button>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<ProjectOutlined />}
+                className={styles.actionButton}
+                onClick={() => navigate('/manager/project-management')}
+                block
+              >
+                Quản lý dự án
+              </Button>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<UserOutlined />}
+                className={styles.actionButton}
+                onClick={() => navigate('/manager/ppe')}
+                block
+              >
+                PPE của tôi
+              </Button>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<BookOutlined />}
+                className={styles.actionButton}
+                onClick={() => navigate('/manager/training')}
+                block
+              >
+                Đào tạo
+              </Button>
+            </Col>
+          </Row>
+        </Card>
 
         {/* Recent Activity */}
-        <div className={styles.recentActivity}>
-          <h3>Hoạt động gần đây</h3>
+        <Card title={<span className={styles.sectionTitle}>Hoạt động gần đây</span>} className={styles.recentActivityCard}>
           <div className={styles.activityList}>
             <div className={styles.activityItem}>
-              <div className={styles.activityIcon}>
-                <i className="fas fa-plus"></i>
+              <div className={`${styles.activityIcon} ${styles.iconAdd}`}>
+                <ThunderboltOutlined />
               </div>
               <div className={styles.activityContent}>
                 <p>Thêm rủi ro mới</p>
@@ -189,8 +240,8 @@ const ManagerDashboard: React.FC = () => {
               </div>
             </div>
             <div className={styles.activityItem}>
-              <div className={styles.activityIcon}>
-                <i className="fas fa-check"></i>
+              <div className={`${styles.activityIcon} ${styles.iconCheck}`}>
+                <FlagOutlined />
               </div>
               <div className={styles.activityContent}>
                 <p>Hoàn thành cột mốc dự án</p>
@@ -198,8 +249,8 @@ const ManagerDashboard: React.FC = () => {
               </div>
             </div>
             <div className={styles.activityItem}>
-              <div className={styles.activityIcon}>
-                <i className="fas fa-user"></i>
+              <div className={`${styles.activityIcon} ${styles.iconUser}`}>
+                <UserOutlined />
               </div>
               <div className={styles.activityContent}>
                 <p>Phân công nhân viên mới</p>
@@ -207,7 +258,8 @@ const ManagerDashboard: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
+
       </div>
 
       {/* Notification Panel */}
@@ -217,9 +269,6 @@ const ManagerDashboard: React.FC = () => {
           onClose={() => setIsNotificationPanelOpen(false)}
         />
       )}
-
-      {/* Debug User Info */}
-      <DebugUserInfo />
 
       {/* Test PPE Access Button */}
       <div style={{ 

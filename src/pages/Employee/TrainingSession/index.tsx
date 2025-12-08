@@ -316,10 +316,11 @@ const TrainingSession: React.FC = () => {
         
         localStorage.removeItem('currentTrainingData');
         
-        // Navigate back to training list
+        // Add a small delay to ensure the success message is shown
         setTimeout(() => {
-          navigate('/training');
-        }, 2000);
+          // Force page reload to refresh all data
+          window.location.href = '/employee/training';
+        }, 1500);
       } else {
         message.error(`Lỗi: ${response.data.message}`);
       }

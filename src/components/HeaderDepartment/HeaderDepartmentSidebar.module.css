@@ -1,0 +1,67 @@
+ .sider {
+  background: #ffffff;
+  border-right: 1px solid #f0f0f0;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+}
+
+.logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  border-bottom: 1px solid #f0f0f0;
+  font-weight: 600;
+  color: #1890ff;
+  gap: 8px;
+}
+
+.logoIcon {
+  font-size: 20px;
+}
+
+.logoText {
+  font-size: 16px;
+}
+
+.menu {
+  border-right: none;
+  padding-top: 8px;
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: 16px;
+  border-top: 1px solid #f0f0f0;
+  background: #ffffff;
+}
+
+.logoutButton {
+  height: 48px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  background: #ff4d4f;
+  border: none;
+  box-shadow: 0 2px 8px rgba(255, 77, 79, 0.3);
+  transition: all 0.3s ease;
+}
+
+.logoutButton:hover {
+  background: #ff7875 !important;
+  border-color: #ff7875 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.4) !important;
+}
+
+.logoutButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(255, 77, 79, 0.3) !important;
+}
+
+

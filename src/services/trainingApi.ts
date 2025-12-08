@@ -26,8 +26,22 @@ export interface Course {
   duration_hours: number;
   is_mandatory: boolean;
   validity_months?: number;
+  is_deployed?: boolean;
+  deployed_at?: string;
+  deployed_by?: {
+    _id: string;
+    full_name: string;
+  };
   created_at: string;
   updated_at: string;
+  // Assignment fields for department courses
+  assignment_id?: string;
+  assigned_by?: {
+    _id: string;
+    full_name: string;
+  };
+  assigned_at?: string;
+  notes?: string;
 }
 
 export interface TrainingSession {
@@ -99,6 +113,26 @@ export interface TrainingStats {
   totalQuestions: number;
 }
 
+export interface TrainingAssignment {
+  _id: string;
+  course_id: {
+    _id: string;
+    course_name: string;
+  };
+  department_id: {
+    _id: string;
+    department_name: string;
+  };
+  assigned_by: {
+    _id: string;
+    full_name: string;
+  };
+  assigned_at: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SessionStats {
   _id: string;
   count: number;
@@ -151,6 +185,7 @@ export interface EnrollmentFormData {
 export interface CourseFilters {
   courseSetId?: string;
   isMandatory?: boolean;
+  isDeployed?: boolean;
   search?: string;
 }
 
@@ -163,7 +198,7 @@ export interface SessionFilters {
 
 export interface EnrollmentFilters {
   sessionId?: string;
-  employeeId?: string;
+  userId?: string;
   status?: string;
 }
 
@@ -207,12 +242,21 @@ export const courseSetApi = {
 
 // Course API
 export const courseApi = {
-  getAll: async (filters?: { courseSetId?: string; isMandatory?: boolean }): Promise<Course[]> => {
+  getAll: async (filters?: { courseSetId?: string; isMandatory?: boolean; isDeployed?: boolean }): Promise<Course[]> => {
     const params = new URLSearchParams();
     if (filters?.courseSetId) params.append('courseSetId', filters.courseSetId);
     if (filters?.isMandatory !== undefined) params.append('isMandatory', filters.isMandatory.toString());
+    if (filters?.isDeployed !== undefined) params.append('isDeployed', filters.isDeployed.toString());
     
     const response = await api.get<ApiResponse<Course[]>>(`/training/courses?${params.toString()}`);
+    return response.data.data;
+  },
+
+  getAvailableForEmployee: async (filters?: { isMandatory?: boolean }): Promise<Course[]> => {
+    const params = new URLSearchParams();
+    if (filters?.isMandatory !== undefined) params.append('isMandatory', filters.isMandatory.toString());
+    
+    const response = await api.get<ApiResponse<Course[]>>(`/training/courses/available?${params.toString()}`);
     return response.data.data;
   },
 
@@ -259,6 +303,15 @@ export const trainingSessionApi = {
     if (filters?.statusCode) params.append('statusCode', filters.statusCode);
     
     const response = await api.get<ApiResponse<TrainingSession[]>>(`/training/sessions?${params.toString()}`);
+    return response.data.data;
+  },
+
+  getAvailableForEmployee: async (filters?: { courseId?: string; statusCode?: string }): Promise<TrainingSession[]> => {
+    const params = new URLSearchParams();
+    if (filters?.courseId) params.append('courseId', filters.courseId);
+    if (filters?.statusCode) params.append('statusCode', filters.statusCode);
+    
+    const response = await api.get<ApiResponse<TrainingSession[]>>(`/training/sessions/available?${params.toString()}`);
     return response.data.data;
   },
 
@@ -515,6 +568,60 @@ export const questionApi = {
   downloadTemplate: async (): Promise<string> => {
     const response = await api.get<ApiResponse<{ templatePath: string }>>('/training/questions/template');
     return response.data.data.templatePath;
+  },
+};
+
+// Training Assignment API
+export const trainingAssignmentApi = {
+  getAll: async (filters?: { courseId?: string; departmentId?: string }): Promise<TrainingAssignment[]> => {
+    const params = new URLSearchParams();
+    if (filters?.courseId) params.append('courseId', filters.courseId);
+    if (filters?.departmentId) params.append('departmentId', filters.departmentId);
+    
+    const response = await api.get<ApiResponse<TrainingAssignment[]>>(`/training/assignments?${params.toString()}`);
+    return response.data.data;
+  },
+
+  getById: async (id: string): Promise<TrainingAssignment> => {
+    const response = await api.get<ApiResponse<TrainingAssignment>>(`/training/assignments/${id}`);
+    return response.data.data;
+  },
+
+  create: async (data: {
+    course_id: string;
+    department_id: string;
+    notes?: string;
+  }): Promise<TrainingAssignment> => {
+    const response = await api.post<ApiResponse<TrainingAssignment>>('/training/assignments', data);
+    return response.data.data;
+  },
+
+  update: async (id: string, data: {
+    course_id?: string;
+    department_id?: string;
+    notes?: string;
+  }): Promise<TrainingAssignment> => {
+    const response = await api.put<ApiResponse<TrainingAssignment>>(`/training/assignments/${id}`, data);
+    return response.data.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/training/assignments/${id}`);
+  },
+
+  getByDepartment: async (departmentId: string): Promise<TrainingAssignment[]> => {
+    const response = await api.get<ApiResponse<TrainingAssignment[]>>(`/training/assignments/department/${departmentId}`);
+    return response.data.data;
+  },
+
+  getByCourse: async (courseId: string): Promise<TrainingAssignment[]> => {
+    const response = await api.get<ApiResponse<TrainingAssignment[]>>(`/training/assignments/course/${courseId}`);
+    return response.data.data;
+  },
+
+  getStats: async (): Promise<any> => {
+    const response = await api.get<ApiResponse<any>>('/training/assignments/stats');
+    return response.data.data;
   },
 };
 

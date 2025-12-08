@@ -8,6 +8,7 @@ import { initializeAuth } from './store/slices/authSlice'
 import AppRoutes from './routes'
 import ErrorBoundary from './components/ErrorBoundary'
 import WebSocketStatus from './components/WebSocketStatus'
+import Chatbot from './components/Chatbot'
 import { useSelector } from 'react-redux'
 
 function AppContent() {
@@ -77,6 +78,9 @@ function AppContent() {
             <WebSocketStatus />
           </div>
         )}
+        
+        {/* Chatbot - Hiển thị luôn (cả landing page) */}
+        <Chatbot />
         
       </BrowserRouter>
     </ErrorBoundary>

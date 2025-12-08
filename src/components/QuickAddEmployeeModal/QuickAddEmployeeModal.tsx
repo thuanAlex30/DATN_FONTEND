@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import userService from '../../services/userService';
 import departmentService from '../../services/departmentService';
-import positionService from '../../services/positionService';
 import roleService from '../../services/roleService';
 import './QuickAddEmployeeModal.css';
 
@@ -19,7 +18,7 @@ interface FormData {
   password: string;
   confirmPassword: string;
   departmentId: string;
-  positionId: string;
+
   roleId: string;
 }
 
@@ -36,12 +35,11 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
     password: '',
     confirmPassword: '',
     departmentId: '',
-    positionId: '',
+
     roleId: ''
   });
 
   const [departments, setDepartments] = useState<any[]>([]);
-  const [positions, setPositions] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(false);
@@ -61,10 +59,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
   }, [departments]);
 
   useEffect(() => {
-    console.log('Positions state changed:', positions);
-  }, [positions]);
-
-  useEffect(() => {
     console.log('Roles state changed:', roles);
   }, [roles]);
 
@@ -78,24 +72,18 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
       if (!token) {
         console.warn('No access token found, user might not be authenticated');
         setDepartments([]);
-        setPositions([]);
         setRoles([]);
         return;
       }
-
       console.log('Loading dropdown data...');
-      const [deptResponse, posResponse, roleResponse] = await Promise.all([
+      const [deptResponse, roleResponse] = await Promise.all([
         departmentService.getActiveDepartments(),
-        positionService.getOptions(),
         roleService.getAllActiveRoles()
       ]);
 
-      console.log('API Responses:', { deptResponse, posResponse, roleResponse });
-      console.log('Position response structure:', posResponse);
 
       // Extract data from responses - handle different response formats
       let deptData: any[] = [];
-      let posData: any[] = [];
       let roleData: any[] = [];
 
       // Handle department response
@@ -107,14 +95,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         deptData = deptResponse;
       }
 
-      // Handle position response
-      if (posResponse && (posResponse as any).data && (posResponse as any).data.data && Array.isArray((posResponse as any).data.data)) {
-        posData = (posResponse as any).data.data;
-      } else if (posResponse && (posResponse as any).data && Array.isArray((posResponse as any).data)) {
-        posData = (posResponse as any).data;
-      } else if (posResponse && Array.isArray(posResponse)) {
-        posData = posResponse;
-      }
 
       // Handle role response
       if (roleResponse && (roleResponse as any).data && (roleResponse as any).data.data && Array.isArray((roleResponse as any).data.data)) {
@@ -125,19 +105,14 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         roleData = roleResponse;
       }
 
-      console.log('Extracted data:', { deptData, posData, roleData });
       console.log('Department data length:', deptData.length);
-      console.log('Position data length:', posData.length);
       console.log('Role data length:', roleData.length);
-      console.log('Position data sample:', posData[0]);
 
       setDepartments(deptData);
-      setPositions(posData);
       setRoles(roleData);
 
       console.log('State updated:', { 
         departments: deptData, 
-        positions: posData, 
         roles: roleData 
       });
     } catch (error: any) {
@@ -151,7 +126,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
       
       // Set empty arrays on error to prevent crashes
       setDepartments([]);
-      setPositions([]);
       setRoles([]);
     } finally {
       setIsLoadingDropdowns(false);
@@ -231,7 +205,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         full_name: formData.fullName.trim(),
         phone: formData.phone?.trim() || undefined,
         department_id: formData.departmentId || undefined,
-        position_id: formData.positionId || undefined,
         role_id: formData.roleId
       };
 
@@ -250,7 +223,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         password: '',
         confirmPassword: '',
         departmentId: '',
-        positionId: '',
+    
         roleId: ''
       });
 
@@ -289,7 +262,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         password: '',
         confirmPassword: '',
         departmentId: '',
-        positionId: '',
+    
         roleId: ''
       });
       setErrors([]);
@@ -335,7 +308,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="username">Tên đăng nhập *</label>
+              <label htmlFor="username">Tên đăng nhập*</label>
               <input
                 type="text"
                 id="username"
@@ -365,14 +338,14 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="fullName">Họ tên *</label>
+              <label htmlFor="fullName">Họ Và Tên *</label>
               <input
                 type="text"
                 id="fullName"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleInputChange}
-                placeholder="Nhập họ tên"
+                placeholder="Nhập họ và tên"
                 required
                 disabled={isLoading}
               />
@@ -394,7 +367,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="password">Mật khẩu *</label>
+              <label htmlFor="password">Mật khẩu*</label>
               <input
                 type="password"
                 id="password"
@@ -424,7 +397,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="roleId">Vai trò *</label>
+              <label htmlFor="roleId">Vai trò*</label>
               <select
                 id="roleId"
                 name="roleId"
@@ -454,7 +427,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
                 disabled={isLoading || isLoadingDropdowns}
               >
                 <option value="">
-                  {isLoadingDropdowns ? 'Đang tải...' : 'Chọn phòng ban'}
+                  {isLoadingDropdowns ? 'Đang tải....' : 'Chọn phòng ban'}
                 </option>
                 {departments.map(dept => (
                   <option key={dept.id} value={dept.id}>
@@ -463,26 +436,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
                 ))}
               </select>
             </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="positionId">Chức vụ</label>
-            <select
-              id="positionId"
-              name="positionId"
-              value={formData.positionId}
-              onChange={handleInputChange}
-              disabled={isLoading || isLoadingDropdowns}
-            >
-              <option value="">
-                {isLoadingDropdowns ? 'Đang tải...' : 'Chọn chức vụ'}
-              </option>
-              {positions.map(pos => (
-                <option key={pos.id} value={pos.id}>
-                  {pos.position_name || pos.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div className="modal-actions">

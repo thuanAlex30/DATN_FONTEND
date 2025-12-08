@@ -18,8 +18,22 @@ export interface Course {
   duration_hours: number;
   is_mandatory: boolean;
   validity_months?: number;
+  is_deployed?: boolean;
+  deployed_at?: string;
+  deployed_by?: {
+    _id: string;
+    full_name: string;
+  };
   created_at: string;
   updated_at: string;
+  // Assignment fields for department courses
+  assignment_id?: string;
+  assigned_by?: {
+    _id: string;
+    full_name: string;
+  };
+  assigned_at?: string;
+  notes?: string;
 }
 
 export interface TrainingSession {

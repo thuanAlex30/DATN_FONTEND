@@ -53,9 +53,12 @@ const incidentService = {
   investigateIncident: (id: string, data: { investigation: string; solution: string }) =>
     api.put(`/incidents/investigate/${id}`, data),
 
-  // Admin - update progress
-  updateIncidentProgress: (id: string, data: { progress: string }) =>
-    api.put(`/incidents/progress/${id}`, data),
+  // Admin - update progress (supports both 'note' and 'progress' field names)
+  updateIncidentProgress: (id: string, data: { progress?: string; note?: string }) => {
+    // Map 'progress' to 'note' for backend compatibility
+    const payload = data.note ? { note: data.note } : { note: data.progress || '' };
+    return api.put(`/incidents/progress/${id}`, payload);
+  },
 
   // Admin - close incident
   closeIncident: (id: string) => api.put(`/incidents/close/${id}`),
@@ -65,6 +68,15 @@ const incidentService = {
 
   // Admin - delete incident
   deleteIncident: (id: string) => api.delete(`/incidents/${id}`),
+
+  // Department Header - escalate incident
+  escalateIncident: (id: string, data: { 
+    escalation_level: 'SITE' | 'DEPARTMENT' | 'COMPANY' | 'EXTERNAL';
+    reason: string;
+  }) => api.post(`/incidents/${id}/escalate`, data),
+
+  // Get incident escalations
+  getIncidentEscalations: (id: string) => api.get(`/incidents/${id}/escalations`),
 };
 
 export default incidentService;

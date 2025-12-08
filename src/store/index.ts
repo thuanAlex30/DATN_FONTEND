@@ -6,7 +6,6 @@ import authReducer from './slices/authSlice';
 import userReducer from './slices/userSlice';
 import roleReducer from './slices/roleSlice';
 import departmentReducer from './slices/departmentSlice';
-import positionReducer from './slices/positionSlice';
 import websocketReducer from './slices/websocketSlice';
 import projectReducer from './slices/projectSlice';
 import projectChangeRequestReducer from './slices/projectChangeRequestSlice';
@@ -28,7 +27,6 @@ const rootReducer = combineReducers({
   users: userReducer,
   roles: roleReducer,
   departments: departmentReducer,
-  positions: positionReducer,
   websocket: websocketReducer,
   project: projectReducer,
   projectChangeRequest: projectChangeRequestReducer,

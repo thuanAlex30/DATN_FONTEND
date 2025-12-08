@@ -80,6 +80,7 @@ export interface UpdateTaskData {
   area_id?: string;
   location_id?: string;
   progress_percentage?: number;
+  status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED';
 }
 
 export interface CreateAssignmentData {

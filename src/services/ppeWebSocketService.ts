@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { ENV } from '../config/env';
 
 class PPEWebSocketService {
   private socket: Socket | null = null;
@@ -11,7 +12,8 @@ class PPEWebSocketService {
       return;
     }
 
-    this.socket = io((window as any).REACT_APP_WS_URL || 'http://localhost:3000', {
+    const baseUrl = (window as any).REACT_APP_WS_URL || ENV.WS_BASE_URL;
+    this.socket = io(baseUrl, {
       auth: {
         token
       },

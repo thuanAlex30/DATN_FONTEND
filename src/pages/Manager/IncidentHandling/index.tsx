@@ -170,36 +170,40 @@ const ManagerIncidentHandling: React.FC = () => {
 
     if (isClosed) {
       return (
-        <Space size={6}>
-          <span>{durationText}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '14px', fontWeight: '500' }}>{durationText}</span>
           {slaMs ? (
             remainingMs >= 0 ? (
-              <Tag color="green">Hoàn tất trong SLA</Tag>
+              <Tag color="green" style={{ fontSize: '12px' }}>Hoàn tất trong SLA</Tag>
             ) : (
-              <Tag color="gold">Hoàn tất quá SLA</Tag>
+              <Tag color="gold" style={{ fontSize: '12px' }}>Hoàn tất quá SLA</Tag>
             )
           ) : null}
-        </Space>
+        </div>
       );
     }
 
     if (!slaMs || !Number.isFinite(remainingMs)) {
-      return <span>{durationText}</span>;
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '14px', fontWeight: '500' }}>{durationText}</span>
+        </div>
+      );
     }
 
     return (
-      <Space size={6}>
-        <span>{durationText}</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+        <span style={{ fontSize: '14px', fontWeight: '500' }}>{durationText}</span>
         {remainingMs >= 0 ? (
           <Tooltip title={`Còn lại ${formatDuration(remainingMs)}`}>
-            <Tag color="blue">Trong SLA</Tag>
+            <Tag color="blue" style={{ fontSize: '12px' }}>Trong SLA</Tag>
           </Tooltip>
         ) : (
           <Tooltip title={`Quá hạn ${formatDuration(Math.abs(remainingMs))}`}>
-            <Tag color="red">Quá hạn</Tag>
+            <Tag color="red" style={{ fontSize: '12px' }}>Quá hạn</Tag>
           </Tooltip>
         )}
-      </Space>
+      </div>
     );
   };
 
@@ -208,101 +212,225 @@ const ManagerIncidentHandling: React.FC = () => {
       title: 'Mã sự cố',
       dataIndex: 'incidentId',
       key: 'incidentId',
-      width: 160,
-      render: (val: string, record) => val || record._id
+      width: 180,
+      render: (val: string, record) => (
+        <div style={{ 
+          whiteSpace: 'nowrap', 
+          overflow: 'hidden', 
+          textOverflow: 'ellipsis',
+          maxWidth: '180px'
+        }}>
+          {val || record._id}
+        </div>
+      )
     },
     {
       title: 'Tiêu đề',
       dataIndex: 'title',
       key: 'title',
-      ellipsis: true,
-      render: (text: string, record) => (
-        <div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>{text}</div>
-          {record.description && (
-            <div style={{ fontSize: 12, color: '#666', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {record.description}
+      width: 300,
+      ellipsis: {
+        showTitle: true
+      },
+      render: (text: string, record) => {
+        // Tách tiêu đề và nội dung trong ngoặc đơn
+        const titleMatch = text?.match(/^(.+?)\s*\((.+)\)$/);
+        const mainTitle = titleMatch ? titleMatch[1] : text;
+        const contentInParentheses = titleMatch ? titleMatch[2] : null;
+
+        return (
+          <div style={{ maxWidth: '300px' }}>
+            <div style={{ 
+              fontWeight: 'bold', 
+              marginBottom: '4px',
+              whiteSpace: 'normal',
+              wordWrap: 'break-word',
+              lineHeight: '1.4'
+            }} title={text}>
+              {mainTitle}
             </div>
-          )}
-        </div>
-      )
+            {contentInParentheses && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#666', 
+                whiteSpace: 'normal',
+                wordWrap: 'break-word',
+                lineHeight: '1.3',
+                marginBottom: '4px'
+              }} title={contentInParentheses}>
+                ({contentInParentheses})
+              </div>
+            )}
+            {record.description && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#666', 
+                whiteSpace: 'normal',
+                wordWrap: 'break-word',
+                lineHeight: '1.3'
+              }} title={record.description}>
+                {record.description}
+              </div>
+            )}
+          </div>
+        );
+      }
     },
     {
       title: 'Vị trí',
       dataIndex: 'location',
       key: 'location',
-      ellipsis: true
+      width: 150,
+      ellipsis: {
+        showTitle: true
+      },
+      render: (text: string) => (
+        <div style={{ 
+          whiteSpace: 'normal',
+          wordWrap: 'break-word',
+          lineHeight: '1.4'
+        }} title={text}>
+          {text || '—'}
+        </div>
+      )
     },
     {
       title: 'Mức độ',
       dataIndex: 'severity',
       key: 'severity',
-      width: 140,
-      render: (severity?: string) => (
-        <Tag color={severity ? severityColorMap[severity] || 'default' : 'default'}>
-          {severity ? severity.charAt(0).toUpperCase() + severity.slice(1) : 'Chưa rõ'}
-        </Tag>
-      )
+      width: 120,
+      render: (severity?: string) => {
+        const getSeverityColor = (sev: string) => {
+          switch (sev?.toLowerCase()) {
+            case 'nặng':
+            case 'high':
+            case 'critical':
+              return 'orange';
+            case 'nhẹ':
+            case 'low':
+              return 'green';
+            case 'trung bình':
+            case 'medium':
+              return 'blue';
+            case 'rất nghiêm trọng':
+            case 'very critical':
+              return 'red';
+            default:
+              return 'default';
+          }
+        };
+        
+        return (
+          <div style={{ maxWidth: '120px' }}>
+            <Tag 
+              color={getSeverityColor(severity || '')}
+              style={{ 
+                maxWidth: '100%',
+                whiteSpace: 'normal',
+                wordWrap: 'break-word',
+                lineHeight: '1.2',
+                fontSize: '12px'
+              }}
+            >
+              {severity ? severity.charAt(0).toUpperCase() + severity.slice(1) : 'Chưa rõ'}
+            </Tag>
+          </div>
+        );
+      }
     },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      width: 160,
-      render: (status?: string) => (
-        <Tag color={status ? statusColorMap[status] || 'default' : 'default'}>
-          {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Chưa rõ'}
-        </Tag>
-      )
+      width: 130,
+      render: (status?: string) => {
+        const getStatusColor = (stat: string) => {
+          switch (stat?.toLowerCase()) {
+            case 'mới ghi nhận':
+            case 'new':
+            case 'pending':
+              return 'red';
+            case 'đã đóng':
+            case 'closed':
+            case 'resolved':
+              return 'gray';
+            case 'đang xử lý':
+            case 'in_progress':
+              return 'blue';
+            case 'đã giải quyết':
+            case 'completed':
+              return 'green';
+            default:
+              return 'default';
+          }
+        };
+        
+        return (
+          <div style={{ maxWidth: '130px' }}>
+            <Tag 
+              color={getStatusColor(status || '')}
+              style={{ 
+                maxWidth: '100%',
+                whiteSpace: 'normal',
+                wordWrap: 'break-word',
+                lineHeight: '1.2',
+                fontSize: '12px'
+              }}
+            >
+              {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Chưa rõ'}
+            </Tag>
+          </div>
+        );
+      }
     },
     {
       title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 200,
+      width: 150,
       render: (val?: string) => (val ? new Date(val).toLocaleString('vi-VN') : '-')
     },
     {
       title: 'Hình ảnh',
       dataIndex: 'images',
       key: 'images',
-      width: 180,
+      width: 120,
       render: (images?: string[]) => (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           {Array.isArray(images) && images.length > 0 ? (
             images.slice(0, 3).map((src, idx) => (
-              <div
+              <Image
                 key={idx}
+                src={src}
+                width={60}
+                height={60}
                 style={{
-                  width: 40,
-                  height: 40,
                   borderRadius: 6,
-                  overflow: 'hidden',
+                  objectFit: 'cover',
                   border: '1px solid #f0f0f0',
-                  cursor: 'pointer',
-                  background: '#fafafa',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
+                  cursor: 'pointer'
+                }}
+                preview={{
+                  mask: <div style={{ 
+                    background: 'rgba(0,0,0,0.5)', 
+                    color: 'white', 
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px'
+                  }}>Xem</div>
                 }}
                 onClick={() => openModal(src)}
-              >
-                <img
-                  src={src}
-                  alt={`img-${idx}`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  loading="lazy"
-                />
-              </div>
+                alt={`img-${idx}`}
+              />
             ))
           ) : (
             <span style={{ color: '#94a3b8' }}>—</span>
           )}
           {images && images.length > 3 && (
             <Tooltip title={`+${images.length - 3} hình khác`}>
-              <div style={{
-                width: 40,
-                height: 40,
+              <div style={{ 
+                width: 60, 
+                height: 60, 
                 background: 'linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%)',
                 borderRadius: 6,
                 display: 'flex',
@@ -322,7 +450,11 @@ const ManagerIncidentHandling: React.FC = () => {
       )
     },
     {
-      title: 'Thời gian xử lý (ISO 45001)',
+      title: (
+        <span style={{ whiteSpace: 'nowrap' }}>
+          Thời gian xử lý (ISO 45001)
+        </span>
+      ),
       key: 'processingTime',
       width: 220,
       render: (_: unknown, record) => renderProcessingTimeCell(record),
@@ -337,7 +469,9 @@ const ManagerIncidentHandling: React.FC = () => {
         style={{ 
           padding: 24, 
           marginLeft: 280, // keep in sync with ManagerSidebar width
-          transition: 'margin-left .2s ease'
+          transition: 'margin-left .2s ease',
+          width: 'calc(100% - 280px)',
+          overflow: 'auto'
         }}
       >
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -455,13 +589,24 @@ const ManagerIncidentHandling: React.FC = () => {
       </Card>
 
       <Card styles={{ body: { padding: 0 } }} style={{ borderRadius: 12, overflow: 'hidden' }}>
-        <Table
-          rowKey={(r) => r._id}
-          loading={loading}
-          columns={columns}
-          dataSource={filteredIncidents}
-          pagination={{ pageSize: 10, showSizeChanger: true }}
-        />
+        <div style={{ overflowX: 'auto' }}>
+          <Table
+            rowKey={(r) => r._id}
+            loading={loading}
+            columns={columns}
+            dataSource={filteredIncidents}
+            pagination={{ 
+              pageSize: 10, 
+              showSizeChanger: true,
+              style: { marginRight: '16px' }
+            }}
+            scroll={{ x: 1240 }}
+            bordered
+            style={{
+              border: '1px solid #d9d9d9'
+            }}
+          />
+        </div>
       </Card>
 
       <Modal

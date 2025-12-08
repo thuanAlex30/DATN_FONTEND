@@ -9,25 +9,24 @@ import {
   Upload,
   Image,
   Space,
-  Typography,
   message,
   Row,
   Col
 } from 'antd';
 import {
-  ArrowLeftOutlined,
   UploadOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined
 } from '@ant-design/icons';
+import { ManagerLayout } from '../../../components/Manager';
 import incidentService from '../../../services/incidentService';
 
-const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
 const ReportIncident: React.FC = () => {
   const navigate = useNavigate();
+  const [form] = Form.useForm();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
@@ -57,71 +56,98 @@ const ReportIncident: React.FC = () => {
     setImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     try {
       setLoading(true);
-      await incidentService.reportIncident({ title, description, location, severity, images });
-      message.success('Ghi nhận sự cố thành công!');
-      setTitle('');
-      setDescription('');
-      setLocation('');
-      setSeverity('nhẹ');
-      setImages([]);
+      
+      // Validate required fields
+      if (!title || !description || !location) {
+        message.error('Vui lòng điền đầy đủ thông tin bắt buộc!');
+        setLoading(false);
+        return;
+      }
+      
+      const payload = {
+        title: title.trim(),
+        description: description.trim(),
+        location: location.trim(),
+        severity: severity || 'nhẹ',
+        images: images || []
+      };
+      
+      const response = await incidentService.reportIncident(payload);
+      
+      if (response.data?.success) {
+        message.success('Ghi nhận sự cố thành công!');
+        setTitle('');
+        setDescription('');
+        setLocation('');
+        setSeverity('nhẹ');
+        setImages([]);
+        form.resetFields();
+        // Navigate back after 1 second
+        setTimeout(() => {
+          navigate('/manager/dashboard');
+        }, 1000);
+      } else {
+        message.error(response.data?.message || 'Không thể ghi nhận sự cố');
+      }
     } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Không thể ghi nhận sự cố');
+      console.error('Error reporting incident:', err);
+      const errorMessage = err?.response?.data?.message || 
+                          err?.response?.data?.errors?.[0]?.message ||
+                          err?.message || 
+                          'Không thể ghi nhận sự cố. Vui lòng thử lại!';
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-      padding: '24px' 
-    }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        {/* Header */}
-        <Card style={{ marginBottom: '24px' }}>
-          <Row justify="space-between" align="middle">
-            <Col>
-              <Title level={2} style={{ margin: 0, color: '#2c3e50' }}>
-                <ExclamationCircleOutlined style={{ color: '#e74c3c', marginRight: '10px' }} />
-                Báo cáo sự cố (Manager)
-              </Title>
-            </Col>
-            <Col>
-              <Button 
-                type="default"
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/home')}
-              >
-                Về trang Home
-              </Button>
-            </Col>
-          </Row>
-        </Card>
+    <ManagerLayout
+      title="Báo cáo sự cố"
+      icon={<ExclamationCircleOutlined />}
+    >
+      <div style={{ 
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        minHeight: 'calc(100vh - 64px)',
+        padding: '24px' 
+      }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
 
         {/* Form */}
         <Card>
           <Form
+            form={form}
             layout="vertical"
             onFinish={handleSubmit}
+            initialValues={{
+              severity: 'nhẹ'
+            }}
           >
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
-                <Form.Item label="Tiêu đề" required>
+                <Form.Item 
+                  name="title"
+                  label="Tiêu đề" 
+                  required
+                  rules={[{ required: true, message: 'Vui lòng nhập tiêu đề sự cố!' }]}
+                >
                   <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Nhập tiêu đề sự cố"
-                    required
                   />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item label="Vị trí">
+                <Form.Item 
+                  name="location"
+                  label="Vị trí" 
+                  required
+                  rules={[{ required: true, message: 'Vui lòng nhập vị trí xảy ra sự cố!' }]}
+                >
                   <Input
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
@@ -131,7 +157,12 @@ const ReportIncident: React.FC = () => {
               </Col>
             </Row>
 
-            <Form.Item label="Mức độ nghiêm trọng" required>
+            <Form.Item 
+              name="severity"
+              label="Mức độ nghiêm trọng" 
+              required
+              rules={[{ required: true, message: 'Vui lòng chọn mức độ nghiêm trọng!' }]}
+            >
               <Select
                 value={severity}
                 onChange={(value) => setSeverity(value)}
@@ -143,7 +174,12 @@ const ReportIncident: React.FC = () => {
               </Select>
             </Form.Item>
 
-            <Form.Item label="Mô tả chi tiết">
+            <Form.Item 
+              name="description"
+              label="Mô tả chi tiết" 
+              required
+              rules={[{ required: true, message: 'Vui lòng nhập mô tả chi tiết về sự cố!' }]}
+            >
               <TextArea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -230,8 +266,9 @@ const ReportIncident: React.FC = () => {
             </Form.Item>
           </Form>
         </Card>
+        </div>
       </div>
-    </div>
+    </ManagerLayout>
   );
 };
 

@@ -1,6 +1,6 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Row,
@@ -29,6 +29,7 @@ import {
   GroupOutlined
 } from '@ant-design/icons';
 import type { RootState } from '../../../store';
+import { logout } from '../../../store/slices/authSlice';
 import { useCourses, useTrainingSessions, useTrainingEnrollments } from '../../../hooks/useTraining';
 import { api } from '../../../services/api';
 import { EmployeeLayout } from '../../../components/Employee';
@@ -40,18 +41,12 @@ const { Search } = Input;
 
 const EmployeeTraining: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
   const [activeTab, setActiveTab] = useState<'available' | 'enrolled' | 'completed'>('available');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourseSet] = useState('');
   const [isMandatory, setIsMandatory] = useState('');
-  
-  // Listen for training graded notifications (from WebSocket)
-  useEffect(() => {
-    // This will be handled by WebSocket notifications
-    // When admin grades, user will receive notification
-  }, []);
   
 
   // API hooks
@@ -99,16 +94,6 @@ const EmployeeTraining: React.FC = () => {
     })
     .filter(Boolean);
 
-  const courseIdToEnrollment = useMemo(() => {
-    const map: Record<string, any> = {};
-    userEnrollments.forEach(en => {
-      const session = sessions.find(s => s._id === en.session_id?._id);
-      const cId = session?.course_id?._id;
-      if (cId) map[cId] = en;
-    });
-    return map;
-  }, [userEnrollments, sessions]);
-
   const handleEnroll = async (courseId: string) => {
     try {
       // Use new API to get available sessions
@@ -133,12 +118,7 @@ const EmployeeTraining: React.FC = () => {
         // Refresh the page or update state
         window.location.reload();
       } else {
-        // Check if it's a prerequisites error
-        if (response.data.data?.missingPrerequisites) {
-          message.error(`Bạn cần hoàn thành ${response.data.data.missingPrerequisites.length} khóa học tiên quyết trước`);
-        } else {
-          message.error(`Lỗi đăng ký: ${response.data.message || 'Có lỗi xảy ra'}`);
-        }
+        message.error(`Lỗi đăng ký: ${response.data.message || 'Có lỗi xảy ra'}`);
       }
     } catch (error: any) {
       console.error('Error enrolling:', error);
@@ -158,6 +138,7 @@ const EmployeeTraining: React.FC = () => {
   };
 
   const handleLogout = () => {
+    dispatch(logout());
     navigate('/login');
   };
 
@@ -257,19 +238,17 @@ const EmployeeTraining: React.FC = () => {
   };
 
 
-  const getEnrollmentStatus = (courseId: string) => {
+  const getEnrollmentStatus = (courseId: string): 'completed' | 'enrolled' | 'failed' | 'cancelled' | 'submitted' | 'not_enrolled' => {
     const enrollment = userEnrollments.find(enrollment => {
       const session = sessions.find(s => s._id === enrollment.session_id?._id);
       return session?.course_id?._id === courseId;
     });
     
-    // If status is 'enrolled' but has no score, might be submitted and waiting for grading
-    // We'll check this by looking at enrollment status and score
     if (enrollment?.status === 'enrolled' && enrollment?.score === null || enrollment?.score === undefined) {
-      return 'submitted'; // Đã nộp, chờ chấm
+      return 'submitted';
     }
     
-    return enrollment?.status || 'not_enrolled';
+    return (enrollment?.status as 'completed' | 'enrolled' | 'failed' | 'cancelled' | 'submitted') || 'not_enrolled';
   };
 
   const getEnrollmentScore = (courseId: string) => {

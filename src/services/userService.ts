@@ -1,31 +1,8 @@
 import api from '../config/axios';
+import type { User } from '../types/user';
 
 // Note: This service uses the main apiClient from config/axios.ts
 // which already has proper token handling and interceptors
-
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  full_name: string;
-  phone?: string;
-  role?: {
-    id: string;
-    role_name: string;
-  };
-  department?: {
-    id?: string;
-    _id?: string;
-    department_name: string;
-  };
-  department_id?: string;
-  position?: {
-    id: string;
-    position_name: string;
-  };
-  is_active: boolean;
-  created_at: string;
-}
 
 export interface UsersResponse {
   success: boolean;

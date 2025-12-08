@@ -53,7 +53,8 @@ export interface PPEIssuance {
     id: string;
     full_name: string;
   };
-  status: 'issued' | 'returned' | 'overdue' | 'damaged' | 'replacement_needed' | 'pending_manager_return';
+  issuance_level?: 'admin_to_manager' | 'manager_to_employee';
+  status: 'pending_confirmation' | 'issued' | 'returned' | 'overdue' | 'damaged' | 'replacement_needed' | 'pending_manager_return';
   actual_return_date?: string;
   return_condition?: 'good' | 'damaged' | 'worn';
   return_notes?: string;
@@ -61,6 +62,8 @@ export interface PPEIssuance {
   report_description?: string;
   report_severity?: 'low' | 'medium' | 'high';
   reported_date?: string;
+  confirmed_date?: string;
+  confirmation_notes?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -179,8 +182,22 @@ export const deletePPECategory = async (id: string): Promise<void> => {
 
 // PPE Items API
 export const getPPEItems = async (): Promise<PPEItem[]> => {
-  const response = await api.get('/ppe/items');
-  return response.data.data;
+  try {
+    const response = await api.get('/ppe/items');
+    // Handle different response formats
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else if (response.data && response.data.data) {
+      return Array.isArray(response.data.data) ? response.data.data : [];
+    } else if (response.data && response.data.items) {
+      return Array.isArray(response.data.items) ? response.data.items : [];
+    }
+    return [];
+  } catch (error: any) {
+    console.error('Error fetching PPE items:', error);
+    // Return empty array on error instead of throwing
+    return [];
+  }
 };
 
 export const getPPEItemById = async (id: string): Promise<PPEItem> => {
@@ -514,6 +531,20 @@ export const issueToEmployee = async (issuanceData: {
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Lỗi khi phát PPE cho Employee');
+  }
+};
+
+/**
+ * Employee xác nhận nhận PPE từ Manager
+ */
+export const confirmReceivedPPE = async (issuanceId: string, confirmationData: {
+  confirmation_notes?: string;
+}) => {
+  try {
+    const response = await api.post(`/ppe/issuances/${issuanceId}/confirm-received`, confirmationData);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Lỗi khi xác nhận nhận PPE');
   }
 };
 

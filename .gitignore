@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Environment variables - QUAN TRỌNG: KHÔNG BAO GIỜ COMMIT FILE .env
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

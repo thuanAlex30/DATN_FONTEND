@@ -1,1 +1,6 @@
 /// <reference types="vite/client" />
+
+// Type declarations for Swiper CSS imports
+declare module 'swiper/css';
+declare module 'swiper/css/pagination';
+declare module 'swiper/css/effect-fade';

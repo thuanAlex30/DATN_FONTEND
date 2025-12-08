@@ -1,4 +1,6 @@
 import api from './api';
+import { ENV } from '../config/env';
+import { clearDepartmentCache } from '../utils/apiCache';
 import type { Department, DepartmentQuery, DepartmentCreate, DepartmentUpdate, DepartmentOption } from '../types/department';
 
 // Department service with employee count functionality
@@ -91,6 +93,7 @@ const departmentService = {
   async createDepartment(departmentData: DepartmentCreate): Promise<Department> {
     try {
       const response = await api.post('/departments', departmentData);
+      clearDepartmentCache();
       return response.data;
     } catch (error) {
       console.error('Error creating department:', error);
@@ -102,6 +105,7 @@ const departmentService = {
   async updateDepartment(id: string, departmentData: DepartmentUpdate): Promise<Department> {
     try {
       const response = await api.put(`/departments/${id}`, departmentData);
+      clearDepartmentCache();
       return response.data;
     } catch (error) {
       console.error('Error updating department:', error);
@@ -113,8 +117,29 @@ const departmentService = {
   async deleteDepartment(id: string): Promise<void> {
     try {
       await api.delete(`/departments/${id}`);
+      clearDepartmentCache();
     } catch (error) {
       console.error('Error deleting department:', error);
+      throw error;
+    }
+  },
+
+  // Transfer employees between departments
+  async transferEmployees(payload: { fromDepartmentId: string; toDepartmentId: string }): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      from_department: { id: string; name: string };
+      to_department: { id: string; name: string };
+      transferred_count: number;
+    };
+  }> {
+    try {
+      const response = await api.post('/departments/transfer-employees', payload);
+      clearDepartmentCache();
+      return response.data;
+    } catch (error) {
+      console.error('Error transferring employees:', error);
       throw error;
     }
   },
@@ -199,7 +224,7 @@ const departmentService = {
   // Get all employees in a department
   async getDepartmentEmployees(departmentId: string, options: {
     is_active?: boolean;
-    sort_by?: 'full_name' | 'email' | 'created_at' | 'position_name';
+    sort_by?: 'full_name' | 'email' | 'created_at';
     sort_order?: 'asc' | 'desc';
     include_inactive?: boolean;
   } = {}): Promise<{
@@ -253,7 +278,7 @@ const departmentService = {
       const url = `/departments/${departmentId}/employees${queryString ? `?${queryString}` : ''}`;
       
       console.log('Making request to:', url);
-      console.log('Full URL:', `http://localhost:3000/api${url}`);
+      console.log('Full URL:', `${ENV.API_BASE_URL}${url}`);
       
       const response = await api.get(url);
       console.log('API response:', response);

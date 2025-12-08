@@ -10,7 +10,8 @@ export interface ProjectRisk {
   risk_score: number;
   mitigation_plan: string;
   owner_id: string;
-  status: 'IDENTIFIED' | 'ANALYZED' | 'MITIGATED' | 'MONITORED' | 'CLOSED';
+  status: 'IDENTIFIED' | 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'ANALYZED' | 'MITIGATED' | 'MONITORED';
+  progress?: number;
   identified_date: string;
   target_resolution_date: string;
   actual_resolution_date?: string;

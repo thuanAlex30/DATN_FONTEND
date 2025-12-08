@@ -8,6 +8,9 @@ export interface FrontendLogData {
     component?: string;
     user_action?: string;
     timestamp?: string;
+    // Thông tin tenant/user để backend log theo tenant
+    tenant_id?: string;
+    user_id?: string;
 }
 
 class FrontendLoggingService {
@@ -40,12 +43,25 @@ class FrontendLoggingService {
      * Log frontend activity
      */
     public logActivity(logData: FrontendLogData): void {
+        // Lấy thông tin user hiện tại (bao gồm tenant_id) từ localStorage nếu có
+        let currentUser: any = null;
+        try {
+            const rawUser = localStorage.getItem('user');
+            if (rawUser) {
+                currentUser = JSON.parse(rawUser);
+            }
+        } catch (e) {
+            console.error('Error parsing current user from localStorage:', e);
+        }
+
         const enhancedLogData: FrontendLogData = {
             ...logData,
             timestamp: new Date().toISOString(),
             page: window.location.pathname,
             component: this.getCurrentComponent(),
-            user_action: this.detectUserAction(logData.action)
+            user_action: this.detectUserAction(logData.action),
+            tenant_id: logData.tenant_id ?? currentUser?.tenant_id,
+            user_id: logData.user_id ?? currentUser?.id ?? currentUser?._id
         };
 
         this.logQueue.push(enhancedLogData);
@@ -192,19 +208,18 @@ class FrontendLoggingService {
         this.logQueue = [];
 
         try {
-            // Temporarily disabled to avoid 404 errors
-            console.log('Frontend logs (disabled):', logsToSend);
-            return;
-
             if (sync) {
-                // Synchronous request for page unload
+                // Synchronous request cho trường hợp đóng tab / reload
                 const xhr = new XMLHttpRequest();
-                xhr.open('POST', '/api/v1/system-logs/frontend', false);
+                xhr.open('POST', `${window.location.origin}/api/v1/system-logs/frontend`, false);
                 xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('accessToken')}`);
+                const token = localStorage.getItem('accessToken') || localStorage.getItem('safety_management_token');
+                if (token) {
+                    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                }
                 xhr.send(JSON.stringify({ logs: logsToSend }));
             } else {
-                // Asynchronous request
+                // Gửi log bất đồng bộ qua axios instance chung (đã gắn token, baseURL)
                 await api.post('/system-logs/frontend', { logs: logsToSend });
             }
         } catch (error) {
