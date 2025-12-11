@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Form,
@@ -16,7 +16,9 @@ import {
   Alert,
   Divider,
   Table,
-  Tag
+  Tag,
+  Image,
+  Avatar
 } from 'antd';
 import {
   SafetyOutlined,
@@ -31,6 +33,7 @@ import departmentService from '../../../services/departmentService';
 import userService from '../../../services/userService';
 import type { User } from '../../../types/user';
 import dayjs from 'dayjs';
+import { ENV } from '../../../config/env';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -51,6 +54,7 @@ interface PPEItem {
   model?: string;
   quantity_available: number;
   quantity_allocated: number;
+  image_url?: string;
 }
 
 interface ManagerPPE {
@@ -74,6 +78,17 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
   const [selectedItem, setSelectedItem] = useState<PPEItem | null>(null);
   const [selectedEmployees, setSelectedEmployees] = useState<User[]>([]);
   const [availableQuantity, setAvailableQuantity] = useState(0);
+
+  // Helper function to resolve image URL
+  const apiBaseForImages = useMemo(() => {
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
 
   useEffect(() => {
     if (visible) {
@@ -507,11 +522,15 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                 }).map(ppe => {
                   const itemId = ppe.item?.id || ppe.item?._id || (typeof ppe.item === 'string' ? ppe.item : null);
                   if (!itemId) return null;
+                  const inactive = ppe.item?.status === 'inactive';
                   return (
-                    <Option key={itemId} value={itemId}>
+                    <Option key={itemId} value={itemId} disabled={inactive}>
                       <Space>
                         <SafetyOutlined />
-                        <span>{ppe.item.item_name}</span>
+                        <span>
+                          {ppe.item.item_name}{' '}
+                          {inactive && <Text type="danger">(Inactive)</Text>}
+                        </span>
                         <Text type="secondary">(Còn: {ppe.remaining})</Text>
                       </Space>
                     </Option>
@@ -569,7 +588,18 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                 <Form.Item
                   label="Ngày trả dự kiến"
                   name="expected_return_date"
-                  rules={[{ required: true, message: 'Vui lòng chọn ngày trả dự kiến' }]}
+                  rules={[
+                    { required: true, message: 'Vui lòng chọn ngày trả dự kiến' },
+                    {
+                      validator: (_, value) => {
+                        const issuedDate = form.getFieldValue('issued_date');
+                        if (issuedDate && value && !dayjs(value).isAfter(dayjs(issuedDate), 'day')) {
+                          return Promise.reject(new Error('Ngày trả dự kiến phải sau ngày phát'));
+                        }
+                        return Promise.resolve();
+                      }
+                    }
+                  ]}
                 >
                   <DatePicker
                     style={{ width: '100%' }}
@@ -583,6 +613,16 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
             <Form.Item
               label="Ghi chú"
               name="notes"
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (value && value.length > 500) {
+                      return Promise.reject(new Error('Ghi chú không được quá 500 ký tự'));
+                    }
+                    return Promise.resolve();
+                  }
+                }
+              ]}
             >
               <Input.TextArea
                 rows={2}
@@ -630,7 +670,23 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                 
                 {selectedItem && (
                   <Card size="small" title="Thông tin thiết bị">
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                      {selectedItem.image_url ? (
+                        <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                          <Image
+                            src={resolveImageUrl(selectedItem.image_url)}
+                            width={120}
+                            height={120}
+                            style={{ objectFit: 'cover', borderRadius: 8 }}
+                            preview={{ mask: 'Xem ảnh' }}
+                            fallback=""
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                          <Avatar icon={<SafetyOutlined />} size={120} />
+                        </div>
+                      )}
                       <div>
                         <Text strong>Tên thiết bị: </Text>
                         <Text>{selectedItem.item_name}</Text>

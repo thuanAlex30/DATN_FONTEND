@@ -58,6 +58,7 @@ const ProgressHistory: React.FC = () => {
   const navigate = useNavigate();
   const [incident, setIncident] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
@@ -86,6 +87,7 @@ const ProgressHistory: React.FC = () => {
 
   const handleAddProgress = async (values: any) => {
     if (!id) return;
+    setSubmitting(true);
     try {
       await incidentService.updateIncidentProgress(id, { note: values.note });
       message.success('Thêm tiến độ thành công');
@@ -98,6 +100,8 @@ const ProgressHistory: React.FC = () => {
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || 'Không thể thêm tiến độ';
       message.error(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -318,7 +322,7 @@ const ProgressHistory: React.FC = () => {
               <Button onClick={() => setIsModalOpen(false)}>
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit">
+              <Button type="primary" htmlType="submit" loading={submitting}>
                 Thêm tiến độ
               </Button>
             </Space>

@@ -23,7 +23,8 @@ import {
   Form,
   DatePicker,
   InputNumber,
-  Descriptions
+  Descriptions,
+  Image
 } from 'antd';
 import { 
   SafetyOutlined, 
@@ -79,6 +80,7 @@ import PPEAssignmentDetailsModal from './components/PPEAssignmentDetailsModal';
 import BatchIssuanceModal from '../../../components/PPEAdvanced/BatchIssuanceModal';
 import ExpiryManagementModal from '../../../components/PPEAdvanced/ExpiryManagementModal';
 import OptimisticLockingModal from '../../../components/PPEAdvanced/OptimisticLockingModal';
+import { ENV } from '../../../config/env';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -528,15 +530,19 @@ const PPEManagement: React.FC = () => {
       setLoading(prev => ({ ...prev, assignments: true }));
       const assignmentsData = await ppeService.getAllAssignments();
       const normalized = (assignmentsData || []).map((assignment: any) => {
-        const userObj = typeof assignment.user_id === 'object' ? assignment.user_id : {};
-        const itemObj = typeof assignment.item_id === 'object' ? assignment.item_id : {};
+        const userObj = assignment && typeof assignment.user_id === 'object' && assignment.user_id !== null
+          ? assignment.user_id
+          : {};
+        const itemObj = assignment && typeof assignment.item_id === 'object' && assignment.item_id !== null
+          ? assignment.item_id
+          : {};
         return {
           ...assignment,
           id: assignment.id ?? assignment._id,
-          user_name: assignment.user_name ?? userObj.full_name ?? 'Không xác định',
-          department_name: assignment.department_name ?? userObj.department_id?.department_name ?? '',
-          item_name: assignment.item_name ?? itemObj.item_name ?? '',
-          item_code: assignment.item_code ?? itemObj.item_code ?? '',
+          user_name: assignment?.user_name ?? userObj?.full_name ?? 'Không xác định',
+          department_name: assignment?.department_name ?? userObj?.department_id?.department_name ?? '',
+          item_name: assignment?.item_name ?? itemObj?.item_name ?? '',
+          item_code: assignment?.item_code ?? itemObj?.item_code ?? '',
         };
       });
       setAssignments(normalized);
@@ -819,6 +825,17 @@ const PPEManagement: React.FC = () => {
     }
   };
 
+  const apiBaseForImages = React.useMemo(() => {
+    if (!ENV.API_BASE_URL) return '';
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
+
   // Category columns for table
   const categoryColumns = [
     {
@@ -827,7 +844,18 @@ const PPEManagement: React.FC = () => {
       key: 'category_name',
       render: (text: string, record: PPECategory) => (
         <Space>
-          <Avatar icon={<SafetyOutlined />} />
+          {record.image_url ? (
+            <Image
+              src={resolveImageUrl(record.image_url)}
+              width={40}
+              height={40}
+              style={{ objectFit: 'cover', borderRadius: 8 }}
+              preview={{ mask: 'Xem ảnh' }}
+              fallback=""
+            />
+          ) : (
+            <Avatar icon={<SafetyOutlined />} />
+          )}
           <div>
             <div style={{ fontWeight: 'bold' }}>{text}</div>
             <div style={{ fontSize: '12px', color: '#666' }}>{record.description}</div>
@@ -908,7 +936,22 @@ const PPEManagement: React.FC = () => {
       key: 'item_name',
       render: (text: string, record: PPEItem) => (
         <Space>
-          <Avatar icon={<SafetyOutlined />} />
+          <Image
+            src={resolveImageUrl(record.image_url)}
+            fallback={resolveImageUrl(
+              ppeCategories.find(cat => cat.id === record.category_id || (cat as any)._id === record.category_id)?.image_url
+            )}
+            width={40}
+            height={40}
+            style={{ objectFit: 'cover', borderRadius: 8 }}
+            preview={{ mask: 'Xem ảnh' }}
+            placeholder={
+              <Avatar
+                icon={<SafetyOutlined />}
+                style={{ width: 40, height: 40, borderRadius: 8 }}
+              />
+            }
+          />
           <div>
             <div style={{ fontWeight: 'bold' }}>{text}</div>
             <div style={{ fontSize: '12px', color: '#666' }}>
@@ -1089,7 +1132,7 @@ const PPEManagement: React.FC = () => {
               onClick={() => handleViewIssuanceDetail(record)}
             />
           </Tooltip>
-          {record.status === 'issued' && (
+          {record.status === 'pending_manager_return' && (
             <Tooltip title="Cập nhật trả">
               <Button 
                 type="link" 
@@ -1125,10 +1168,19 @@ const PPEManagement: React.FC = () => {
       title: 'PPE hiện tại',
       key: 'current_ppe',
       render: (_: unknown, record: any) => {
+        if (!record || !record.id) {
+          return (
+            <Space>
+              <Badge count={0} showZero />
+              <Text type="secondary">thiết bị</Text>
+            </Space>
+          );
+        }
         // Chỉ tính bản ghi đang sử dụng, cấp bởi Admin cho Manager
         const userPPE = ppeIssuances.filter((issuance) => {
+          if (!issuance || !issuance.user_id) return false;
           const matchesUser = issuance.user_id === record.id ||
-            (typeof issuance.user_id === 'object' && (issuance.user_id as any).id === record.id);
+            (typeof issuance.user_id === 'object' && (issuance.user_id as any)?.id === record.id);
           const isActive = issuance.status === 'issued' || issuance.status === 'overdue' || issuance.status === 'replacement_needed';
           const isLevel = (issuance as any).issuance_level === 'admin_to_manager';
           return matchesUser && isActive && isLevel;
@@ -1144,26 +1196,31 @@ const PPEManagement: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'action',
-      render: (record: any) => (
-        <Space>
-          <Button 
-            type="link" 
-            icon={<EyeOutlined />}
-            onClick={() => {
-              const userPPE = ppeIssuances.filter((issuance) => {
-                const matchesUser = issuance.user_id === record.id ||
-                  (typeof issuance.user_id === 'object' && (issuance.user_id as any).id === record.id);
-                const isActive = issuance.status === 'issued' || issuance.status === 'overdue' || issuance.status === 'replacement_needed';
-                const isLevel = (issuance as any).issuance_level === 'admin_to_manager';
-                return matchesUser && isActive && isLevel;
-              });
-              if (userPPE.length === 0) {
-                message.info('Quản lý hiện chưa có PPE đang sử dụng');
-                return;
-              }
-              setSelectedIssuance(userPPE[0]);
-              setShowIssuanceDetailModal(true);
-            }}
+      render: (_: unknown, record: any) => {
+        if (!record || !record.id) {
+          return <Space></Space>;
+        }
+        return (
+          <Space>
+            <Button 
+              type="link" 
+              icon={<EyeOutlined />}
+              onClick={() => {
+                const userPPE = ppeIssuances.filter((issuance) => {
+                  if (!issuance || !issuance.user_id) return false;
+                  const matchesUser = issuance.user_id === record.id ||
+                    (typeof issuance.user_id === 'object' && (issuance.user_id as any)?.id === record.id);
+                  const isActive = issuance.status === 'issued' || issuance.status === 'overdue' || issuance.status === 'replacement_needed';
+                  const isLevel = (issuance as any).issuance_level === 'admin_to_manager';
+                  return matchesUser && isActive && isLevel;
+                });
+                if (userPPE.length === 0) {
+                  message.info('Quản lý hiện chưa có PPE đang sử dụng');
+                  return;
+                }
+                setSelectedIssuance(userPPE[0]);
+                setShowIssuanceDetailModal(true);
+              }}
           >
             Xem PPE
           </Button>
@@ -1187,7 +1244,8 @@ const PPEManagement: React.FC = () => {
             </Button>
           )}
         </Space>
-      ),
+        );
+      },
     },
   ];
 
@@ -2617,7 +2675,7 @@ const PPEManagement: React.FC = () => {
                 <Button onClick={() => setShowIssuanceDetailModal(false)}>
                   Đóng
                 </Button>
-                {selectedIssuance.status === 'issued' && (
+                {selectedIssuance.status === 'pending_manager_return' && (
                   <Button 
                     type="primary"
                     icon={<UndoOutlined />}

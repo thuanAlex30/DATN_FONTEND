@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card, 
   Typography, 
@@ -16,7 +16,8 @@ import {
   Popconfirm,
   Tabs,
   Spin,
-  Badge
+  Badge,
+  Image
 } from 'antd';
 import { 
   SafetyOutlined, 
@@ -48,6 +49,7 @@ import type {
 } from '../../../services/ppeService';
 import dayjs from 'dayjs';
 import { usePPEWebSocket } from '../../../hooks/usePPEWebSocket';
+import { ENV } from '../../../config/env';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -87,6 +89,17 @@ const ConsolidatedPPEManagement: React.FC = () => {
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
+
+  // Helper function to resolve image URL
+  const apiBaseForImages = useMemo(() => {
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
 
   // Load all data
   const loadAllData = useCallback(async () => {
@@ -421,7 +434,18 @@ const ConsolidatedPPEManagement: React.FC = () => {
                         key: 'item_name',
                         render: (text: string, record: any) => (
                           <Space>
-                            <Avatar icon={<SafetyOutlined />} />
+                            {record.image_url ? (
+                              <Image
+                                src={resolveImageUrl(record.image_url)}
+                                width={40}
+                                height={40}
+                                style={{ objectFit: 'cover', borderRadius: 8 }}
+                                preview={{ mask: 'Xem ảnh' }}
+                                fallback=""
+                              />
+                            ) : (
+                              <Avatar icon={<SafetyOutlined />} />
+                            )}
                             <div>
                               <div style={{ fontWeight: 'bold' }}>{text}</div>
                               <div style={{ fontSize: '12px', color: '#666' }}>
@@ -533,7 +557,18 @@ const ConsolidatedPPEManagement: React.FC = () => {
                         key: 'item_name',
                         render: (text: string, record: any) => (
                           <Space>
-                            <Avatar icon={<SafetyOutlined />} />
+                            {record.image_url ? (
+                              <Image
+                                src={resolveImageUrl(record.image_url)}
+                                width={40}
+                                height={40}
+                                style={{ objectFit: 'cover', borderRadius: 8 }}
+                                preview={{ mask: 'Xem ảnh' }}
+                                fallback=""
+                              />
+                            ) : (
+                              <Avatar icon={<SafetyOutlined />} />
+                            )}
                             <div>
                               <div style={{ fontWeight: 'bold' }}>{text}</div>
                               <div style={{ fontSize: '12px', color: '#666' }}>
@@ -710,7 +745,18 @@ const ConsolidatedPPEManagement: React.FC = () => {
                         key: 'item_name',
                         render: (text: string, record: any) => (
                           <Space>
-                            <Avatar icon={<SafetyOutlined />} />
+                            {record.image_url ? (
+                              <Image
+                                src={resolveImageUrl(record.image_url)}
+                                width={40}
+                                height={40}
+                                style={{ objectFit: 'cover', borderRadius: 8 }}
+                                preview={{ mask: 'Xem ảnh' }}
+                                fallback=""
+                              />
+                            ) : (
+                              <Avatar icon={<SafetyOutlined />} />
+                            )}
                             <div>
                               <div style={{ fontWeight: 'bold' }}>{text}</div>
                               <div style={{ fontSize: '12px', color: '#666' }}>
@@ -934,7 +980,18 @@ const ConsolidatedPPEManagement: React.FC = () => {
                         key: 'item_name',
                         render: (text: string, record: any) => (
                           <Space>
-                            <Avatar icon={<SafetyOutlined />} />
+                            {record.image_url ? (
+                              <Image
+                                src={resolveImageUrl(record.image_url)}
+                                width={40}
+                                height={40}
+                                style={{ objectFit: 'cover', borderRadius: 8 }}
+                                preview={{ mask: 'Xem ảnh' }}
+                                fallback=""
+                              />
+                            ) : (
+                              <Avatar icon={<SafetyOutlined />} />
+                            )}
                             <div>
                               <div style={{ fontWeight: 'bold' }}>{text}</div>
                               <div style={{ fontSize: '12px', color: '#666' }}>
@@ -1039,7 +1096,18 @@ const ConsolidatedPPEManagement: React.FC = () => {
                         key: 'item_name',
                         render: (text: string, record: any) => (
                           <Space>
-                            <Avatar icon={<SafetyOutlined />} />
+                            {record.image_url ? (
+                              <Image
+                                src={resolveImageUrl(record.image_url)}
+                                width={40}
+                                height={40}
+                                style={{ objectFit: 'cover', borderRadius: 8 }}
+                                preview={{ mask: 'Xem ảnh' }}
+                                fallback=""
+                              />
+                            ) : (
+                              <Avatar icon={<SafetyOutlined />} />
+                            )}
                             <div>
                               <div style={{ fontWeight: 'bold' }}>{text}</div>
                               <div style={{ fontSize: '12px', color: '#666' }}>

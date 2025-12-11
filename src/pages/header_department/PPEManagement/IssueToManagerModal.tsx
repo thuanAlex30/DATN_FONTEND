@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Form,
@@ -14,7 +14,9 @@ import {
   Row,
   Col,
   Alert,
-  Divider
+  Divider,
+  Image,
+  Avatar
 } from 'antd';
 import {
   SafetyOutlined,
@@ -30,6 +32,7 @@ import type { User } from '../../../types/user';
 import dayjs from 'dayjs';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store';
+import { ENV } from '../../../config/env';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -53,6 +56,17 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
   const [selectedItem, setSelectedItem] = useState<ppeService.PPEItem | null>(null);
   const [selectedManager, setSelectedManager] = useState<User | null>(null);
   const { user } = useSelector((state: RootState) => state.auth);
+
+  // Helper function to resolve image URL
+  const apiBaseForImages = useMemo(() => {
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
 
   useEffect(() => {
     if (visible) {
@@ -156,6 +170,8 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
           quantity_allocated: item.quantity_allocated || item.allocated_quantity || item.actual_allocated_quantity || 0,
           total_quantity: item.total_quantity || item.quantity_available || 0,
           remaining_quantity: item.remaining_quantity || item.quantity_available || 0,
+          // Preserve image_url if it exists (don't set to empty string)
+          ...(item.image_url || (item as any).image_url ? { image_url: item.image_url || (item as any).image_url } : {}),
         };
         console.log('[IssueToManagerModal] Normalized item:', {
           original: item,
@@ -203,6 +219,8 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
                 quantity_allocated: item.quantity_allocated || item.allocated_quantity || item.actual_allocated_quantity || 0,
                 total_quantity: item.total_quantity || item.quantity_available || 0,
                 remaining_quantity: item.remaining_quantity || item.quantity_available || 0,
+                // Preserve image_url if it exists (don't set to empty string)
+                ...(item.image_url || (item as any).image_url ? { image_url: item.image_url || (item as any).image_url } : {}),
               };
             }).filter((item: any) => item.id);
           }
@@ -242,6 +260,8 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
       const currentId = i.id || (i as any)._id;
       return currentId === itemId || currentId?.toString() === itemId?.toString();
     });
+    console.log('[IssueToManagerModal] Selected item:', item);
+    console.log('[IssueToManagerModal] Selected item image_url:', item ? (item as any).image_url : 'no item');
     setSelectedItem(item || null);
   };
 
@@ -516,7 +536,23 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
               {selectedItem && (
                 <Col span={12}>
                   <Card size="small" title="Thông tin thiết bị">
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                      {(selectedItem as any)?.image_url && (selectedItem as any).image_url.trim() ? (
+                        <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                          <Image
+                            src={resolveImageUrl((selectedItem as any).image_url)}
+                            width={120}
+                            height={120}
+                            style={{ objectFit: 'cover', borderRadius: 8 }}
+                            preview={{ mask: 'Xem ảnh' }}
+                            fallback=""
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                          <Avatar icon={<SafetyOutlined />} size={120} />
+                        </div>
+                      )}
                       <div>
                         <Text strong>Tên thiết bị: </Text>
                         <Text>{selectedItem.item_name}</Text>

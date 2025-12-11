@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Layout,
@@ -40,15 +40,25 @@ const { TextArea } = Input;
 const ContactPage: React.FC = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
 
   const handleLogin = () => {
     navigate('/login');
   };
 
-  const handleContactSubmit = (values: any) => {
-    console.log('Contact form values:', values);
-    message.success('Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.');
-    form.resetFields();
+  const handleContactSubmit = async (values: any) => {
+    setSubmitting(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Contact form values:', values);
+      message.success('Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.');
+      form.resetFields();
+    } catch (error) {
+      message.error('Có lỗi xảy ra khi gửi tin nhắn');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -265,8 +275,9 @@ const ContactPage: React.FC = () => {
                       icon={<SendOutlined />}
                       className={styles.submitButton}
                       block
+                      loading={submitting}
                     >
-                      Gửi tin nhắn
+                      {submitting ? 'Đang gửi...' : 'Gửi tin nhắn'}
                     </Button>
                   </Form.Item>
                   <div className={styles.privacyMessage}>

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Descriptions, Tag, Button, Space, message, Form, Input, Select } from 'antd';
-import { EyeOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Modal, Descriptions, Tag, Button, Space, message, Form, Input, Select, Image, Avatar, Card } from 'antd';
+import { EyeOutlined, CheckOutlined, CloseOutlined, SafetyOutlined } from '@ant-design/icons';
 import ppeAssignmentService from '../../../../services/ppeAssignmentService';
 import type { PPEAssignment, UpdatePPEAssignmentData } from '../../../../services/ppeAssignmentService';
+import { ENV } from '../../../../config/env';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -25,6 +26,17 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
   const [updating, setUpdating] = useState(false);
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [form] = Form.useForm();
+
+  // Helper function to resolve image URL
+  const apiBaseForImages = useMemo(() => {
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
 
   useEffect(() => {
     if (visible && assignmentId) {
@@ -176,6 +188,52 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
         )
       ]}
     >
+      {/* Thông tin thiết bị với ảnh */}
+      {typeof assignment.item_id === 'object' && assignment.item_id && (
+        <Card size="small" title="Thông tin thiết bị" style={{ marginBottom: 16 }}>
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            {(assignment.item_id as any)?.image_url ? (
+              <div style={{ textAlign: 'center' }}>
+                <Image
+                  src={resolveImageUrl((assignment.item_id as any).image_url)}
+                  width={120}
+                  height={120}
+                  style={{ objectFit: 'cover', borderRadius: 8 }}
+                  preview={{ mask: 'Xem ảnh' }}
+                  fallback=""
+                />
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center' }}>
+                <Avatar icon={<SafetyOutlined />} size={120} />
+              </div>
+            )}
+            <div>
+              <strong>Tên thiết bị: </strong>
+              {assignment.item_id.item_name || 'Không xác định'}
+            </div>
+            {(assignment.item_id as any)?.item_code && (
+              <div>
+                <strong>Mã thiết bị: </strong>
+                {(assignment.item_id as any).item_code}
+              </div>
+            )}
+            {(assignment.item_id as any)?.brand && (
+              <div>
+                <strong>Thương hiệu: </strong>
+                {(assignment.item_id as any).brand}
+              </div>
+            )}
+            {(assignment.item_id as any)?.model && (
+              <div>
+                <strong>Model: </strong>
+                {(assignment.item_id as any).model}
+              </div>
+            )}
+          </Space>
+        </Card>
+      )}
+
       <Descriptions bordered column={2}>
         <Descriptions.Item label="Mã phân công" span={2}>
           {assignment._id || assignment.id}

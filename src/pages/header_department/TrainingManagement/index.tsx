@@ -106,6 +106,12 @@ const TrainingManagement: React.FC = () => {
 
   const [excelFile, setExcelFile] = useState<File | null>(null);
 
+  // Loading states for form submissions
+  const [submittingCourse, setSubmittingCourse] = useState(false);
+  const [submittingSession, setSubmittingSession] = useState(false);
+  const [submittingQuestionBank, setSubmittingQuestionBank] = useState(false);
+  const [submittingQuestion, setSubmittingQuestion] = useState(false);
+
   // API hooks
   const { courseSets } = useCourseSets();
   const { courses, loading: coursesLoading, createCourse, updateCourse, deleteCourse } = useCourses({
@@ -223,6 +229,7 @@ const TrainingManagement: React.FC = () => {
 
   const handleCourseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmittingCourse(true);
     try {
       const courseData = {
         ...courseForm,
@@ -239,35 +246,39 @@ const TrainingManagement: React.FC = () => {
       resetForms();
     } catch (error) {
       console.error('Error saving course:', error);
+    } finally {
+      setSubmittingCourse(false);
     }
   };
 
   const handleSessionSubmit = async () => {
-    try {
-      // Validate required fields
-      if (!sessionForm.session_name || !sessionForm.course_id || !sessionForm.start_time || !sessionForm.end_time) {
-        alert('Please fill in all required fields');
-        return;
-      }
-      
-      // Check if courses are available
-      if (!allCourses || allCourses.length === 0) {
-        alert('Không có khóa học nào. Vui lòng tạo khóa học trước khi tạo buổi đào tạo.');
-        return;
-      }
-      
-      // Check if selected course exists
-      const selectedCourseCheck = allCourses.find(course => course._id === sessionForm.course_id);
-      if (!selectedCourseCheck) {
-        alert('Khóa học được chọn không tồn tại. Vui lòng chọn khóa học hợp lệ.');
-        return;
-      }
+    // Validate required fields
+    if (!sessionForm.session_name || !sessionForm.course_id || !sessionForm.start_time || !sessionForm.end_time) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    // Check if courses are available
+    if (!allCourses || allCourses.length === 0) {
+      alert('Không có khóa học nào. Vui lòng tạo khóa học trước khi tạo buổi đào tạo.');
+      return;
+    }
+    
+    // Check if selected course exists
+    const selectedCourseCheck = allCourses.find(course => course._id === sessionForm.course_id);
+    if (!selectedCourseCheck) {
+      alert('Khóa học được chọn không tồn tại. Vui lòng chọn khóa học hợp lệ.');
+      return;
+    }
 
-      const maxParticipants = parseInt(sessionForm.max_participants);
-      if (isNaN(maxParticipants) || maxParticipants < 1) {
-        alert('Please enter a valid number of participants (minimum 1)');
-        return;
-      }
+    const maxParticipants = parseInt(sessionForm.max_participants);
+    if (isNaN(maxParticipants) || maxParticipants < 1) {
+      alert('Please enter a valid number of participants (minimum 1)');
+      return;
+    }
+    
+    setSubmittingSession(true);
+    try {
 
       // Debug: Log current state before validation
       // Final validation completed
@@ -343,11 +354,14 @@ const TrainingManagement: React.FC = () => {
           : error.response.data.message || 'Unknown error occurred';
         alert(`Error: ${errorMessage}`);
       }
+    } finally {
+      setSubmittingSession(false);
     }
   };
 
   const handleQuestionBankSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmittingQuestionBank(true);
     try {
       if (editingItem) {
         await updateQuestionBank(editingItem._id, questionBankForm);
@@ -358,24 +372,28 @@ const TrainingManagement: React.FC = () => {
       resetForms();
     } catch (error) {
       console.error('Error saving question bank:', error);
+    } finally {
+      setSubmittingQuestionBank(false);
     }
   };
 
   const handleQuestionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      // Filter out empty options
-      const validOptions = questionForm.options.filter(option => option.trim() !== '');
-      
-      if (validOptions.length < 2) {
-        alert('Cần ít nhất 2 lựa chọn');
-        return;
-      }
+    // Filter out empty options
+    const validOptions = questionForm.options.filter(option => option.trim() !== '');
+    
+    if (validOptions.length < 2) {
+      alert('Cần ít nhất 2 lựa chọn');
+      return;
+    }
 
-      if (!validOptions.includes(questionForm.correct_answer)) {
-        alert('Đáp án đúng phải là một trong các lựa chọn');
-        return;
-      }
+    if (!validOptions.includes(questionForm.correct_answer)) {
+      alert('Đáp án đúng phải là một trong các lựa chọn');
+      return;
+    }
+    
+    setSubmittingQuestion(true);
+    try {
 
       const questionData = {
         bank_id: editingItem._id,
@@ -397,6 +415,8 @@ const TrainingManagement: React.FC = () => {
       resetForms();
     } catch (error) {
       console.error('Error saving question:', error);
+    } finally {
+      setSubmittingQuestion(false);
     }
   };
 
@@ -1547,7 +1567,7 @@ const TrainingManagement: React.FC = () => {
               <Button onClick={closeModal}>
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+              <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={submittingCourse}>
                 {editingItem ? 'Cập nhật' : 'Tạo'} khóa học
               </Button>
             </Space>
@@ -1710,7 +1730,7 @@ const TrainingManagement: React.FC = () => {
               <Button onClick={closeModal}>
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit" icon={<CalendarOutlined />}>
+              <Button type="primary" htmlType="submit" icon={<CalendarOutlined />} loading={submittingSession}>
                 {editingItem ? 'Cập nhật' : 'Tạo'} lịch đào tạo
               </Button>
             </Space>
@@ -1787,7 +1807,7 @@ const TrainingManagement: React.FC = () => {
               <Button onClick={closeModal}>
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+              <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={submittingQuestionBank}>
                 {editingItem ? 'Cập nhật' : 'Tạo'} ngân hàng câu hỏi
               </Button>
             </Space>
@@ -2158,7 +2178,7 @@ const TrainingManagement: React.FC = () => {
               <Button onClick={closeModal}>
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+              <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={submittingQuestion}>
                 Thêm câu hỏi
               </Button>
             </Space>

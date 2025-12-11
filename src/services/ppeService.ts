@@ -6,6 +6,7 @@ export interface PPECategory {
   category_name: string;
   description: string;
   lifespan_months?: number;
+  image_url?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -18,9 +19,11 @@ export interface PPEItem {
   item_name: string;
   brand?: string;
   model?: string;
+  status?: 'active' | 'inactive';
   reorder_level: number;
   quantity_available: number;
   quantity_allocated: number;
+  image_url?: string;
   total_quantity?: number;
   remaining_quantity?: number;
   actual_allocated_quantity?: number;
@@ -87,6 +90,7 @@ export interface CreateItemData {
   reorder_level: number;
   quantity_available: number;
   quantity_allocated?: number;
+  imageFile?: File | null;
 }
 
 export interface CreateIssuanceData {
@@ -166,13 +170,29 @@ export const getPPECategoryById = async (id: string): Promise<PPECategory> => {
   return response.data.data;
 };
 
-export const createPPECategory = async (data: Partial<PPECategory>): Promise<PPECategory> => {
-  const response = await api.post('/ppe/categories', data);
+export const createPPECategory = async (data: Partial<PPECategory> & { imageFile?: File | null }): Promise<PPECategory> => {
+  const formData = new FormData();
+  if (data.category_name) formData.append('category_name', data.category_name);
+  if (data.description !== undefined) formData.append('description', data.description);
+  if (data.lifespan_months !== undefined) formData.append('lifespan_months', String(data.lifespan_months));
+  if (data.imageFile) formData.append('image', data.imageFile);
+
+  const response = await api.post('/ppe/categories', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
   return response.data.data;
 };
 
-export const updatePPECategory = async (id: string, data: Partial<PPECategory>): Promise<PPECategory> => {
-  const response = await api.put(`/ppe/categories/${id}`, data);
+export const updatePPECategory = async (id: string, data: Partial<PPECategory> & { imageFile?: File | null }): Promise<PPECategory> => {
+  const formData = new FormData();
+  if (data.category_name) formData.append('category_name', data.category_name);
+  if (data.description !== undefined) formData.append('description', data.description);
+  if (data.lifespan_months !== undefined) formData.append('lifespan_months', String(data.lifespan_months));
+  if (data.imageFile) formData.append('image', data.imageFile);
+
+  const response = await api.put(`/ppe/categories/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
   return response.data.data;
 };
 
@@ -206,12 +226,40 @@ export const getPPEItemById = async (id: string): Promise<PPEItem> => {
 };
 
 export const createPPEItem = async (data: CreateItemData): Promise<PPEItem> => {
-  const response = await api.post('/ppe/items', data);
+  const formData = new FormData();
+  formData.append('category_id', data.category_id);
+  formData.append('item_code', data.item_code);
+  formData.append('item_name', data.item_name);
+  if (data.brand) formData.append('brand', data.brand);
+  if (data.model) formData.append('model', data.model);
+  formData.append('reorder_level', String(data.reorder_level));
+  formData.append('quantity_available', String(data.quantity_available));
+  if (data.quantity_allocated !== undefined) {
+    formData.append('quantity_allocated', String(data.quantity_allocated));
+  }
+  if (data.imageFile) formData.append('image', data.imageFile);
+
+  const response = await api.post('/ppe/items', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
   return response.data.data;
 };
 
 export const updatePPEItem = async (id: string, data: Partial<CreateItemData>): Promise<PPEItem> => {
-  const response = await api.put(`/ppe/items/${id}`, data);
+  const formData = new FormData();
+  if (data.category_id) formData.append('category_id', data.category_id);
+  if (data.item_code) formData.append('item_code', data.item_code);
+  if (data.item_name) formData.append('item_name', data.item_name);
+  if (data.brand) formData.append('brand', data.brand);
+  if (data.model) formData.append('model', data.model);
+  if (data.reorder_level !== undefined) formData.append('reorder_level', String(data.reorder_level));
+  if (data.quantity_available !== undefined) formData.append('quantity_available', String(data.quantity_available));
+  if (data.quantity_allocated !== undefined) formData.append('quantity_allocated', String(data.quantity_allocated));
+  if ((data as any).imageFile) formData.append('image', (data as any).imageFile);
+
+  const response = await api.put(`/ppe/items/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
   return response.data.data;
 };
 

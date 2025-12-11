@@ -59,6 +59,7 @@ const UserManagement: React.FC = () => {
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -431,6 +432,7 @@ const UserManagement: React.FC = () => {
 
   // Handle form submit
   const handleFormSubmit = async (values: any) => {
+    setSubmitting(true);
     try {
       if (editingUser) {
         await userService.updateUser(
@@ -450,6 +452,8 @@ const UserManagement: React.FC = () => {
       const errorMessage = err?.response?.data?.message || 'Có lỗi xảy ra khi lưu người dùng';
       message.error(errorMessage);
       console.error('Error saving user:', err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -834,7 +838,7 @@ const UserManagement: React.FC = () => {
               <Button onClick={() => setIsModalOpen(false)}>
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit">
+              <Button type="primary" htmlType="submit" loading={submitting}>
                 {editingUser ? 'Cập nhật' : 'Tạo mới'}
               </Button>
             </Space>
