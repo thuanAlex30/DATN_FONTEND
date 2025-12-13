@@ -13,7 +13,7 @@ export interface Certificate {
   legalBasis?: string;
   applicableRegulations?: string[];
   validityPeriod: number;
-  validityPeriodUnit: 'MONTHS' | 'YEARS';
+  validityPeriodUnit: 'DAYS' | 'MONTHS' | 'YEARS';
   renewalRequired: boolean;
   renewalProcess?: string;
   renewalDocuments?: string[];
@@ -51,19 +51,16 @@ export interface Certificate {
 }
 
 export interface CertificateStats {
-  total: number;
-  active: number;
-  inactive: number;
-  suspended: number;
-  expired: number;
-  expiringSoon: number;
-  categoryDistribution: Record<string, number>;
-  priorityDistribution: Record<string, number>;
-  costSummary: {
-    total: number;
-    average: number;
-    currency: string;
+  overview?: {
+    total?: number;
+    active?: number;
+    inactive?: number;
+    expired?: number;
+    expiring?: number;
   };
+  byCategory?: Array<{ _id: string; count: number }>;
+  byPriority?: Record<string, number>;
+  byExpiryStatus?: Record<string, number>;
 }
 
 export interface CertificateFilters {
@@ -77,12 +74,68 @@ export interface CertificateFilters {
   limit?: number;
 }
 
+export interface ReminderSettingsPayload {
+  enabled?: boolean;
+  reminderDays?: number[];
+  notificationMethods?: Array<'EMAIL' | 'SMS' | 'SYSTEM'>;
+  recipients?: string[];
+}
+
+export interface CertificatePayload {
+  certificateName: string;
+  certificateCode?: string;
+  description?: string;
+  category: 'SAFETY' | 'TECHNICAL' | 'MANAGEMENT' | 'QUALITY' | 'ENVIRONMENTAL' | 'HEALTH' | 'OTHER';
+  subCategory?: string;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  issuingAuthority: string;
+  legalBasis?: string;
+  applicableRegulations?: string[];
+  validityPeriod: number;
+  validityPeriodUnit?: 'DAYS' | 'MONTHS' | 'YEARS';
+  issueDate?: string;
+  expiryDate?: string;
+  renewalRequired?: boolean;
+  renewalProcess?: string;
+  renewalDocuments?: string[];
+  cost?: number;
+  currency?: string;
+  tenant_id?: string;
+  contactInfo?: {
+    organization?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+  };
+  reminderSettings?: ReminderSettingsPayload;
+  tags?: string[];
+  notes?: string;
+}
+
+export interface CertificateSearchParams {
+  q?: string;
+  category?: string;
+  status?: string;
+  priority?: string;
+  tags?: string[] | string;
+  page?: number;
+  limit?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  expiryDateFrom?: string;
+  expiryDateTo?: string;
+  costMin?: number;
+  costMax?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+const basePath = '/certificates';
+
 export const certificateService = {
-  // Get all certificates - simplified like incidentService
-  getCertificates: (filters: CertificateFilters = {}) => {
-    const params: any = {};
-    
-    // Only add params if they have values
+  getCertificates(filters: CertificateFilters = {}) {
+    const params: Record<string, unknown> = {};
     if (filters.search) params.search = filters.search;
     if (filters.category) params.category = filters.category;
     if (filters.status) params.status = filters.status;
@@ -91,139 +144,67 @@ export const certificateService = {
     if (filters.sortOrder) params.sortOrder = filters.sortOrder;
     if (filters.page) params.page = filters.page;
     if (filters.limit) params.limit = filters.limit;
-
-    return api.get('/certificates', { params });
+    return api.get(`${basePath}`, { params }).then((res) => {
+      // Backend shape: { success, message, data: { data: [], pagination } }
+      const payload: any = res.data;
+      return payload?.data?.data || payload?.data || [];
+    });
   },
 
-  // Get certificate by ID
-  async getCertificateById(id: string): Promise<Certificate> {
-    try {
-      const response = await api.get(`/certificates/${id}`);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching certificate:', error);
+  createCertificate(certificateData: CertificatePayload): Promise<Certificate> {
+    return api.post(`${basePath}`, certificateData).then(res => {
+      if (res.data.success && res.data.data) {
+        return res.data.data;
+      }
+      throw new Error(res.data.message || 'Tạo chứng chỉ thất bại');
+    }).catch(error => {
+      console.error('Create certificate error:', error);
       throw error;
-    }
+    });
   },
 
-  // Create new certificate
-  async createCertificate(certificateData: Partial<Certificate>): Promise<Certificate> {
-    try {
-      const response = await api.post('/certificates', certificateData);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error creating certificate:', error);
-      throw error;
-    }
+  updateCertificate(id: string, certificateData: Partial<CertificatePayload>): Promise<Certificate> {
+    return api.put(`${basePath}/${id}`, certificateData).then(res => res.data.data);
   },
 
-  // Update certificate
-  async updateCertificate(id: string, certificateData: Partial<Certificate>): Promise<Certificate> {
-    try {
-      const response = await api.put(`/certificates/${id}`, certificateData);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error updating certificate:', error);
-      throw error;
-    }
+  deleteCertificate(id: string): Promise<void> {
+    return api.delete(`${basePath}/${id}`).then(() => undefined);
   },
 
-  // Delete certificate
-  async deleteCertificate(id: string): Promise<void> {
-    try {
-      await api.delete(`/certificates/${id}`);
-    } catch (error) {
-      console.error('Error deleting certificate:', error);
-      throw error;
-    }
+  getCertificateById(id: string): Promise<Certificate> {
+    return api.get(`${basePath}/${id}`).then(res => res.data.data);
   },
 
-  // Get certificate statistics
-  async getCertificateStats(): Promise<CertificateStats> {
-    try {
-      console.log('🔍 Fetching certificate stats...');
-      const response = await api.get('/certificates/stats/overview');
-      console.log('📈 Certificate stats API response:', response.data);
-      
-      // Backend returns { success, message, data: { overview: {}, byCategory: [] } }
-      const backendData = response.data.data;
-      const overview = backendData.overview || {};
-      
-      return {
-        total: overview.total || 0,
-        active: overview.active || 0,
-        inactive: overview.inactive || 0,
-        suspended: 0, // Not in backend yet
-        expired: overview.expired || 0,
-        expiringSoon: overview.expiring || 0,
-        categoryDistribution: {},
-        priorityDistribution: {},
-        costSummary: {
-          total: 0,
-          average: 0,
-          currency: 'VND'
-        }
-      };
-    } catch (error) {
-      console.error('❌ Error fetching certificate stats:', error);
-      throw error;
-    }
+  getCertificateStats(): Promise<CertificateStats> {
+    return api.get(`${basePath}/stats/overview`).then(res => res.data.data);
   },
 
-  // Update reminder settings
-  async updateReminderSettings(id: string, reminderSettings: Partial<Certificate['reminderSettings']>): Promise<Certificate> {
-    try {
-      const response = await api.put(`/certificates/${id}/reminder-settings`, reminderSettings);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error updating reminder settings:', error);
-      throw error;
-    }
+  updateReminderSettings(id: string, reminderSettings: ReminderSettingsPayload): Promise<Certificate> {
+    return api.put(`${basePath}/${id}/reminder-settings`, { reminderSettings }).then(res => res.data.data);
   },
 
-  // Renew certificate
-  async renewCertificate(id: string): Promise<Certificate> {
-    try {
-      const response = await api.post(`/certificates/${id}/renew`);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error renewing certificate:', error);
-      throw error;
-    }
+  renewCertificate(id: string, data?: { renewalDate?: string; notes?: string }): Promise<Certificate> {
+    return api.post(`${basePath}/${id}/renew`, data).then(res => res.data.data);
   },
 
-  // Get certificates by category
-  async getCertificatesByCategory(category: string): Promise<Certificate[]> {
-    try {
-      const response = await api.get(`/certificates/category/${category}`);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching certificates by category:', error);
-      throw error;
-    }
+  getCertificatesByCategory(category: string): Promise<Certificate[]> {
+    return api.get(`${basePath}/category/${category}`).then(res => res.data.data);
   },
 
-  // Get expiring certificates
-  async getExpiringCertificates(days: number = 30): Promise<Certificate[]> {
-    try {
-      const response = await api.get(`/certificates/expiring?days=${days}`);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching expiring certificates:', error);
-      throw error;
-    }
+  getExpiringCertificates(days = 30): Promise<Certificate[]> {
+    return api.get(`${basePath}/expiring/soon`, { params: { days } }).then(res => {
+      const payload: any = res.data;
+      return payload?.data || [];
+    });
   },
 
-  // Get certificates by tags
-  async getCertificatesByTags(tags: string[]): Promise<Certificate[]> {
-    try {
-      const response = await api.post('/certificates/tags', { tags });
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching certificates by tags:', error);
-      throw error;
-    }
-  }
+  getStats() {
+    return api.get(`${basePath}/stats/overview`);
+  },
+
+  searchCertificates(params: CertificateSearchParams) {
+    return api.get(`${basePath}/search/query`, { params });
+  },
 };
 
 export default certificateService;

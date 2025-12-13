@@ -113,6 +113,11 @@ const Sidebar = () => {
                     label: 'Vai trò & quyền hạn',
                 },
                 {
+                    key: '/admin/certificates',
+                    icon: <SafetyOutlined />,
+                    label: 'Chứng chỉ',
+                },
+                {
                     key: '/admin/system-logs',
                     icon: <FileTextOutlined />,
                     label: 'Nhật ký hệ thống',

@@ -277,8 +277,19 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
       });
     }
     
+    // Global scope routes: only System Admin can access
     if (tenantScope === 'global' && userTenantScope !== 'global') {
       console.log('❌ AuthGuard: Tenant scope insufficient', {
+        userTenantScope,
+        requiredTenantScope: tenantScope
+      });
+      return <Navigate to="/unauthorized" replace />;
+    }
+    
+    // Tenant scope routes: System Admin (global) should NOT access tenant-scoped routes
+    // Only Company Admin and below (tenant scope) should access
+    if (tenantScope === 'tenant' && userTenantScope === 'global') {
+      console.log('❌ AuthGuard: System Admin cannot access tenant-scoped routes', {
         userTenantScope,
         requiredTenantScope: tenantScope
       });

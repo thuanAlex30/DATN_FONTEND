@@ -65,5 +65,6 @@ export const store = configureStore({
 export const persistor = persistStore(store);
 
 // Types cho dispatch và state
-export type RootState = ReturnType<typeof store.getState>;
+// Dùng rootReducer để giữ đầy đủ các slice khi kết hợp với PersistPartial
+export type RootState = ReturnType<typeof rootReducer>;
 export type AppDispatch = typeof store.dispatch;

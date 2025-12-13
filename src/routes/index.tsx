@@ -21,6 +21,7 @@ import CloseIncident from '../pages/header_department/IncidentManagement/CloseIn
 import ProgressHistory from '../pages/header_department/IncidentManagement/ProgressHistory';
 import UpdateEmployeeIncident from '../pages/header_department/IncidentManagement/UpdateEmployeeIncident';
 import HeaderDepartmentCertificateManagementPage from '../pages/header_department/CertificateManagement';
+import AdminCertificateManagement from '../pages/Admin/CertificateManagement';
 import HeaderDepartmentIncidentManagementPage from '../pages/header_department/IncidentManagement';
 import HeaderDepartmentPPEManagementPage from '../pages/header_department/PPEManagement';
 import HeaderDepartmentTrainingManagementPage from '../pages/header_department/TrainingManagement';
@@ -228,6 +229,18 @@ const AppRoutes = () => {
                 } 
             />
 
+            {/* Admin - Certificate management */}
+            <Route 
+                path="/admin/certificates" 
+                element={
+                    <AuthGuard minRoleLevel={10} tenantScope="tenant">
+                        <AdminLayout>
+                            <AdminCertificateManagement />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+
             {/* Header Department routes */}
             <Route 
                 path="/header-department/dashboard" 
@@ -247,10 +260,11 @@ const AppRoutes = () => {
                     </AuthGuard>
                 } 
             />
+            {/* Certificate Management - Department Header (theo role matrix) */}
             <Route 
                 path="/header-department/certificate-management" 
                 element={
-                    <AuthGuard requiredRole="header_department">
+                    <AuthGuard minRoleLevel={10} tenantScope="tenant" departmentScope="hierarchy">
                         <HeaderDepartmentLayout>
                             <HeaderDepartmentCertificateManagementPage />
                         </HeaderDepartmentLayout>
@@ -349,7 +363,6 @@ const AppRoutes = () => {
             />
             {/* Các route /admin dưới đây đã được chuyển cho Header Department nên tạm thời ẩn khỏi Admin:
                 - /admin/training-management
-                - /admin/certificate-management
                 - /admin/ppe-management
                 - /admin/incident-management
             */}

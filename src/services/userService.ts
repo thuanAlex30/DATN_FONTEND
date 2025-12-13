@@ -64,8 +64,10 @@ class UserService {
       if (options.department_id) params.append('department_id', options.department_id);
       if (options.is_active !== undefined) params.append('is_active', options.is_active.toString());
 
+      // Tăng timeout cho API getUsers (60 giây thay vì 30 giây)
       const response = await api.get<UsersResponse>(
-        `/users?${params.toString()}`
+        `/users?${params.toString()}`,
+        { timeout: 60000 } // 60 giây
       );
 
       return response.data;

@@ -9,3 +9,16 @@
   font-family: 'Dancing Script', cursive;
   font-weight: 700;
 }
+
+:root {
+  --primary: #1f4fff;
+  --primary-dark: #142b86;
+  --primary-light: #eef2ff;
+  --accent: #20d6c7;
+  --accent-soft: #cfeffc;
+  --text-dark: #0f1c3f;
+  --text-muted: #59607a;
+  --surface: #ffffff;
+  --surface-muted: #f4f6fb;
+  --border: rgba(13, 32, 85, 0.12);
+}

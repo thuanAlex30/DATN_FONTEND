@@ -1,14 +1,14 @@
 /* Pricing Page Styles - Figma Inspired */
 .layout {
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--surface);
   display: flex;
   flex-direction: column;
 }
 
 /* Header Styles */
 .header {
-  background: #ffffff;
+  background: var(--surface);
   padding: 0 !important;
   margin: 0 !important;
   line-height: 1 !important;
@@ -18,7 +18,7 @@
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid rgba(13, 32, 85, 0.08);
 }
 
 .headerTop {
@@ -45,48 +45,48 @@
 
 .logoIcon {
   font-size: 2rem;
-  color: #1890ff;
+  color: var(--primary);
 }
 
 .logoText {
   margin: 0 !important;
-  color: #2c3e50 !important;
+  color: var(--text-dark) !important;
   font-weight: 700;
   font-size: 1.25rem;
   letter-spacing: 0.3px;
 }
 
 .loginBtn {
-  background: #1890ff;
+  background: var(--primary);
   border: none;
   color: white;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(31, 79, 255, 0.3);
   height: 40px;
   padding: 0 1.5rem;
   border-radius: 8px;
 }
 
 .loginBtn:hover {
-  background: #40a9ff;
+  background: var(--primary-dark);
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(31, 79, 255, 0.4);
 }
 
 .backBtn {
   height: 40px;
   border-radius: 8px;
   font-weight: 500;
-  border: 1px solid #e5e7eb;
-  color: #495057;
+  border: 1px solid rgba(13, 32, 85, 0.12);
+  color: var(--text-muted);
   transition: all 0.3s ease;
 }
 
 .backBtn:hover {
-  border-color: #1890ff;
-  color: #1890ff;
+  border-color: var(--primary);
+  color: var(--primary);
   transform: translateY(-2px);
 }
 
@@ -107,7 +107,7 @@
 }
 
 .navLink {
-  color: #495057 !important;
+  color: var(--text-muted) !important;
   font-weight: 500;
   font-size: 0.95rem;
   padding: 0.5rem 1rem !important;
@@ -117,12 +117,12 @@
 }
 
 .navLink:hover {
-  color: #1890ff !important;
-  background: rgba(24, 144, 255, 0.08);
+  color: var(--primary) !important;
+  background: rgba(31, 79, 255, 0.08);
 }
 
 .navLinkActive {
-  color: #1890ff !important;
+  color: var(--primary) !important;
   font-weight: 600;
   font-size: 0.95rem;
   padding: 0.5rem 1rem !important;
@@ -133,14 +133,14 @@
 /* Content */
 .content {
   padding: 0;
-  background: #ffffff;
+  background: var(--surface);
 }
 
 /* Hero Section */
 .heroSection {
   padding: 80px 24px 60px;
   text-align: center;
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .heroContainer {
@@ -151,14 +151,14 @@
 .heroTitle {
   font-size: 56px !important;
   font-weight: 700 !important;
-  color: #111827;
+  color: var(--text-dark);
   margin-bottom: 16px !important;
   line-height: 1.1;
 }
 
 .heroDescription {
   font-size: 18px;
-  color: #6b7280;
+  color: var(--text-muted);
   line-height: 1.6;
   margin-bottom: 32px;
 }
@@ -173,12 +173,12 @@
 
 .priceToggle .ant-typography {
   font-size: 16px;
-  color: #6b7280;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .toggleActive {
-  color: #111827 !important;
+  color: var(--text-dark) !important;
   font-weight: 600 !important;
 }
 
@@ -194,7 +194,7 @@
 /* Pricing Section */
 .pricingSection {
   padding: 60px 24px;
-  background: #f9fafb;
+  background: var(--surface-muted);
 }
 
 .pricingContainer {
@@ -211,8 +211,8 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid rgba(13, 32, 85, 0.12);
 }
 
 .pricingCard:hover {
@@ -220,7 +220,7 @@
 }
 
 .popularCard {
-  border: 2px solid #1890ff;
+  border: 2px solid var(--primary);
   transform: scale(1.02);
 }
 
@@ -229,7 +229,7 @@
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
-  background: #1890ff;
+  background: var(--primary);
   color: white;
   padding: 6px 16px;
   border-radius: 20px;
@@ -562,16 +562,21 @@
 
 /* Footer */
 .footer {
-  background: #ffffff;
-  color: #495057;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(15, 155, 77, 0.18), transparent 60%),
+    radial-gradient(circle at 80% 0%, rgba(32, 214, 160, 0.18), transparent 65%),
+    linear-gradient(180deg, #effbf3 0%, #ffffff 60%);
+  color: #1a5f3e;
   padding: 4rem 2rem 2rem;
   margin-top: auto;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
 }
 
 .footerContent {
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 2rem;
 }
 
 .footerLogo {
@@ -583,12 +588,12 @@
 
 .footerLogoIcon {
   font-size: 2rem;
-  color: #1890ff;
+  color: #0c7c3d;
 }
 
 .footerLogoText {
   margin: 0 !important;
-  color: #1890ff !important;
+  color: #0a5f31 !important;
   font-weight: 700;
   font-size: 1.5rem;
 }
@@ -606,10 +611,14 @@
   color: #495057;
   font-size: 0.95rem;
   line-height: 1.6;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 155, 77, 0.12);
 }
 
 .footerContactIcon {
-  color: #1890ff;
+  color: #0c7c3d;
   font-size: 1.1rem;
   margin-top: 0.2rem;
   flex-shrink: 0;
@@ -641,7 +650,7 @@
 
 .footerLink:hover {
   color: #1890ff !important;
-  transform: translateX(4px);
+  transform: none;
 }
 
 .footerDivider {
@@ -675,16 +684,16 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #f8f9fa;
-  color: #495057 !important;
+  background: #f7fbf9;
+  color: #0f9b4d !important;
   transition: all 0.3s ease;
-  border: 1px solid #e9ecef;
+  border: 1px solid rgba(15, 155, 77, 0.25);
 }
 
 .socialButton:hover {
-  background: #1890ff;
+  background: #0f9b4d;
   color: #ffffff !important;
-  border-color: #1890ff;
+  border-color: #0f9b4d;
   transform: translateY(-2px);
 }
 

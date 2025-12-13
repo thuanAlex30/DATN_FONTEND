@@ -193,33 +193,33 @@
   margin-bottom: 1.25rem;
   font-size: 0.9rem;
   font-weight: 700;
-  color: #14532d;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(254, 243, 199, 0.96), rgba(209, 250, 229, 0.98));
-  border: 1.5px solid rgba(234, 179, 8, 0.5);
+  color: var(--primary-dark);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(238, 242, 255, 0.96), rgba(207, 239, 252, 0.98));
+  border: 1.5px solid rgba(31, 79, 255, 0.2);
   box-shadow:
-    0 12px 34px rgba(250, 204, 21, 0.42),
-    0 0 0 1px rgba(22, 163, 74, 0.16);
+    0 12px 34px rgba(31, 79, 255, 0.2),
+    0 0 0 1px rgba(31, 79, 255, 0.12);
 }
 
 .heroBadgeIcon {
   font-size: 1rem;
-  color: #16a34a;
+  color: var(--primary);
 }
 
 .heroTitle {
-  color: #0d8d46 !important;
+  color: var(--text-dark) !important;
   font-size: 3.75rem !important;
   font-weight: 900 !important;
   margin-bottom: 1.5rem !important;
   letter-spacing: -0.5px;
   animation: fadeInDown 0.8s ease-out;
   position: relative;
-  text-shadow: 0 2px 8px rgba(15, 118, 52, 0.15);
+  text-shadow: 0 2px 8px rgba(31, 79, 255, 0.18);
 }
 
 
 .heroSubtitle {
-  color: #1a5f3e !important;
+  color: var(--text-muted) !important;
   font-size: 1.4rem !important;
   line-height: 1.8;
   display: block;
