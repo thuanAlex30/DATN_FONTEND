@@ -75,13 +75,14 @@ const HikvisionEventsPage: React.FC = () => {
 
       let response;
       if (dateRange[0] && dateRange[1]) {
-        const startTime = dateRange[0].startOf('day').toISOString().replace('Z', '+08:00');
-        const endTime = dateRange[1].endOf('day').toISOString().replace('Z', '+08:00');
+        // Format timestamp without timezone to match Hikvision API format: "2025-12-13T00:00:00"
+        const startTime = dateRange[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss');
+        const endTime = dateRange[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss');
         response = await hikvisionService.getAccessControlEvents({
           startTime,
           endTime,
           major: 5,
-          minor: 0,
+          minor: 38, // Chỉ lấy events vân tay
           maxResults: 100,
           getAll: true,
         });
@@ -103,11 +104,26 @@ const HikvisionEventsPage: React.FC = () => {
 
       const data = response.data?.data;
 
+      console.log('📥 Response data structure:', {
+        hasData: !!data,
+        hasAcsEvent: data && 'AcsEvent' in data,
+        hasEvents: data && 'events' in data,
+        dataKeys: data ? Object.keys(data) : [],
+        eventsCount: data?.events?.length || data?.AcsEvent?.InfoList?.length || 0
+      });
+
       if (data && 'AcsEvent' in data && data.AcsEvent?.InfoList) {
+        console.log('✅ Using AcsEvent.InfoList, count:', data.AcsEvent.InfoList.length);
         setHikvisionEvents(data.AcsEvent.InfoList);
       } else if (data && 'events' in data) {
+        console.log('✅ Using events array, count:', data.events.length);
+        console.log('📋 Sample events:', data.events.slice(0, 3).map(e => ({
+          time: e.time,
+          employeeNoString: e.employeeNoString
+        })));
         setHikvisionEvents(data.events);
       } else {
+        console.warn('⚠️ No events found in response data');
         setHikvisionEvents([]);
       }
     } catch (err: any) {
@@ -159,59 +175,40 @@ const HikvisionEventsPage: React.FC = () => {
   ];
 
   return (
-    <HeaderDepartmentLayout>
-      <div
-        style={{
-          padding: '24px',
-          background: 'linear-gradient(180deg, #f7f9fc 0%, #ffffff 100%)',
-          minHeight: '100%',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            gap: 16,
-            marginBottom: 16,
-          }}
-        >
-          <div>
-            <Title level={3} style={{ margin: 0 }}>
-              Kiểm soát truy cập
-            </Title>
-            <Text type="secondary">Theo dõi sự kiện Hikvision theo thời gian thực</Text>
-          </div>
-          <Space size={12} wrap>
-            <Segmented
-              value={quickRange}
-              onChange={(val) => setQuickRange(val as any)}
-              options={[
-                { label: 'Hôm nay', value: 'today' },
-                { label: '3 ngày', value: '3d' },
-                { label: '7 ngày', value: '7d' },
-                { label: 'Tùy chỉnh', value: 'custom' },
-              ]}
-            />
-            <RangePicker
-              value={dateRange}
-              onChange={handleDateRangeChange}
-              format="DD/MM/YYYY"
-              allowClear={false}
-              disabled={quickRange !== 'custom'}
-            />
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={loadHikvisionEvents}
-              loading={hikvisionLoading}
-              type="primary"
-            >
-              Làm mới
-            </Button>
-          </Space>
-        </div>
-
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+    <HeaderDepartmentLayout
+      title="Kiểm soát truy cập"
+      icon={<LockOutlined />}
+      headerExtra={
+        <Space size={12} wrap>
+          <Segmented
+            value={quickRange}
+            onChange={(val) => setQuickRange(val as any)}
+            options={[
+              { label: 'Hôm nay', value: 'today' },
+              { label: '3 ngày', value: '3d' },
+              { label: '7 ngày', value: '7d' },
+              { label: 'Tùy chỉnh', value: 'custom' },
+            ]}
+          />
+          <RangePicker
+            value={dateRange}
+            onChange={handleDateRangeChange}
+            format="DD/MM/YYYY"
+            allowClear={false}
+            disabled={quickRange !== 'custom'}
+          />
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={loadHikvisionEvents}
+            loading={hikvisionLoading}
+            type="primary"
+          >
+            Làm mới
+          </Button>
+        </Space>
+      }
+    >
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           {statCards.map((card) => (
             <Col xs={24} sm={12} md={12} lg={6} key={card.title}>
               <Card
@@ -310,11 +307,15 @@ const HikvisionEventsPage: React.FC = () => {
                               </Tooltip>
                             </Space>
                             <Space wrap>
-                              {event.employeeNoString && (
+                              {event.user ? (
+                                <Tag color="purple">
+                                  <strong>Người quét:</strong> {event.user.full_name} ({event.user.username})
+                                </Tag>
+                              ) : event.employeeNoString ? (
                                 <Tag color="purple">
                                   <strong>Mã NV:</strong> {event.employeeNoString}
                                 </Tag>
-                              )}
+                              ) : null}
                               {event.cardNo && (
                                 <Tag color="gold">
                                   <strong>Thẻ:</strong> {event.cardNo}
@@ -348,7 +349,6 @@ const HikvisionEventsPage: React.FC = () => {
             <Empty description="Chưa có sự kiện kiểm soát truy cập nào" />
           )}
         </Card>
-      </div>
     </HeaderDepartmentLayout>
   );
 };

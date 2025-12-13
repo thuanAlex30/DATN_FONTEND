@@ -388,14 +388,14 @@ const DepartmentManagementPage = () => {
       setDeletePasswordModalVisible(true);
     } else {
       // Normal confirmation for departments without employees or active departments
-      Modal.confirm({
-        title: 'Xóa phòng ban',
-        content: `Bạn có chắc chắn muốn xóa phòng ban "${department.department_name}"?`,
-        okText: 'Xóa',
-        okType: 'danger',
-        cancelText: 'Hủy',
-        onOk: () => handleDeleteDepartment(department)
-      });
+    Modal.confirm({
+      title: 'Xóa phòng ban',
+      content: `Bạn có chắc chắn muốn xóa phòng ban "${department.department_name}"?`,
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: () => handleDeleteDepartment(department)
+    });
     }
   };
 

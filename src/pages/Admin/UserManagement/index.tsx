@@ -38,6 +38,16 @@ const { Title } = Typography;
 const { Search } = Input;
 const { Option } = Select;
 
+// Helper function to remove Vietnamese diacritics
+const removeVietnameseDiacritics = (str: string): string => {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+};
+
 type CreateUserPayload = {
   username: string;
   email: string;
@@ -236,6 +246,9 @@ const UserManagement: React.FC = () => {
         // Ensure phone and address are included
         phone: (user as any).phone || '',
         address: (user as any).address || '',
+        // Ensure tenant is properly mapped
+        tenant: (user as any).tenant || undefined,
+        tenant_id: (user as any).tenant_id || user.tenant_id || undefined,
         role: user.role ? {
           _id: (user.role as any)._id || (user.role as any).id || '',
           role_name: user.role.role_name,
@@ -344,13 +357,13 @@ const UserManagement: React.FC = () => {
       if (departmentAssignmentFilter === 'no_department') {
         // Check both department object and department_id
         filtered = filtered.filter(user => {
-          const hasDepartment = user.department?._id || user.department?.id || (user as any).department_id;
+          const hasDepartment = user.department?._id || (user as any).department_id;
           return !hasDepartment;
         });
       } else if (departmentAssignmentFilter === 'has_department') {
         // Check both department object and department_id
         filtered = filtered.filter(user => {
-          const hasDepartment = user.department?._id || user.department?.id || (user as any).department_id;
+          const hasDepartment = user.department?._id || (user as any).department_id;
           return !!hasDepartment;
         });
       }
@@ -384,17 +397,17 @@ const UserManagement: React.FC = () => {
       // Fetch full user details to get phone and address
       const userDetails = await userService.getUserById(user.id);
       setEditingUser(userDetails);
-      form.setFieldsValue({
+    form.setFieldsValue({
         username: userDetails.username,
         email: userDetails.email,
         fullName: userDetails.full_name,
         phone: userDetails.phone || '',
         birthDate: (userDetails as any).birth_date || '',
-        departmentId: userDetails.department?._id || userDetails.department?.id,
-        roleId: userDetails.role?._id || userDetails.role?.id,
+        departmentId: userDetails.department?._id,
+        roleId: userDetails.role?._id,
         address: userDetails.address || ''
-      });
-      setIsModalOpen(true);
+    });
+    setIsModalOpen(true);
     } catch (err) {
       message.error('Không thể tải thông tin người dùng');
       console.error('Error loading user details:', err);
@@ -420,33 +433,33 @@ const UserManagement: React.FC = () => {
     try {
       // Use filteredUsers to export only visible/filtered users
       const dataToExport = filteredUsers.map(user => {
-        // Get department name - check multiple possible locations
-        let departmentName = 'Chưa phân phòng ban';
-        if (user.department) {
-          if (typeof user.department === 'string') {
-            departmentName = user.department;
-          } else if (user.department.department_name) {
-            departmentName = user.department.department_name;
-          } else if ((user.department as any).name) {
-            departmentName = (user.department as any).name;
+        // Get tenant name - check multiple possible locations
+        let tenantName = '';
+        if ((user as any).tenant) {
+          if (typeof (user as any).tenant === 'string') {
+            tenantName = (user as any).tenant;
+          } else if ((user as any).tenant?.tenant_name) {
+            tenantName = (user as any).tenant.tenant_name;
+          } else if ((user as any).tenant?.name) {
+            tenantName = (user as any).tenant.name;
           }
-        } else if ((user as any).department_id) {
-          const deptId = (user as any).department_id;
-          if (typeof deptId === 'object' && deptId.department_name) {
-            departmentName = deptId.department_name;
+        } else if ((user as any).tenant_id) {
+          const tenantId = (user as any).tenant_id;
+          if (typeof tenantId === 'object' && (tenantId.tenant_name || tenantId.name)) {
+            tenantName = tenantId.tenant_name || tenantId.name || '';
           }
         }
 
+        // Get gender - check if user has gender field, otherwise leave empty
+        const gender = (user as any).gender || '';
+
         return {
-          'Tên đăng nhập': user.username || '',
-          'Họ và tên': user.full_name || '',
-          'Email': user.email || '',
-          'Số điện thoại': user.phone || (user as any).phone || '',
-          'Địa chỉ': user.address || (user as any).address || '',
-          'Vai trò': user.role?.role_name || '',
-          'Phòng ban': departmentName,
-          'Trạng thái': user.is_active ? 'Hoạt động' : 'Không hoạt động',
-          'Ngày tạo': user.created_at ? new Date(user.created_at).toLocaleDateString('vi-VN') : ''
+          'ID người dùng': (user as any).user_id || user.id || '',
+          'Tên công ty': tenantName,
+          'Họ và tên': removeVietnameseDiacritics(user.full_name || ''),
+          'Giới tính': gender,
+          'Điện thoại': user.phone || (user as any).phone || '',
+          'Email': user.email || ''
         };
       });
 
@@ -456,15 +469,12 @@ const UserManagement: React.FC = () => {
 
       // Set column widths
       const columnWidths = [
-        { wch: 15 }, // Tên đăng nhập
+        { wch: 20 }, // ID người dùng
+        { wch: 30 }, // Tên công ty
         { wch: 25 }, // Họ và tên
-        { wch: 30 }, // Email
-        { wch: 15 }, // Số điện thoại
-        { wch: 40 }, // Địa chỉ
-        { wch: 20 }, // Vai trò
-        { wch: 25 }, // Phòng ban
-        { wch: 15 }, // Trạng thái
-        { wch: 15 }  // Ngày tạo
+        { wch: 12 }, // Giới tính
+        { wch: 15 }, // Điện thoại
+        { wch: 30 }  // Email
       ];
       worksheet['!cols'] = columnWidths;
 

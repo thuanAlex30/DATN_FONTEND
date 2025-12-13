@@ -10,8 +10,11 @@ import {
   Typography, 
   Space,
   Spin,
-  Badge
+  Badge,
+  Dropdown,
+  Avatar
 } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   UserOutlined,
   ProjectOutlined,
@@ -30,6 +33,8 @@ import {
 } from '@ant-design/icons';
 import type { RootState } from '../../store';
 import NotificationPanel from '../../components/NotificationPanel';
+import ProfileModal from '../../components/ProfileModal/ProfileModal';
+import SettingsModal from '../../components/SettingsModal/SettingsModal';
 import { projectRiskService } from '../../services/projectRiskService';
 import { projectMilestoneService } from '../../services/projectMilestoneService';
 import { logout } from '../../store/slices/authSlice';
@@ -45,6 +50,8 @@ const Homepage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [assignedTasks, setAssignedTasks] = useState({
     risks: 0,
     milestones: 0,
@@ -59,6 +66,39 @@ const Homepage: React.FC = () => {
     dispatch(logout());
     navigate('/login');
   };
+
+  const handleProfile = () => {
+    setShowProfileModal(true);
+  };
+
+  const handleSettings = () => {
+    setShowSettingsModal(true);
+  };
+
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Hồ sơ cá nhân',
+      onClick: handleProfile,
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Cài đặt',
+      onClick: handleSettings,
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Đăng xuất',
+      onClick: handleLogout,
+      danger: true,
+    },
+  ];
 
   // Fetch assigned tasks for manager/leader roles
   useEffect(() => {
@@ -177,23 +217,25 @@ const Homepage: React.FC = () => {
                 Thông báo
               </Button>
             </Badge>
-            <div className={styles.userInfo}>
-              <UserOutlined className={styles.userIcon} />
-              <div className={styles.userDetails}>
-                <Text strong>{user?.full_name || 'Người dùng'}</Text>
-                <Text type="secondary" className={styles.userRole}>
-                  {getRoleDisplayName()}
-                </Text>
-              </div>
-            </div>
-            <Button
-              type="primary"
-              danger
-              icon={<LogoutOutlined />}
-              onClick={handleLogout}
+            <Dropdown
+              menu={{ items: userMenuItems }}
+              placement="bottomRight"
+              trigger={['click']}
             >
-              Đăng xuất
-            </Button>
+              <div className={styles.userInfo} style={{ cursor: 'pointer' }}>
+                <Avatar
+                  size="small"
+                  icon={<UserOutlined />}
+                  style={{ marginRight: '8px' }}
+                />
+                <div className={styles.userDetails}>
+                  <Text strong>{user?.full_name || 'Người dùng'}</Text>
+                  <Text type="secondary" className={styles.userRole}>
+                    {getRoleDisplayName()}
+                  </Text>
+                </div>
+              </div>
+            </Dropdown>
           </Space>
         </div>
       </header>
@@ -333,9 +375,21 @@ const Homepage: React.FC = () => {
       </main>
 
       {/* Notification Panel */}
-      <NotificationPanel 
+      <NotificationPanel
         isOpen={isNotificationPanelOpen}
         onClose={() => setIsNotificationPanelOpen(false)}
+      />
+
+      {/* Profile Modal */}
+      <ProfileModal 
+        isOpen={showProfileModal} 
+        onClose={() => setShowProfileModal(false)} 
+      />
+      
+      {/* Settings Modal */}
+      <SettingsModal 
+        isOpen={showSettingsModal} 
+        onClose={() => setShowSettingsModal(false)} 
       />
     </div>
   );

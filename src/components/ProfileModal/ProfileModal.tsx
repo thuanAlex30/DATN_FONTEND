@@ -67,10 +67,28 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
             const response = await api.get('/auth/profile');
 
             console.log('Response status:', response.status);
+            console.log('Response data:', response.data);
             
-            if (response.data) {
-                setProfileData(response.data);
-                console.log('Profile data:', response.data);
+            // Handle different response structures
+            // Structure 1: response.data.data.data (nested ApiResponse)
+            // Structure 2: response.data.data (direct data)
+            // Structure 3: response.data (direct)
+            let profileData = null;
+            
+            if (response.data?.data?.data) {
+                // Nested structure: ApiResponse wraps createResponse
+                profileData = response.data.data.data;
+            } else if (response.data?.data) {
+                // Direct data structure
+                profileData = response.data.data;
+            } else if (response.data) {
+                // Direct response
+                profileData = response.data;
+            }
+            
+            if (profileData) {
+                setProfileData(profileData);
+                console.log('Profile data set:', profileData);
             } else {
                 throw new Error('No profile data received');
             }
@@ -82,14 +100,22 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
         }
     };
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleString('vi-VN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
+    const formatDate = (dateString: string | null | undefined) => {
+        if (!dateString) return 'Chưa có dữ liệu';
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return 'Invalid Date';
+            return date.toLocaleString('vi-VN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        } catch (error) {
+            console.error('Error formatting date:', error);
+            return 'Invalid Date';
+        }
     };
 
     const getRoleBadgeColor = (roleName: string) => {
