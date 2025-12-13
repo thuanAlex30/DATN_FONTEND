@@ -59,7 +59,7 @@ const Header = () => {
     };
 
     const handleProfileInfo = () => {
-        setShowProfileModal(true);
+        navigate('/profile');
     };
 
     const handleCloseProfileModal = () => {
@@ -470,7 +470,7 @@ const Header = () => {
     return (
         <AntHeader 
             style={{
-                background: 'rgba(255, 255, 255, 0.95)',
+                background: '#ffffff',
                 padding: '1.5rem 2rem',
                 margin: '0',
                 borderRadius: '0',
@@ -660,9 +660,10 @@ const Header = () => {
                             style={{
                                 padding: '0.8rem',
                                 borderRadius: '12px',
-                                background: 'rgba(108, 92, 231, 0.1)',
+                                background: '#ffffff',
                                 color: '#6c5ce7',
-                                border: 'none',
+                                border: '1px solid #e8e5ff',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                             }}
                         />
                     </Badge>
@@ -672,15 +673,18 @@ const Header = () => {
                     menu={{ items: profileMenuItems }}
                     placement="bottomRight"
                     trigger={['click']}
+                    overlayStyle={{ zIndex: 10002 }}
+                    getPopupContainer={(trigger) => trigger.parentElement || document.body}
                 >
                     <Button
                         type="text"
                         style={{
                             padding: '0.8rem',
                             borderRadius: '12px',
-                            background: 'rgba(108, 92, 231, 0.1)',
+                            background: '#ffffff',
                             color: '#6c5ce7',
-                            border: 'none',
+                            border: '1px solid #e8e5ff',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',

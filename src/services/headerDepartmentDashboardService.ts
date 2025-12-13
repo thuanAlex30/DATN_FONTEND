@@ -63,14 +63,15 @@ class HeaderDepartmentDashboardService {
   async getDashboardStats(): Promise<HeaderDepartmentDashboardStats> {
     try {
       // Fetch all stats in parallel
-      const [incidentsRes, trainingStats, ppeStats, projectStats] = await Promise.allSettled([
-        incidentService.getIncidents(),
+      // Use getIncidentStats endpoint instead of getIncidents to get properly filtered stats
+      const [incidentsStatsRes, trainingStats, ppeStats, projectStats] = await Promise.allSettled([
+        incidentService.getIncidentStats(),
         trainingStatsApi.getDashboardStats(),
         getPPEDashboardStats(),
         projectService.getProjectStats(),
       ]);
 
-      // Process incidents
+      // Process incidents from stats endpoint
       let incidents = {
         total: 0,
         inProgress: 0,
@@ -79,18 +80,12 @@ class HeaderDepartmentDashboardService {
         resolutionRate: 0,
       };
 
-      if (incidentsRes.status === 'fulfilled') {
-        const incidentsData = incidentsRes.value.data?.data || incidentsRes.value.data || [];
-        const total = incidentsData.length;
-        const inProgress = incidentsData.filter(
-          (inc: any) => inc.status === 'in_progress' || inc.status === 'investigating' || inc.status === 'pending'
-        ).length;
-        const resolved = incidentsData.filter(
-          (inc: any) => inc.status === 'resolved' || inc.status === 'closed'
-        ).length;
-        const critical = incidentsData.filter(
-          (inc: any) => inc.severity === 'rất nghiêm trọng' || inc.priority === 'high' || inc.severity === 'critical'
-        ).length;
+      if (incidentsStatsRes.status === 'fulfilled') {
+        const statsData = incidentsStatsRes.value.data?.data || incidentsStatsRes.value.data || {};
+        const total = statsData.total || 0;
+        const inProgress = statsData.inProgress || 0;
+        const resolved = statsData.resolved || 0;
+        const critical = statsData.critical || 0;
         const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
 
         incidents = { total, inProgress, resolved, critical, resolutionRate };

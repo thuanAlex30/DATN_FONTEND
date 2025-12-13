@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Result, Button, Card, Spin } from 'antd';
-import { CheckCircleOutlined, HomeOutlined, LoginOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, HomeOutlined, LoginOutlined, DownloadOutlined } from '@ant-design/icons';
 import pricingService from '../../services/pricingService';
 import type { OrderInfo } from '../../services/pricingService';
 import landingStyles from '../Landing/Landing.module.css';
@@ -79,12 +79,36 @@ const PaymentSuccess: React.FC = () => {
                     </p>
                   </div>
                 )}
+                {order.contractPdfUrl && (
+                  <div style={{ marginTop: 20 }}>
+                    <Button
+                      type="default"
+                      icon={<DownloadOutlined />}
+                      onClick={() => window.open(order.contractPdfUrl, '_blank')}
+                      size="large"
+                      style={{ width: '100%' }}
+                    >
+                      Tải hợp đồng PDF
+                    </Button>
+                  </div>
+                )}
               </>
             ) : (
               <p>Đơn hàng của bạn đã được xử lý thành công.</p>
             )
           }
           extra={[
+            order?.contractPdfUrl && (
+              <Button
+                type="default"
+                key="download"
+                icon={<DownloadOutlined />}
+                onClick={() => window.open(order.contractPdfUrl, '_blank')}
+                size="large"
+              >
+                Tải hợp đồng PDF
+              </Button>
+            ),
             <Button
               type="primary"
               key="login"
@@ -102,7 +126,7 @@ const PaymentSuccess: React.FC = () => {
             >
               Về trang chủ
             </Button>
-          ]}
+          ].filter(Boolean)}
         />
       </div>
     </div>

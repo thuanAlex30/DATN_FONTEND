@@ -43,12 +43,14 @@ import WebSocketTest from '../pages/WebSocketTest';
 import LandingPage from '../pages/Landing';
 import PricingPage from '../pages/Pricing';
 import OrderFormPage from '../pages/Pricing/OrderForm';
+import ContractPreviewPage from '../pages/Pricing/ContractPreview';
 import PaymentSuccess from '../pages/Pricing/PaymentSuccess';
 import PaymentFailed from '../pages/Pricing/PaymentFailed';
 import PaymentCancelled from '../pages/Pricing/PaymentCancelled';
 import AboutPage from '../pages/About';
 import ContactPage from '../pages/Contact';
 import FAQPage from '../pages/FAQ';
+import ProfilePage from '../pages/Profile';
 import { projectManagementRoutes } from './projectManagementRoutes';
 import ProjectManagementRouteWrapper from './ProjectManagementRouteWrapper';
 
@@ -64,6 +66,7 @@ const AppRoutes = () => {
             <Route path="/" element={<LandingPage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/pricing/order" element={<OrderFormPage />} />
+            <Route path="/pricing/contract-preview" element={<ContractPreviewPage />} />
             <Route path="/pricing/payment-success" element={<PaymentSuccess />} />
             <Route path="/pricing/payment-failed" element={<PaymentFailed />} />
             <Route path="/pricing/payment-cancelled" element={<PaymentCancelled />} />
@@ -79,6 +82,18 @@ const AppRoutes = () => {
                 element={
                     <AuthGuard>
                         <HomePage />
+                    </AuthGuard>
+                } 
+            />
+
+            {/* Profile route - accessible to all authenticated users */}
+            <Route 
+                path="/profile" 
+                element={
+                    <AuthGuard>
+                        <AdminLayout>
+                            <ProfilePage />
+                        </AdminLayout>
                     </AuthGuard>
                 } 
             />

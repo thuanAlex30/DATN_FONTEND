@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import {
   SafetyOutlined,
+  LoginOutlined,
   CheckCircleOutlined,
   PhoneOutlined,
   MailOutlined,
@@ -36,10 +37,9 @@ import {
   WarningOutlined,
   ThunderboltOutlined
 } from '@ant-design/icons';
-import MarketingHeader from '../../components/MarketingHeader';
 import styles from './About.module.css';
 
-const { Content, Footer } = Layout;
+const { Header, Content, Footer } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
 const AboutPage: React.FC = () => {
@@ -142,9 +142,64 @@ const AboutPage: React.FC = () => {
     navigate('/login');
   };
 
+  const handleBackToHome = () => {
+    navigate('/');
+  };
+
   return (
     <Layout className={styles.layout}>
-      <MarketingHeader activeKey="about" />
+      {/* Header with Navigation */}
+      <Header className={styles.header}>
+        <div className={styles.headerTop}>
+          <div className={styles.logo} onClick={handleBackToHome}>
+            <SafetyOutlined className={styles.logoIcon} />
+            <Title level={4} className={styles.logoText}>
+              Hệ Thống Quản Lý An Toàn Lao Động
+            </Title>
+          </div>
+          <Button
+            type="primary"
+            size="large"
+            icon={<LoginOutlined />}
+            onClick={handleLogin}
+            className={styles.loginBtn}
+          >
+            Đăng nhập
+          </Button>
+        </div>
+        <div className={styles.navBar}>
+          <Space size="large" className={styles.navLinks}>
+            <Button
+              type="link"
+              className={styles.navLink}
+              onClick={handleBackToHome}
+            >
+              Trang chủ
+            </Button>
+            <Button
+              type="link"
+              className={styles.navLinkActive}
+              onClick={() => navigate('/about')}
+            >
+              Giới thiệu
+            </Button>
+            <Button
+              type="link"
+              className={styles.navLink}
+              onClick={() => navigate('/contact')}
+            >
+              Liên Hệ
+            </Button>
+            <Button
+              type="link"
+              className={styles.navLink}
+              onClick={() => navigate('/faq')}
+            >
+              FAQ
+            </Button>
+          </Space>
+        </div>
+      </Header>
 
       <Content className={styles.content}>
         <section className={styles.heroSection}>

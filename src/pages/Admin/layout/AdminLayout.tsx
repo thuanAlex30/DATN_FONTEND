@@ -21,7 +21,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                         margin: 0,
                         padding: 0,
                         background: '#ffffff',
-                        minHeight: 'calc(100vh - 64px)'
+                        minHeight: 'calc(100vh - 64px)',
+                        position: 'relative',
+                        zIndex: 1
                     }}
                 >
                     {children}

@@ -233,20 +233,20 @@ const Chatbot: React.FC = () => {
               title={
                 <Space>
                   <div style={{
-                    width: 32,
-                    height: 32,
+                    width: 28,
+                    height: 28,
                     borderRadius: '50%',
                     background: 'rgba(255, 255, 255, 0.2)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 18
+                    fontSize: 16
                   }}>
                     <RobotOutlined />
                   </div>
                   <div>
-                    <Text strong style={{ color: 'white', fontSize: 15 }}>CHMS AI</Text>
-                    <div style={{ fontSize: 11, opacity: 0.9, lineHeight: 1.2 }}>Trợ lý ảo thông minh</div>
+                    <Text strong style={{ color: 'white', fontSize: 14 }}>CHMS AI</Text>
+                    <div style={{ fontSize: 10, opacity: 0.9, lineHeight: 1.2 }}>Trợ lý ảo thông minh</div>
                   </div>
                 </Space>
               }
@@ -269,7 +269,7 @@ const Chatbot: React.FC = () => {
                   />
                 </Space>
               }
-              style={{ width: 400, height: 600 }}
+              style={{ width: 340, height: 500 }}
               bodyStyle={{ 
                 padding: 0, 
                 display: 'flex', 

@@ -17,7 +17,7 @@
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
-  border-bottom: 1px solid #d7f0e0;
+  border-bottom: 1px solid #e9ecef;
 }
 
 .headerTop {
@@ -27,7 +27,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #d7f0e0;
+  border-bottom: 1px solid #e9ecef;
 }
 
 .logo {
@@ -44,34 +44,34 @@
 
 .logoIcon {
   font-size: 2rem;
-  color: #0f9b4d;
+  color: #1890ff;
 }
 
 .logoText {
   margin: 0 !important;
-  color: #0f1d17 !important;
+  color: #2c3e50 !important;
   font-weight: 700;
   font-size: 1.25rem;
   letter-spacing: 0.3px;
 }
 
 .loginBtn {
-  background: #0f9b4d;
+  background: #1890ff;
   border: none;
   color: white;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(15, 155, 77, 0.3);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
   height: 40px;
   padding: 0 1.5rem;
   border-radius: 8px;
 }
 
 .loginBtn:hover {
-  background: #13c267;
+  background: #40a9ff;
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(15, 155, 77, 0.4);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
 }
 
 .navBar {
@@ -89,7 +89,7 @@
 }
 
 .navLink {
-  color: #3a4b42 !important;
+  color: #495057 !important;
   font-weight: 500;
   font-size: 0.95rem;
   padding: 0.5rem 1rem !important;
@@ -99,12 +99,12 @@
 }
 
 .navLink:hover {
-  color: #0f9b4d !important;
-  background: rgba(15, 155, 77, 0.08);
+  color: #1890ff !important;
+  background: rgba(24, 144, 255, 0.08);
 }
 
 .navLinkActive {
-  color: #0f9b4d !important;
+  color: #1890ff !important;
   font-weight: 600;
   font-size: 0.95rem;
   padding: 0.5rem 1rem !important;

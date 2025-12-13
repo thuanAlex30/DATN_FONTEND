@@ -12,6 +12,7 @@ import {
 } from 'antd';
 import {
   SafetyOutlined,
+  LoginOutlined,
   ArrowLeftOutlined,
   QuestionCircleOutlined,
   PhoneOutlined,
@@ -21,10 +22,9 @@ import {
   InstagramOutlined,
   TwitterOutlined
 } from '@ant-design/icons';
-import MarketingHeader from '../../components/MarketingHeader';
 import styles from './FAQ.module.css';
 
-const { Content, Footer } = Layout;
+const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
 
 const FAQPage: React.FC = () => {
@@ -32,6 +32,10 @@ const FAQPage: React.FC = () => {
 
   const handleLogin = () => {
     navigate('/login');
+  };
+
+  const handleBackToHome = () => {
+    navigate('/');
   };
 
   const faqData = [
@@ -84,7 +88,58 @@ const FAQPage: React.FC = () => {
 
   return (
     <Layout className={styles.layout}>
-      <MarketingHeader activeKey="faq" />
+      {/* Header with Navigation */}
+      <Header className={styles.header}>
+        <div className={styles.headerTop}>
+          <div className={styles.logo} onClick={handleBackToHome}>
+            <SafetyOutlined className={styles.logoIcon} />
+            <Title level={4} className={styles.logoText}>
+              Hệ Thống Quản Lý An Toàn Lao Động
+            </Title>
+          </div>
+          <Button
+            type="primary"
+            size="large"
+            icon={<LoginOutlined />}
+            onClick={handleLogin}
+            className={styles.loginBtn}
+          >
+            Đăng nhập
+          </Button>
+        </div>
+        <div className={styles.navBar}>
+          <Space size="large" className={styles.navLinks}>
+            <Button
+              type="link"
+              className={styles.navLink}
+              onClick={handleBackToHome}
+            >
+              Trang chủ
+            </Button>
+            <Button
+              type="link"
+              className={styles.navLink}
+              onClick={() => navigate('/about')}
+            >
+              Giới thiệu
+            </Button>
+            <Button
+              type="link"
+              className={styles.navLink}
+              onClick={() => navigate('/contact')}
+            >
+              Liên Hệ
+            </Button>
+            <Button
+              type="link"
+              className={styles.navLinkActive}
+              onClick={() => navigate('/faq')}
+            >
+              FAQ
+            </Button>
+          </Space>
+        </div>
+      </Header>
 
       <Content className={styles.content}>
         <div className={styles.pageContainer}>
