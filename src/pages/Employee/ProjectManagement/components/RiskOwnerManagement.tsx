@@ -506,7 +506,7 @@ const RiskOwnerManagement: React.FC<RiskOwnerManagementProps> = ({ projectId }) 
             >
               {users.map(user => (
                 <Option key={user._id} value={user._id}>
-                  {user.full_name} - {user.position} ({user.department})
+                  {user.full_name} ({user.department})
                 </Option>
               ))}
             </Select>

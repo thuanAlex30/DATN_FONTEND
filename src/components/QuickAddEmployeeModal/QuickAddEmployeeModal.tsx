@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import userService from '../../services/userService';
 import departmentService from '../../services/departmentService';
 import roleService from '../../services/roleService';
@@ -18,7 +18,6 @@ interface FormData {
   password: string;
   confirmPassword: string;
   departmentId: string;
-
   roleId: string;
 }
 
@@ -35,7 +34,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
     password: '',
     confirmPassword: '',
     departmentId: '',
-
     roleId: ''
   });
 
@@ -58,6 +56,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
     console.log('Departments state changed:', departments);
   }, [departments]);
 
+
   useEffect(() => {
     console.log('Roles state changed:', roles);
   }, [roles]);
@@ -75,12 +74,14 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         setRoles([]);
         return;
       }
+
       console.log('Loading dropdown data...');
       const [deptResponse, roleResponse] = await Promise.all([
         departmentService.getActiveDepartments(),
         roleService.getAllActiveRoles()
       ]);
 
+      console.log('API Responses:', { deptResponse, roleResponse });
 
       // Extract data from responses - handle different response formats
       let deptData: any[] = [];
@@ -95,7 +96,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         deptData = deptResponse;
       }
 
-
       // Handle role response
       if (roleResponse && (roleResponse as any).data && (roleResponse as any).data.data && Array.isArray((roleResponse as any).data.data)) {
         roleData = (roleResponse as any).data.data;
@@ -105,6 +105,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         roleData = roleResponse;
       }
 
+      console.log('Extracted data:', { deptData, roleData });
       console.log('Department data length:', deptData.length);
       console.log('Role data length:', roleData.length);
 
@@ -152,33 +153,33 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
     const newErrors: string[] = [];
 
     if (!formData.username.trim()) {
-      newErrors.push('TÃªn Ä‘Äƒng nháº­p lÃ  báº¯t buá»™c');
+      newErrors.push('Tên đăng nhập là bắt buộc');
     } else if (formData.username.length < 3) {
-      newErrors.push('TÃªn Ä‘Äƒng nháº­p pháº£i cÃ³ Ã­t nháº¥t 3 kÃ½ tá»±');
+      newErrors.push('Tên đăng nhập phải có ít nhất 3 ký tự');
     }
 
     if (!formData.email.trim()) {
-      newErrors.push('Email lÃ  báº¯t buá»™c');
+      newErrors.push('Email là bắt buộc');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.push('Email khÃ´ng há»£p lá»‡');
+      newErrors.push('Email không hợp lệ');
     }
 
     if (!formData.fullName.trim()) {
-      newErrors.push('Há» tÃªn lÃ  báº¯t buá»™c');
+      newErrors.push('Họ tên là bắt buộc');
     }
 
     if (!formData.password) {
-      newErrors.push('Máº­t kháº©u lÃ  báº¯t buá»™c');
+      newErrors.push('Mật khẩu là bắt buộc');
     } else if (formData.password.length < 6) {
-      newErrors.push('Máº­t kháº©u pháº£i cÃ³ Ã­t nháº¥t 6 kÃ½ tá»±');
+      newErrors.push('Mật khẩu phải có ít nhất 6 ký tự');
     }
 
     if (formData.password !== formData.confirmPassword) {
-      newErrors.push('Máº­t kháº©u xÃ¡c nháº­n khÃ´ng khá»›p');
+      newErrors.push('Mật khẩu xác nhận không khớp');
     }
 
     if (!formData.roleId) {
-      newErrors.push('Vai trÃ² lÃ  báº¯t buá»™c');
+      newErrors.push('Vai trò là bắt buộc');
     }
 
     return newErrors;
@@ -212,7 +213,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
       await userService.createUser(createData);
       
       // Show success message
-      setSuccessMessage('ThÃªm nhÃ¢n viÃªn thÃ nh cÃ´ng!');
+      setSuccessMessage('Thêm nhân viên thành công!');
       
       // Reset form
       setFormData({
@@ -223,7 +224,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         password: '',
         confirmPassword: '',
         departmentId: '',
-    
         roleId: ''
       });
 
@@ -236,7 +236,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
     } catch (error: any) {
       console.error('Error creating user:', error);
       
-      let errorMessage = 'CÃ³ lá»—i xáº£y ra khi táº¡o nhÃ¢n viÃªn má»›i!';
+      let errorMessage = 'Có lỗi xảy ra khi tạo nhân viên mới!';
       
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
@@ -262,7 +262,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         password: '',
         confirmPassword: '',
         departmentId: '',
-    
         roleId: ''
       });
       setErrors([]);
@@ -277,7 +276,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
     <div className="quick-add-employee-modal-overlay">
       <div className="quick-add-employee-modal">
         <div className="modal-header">
-          <h2>ThÃªm nhÃ¢n viÃªn nhanh</h2>
+          <h2>Thêm nhân viên nhanh</h2>
           <button 
             className="close-btn" 
             onClick={handleClose}
@@ -308,14 +307,14 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="username">TÃªn Ä‘Äƒng nháº­p *</label>
+              <label htmlFor="username">Tên đăng nhập *</label>
               <input
                 type="text"
                 id="username"
                 name="username"
                 value={formData.username}
                 onChange={handleInputChange}
-                placeholder="Nháº­p tÃªn Ä‘Äƒng nháº­p"
+                placeholder="Nhập tên đăng nhập"
                 required
                 disabled={isLoading}
               />
@@ -329,7 +328,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                placeholder="Nháº­p email"
+                placeholder="Nhập email"
                 required
                 disabled={isLoading}
               />
@@ -338,28 +337,28 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="fullName">Há» tÃªn *</label>
+              <label htmlFor="fullName">Họ tên *</label>
               <input
                 type="text"
                 id="fullName"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleInputChange}
-                placeholder="Nháº­p há» tÃªn"
+                placeholder="Nhập họ tên"
                 required
                 disabled={isLoading}
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="phone">Sá»‘ Ä‘iá»‡n thoáº¡i</label>
+              <label htmlFor="phone">Số điện thoại</label>
               <input
                 type="tel"
                 id="phone"
                 name="phone"
                 value={formData.phone}
                 onChange={handleInputChange}
-                placeholder="Nháº­p sá»‘ Ä‘iá»‡n thoáº¡i"
+                placeholder="Nhập số điện thoại"
                 disabled={isLoading}
               />
             </div>
@@ -367,28 +366,28 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="password">Máº­t kháº©u *</label>
+              <label htmlFor="password">Mật khẩu *</label>
               <input
                 type="password"
                 id="password"
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                placeholder="Nháº­p máº­t kháº©u"
+                placeholder="Nhập mật khẩu"
                 required
                 disabled={isLoading}
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="confirmPassword">XÃ¡c nháº­n máº­t kháº©u *</label>
+              <label htmlFor="confirmPassword">Xác nhận mật khẩu *</label>
               <input
                 type="password"
                 id="confirmPassword"
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
-                placeholder="Nháº­p láº¡i máº­t kháº©u"
+                placeholder="Nhập lại mật khẩu"
                 required
                 disabled={isLoading}
               />
@@ -397,7 +396,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="roleId">Vai trÃ² *</label>
+              <label htmlFor="roleId">Vai trò *</label>
               <select
                 id="roleId"
                 name="roleId"
@@ -407,7 +406,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
                 disabled={isLoading || isLoadingDropdowns}
               >
                 <option value="">
-                  {isLoadingDropdowns ? 'Äang táº£i...' : 'Chá»n vai trÃ²'}
+                  {isLoadingDropdowns ? 'Đang tải...' : 'Chọn vai trò'}
                 </option>
                 {roles.map(role => (
                   <option key={role.id} value={role.id}>
@@ -418,7 +417,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
             </div>
 
             <div className="form-group">
-              <label htmlFor="departmentId">PhÃ²ng ban</label>
+              <label htmlFor="departmentId">Phòng ban</label>
               <select
                 id="departmentId"
                 name="departmentId"
@@ -427,7 +426,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
                 disabled={isLoading || isLoadingDropdowns}
               >
                 <option value="">
-                  {isLoadingDropdowns ? 'Äang táº£i...' : 'Chá»n phÃ²ng ban'}
+                  {isLoadingDropdowns ? 'Đang tải...' : 'Chọn phòng ban'}
                 </option>
                 {departments.map(dept => (
                   <option key={dept.id} value={dept.id}>
@@ -438,8 +437,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
             </div>
           </div>
 
-          <div className="form-group">
-          </div>
 
           <div className="modal-actions">
             <button
@@ -448,7 +445,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
               onClick={handleClose}
               disabled={isLoading}
             >
-              Há»§y
+              Hủy
             </button>
             <button
               type="submit"
@@ -458,12 +455,12 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
               {isLoading ? (
                 <>
                   <i className="fas fa-spinner fa-spin"></i>
-                  Äang táº¡o...
+                  Đang tạo...
                 </>
               ) : (
                 <>
                   <i className="fas fa-user-plus"></i>
-                  Táº¡o nhÃ¢n viÃªn
+                  Tạo nhân viên
                 </>
               )}
             </button>

@@ -22,7 +22,8 @@ import {
   Avatar,
   List,
   Empty,
-  message
+  message,
+  Alert
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -139,9 +140,14 @@ const DepartmentManagementPage = () => {
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [departmentSummary, setDepartmentSummary] = useState<DepartmentSummary | null>(null);
   const [employeesModalVisible, setEmployeesModalVisible] = useState(false);
+  const [deletePasswordModalVisible, setDeletePasswordModalVisible] = useState(false);
+  const [deletingDepartment, setDeletingDepartment] = useState<Department | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletePasswordForm] = Form.useForm();
   const [employeesLoading, setEmployeesLoading] = useState(false);
   const [employeeList, setEmployeeList] = useState<DepartmentEmployee[]>([]);
   const [employeeModalTitle, setEmployeeModalTitle] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const handler = window.setTimeout(() => setDebouncedSearch(searchValue.trim()), 350);
@@ -327,6 +333,7 @@ const DepartmentManagementPage = () => {
     setEditingDepartment(null);
     form.resetFields();
     form.setFieldsValue({ is_active: true });
+    setSubmitting(false);
     setIsFormVisible(true);
   };
 
@@ -338,10 +345,12 @@ const DepartmentManagementPage = () => {
       manager_id: department.manager_id?._id || (department.manager_id as any)?.id,
       is_active: department.is_active
     });
+    setSubmitting(false);
     setIsFormVisible(true);
   };
 
   const handleFormSubmit = async () => {
+    setSubmitting(true);
     try {
       const values = await form.validateFields();
       if (editingDepartment) {
@@ -356,33 +365,69 @@ const DepartmentManagementPage = () => {
       fetchStats();
       fetchDepartmentOptions();
     } catch (error: any) {
-      if (error?.errorFields) return;
+      if (error?.errorFields) {
+        setSubmitting(false);
+        return;
+      }
       const errorMessage = error?.response?.data?.message || 'Không thể lưu phòng ban';
       message.error(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const confirmDeleteDepartment = (department: Department) => {
-    Modal.confirm({
-      title: 'Xóa phòng ban',
-      content: `Bạn có chắc chắn muốn xóa phòng ban "${department.department_name}"?`,
-      okText: 'Xóa',
-      okType: 'danger',
-      cancelText: 'Hủy',
-      onOk: () => handleDeleteDepartment(department)
-    });
+    const hasEmployees = (department.employees_count ?? 0) > 0;
+    const isInactive = !department.is_active;
+
+    // If department is inactive and has employees, show password modal
+    if (isInactive && hasEmployees) {
+      setDeletingDepartment(department);
+      setDeletePassword('');
+      deletePasswordForm.resetFields();
+      setDeletePasswordModalVisible(true);
+    } else {
+      // Normal confirmation for departments without employees or active departments
+      Modal.confirm({
+        title: 'Xóa phòng ban',
+        content: `Bạn có chắc chắn muốn xóa phòng ban "${department.department_name}"?`,
+        okText: 'Xóa',
+        okType: 'danger',
+        cancelText: 'Hủy',
+        onOk: () => handleDeleteDepartment(department)
+      });
+    }
   };
 
-  const handleDeleteDepartment = async (department: Department) => {
+  const handleDeleteWithPassword = async () => {
+    if (!deletingDepartment) return;
+    
     try {
-      await departmentService.deleteDepartment(department.id);
-      message.success('Đã xóa phòng ban');
+      const values = await deletePasswordForm.validateFields();
+      await handleDeleteDepartment(deletingDepartment, values.password);
+      setDeletePasswordModalVisible(false);
+      setDeletingDepartment(null);
+      deletePasswordForm.resetFields();
+    } catch (error: any) {
+      if (error?.errorFields) {
+        // Validation error
+        return;
+      }
+      // API error already handled in handleDeleteDepartment
+    }
+  };
+
+  const handleDeleteDepartment = async (department: Department, password?: string) => {
+    try {
+      await departmentService.deleteDepartment(department.id, password);
+      message.success('Đã xóa phòng ban thành công');
       fetchDepartments();
       fetchStats();
       fetchDepartmentOptions();
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || 'Không thể xóa phòng ban';
       message.error(errorMessage);
+      throw error; // Re-throw to prevent modal from closing on error
     }
   };
 
@@ -586,12 +631,20 @@ const DepartmentManagementPage = () => {
             </Tooltip>
           )}
           {canDelete && (
-            <Tooltip title="Xóa">
+            <Tooltip 
+              title={
+                !record.is_active 
+                  ? "Xóa phòng ban đã ngừng hoạt động" 
+                  : (record.employees_count ?? 0) > 0 
+                    ? "Không thể xóa phòng ban đang hoạt động có nhân viên" 
+                    : "Xóa phòng ban"
+              }
+            >
               <Button
                 type="text"
                 danger
                 icon={<DeleteOutlined />}
-                disabled={(record.employees_count ?? 0) > 0}
+                disabled={record.is_active && (record.employees_count ?? 0) > 0}
                 onClick={() => confirmDeleteDepartment(record)}
               />
             </Tooltip>
@@ -747,9 +800,13 @@ const DepartmentManagementPage = () => {
       <Modal
         title={editingDepartment ? 'Chỉnh sửa phòng ban' : 'Thêm phòng ban mới'}
         open={isFormVisible}
-        onCancel={() => setIsFormVisible(false)}
+        onCancel={() => {
+          setIsFormVisible(false);
+          setSubmitting(false);
+        }}
         onOk={handleFormSubmit}
         okText={editingDepartment ? 'Cập nhật' : 'Tạo mới'}
+        confirmLoading={submitting}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -941,6 +998,69 @@ const DepartmentManagementPage = () => {
               </List.Item>
             )}
           />
+        )}
+      </Modal>
+
+      {/* Password confirmation modal for deleting inactive departments with employees */}
+      <Modal
+        title="⚠️ Xác nhận xóa phòng ban có nhân viên"
+        open={deletePasswordModalVisible}
+        onOk={handleDeleteWithPassword}
+        onCancel={() => {
+          setDeletePasswordModalVisible(false);
+          setDeletingDepartment(null);
+          deletePasswordForm.resetFields();
+        }}
+        okText="Xóa"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true }}
+        width={600}
+        destroyOnClose
+      >
+        {deletingDepartment && (
+          <div>
+            <Alert
+              message="Cảnh báo"
+              description={
+                <div>
+                  <p style={{ marginBottom: 8 }}>
+                    Phòng ban <strong>"{deletingDepartment.department_name}"</strong> đã ngừng hoạt động nhưng vẫn còn <strong style={{ color: '#ff4d4f', fontSize: '16px' }}>{deletingDepartment.employees_count}</strong> nhân viên.
+                  </p>
+                  <p style={{ marginBottom: 0, fontWeight: 'bold' }}>
+                    ⚠️ Sau khi xóa, tất cả nhân viên trong phòng ban này sẽ bị xóa khỏi phòng ban (chưa có phòng ban nào).
+                  </p>
+                </div>
+              }
+              type="warning"
+              showIcon
+              style={{ marginBottom: 24 }}
+            />
+            
+            <Alert
+              message="Yêu cầu xác thực"
+              description="Vui lòng nhập mật khẩu của tài khoản đang đăng nhập để xác nhận xóa phòng ban này."
+              type="info"
+              showIcon
+              style={{ marginBottom: 24 }}
+            />
+
+            <Form form={deletePasswordForm} layout="vertical">
+              <Form.Item
+                label="Mật khẩu"
+                name="password"
+                rules={[
+                  { required: true, message: 'Vui lòng nhập mật khẩu' }
+                ]}
+              >
+                <Input.Password
+                  placeholder="Nhập mật khẩu của bạn"
+                  autoFocus
+                  onPressEnter={handleDeleteWithPassword}
+                  size="large"
+                />
+              </Form.Item>
+            </Form>
+          </div>
         )}
       </Modal>
     </div>

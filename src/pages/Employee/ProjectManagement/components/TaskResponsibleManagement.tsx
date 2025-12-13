@@ -456,7 +456,7 @@ const TaskResponsibleManagement: React.FC<TaskResponsibleManagementProps> = ({ p
             >
               {users.filter(user => user && user._id && user.full_name).map(user => (
                 <Option key={user._id} value={user._id}>
-                  {user.full_name} - {user.position || 'N/A'} ({user.department || 'N/A'})
+                  {user.full_name} ({user.department || 'N/A'})
                 </Option>
               ))}
             </Select>
