@@ -34,8 +34,26 @@ const AssignIncident: React.FC = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const users = await userService.getAllUsers();
-        setUsers(users);
+        const allUsers = await userService.getAllUsers();
+        
+        // Department Header chỉ được phân công cho managers dưới cấp
+        // Filter: chỉ hiển thị users có role_level < 80 (Manager và Employee)
+        // Loại bỏ: Department Header (level 80), Company Admin (level 90), System Admin (level 100)
+        const filteredUsers = allUsers.filter((user: any) => {
+          const userRoleLevel = user.role?.role_level;
+          
+          // Nếu không có role_level, kiểm tra role_code
+          if (userRoleLevel === undefined || userRoleLevel === null) {
+            const roleCode = user.role?.role_code?.toLowerCase();
+            // Chỉ cho phép manager và employee
+            return roleCode === 'manager' || roleCode === 'employee';
+          }
+          
+          // Chỉ hiển thị users có role_level < 80 (Manager: 70, Employee: 10)
+          return userRoleLevel < 80;
+        });
+        
+        setUsers(filteredUsers);
       } catch (err) {
         console.error('Error fetching users:', err);
       }
@@ -61,22 +79,42 @@ const AssignIncident: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ 
+      padding: '24px', 
+      background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
+      minHeight: '100vh'
+    }}>
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
+      <Card
+        styles={{ body: { padding: '20px 24px' } }}
+        style={{
+          marginBottom: 24,
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 10px 30px rgba(24, 144, 255, 0.08)'
+        }}
+      >
         <Space style={{ marginBottom: '16px' }}>
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
             Quay lại
           </Button>
         </Space>
-        <Title level={2}>
-          <UserOutlined /> Phân công người phụ trách
+        <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <UserOutlined style={{ color: '#1677ff' }} /> Phân công người phụ trách
         </Title>
-      </div>
+      </Card>
 
       <Row justify="center">
-        <Col xs={24} sm={16} md={12} lg={8}>
-          <Card>
+        <Col xs={24} sm={20} md={16} lg={12} xl={10}>
+          <Card
+            style={{ 
+              borderRadius: 16,
+              background: 'rgba(255,255,255,0.95)',
+              backdropFilter: 'blur(6px)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.04)'
+            }}
+          >
             <Form
               form={form}
               layout="vertical"
@@ -97,7 +135,7 @@ const AssignIncident: React.FC = () => {
                 >
                   {users.map(user => (
                     <Select.Option key={user.id} value={user.id}>
-                      {user.full_name} ({user.username})
+                      {user.full_name} ({user.username}) - {user.role?.role_name || 'N/A'}
                     </Select.Option>
                   ))}
                 </Select>

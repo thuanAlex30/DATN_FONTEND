@@ -12,7 +12,7 @@
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.5), 0 0 0 0 rgba(102, 126, 234, 0.7);
-  z-index: 1000;
+  z-index: 10003;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 26px;
   border: 2px solid rgba(255, 255, 255, 0.2);
@@ -31,7 +31,7 @@
   position: fixed;
   bottom: 100px;
   right: 24px;
-  z-index: 999;
+  z-index: 10003;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
   border-radius: 16px;
   overflow: hidden;
@@ -370,6 +370,37 @@
   border-color: transparent;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Navigation Actions */
+.chatbot-message-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chatbot-message-actions .ant-btn {
+  border-radius: 8px;
+  font-size: 12px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chatbot-message-actions .ant-btn:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: translateY(-2px);
+}
+
+.chatbot-message-actions .ant-btn:active {
+  transform: translateY(0);
 }
 
 /* Responsive */

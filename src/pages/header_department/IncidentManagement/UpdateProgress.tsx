@@ -7,7 +7,6 @@ import {
   Space,
   Form,
   Input,
-  Select,
   message,
   Alert,
   Row,
@@ -49,22 +48,42 @@ const UpdateProgress: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ 
+      padding: '24px', 
+      background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
+      minHeight: '100vh'
+    }}>
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
+      <Card
+        styles={{ body: { padding: '20px 24px' } }}
+        style={{
+          marginBottom: 24,
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 10px 30px rgba(24, 144, 255, 0.08)'
+        }}
+      >
         <Space style={{ marginBottom: '16px' }}>
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
             Quay lại
           </Button>
         </Space>
-        <Title level={2}>
-          <ClockCircleOutlined /> Cập nhật tiến độ
+        <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ClockCircleOutlined style={{ color: '#1677ff' }} /> Cập nhật tiến độ
         </Title>
-      </div>
+      </Card>
 
       <Row justify="center">
-        <Col xs={24} sm={16} md={12} lg={8}>
-          <Card>
+        <Col xs={24} sm={20} md={16} lg={12} xl={10}>
+          <Card
+            style={{ 
+              borderRadius: 16,
+              background: 'rgba(255,255,255,0.95)',
+              backdropFilter: 'blur(6px)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.04)'
+            }}
+          >
             <Form
               form={form}
               layout="vertical"

@@ -10,7 +10,6 @@ import {
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
-
   UserOutlined,
   ExclamationCircleOutlined,
   BookOutlined,
@@ -18,7 +17,8 @@ import {
   LogoutOutlined,
   ProjectOutlined,
   LockOutlined,
-  DashboardOutlined
+  DashboardOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import { logout } from '../../store/slices/authSlice';
 import styles from './ManagerSidebar.module.css';
@@ -59,6 +59,11 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
     key: '/manager/incidents/report',
     icon: <ExclamationCircleOutlined />,
     label: 'Báo cáo sự cố',
+  },
+  {
+    key: '/manager/incidents/assigned',
+    icon: <SearchOutlined />,
+    label: 'Điều tra sự cố',
   },
   {
     key: '/manager/training',

@@ -89,10 +89,10 @@ const EscalateIncident: React.FC = () => {
         escalation_level: values.escalation_level,
         reason: values.reason
       });
-      message.success('Escalate sự cố thành công');
+      message.success('Báo cáo vượt cấp sự cố thành công');
       navigate('/header-department/incident-management');
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || 'Không thể escalate sự cố';
+      const errorMessage = err?.response?.data?.message || 'Không thể báo cáo vượt cấp sự cố';
       setError(errorMessage);
       message.error(errorMessage);
     } finally {
@@ -121,24 +121,51 @@ const EscalateIncident: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ 
+      padding: '24px', 
+      background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
+      minHeight: '100vh'
+    }}>
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
+      <Card
+        styles={{ body: { padding: '20px 24px' } }}
+        style={{
+          marginBottom: 24,
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 10px 30px rgba(24, 144, 255, 0.08)'
+        }}
+      >
         <Space style={{ marginBottom: '16px' }}>
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
             Quay lại
           </Button>
         </Space>
-        <Title level={2}>
-          <ArrowUpOutlined /> Escalate Sự Cố
+        <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ArrowUpOutlined style={{ color: '#ff4d4f' }} /> Báo Cáo Vượt Cấp Sự Cố
         </Title>
-      </div>
+      </Card>
 
       <Row gutter={[24, 24]}>
         {/* Incident Info */}
         {incident && (
           <Col xs={24} lg={12}>
-            <Card title="Thông tin sự cố" style={{ marginBottom: '24px' }}>
+            <Card 
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <InfoCircleOutlined style={{ color: '#1677ff' }} />
+                  Thông tin sự cố
+                </span>
+              }
+              style={{ 
+                borderRadius: 16,
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(6px)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+                marginBottom: '24px'
+              }}
+            >
               <Descriptions column={1} bordered size="small">
                 <Descriptions.Item label="Mã sự cố">
                   {incident.incidentId || incident._id}
@@ -166,7 +193,20 @@ const EscalateIncident: React.FC = () => {
 
         {/* Escalation Form */}
         <Col xs={24} lg={12}>
-          <Card title="Escalate sự cố">
+          <Card 
+            title={
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ArrowUpOutlined style={{ color: '#ff4d4f' }} />
+                Báo cáo vượt cấp sự cố
+              </span>
+            }
+            style={{ 
+              borderRadius: 16,
+              background: 'rgba(255,255,255,0.95)',
+              backdropFilter: 'blur(6px)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.04)'
+            }}
+          >
             <Form
               form={form}
               layout="vertical"
@@ -174,37 +214,32 @@ const EscalateIncident: React.FC = () => {
             >
               <Form.Item
                 name="escalation_level"
-                label="Cấp độ Escalate"
-                rules={[{ required: true, message: 'Vui lòng chọn cấp độ escalate!' }]}
-                tooltip="Chọn cấp độ cao hơn để escalate sự cố"
+                label="Cấp độ báo cáo"
+                rules={[{ required: true, message: 'Vui lòng chọn cấp độ báo cáo!' }]}
+                tooltip="Chọn cấp độ cao hơn để báo cáo vượt cấp sự cố"
+                initialValue="COMPANY"
               >
-                <Select placeholder="Chọn cấp độ escalate">
-                  <Select.Option value="SITE">
-                    <Tag color="blue">Site Level</Tag> - Escalate lên Site Manager
-                  </Select.Option>
-                  <Select.Option value="DEPARTMENT">
-                    <Tag color="orange">Department Level</Tag> - Escalate lên Department Manager
-                  </Select.Option>
+                <Select placeholder="Chọn cấp độ báo cáo">
                   <Select.Option value="COMPANY">
-                    <Tag color="red">Company Level</Tag> - Escalate lên Company Admin
+                    <Tag color="red">Company Level</Tag> - Báo cáo lên Company Admin
                   </Select.Option>
                   <Select.Option value="EXTERNAL">
-                    <Tag color="purple">External Authority</Tag> - Escalate lên cơ quan bên ngoài
+                    <Tag color="purple">External Authority</Tag> - Báo cáo lên cơ quan bên ngoài
                   </Select.Option>
                 </Select>
               </Form.Item>
 
               <Form.Item
                 name="reason"
-                label="Lý do Escalate"
+                label="Lý do báo cáo vượt cấp"
                 rules={[
-                  { required: true, message: 'Vui lòng nhập lý do escalate!' },
+                  { required: true, message: 'Vui lòng nhập lý do báo cáo vượt cấp!' },
                   { min: 10, message: 'Lý do phải có ít nhất 10 ký tự!' }
                 ]}
               >
                 <TextArea 
                   rows={6} 
-                  placeholder="Mô tả chi tiết lý do cần escalate sự cố này lên cấp trên..."
+                  placeholder="Mô tả chi tiết lý do cần báo cáo vượt cấp sự cố này lên cấp trên..."
                   showCount
                   maxLength={500}
                 />
@@ -232,7 +267,7 @@ const EscalateIncident: React.FC = () => {
                     icon={<CheckCircleOutlined />}
                     danger
                   >
-                    Escalate
+                    Báo cáo vượt cấp
                   </Button>
                 </Space>
               </Form.Item>
@@ -246,13 +281,19 @@ const EscalateIncident: React.FC = () => {
             <Card 
               title={
                 <Space>
-                  <InfoCircleOutlined />
-                  <span>Lịch sử Escalate</span>
+                  <InfoCircleOutlined style={{ color: '#1677ff' }} />
+                  <span>Lịch sử báo cáo vượt cấp</span>
                 </Space>
               }
+              style={{ 
+                borderRadius: 16,
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(6px)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.04)'
+              }}
             >
               <Timeline>
-                {escalations.map((escalation, index) => (
+                {escalations.map((escalation) => (
                   <Timeline.Item
                     key={escalation._id}
                     color={getEscalationLevelColor(escalation.escalation_level)}
@@ -265,7 +306,7 @@ const EscalateIncident: React.FC = () => {
                         <Tag>{escalation.status}</Tag>
                       </div>
                       <Text strong>
-                        Escalated by: {escalation.created_by?.full_name} 
+                        Báo cáo bởi: {escalation.created_by?.full_name} 
                         {escalation.created_by?.role_id && ` (${escalation.created_by.role_id.role_name})`}
                       </Text>
                       <Text type="secondary">

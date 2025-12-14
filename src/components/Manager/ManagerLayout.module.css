@@ -1,7 +1,24 @@
 .layout {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(180deg, #f8fff9 0%, #ffffff 60%, #f0fdf4 100%);
   overflow-x: hidden;
+  position: relative;
+}
+
+.layout::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 15% 25%, rgba(163, 230, 53, 0.15), transparent 55%),
+    radial-gradient(circle at 85% 20%, rgba(52, 211, 153, 0.2), transparent 60%),
+    radial-gradient(circle at 60% 80%, rgba(16, 185, 129, 0.15), transparent 55%),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.9), rgba(240, 253, 244, 0.8));
+  background-position: 15% 25%, 85% 20%, 60% 80%, center;
+  background-size: auto, auto, auto, cover;
+  background-repeat: no-repeat;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .contentLayout {
@@ -10,14 +27,33 @@
   width: calc(100% - 280px);
   max-width: 100%;
   overflow-x: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 .content {
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(180deg, #f8fff9 0%, #ffffff 60%, #f0fdf4 100%);
   min-height: 100vh;
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
+  position: relative;
+}
+
+.content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 15% 25%, rgba(163, 230, 53, 0.15), transparent 55%),
+    radial-gradient(circle at 85% 20%, rgba(52, 211, 153, 0.2), transparent 60%),
+    radial-gradient(circle at 60% 80%, rgba(16, 185, 129, 0.15), transparent 55%),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.9), rgba(240, 253, 244, 0.8));
+  background-position: 15% 25%, 85% 20%, 60% 80%, center;
+  background-size: auto, auto, auto, cover;
+  background-repeat: no-repeat;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .pageContent {
@@ -28,6 +64,8 @@
   max-width: 100%;
   overflow-x: hidden;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
 
 @media (max-width: 768px) {

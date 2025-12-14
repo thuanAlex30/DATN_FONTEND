@@ -20,8 +20,8 @@ import {
   SearchOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
-  InfoCircleOutlined,
   ReloadOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 
@@ -35,6 +35,7 @@ interface IncidentItem {
   status?: string;
   createdAt?: string;
   images?: string[];
+  assignedTo?: string | { _id: string; full_name?: string; username?: string };
 }
 
 // const { Title } = Typography; // Title không còn dùng ở component con
@@ -332,61 +333,78 @@ const IncidentList: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'action',
-      render: (_: unknown, record: IncidentItem) => (
-        <Space wrap>
-          <Tooltip title="Phân công xử lý">
-            <Button 
-              type="link" 
-              size="small" 
-              icon={<InfoCircleOutlined />}
-              href={`/header-department/incident-management/${record._id}/assign`}
-            >
-              Phân công
-            </Button>
-          </Tooltip>
-          <Tooltip title="Điều tra sự cố">
-            <Button 
-              type="link" 
-              size="small" 
-              icon={<SearchOutlined />}
-              href={`/header-department/incident-management/${record._id}/investigate`}
-            >
-              Điều tra
-            </Button>
-          </Tooltip>
-          <Tooltip title="Xem tiến độ">
-            <Button 
-              type="link" 
-              size="small" 
-              icon={<ClockCircleOutlined />}
-              href={`/header-department/incident-management/${record._id}/progress-history`}
-            >
-              Tiến độ
-            </Button>
-          </Tooltip>
-          <Tooltip title="Cập nhật tiến độ">
-            <Button 
-              type="link" 
-              size="small" 
-              icon={<ClockCircleOutlined />}
-              href={`/header-department/incident-management/${record._id}/progress`}
-            >
-              Cập nhật
-            </Button>
-          </Tooltip>
-          <Tooltip title="Đóng sự cố">
-            <Button 
-              type="link" 
-              size="small" 
-              danger
-              icon={<CloseCircleOutlined />}
-              href={`/header-department/incident-management/${record._id}/close`}
-            >
-              Đóng
-            </Button>
-          </Tooltip>
-        </Space>
-      ),
+      render: (_: unknown, record: IncidentItem) => {
+        const isClosed = record.status === 'Đã đóng';
+        const isAssigned = !!record.assignedTo;
+        
+        // Nếu đã đóng, chỉ hiển thị nút "Tiến độ" để xem lại quy trình
+        if (isClosed) {
+          return (
+            <Space wrap>
+              <Tooltip title="Xem lại quy trình giải quyết sự cố">
+                <Button 
+                  type="link" 
+                  size="small" 
+                  icon={<ClockCircleOutlined />}
+                  href={`/header-department/incident-management/${record._id}/progress-history`}
+                >
+                  Tiến độ
+                </Button>
+              </Tooltip>
+            </Space>
+          );
+        }
+        
+        return (
+          <Space wrap>
+            {isAssigned ? (
+              <Tooltip title="Sự cố đã được phân công">
+                <Button 
+                  type="link" 
+                  size="small" 
+                  icon={<InfoCircleOutlined />}
+                  disabled
+                  style={{ color: '#d9d9d9' }}
+                >
+                  Phân công
+                </Button>
+              </Tooltip>
+            ) : (
+              <Tooltip title="Phân công xử lý">
+                <Button 
+                  type="link" 
+                  size="small" 
+                  icon={<InfoCircleOutlined />}
+                  href={`/header-department/incident-management/${record._id}/assign`}
+                >
+                  Phân công
+                </Button>
+              </Tooltip>
+            )}
+            <Tooltip title="Xem tiến độ">
+              <Button 
+                type="link" 
+                size="small" 
+                icon={<ClockCircleOutlined />}
+                href={`/header-department/incident-management/${record._id}/progress-history`}
+              >
+                Tiến độ
+              </Button>
+            </Tooltip>
+            <Tooltip title="Đóng sự cố">
+              <Button 
+                type="link" 
+                size="small" 
+                danger
+                icon={<CloseCircleOutlined />}
+                href={`/header-department/incident-management/${record._id}/close`}
+              >
+                Đóng
+              </Button>
+            </Tooltip>
+          </Space>
+        );
+      },
     },
   ];
 

@@ -12,7 +12,8 @@ import {
   ProjectOutlined,
   UserOutlined,
   BookOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import type { RootState } from '../../../store';
 import { logout } from '../../../store/slices/authSlice';
@@ -222,6 +223,23 @@ const ManagerDashboard: React.FC = () => {
                 block
               >
                 Đào tạo
+              </Button>
+            </Col>
+            <Col xs={24} sm={12} lg={6}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<SearchOutlined />}
+                className={styles.actionButton}
+                onClick={() => navigate('/manager/incidents/assigned')}
+                block
+                style={{ 
+                  background: 'linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%)',
+                  borderColor: '#ff4d4f',
+                  boxShadow: '0 4px 12px rgba(255, 77, 79, 0.25)'
+                }}
+              >
+                Điều tra sự cố
               </Button>
             </Col>
           </Row>

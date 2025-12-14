@@ -9,9 +9,10 @@
   top: 0;
   z-index: 1000;
   width: 280px !important;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebarHeader {
@@ -28,6 +29,10 @@
   flex: 1;
   padding: 16px 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 .sidebarNav::-webkit-scrollbar {
@@ -108,7 +113,7 @@
 }
 
 .sidebarFooter {
-  position: sticky;
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
@@ -116,7 +121,7 @@
   border-top: 1px solid rgba(226, 232, 240, 0.6);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
   backdrop-filter: blur(20px);
-  margin-top: auto;
+  z-index: 10;
 }
 
 .logoutButton {

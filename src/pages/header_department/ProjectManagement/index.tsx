@@ -174,8 +174,6 @@ const ProjectManagement: React.FC = () => {
   return (
     <motion.div 
       style={{ 
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8fafc 0%, #e0f2fe 50%, #e0e7ff 100%)',
         padding: '24px'
       }}
       initial={{ opacity: 0 }}
