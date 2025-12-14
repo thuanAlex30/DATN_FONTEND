@@ -11,7 +11,6 @@ import {
   Row,
   Col,
   Input,
-  Select,
   Modal,
   Form,
   message,
@@ -183,9 +182,22 @@ const ProgressHistory: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div style={{ 
+      padding: '24px', 
+      background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
+      minHeight: '100vh'
+    }}>
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
+      <Card
+        styles={{ body: { padding: '20px 24px' } }}
+        style={{
+          marginBottom: 24,
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 10px 30px rgba(24, 144, 255, 0.08)'
+        }}
+      >
         <Space style={{ marginBottom: '16px' }}>
           <Button 
             icon={<ArrowLeftOutlined />} 
@@ -193,23 +205,31 @@ const ProgressHistory: React.FC = () => {
               if (window.history.length > 1) {
                 navigate(-1);
               } else {
-                navigate('/admin/incident-management');
+                navigate('/header-department/incident-management');
               }
             }}
           >
             Quay lại
           </Button>
         </Space>
-        <Title level={2}>
-          <ClockCircleOutlined /> Lịch sử tiến độ sự cố
+        <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ClockCircleOutlined style={{ color: '#1677ff' }} /> Lịch sử tiến độ sự cố
         </Title>
         <Text type="secondary">
           Mã sự cố: {incident.incidentId || incident._id}
         </Text>
-      </div>
+      </Card>
 
       {/* Incident Info */}
-      <Card style={{ marginBottom: '24px' }}>
+      <Card 
+        style={{ 
+          marginBottom: '24px',
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(6px)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.04)'
+        }}
+      >
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>
             <Title level={4}>{incident.title}</Title>
@@ -235,17 +255,40 @@ const ProgressHistory: React.FC = () => {
       </Card>
 
       {/* Progress Timeline */}
-      <Card>
+      <Card
+        style={{ 
+          borderRadius: 16,
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(6px)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.04)'
+        }}
+      >
         <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Title level={4}>Timeline tiến độ</Title>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />}
-            onClick={() => setIsModalOpen(true)}
-          >
-            Thêm tiến độ
-          </Button>
+          <Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ClockCircleOutlined style={{ color: '#1677ff' }} />
+            {incident.status === 'Đã đóng' ? 'Quy trình giải quyết sự cố' : 'Timeline tiến độ'}
+          </Title>
+          {incident.status !== 'Đã đóng' && (
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={() => setIsModalOpen(true)}
+              shape="round"
+            >
+              Thêm tiến độ
+            </Button>
+          )}
         </div>
+        
+        {incident.status === 'Đã đóng' && (
+          <Alert
+            message="Sự cố đã được đóng"
+            description="Đây là chế độ xem lại. Bạn chỉ có thể xem quy trình giải quyết sự cố, không thể thêm hoặc chỉnh sửa."
+            type="info"
+            showIcon
+            style={{ marginBottom: '16px', borderRadius: 8 }}
+          />
+        )}
 
         {incident.histories && incident.histories.length > 0 ? (
           <Timeline

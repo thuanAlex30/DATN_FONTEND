@@ -42,6 +42,13 @@ export interface AcsEventInfo {
   userType?: string;
   attendanceStatus?: string;
   statusValue?: number;
+  user?: {
+    id: string;
+    user_id: number;
+    username: string;
+    full_name: string;
+    email: string;
+  };
 }
 
 export interface AcsEventResponse {
@@ -114,14 +121,25 @@ const hikvisionService = {
     const todayEnd = new Date(todayStart);
     todayEnd.setHours(23, 59, 59, 999);
 
-    const startTime = todayStart.toISOString().replace('Z', '+08:00');
-    const endTime = todayEnd.toISOString().replace('Z', '+08:00');
+    // Format timestamp without timezone to match Hikvision API format: "2025-12-13T00:00:00"
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    };
+
+    const startTime = formatDate(todayStart);
+    const endTime = formatDate(todayEnd);
 
     return hikvisionService.getAccessControlEvents({
       startTime,
       endTime,
       major: 5,
-      minor: 0,
+      minor: 38, // Chỉ lấy events vân tay
       maxResults: 100, // Use 100 like Python code
       getAll // Use pagination to get all events
     });
@@ -134,14 +152,25 @@ const hikvisionService = {
    * @returns Promise with events in date range
    */
   getEventsByDateRange: (startDate: Date, endDate: Date) => {
-    const startTime = startDate.toISOString().replace('Z', '+08:00');
-    const endTime = endDate.toISOString().replace('Z', '+08:00');
+    // Format timestamp without timezone to match Hikvision API format: "2025-12-13T00:00:00"
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    };
+
+    const startTime = formatDate(startDate);
+    const endTime = formatDate(endDate);
 
     return hikvisionService.getAccessControlEvents({
       startTime,
       endTime,
       major: 5,
-      minor: 0,
+      minor: 38, // Chỉ lấy events vân tay
       maxResults: 100 // Use 100 like Python code to avoid "Invalid Content" errors
     });
   }

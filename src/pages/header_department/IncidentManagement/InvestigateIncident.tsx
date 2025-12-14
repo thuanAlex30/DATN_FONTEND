@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   Card, 
   Typography, 
@@ -7,7 +7,6 @@ import {
   Space,
   Form,
   Input,
-  Select,
   message,
   Alert,
   Row,
@@ -46,11 +45,15 @@ interface Incident {
 const InvestigateIncident: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [incident, setIncident] = useState<Incident | null>(null);
   const [form] = Form.useForm();
+
+  // Detect if user is Manager or Department Head based on current route
+  const isManagerRoute = location.pathname.includes('/manager/incidents');
 
   useEffect(() => {
     const fetchIncident = async () => {
@@ -83,7 +86,12 @@ const InvestigateIncident: React.FC = () => {
         solution: values.recommendations
       });
       message.success('Cập nhật kết quả điều tra thành công');
-      navigate('/header-department/incident-management');
+      // Redirect based on user role (Manager or Department Head)
+      if (isManagerRoute) {
+        navigate('/manager/incidents/assigned');
+      } else {
+        navigate('/header-department/incident-management');
+      }
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || 'Không thể cập nhật kết quả điều tra';
       setError(errorMessage);
@@ -149,7 +157,13 @@ const InvestigateIncident: React.FC = () => {
           type="error"
           showIcon
           action={
-            <Button onClick={() => navigate('/header-department/incident-management')}>
+            <Button onClick={() => {
+              if (isManagerRoute) {
+                navigate('/manager/incidents/assigned');
+              } else {
+                navigate('/header-department/incident-management');
+              }
+            }}>
               Quay lại danh sách
             </Button>
           }

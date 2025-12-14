@@ -18,7 +18,12 @@ interface ImportResult {
   total: number;
 }
 
-const ImportUsers: React.FC = () => {
+interface ImportUsersProps {
+  onSuccess?: () => void;
+  onClose?: () => void;
+}
+
+const ImportUsers: React.FC<ImportUsersProps> = ({ onSuccess, onClose }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -64,6 +69,14 @@ const ImportUsers: React.FC = () => {
       console.log('✅ Upload successful:', response);
       setResult(response.data);
       setShowResult(true);
+      
+      // Call onSuccess callback if provided and import was successful
+      if (response.data && response.data.success && response.data.success.length > 0 && onSuccess) {
+        // Delay to allow user to see the result
+        setTimeout(() => {
+          onSuccess();
+        }, 2000);
+      }
     } catch (error: any) {
       console.error('❌ Import error:', error);
       
@@ -86,34 +99,39 @@ const ImportUsers: React.FC = () => {
     // Create template data
     const templateData = [
       {
-        username: 'admin001',
-        email: 'admin001@company.com',
-        password: 'Password123',
-        full_name: 'Nguyễn Văn Admin',
-        phone: '0901234567',
-        birth_date: '1990-01-15',
-        address: '123 Đường ABC Hà Nội',
-        department_name: 'Ban Giám đốc',
-      },
-      {
-        username: 'manager001',
-        email: 'manager001@company.com',
-        password: 'Password123',
-        full_name: 'Trần Thị Manager',
-        phone: '0901234568',
-        birth_date: '1985-05-20',
-        address: '456 Đường XYZ TP.HCM',
-        department_name: 'Ban Giám đốc',
-      },
-      {
         username: 'user001',
         email: 'user001@company.com',
         password: 'Password123',
-        full_name: 'Lê Văn User',
+        full_name: 'Nguyễn Văn A',
+        phone: '0901234567',
+        birth_date: '1990-01-15',
+        address: '123 Đường ABC Hà Nội',
+        department_name: 'AN TOÀN LAO ĐỘNG',
+        role_name: 'Người dùng',
+        is_active: true
+      },
+      {
+        username: 'user002',
+        email: 'user002@company.com',
+        password: 'Password123',
+        full_name: 'Trần Thị B',
+        phone: '0901234568',
+        birth_date: '1985-05-20',
+        address: '456 Đường XYZ TP.HCM',
+        role_name: 'Người dùng',
+        is_active: true
+      },
+      {
+        username: 'user003',
+        email: 'user003@company.com',
+        password: 'Password123',
+        full_name: 'Lê Văn C',
         phone: '0901234569',
         birth_date: '1992-08-10',
         address: '789 Đường DEF Đà Nẵng',
-        department_name: 'Ban Giám đốc',
+        department_name: 'AN TOÀN LAO ĐỘNG',
+        role_name: 'Người dùng',
+        is_active: true
       }
     ];
 
@@ -125,23 +143,28 @@ const ImportUsers: React.FC = () => {
     const instructions = [
       ['HƯỚNG DẪN NHẬP DỮ LIỆU USER'],
       [''],
-      ['Các trường bắt buộc:'],
-      ['- username: Tên đăng nhập (duy nhất)'],
-      ['- email: Email (duy nhất)'],
+      ['Các trường BẮT BUỘC:'],
+      ['- username: Tên đăng nhập (duy nhất, không trùng)'],
+      ['- email: Email (duy nhất, không trùng)'],
       ['- password: Mật khẩu (tối thiểu 6 ký tự)'],
-      ['- full_name: Họ và tên'],
+      ['- full_name: Họ và tên đầy đủ'],
       [''],
-      ['Các trường tùy chọn:'],
-      ['- phone: Số điện thoại'],
-      ['- birth_date: Ngày sinh (YYYY-MM-DD)'],
+      ['Các trường TÙY CHỌN:'],
+      ['- phone: Số điện thoại (tối đa 20 ký tự)'],
+      ['- birth_date: Ngày sinh (định dạng: YYYY-MM-DD, ví dụ: 1990-01-15)'],
       ['- address: Địa chỉ'],
-      ['- department_name: Tên phòng ban'],
+      ['- department_name: Tên phòng ban (tùy chọn, phải khớp chính xác với tên trong hệ thống nếu có)'],
+      ['- role_name: Tên vai trò (phải khớp chính xác với tên trong hệ thống, ví dụ: "Người dùng", "Manager")'],
+      ['  + Nếu không điền, hệ thống sẽ tự động gán role "employee" hoặc role đầu tiên có level < 90'],
+      ['- is_active: Trạng thái hoạt động (true/false hoặc 1/0, mặc định: true)'],
       [''],
-      ['Lưu ý:'],
-      ['- Role sẽ được tự động gán: Manager -> leader, Employee -> employee'],
-      ['- department_name phải khớp với hệ thống'],
-      ['- Username và email phải duy nhất trong hệ thống'],
-      ['- File Excel phải có định dạng .xlsx hoặc .xls']
+      ['LƯU Ý QUAN TRỌNG:'],
+      ['- role_name phải khớp CHÍNH XÁC với tên trong hệ thống (phân biệt chữ hoa/thường)'],
+      ['- department_name là tùy chọn, nếu có thì phải khớp CHÍNH XÁC với tên trong hệ thống'],
+      ['- Username và email phải DUY NHẤT, không được trùng với người dùng đã tồn tại'],
+      ['- Password phải đáp ứng yêu cầu: tối thiểu 6 ký tự'],
+      ['- File Excel phải có định dạng .xlsx hoặc .xls'],
+      ['- Nếu role_name không tồn tại, import sẽ bị lỗi và dòng đó sẽ không được tạo']
     ];
 
     const wsInstructions = XLSX.utils.aoa_to_sheet(instructions);
@@ -160,6 +183,10 @@ const ImportUsers: React.FC = () => {
     // Reset file input
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
+    // Call onClose callback if provided
+    if (onClose) {
+      onClose();
+    }
   };
 
   return (

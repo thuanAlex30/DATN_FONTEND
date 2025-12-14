@@ -110,7 +110,6 @@ const ReportIncident: React.FC = () => {
       icon={<ExclamationCircleOutlined />}
     >
       <div style={{ 
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
         minHeight: 'calc(100vh - 64px)',
         padding: '24px' 
       }}>

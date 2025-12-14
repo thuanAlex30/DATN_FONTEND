@@ -1174,9 +1174,7 @@ const ManagerProjectManagement: React.FC = () => {
       icon={<ProjectOutlined />}
     >
         <div style={{ 
-        padding: '32px',
-        background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-        minHeight: '100vh'
+        padding: '32px'
       }}>
         {/* Header Section */}
         <Card 

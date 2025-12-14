@@ -82,13 +82,15 @@ class UserService {
       const response = await api.get<{
         success: boolean;
         message: string;
-        data: User;
+        data: any; // Can be nested structure
       }>(
         `/users/${id}`
       );
 
       if (response.data.success) {
-        return response.data.data;
+        // Handle nested response structure: data.data.data contains the actual user
+        const userData = response.data.data?.data || response.data.data;
+        return userData as User;
       } else {
         throw new Error(response.data.message || 'Failed to fetch user');
       }
@@ -155,7 +157,6 @@ class UserService {
     phone?: string;
     role_id?: string;
     department_id?: string;
-    position_id?: string;
     password: string;
   }): Promise<User> {
     try {
@@ -184,7 +185,6 @@ class UserService {
     phone?: string;
     role_id?: string;
     department_id?: string;
-    position_id?: string;
     is_active?: boolean;
   }): Promise<User> {
     try {

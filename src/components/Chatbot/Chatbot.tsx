@@ -7,9 +7,17 @@ import {
   DeleteOutlined,
   RobotOutlined,
   UserOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
+  DollarOutlined,
+  ShoppingCartOutlined,
+  FileTextOutlined,
+  SafetyOutlined,
+  ExclamationCircleOutlined,
+  BookOutlined,
+  ProjectOutlined
 } from '@ant-design/icons';
-import chatbotService, { type ChatMessage } from '../../services/chatbotService';
+import { useNavigate } from 'react-router-dom';
+import chatbotService, { type ChatMessage, type NavigationAction } from '../../services/chatbotService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
@@ -26,7 +34,10 @@ const Chatbot: React.FC = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const previousUserRef = useRef<{ userId?: string; tenantId?: string } | null>(null);
+  const isCreatingSessionRef = useRef<boolean>(false);
 
   // Hàm tạo UUID đơn giản (fallback nếu crypto.randomUUID không có)
   const generateUUID = (): string => {
@@ -41,29 +52,96 @@ const Chatbot: React.FC = () => {
     });
   };
 
-  // Tạo session mới khi component mount
+  // Detect khi user mới đăng nhập và clear lịch sử
   useEffect(() => {
+    if (isAuthenticated && user) {
+      const currentUserId = user.id || (user as any)?._id || undefined;
+      const currentTenantId = user.tenant_id;
+      const previousUser = previousUserRef.current;
+
+      // Kiểm tra nếu user hoặc tenant thay đổi (user mới đăng nhập)
+      // Hoặc nếu đây là lần đầu tiên user đăng nhập (previousUser = null)
+      if (!previousUser || 
+          previousUser.userId !== currentUserId || 
+          previousUser.tenantId !== currentTenantId) {
+        // User mới đăng nhập hoặc user/tenant thay đổi - clear lịch sử và tạo session mới
+        console.log('🔄 User đăng nhập, xóa lịch sử Chatbot để tạo sự độc lập giữa các account');
+        setMessages([]);
+        
+        // Clear lịch sử trên server nếu có sessionId cũ (sử dụng sessionId hiện tại trước khi clear)
+        const oldSessionId = sessionId;
+        if (oldSessionId && previousUser?.userId) {
+          chatbotService.clearChatHistory(oldSessionId).catch(err => {
+            console.log('Không thể clear lịch sử cũ (có thể session đã hết hạn):', err);
+          });
+        }
+        
+        // Reset sessionId để trigger tạo session mới
+        setSessionId(null);
+      }
+
+      // Lưu thông tin user hiện tại (luôn cập nhật)
+      previousUserRef.current = {
+        userId: currentUserId,
+        tenantId: currentTenantId
+      };
+    } else if (!isAuthenticated) {
+      // User đã logout - clear lịch sử
+      setMessages([]);
+      setSessionId(null);
+      previousUserRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.id, (user as any)?._id, user?.tenant_id]);
+
+  // Tạo session mới khi component mount hoặc khi sessionId bị clear
+  useEffect(() => {
+    // Chỉ tạo session mới nếu chưa có sessionId và chưa đang trong quá trình tạo
+    if (sessionId || isCreatingSessionRef.current) {
+      return; // Đã có sessionId hoặc đang tạo, không cần tạo mới
+    }
+
+    let isCancelled = false; // Flag để tránh setState sau khi component unmount
+    isCreatingSessionRef.current = true; // Đánh dấu đang tạo session
+
     const createSession = async () => {
       // Tạo sessionId ngay lập tức (local) để input có thể hoạt động
       const localSessionId = generateUUID();
-      setSessionId(localSessionId);
+      if (!isCancelled) {
+        setSessionId(localSessionId);
+      }
       
       // Thử tạo session trên server (không bắt buộc)
       // Chatbot có thể hoạt động mà không cần đăng nhập
       try {
         const response = await chatbotService.createSession();
-        if (response.data.success) {
+        if (response.data.success && !isCancelled) {
           // Nếu server trả về sessionId, dùng sessionId từ server
           setSessionId(response.data.data.sessionId);
         }
       } catch (error: any) {
         // Lỗi không quan trọng, vẫn dùng localSessionId
         // Chatbot có thể hoạt động mà không cần server session
-        console.log('Session creation on server failed (optional, chatbot still works):', error?.message || error);
+        // Chỉ log lỗi nếu không phải 429 (Too Many Requests) để tránh spam console
+        if (error?.response?.status !== 429) {
+          console.log('Session creation on server failed (optional, chatbot still works):', error?.message || error);
+        }
+      } finally {
+        // Reset flag sau khi hoàn thành (thành công hoặc thất bại)
+        if (!isCancelled) {
+          isCreatingSessionRef.current = false;
+        }
       }
     };
+    
     createSession();
-  }, []);
+
+    // Cleanup function
+    return () => {
+      isCancelled = true;
+      isCreatingSessionRef.current = false;
+    };
+  }, [sessionId]);
 
   // Load lịch sử chat khi mở chatbot (chỉ khi đã đăng nhập)
   useEffect(() => {
@@ -79,6 +157,146 @@ const Chatbot: React.FC = () => {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Hàm detect và tạo navigation actions dựa trên nội dung message
+  const detectNavigationActions = (message: string, response: string): NavigationAction[] => {
+    const actions: NavigationAction[] = [];
+    
+    // Kiểm tra an toàn
+    if (!message || !response) {
+      return actions;
+    }
+    
+    const lowerMessage = message.toLowerCase();
+    const lowerResponse = response.toLowerCase();
+
+    // Detect đăng ký/pricing/bảng giá
+    if (lowerMessage.includes('đăng ký') || 
+        lowerMessage.includes('pricing') || 
+        lowerMessage.includes('bảng giá') || 
+        lowerMessage.includes('giá') ||
+        lowerMessage.includes('gói dịch vụ') ||
+        lowerMessage.includes('dịch vụ') ||
+        lowerResponse.includes('pricing') ||
+        lowerResponse.includes('bảng giá') ||
+        lowerResponse.includes('đăng ký')) {
+      actions.push({
+        label: 'Xem bảng giá',
+        path: '/pricing',
+        icon: 'DollarOutlined'
+      });
+    }
+
+    // Detect báo cáo sự cố
+    if (lowerMessage.includes('báo cáo sự cố') || 
+        lowerMessage.includes('sự cố') ||
+        lowerMessage.includes('incident') ||
+        lowerResponse.includes('báo cáo sự cố')) {
+      if (isAuthenticated && user) {
+        // Kiểm tra role để điều hướng đúng
+        try {
+          const userRole = user?.role?.role_code || (user?.role?.role_name ? user.role.role_name.toLowerCase() : '');
+          if (userRole === 'manager' || userRole === 'employee') {
+            actions.push({
+              label: 'Báo cáo sự cố',
+              path: '/manager/incidents/report',
+              icon: 'ExclamationCircleOutlined'
+            });
+          }
+        } catch (error) {
+          // Nếu có lỗi khi kiểm tra role, bỏ qua
+          console.error('Error checking user role:', error);
+        }
+      } else {
+        actions.push({
+          label: 'Đăng nhập để báo cáo',
+          path: '/login',
+          icon: 'ExclamationCircleOutlined'
+        });
+      }
+    }
+
+    // Detect PPE
+    if (lowerMessage.includes('ppe') || 
+        lowerMessage.includes('thiết bị bảo hộ') ||
+        lowerMessage.includes('bảo hộ lao động') ||
+        lowerResponse.includes('ppe')) {
+      if (isAuthenticated) {
+        actions.push({
+          label: 'Quản lý PPE',
+          path: '/manager/ppe',
+          icon: 'SafetyOutlined'
+        });
+      }
+    }
+
+    // Detect đào tạo
+    if (lowerMessage.includes('đào tạo') || 
+        lowerMessage.includes('training') ||
+        lowerResponse.includes('đào tạo')) {
+      if (isAuthenticated) {
+        actions.push({
+          label: 'Quản lý đào tạo',
+          path: '/manager/training',
+          icon: 'BookOutlined'
+        });
+      }
+    }
+
+    // Detect dự án
+    if (lowerMessage.includes('dự án') || 
+        lowerMessage.includes('project') ||
+        lowerResponse.includes('dự án')) {
+      if (isAuthenticated) {
+        actions.push({
+          label: 'Quản lý dự án',
+          path: '/manager/project-management',
+          icon: 'ProjectOutlined'
+        });
+      }
+    }
+
+    return actions;
+  };
+
+  // Hàm render icon dựa trên icon name
+  const renderIcon = (iconName?: string) => {
+    switch (iconName) {
+      case 'DollarOutlined':
+        return <DollarOutlined />;
+      case 'ShoppingCartOutlined':
+        return <ShoppingCartOutlined />;
+      case 'FileTextOutlined':
+        return <FileTextOutlined />;
+      case 'SafetyOutlined':
+        return <SafetyOutlined />;
+      case 'ExclamationCircleOutlined':
+        return <ExclamationCircleOutlined />;
+      case 'BookOutlined':
+        return <BookOutlined />;
+      case 'ProjectOutlined':
+        return <ProjectOutlined />;
+      default:
+        return null;
+    }
+  };
+
+  // Hàm xử lý click vào nút điều hướng
+  const handleNavigationClick = (path: string) => {
+    try {
+      if (navigate && path) {
+        navigate(path);
+        // Đóng chatbot sau khi điều hướng
+        setIsOpen(false);
+      }
+    } catch (error) {
+      console.error('Error navigating:', error);
+      // Fallback: sử dụng window.location nếu navigate không hoạt động
+      if (path) {
+        window.location.href = path;
+      }
+    }
   };
 
   const loadChatHistory = async () => {
@@ -120,10 +338,21 @@ const Chatbot: React.FC = () => {
       });
 
       if (response.data.success) {
+        const responseContent = response.data.data.response;
+        // Detect và thêm navigation actions
+        let actions: NavigationAction[] = [];
+        try {
+          actions = detectNavigationActions(userMessage.content, responseContent);
+        } catch (error) {
+          console.error('Error detecting navigation actions:', error);
+          // Nếu có lỗi, tiếp tục mà không có actions
+        }
+        
         const assistantMessage: ChatMessage = {
           role: 'assistant',
-          content: response.data.data.response,
-          timestamp: new Date()
+          content: responseContent,
+          timestamp: new Date(),
+          actions: actions.length > 0 ? actions : undefined
         };
         setMessages(prev => [...prev, assistantMessage]);
       } else {
@@ -233,20 +462,20 @@ const Chatbot: React.FC = () => {
               title={
                 <Space>
                   <div style={{
-                    width: 32,
-                    height: 32,
+                    width: 28,
+                    height: 28,
                     borderRadius: '50%',
                     background: 'rgba(255, 255, 255, 0.2)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 18
+                    fontSize: 16
                   }}>
                     <RobotOutlined />
                   </div>
                   <div>
-                    <Text strong style={{ color: 'white', fontSize: 15 }}>CHMS AI</Text>
-                    <div style={{ fontSize: 11, opacity: 0.9, lineHeight: 1.2 }}>Trợ lý ảo thông minh</div>
+                    <Text strong style={{ color: 'white', fontSize: 14 }}>CHMS AI</Text>
+                    <div style={{ fontSize: 10, opacity: 0.9, lineHeight: 1.2 }}>Trợ lý ảo thông minh</div>
                   </div>
                 </Space>
               }
@@ -269,7 +498,7 @@ const Chatbot: React.FC = () => {
                   />
                 </Space>
               }
-              style={{ width: 400, height: 600 }}
+              style={{ width: 340, height: 500 }}
               bodyStyle={{ 
                 padding: 0, 
                 display: 'flex', 
@@ -367,6 +596,25 @@ const Chatbot: React.FC = () => {
                             minute: '2-digit'
                           })}
                         </div>
+                        {/* Navigation Actions */}
+                        {message.role === 'assistant' && message.actions && Array.isArray(message.actions) && message.actions.length > 0 && (
+                          <div className="chatbot-message-actions">
+                            {message.actions.map((action, actionIndex) => {
+                              if (!action || !action.path || !action.label) return null;
+                              return (
+                                <Button
+                                  key={actionIndex}
+                                  type="primary"
+                                  size="small"
+                                  icon={renderIcon(action.icon)}
+                                  onClick={() => handleNavigationClick(action.path)}
+                                >
+                                  {action.label}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   ))

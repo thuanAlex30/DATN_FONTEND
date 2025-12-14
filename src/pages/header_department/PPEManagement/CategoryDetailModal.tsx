@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Modal, 
   Card, 
@@ -12,7 +12,9 @@ import {
   Spin, 
   Alert,
   Button,
-  Tooltip
+  Tooltip,
+  Image,
+  Avatar
 } from 'antd';
 import { 
   SafetyOutlined, 
@@ -22,6 +24,7 @@ import {
   EditOutlined
 } from '@ant-design/icons';
 import type { PPECategory, PPEItem } from '../../../services/ppeService';
+import { ENV } from '../../../config/env';
 
 interface CategoryDetailModalProps {
   category: PPECategory | null;
@@ -39,6 +42,17 @@ const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
   onClose
 }) => {
   const [loading] = useState(false);
+
+  // Helper function to resolve image URL
+  const apiBaseForImages = useMemo(() => {
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
 
   if (!isOpen || !category) return null;
 
@@ -60,7 +74,18 @@ const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
       key: 'item_name',
       render: (text: string, record: PPEItem) => (
         <Space>
-          <SafetyOutlined />
+          {record.image_url ? (
+            <Image
+              src={resolveImageUrl(record.image_url)}
+              width={40}
+              height={40}
+              style={{ objectFit: 'cover', borderRadius: 8 }}
+              preview={{ mask: 'Xem ảnh' }}
+              fallback=""
+            />
+          ) : (
+            <Avatar icon={<SafetyOutlined />} />
+          )}
           <div>
             <div style={{ fontWeight: 'bold' }}>{text}</div>
             <div style={{ fontSize: '12px', color: '#666' }}>

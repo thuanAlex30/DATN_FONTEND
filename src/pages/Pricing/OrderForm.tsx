@@ -12,14 +12,12 @@ import {
   Col,
   Space,
   message,
-  Steps,
   Alert
 } from 'antd';
 import {
   SafetyOutlined,
   LoadingOutlined,
   ArrowLeftOutlined,
-  CheckCircleOutlined,
   LoginOutlined,
   PhoneOutlined,
   MailOutlined,
@@ -28,21 +26,19 @@ import {
   InstagramOutlined,
   TwitterOutlined
 } from '@ant-design/icons';
-import pricingService, { type CompanyInfo, type ContactPerson } from '../../services/pricingService';
+import { type CompanyInfo, type ContactPerson } from '../../services/pricingService';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import landingStyles from '../Landing/Landing.module.css';
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
-const { Step } = Steps;
 
 const OrderFormPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
   
   const planType = searchParams.get('plan') as 'monthly' | 'quarterly' | 'yearly' | null;
   const user = useSelector((state: RootState) => state.auth.user);
@@ -94,61 +90,32 @@ const OrderFormPage: React.FC = () => {
 
     try {
       setLoading(true);
-      setCurrentStep(1);
 
       const companyInfo: CompanyInfo = {
-        name: values.companyName,
-        address: values.companyAddress || '',
-        phone: values.companyPhone,
-        email: values.companyEmail,
-        taxCode: values.taxCode
+        name: values.companyName?.trim() || '',
+        address: values.companyAddress?.trim() || '',
+        phone: values.companyPhone?.trim() || '',
+        email: values.companyEmail?.trim() || '',
+        taxCode: values.taxCode?.trim() || undefined
       };
 
       const contactPerson: ContactPerson = {
-        name: values.contactName,
-        email: values.contactEmail,
-        phone: values.contactPhone,
-        position: values.contactPosition
+        name: values.contactName?.trim() || '',
+        email: values.contactEmail?.trim() || '',
+        phone: values.contactPhone?.trim() || '',
+        position: values.contactPosition?.trim() || undefined
       };
 
-      const orderData = {
-        planType,
-        userId: user?.id,
-        companyInfo,
-        contactPerson
-      };
-
-      const result = await pricingService.createOrder(orderData);
-      
-      // Lưu orderId vào localStorage để dùng khi redirect về
-      if (result.orderId) {
-        localStorage.setItem('pending_order_id', result.orderId);
-      }
-      
-      setCurrentStep(2);
-      message.success('Đơn hàng đã được tạo thành công! Đang chuyển đến trang thanh toán...');
-      
-      // Redirect đến PayOS payment URL sau 2 giây
-      setTimeout(() => {
-        if (result.paymentUrl) {
-          window.location.href = result.paymentUrl;
-        } else {
-          message.error('Không thể lấy link thanh toán');
-          setCurrentStep(0);
+      navigate('/pricing/contract-preview', {
+        state: {
+          planType,
+          companyInfo,
+          contactPerson
         }
-      }, 2000);
+      });
     } catch (error: any) {
-      console.error('Error creating order:', error);
-      console.error('Error response:', error.response?.data);
-      
-      // Hiển thị error message chi tiết hơn
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error ||
-                          error.message || 
-                          'Có lỗi xảy ra khi tạo đơn hàng';
-      
-      message.error(errorMessage);
-      setCurrentStep(0);
+      console.error('Error submitting form:', error);
+      message.error('Có lỗi xảy ra. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -238,17 +205,9 @@ const OrderFormPage: React.FC = () => {
             </Text>
           </div>
 
-          {/* Steps */}
-          <Steps current={currentStep} style={{ marginBottom: 40 }}>
-            <Step title="Thông tin đăng ký" />
-            <Step title="Xử lý đơn hàng" />
-            <Step title="Chuyển đến thanh toán" />
-          </Steps>
-
           {/* Form Card */}
           <Card>
-            {currentStep === 0 && (
-              <Form
+            <Form
                 form={form}
                 layout="vertical"
                 onFinish={handleSubmitOrder}
@@ -373,31 +332,6 @@ const OrderFormPage: React.FC = () => {
                   </Space>
                 </Form.Item>
               </Form>
-            )}
-
-            {currentStep === 1 && (
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <LoadingOutlined style={{ fontSize: 48, color: '#1890ff' }} />
-                <Title level={3} style={{ marginTop: 20 }}>
-                  Đang xử lý đơn hàng...
-                </Title>
-                <Text type="secondary">
-                  Vui lòng đợi trong giây lát
-                </Text>
-              </div>
-            )}
-
-            {currentStep === 2 && (
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <CheckCircleOutlined style={{ fontSize: 48, color: '#52c41a' }} />
-                <Title level={3} style={{ marginTop: 20, color: '#52c41a' }}>
-                  Đơn hàng đã được tạo thành công!
-                </Title>
-                <Text type="secondary">
-                  Đang chuyển đến trang thanh toán...
-                </Text>
-              </div>
-            )}
           </Card>
         </div>
       </Content>

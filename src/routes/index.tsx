@@ -19,7 +19,7 @@ import InvestigateIncident from '../pages/header_department/IncidentManagement/I
 import UpdateProgress from '../pages/header_department/IncidentManagement/UpdateProgress';
 import CloseIncident from '../pages/header_department/IncidentManagement/CloseIncident';
 import ProgressHistory from '../pages/header_department/IncidentManagement/ProgressHistory';
-import UpdateEmployeeIncident from '../pages/header_department/IncidentManagement/UpdateEmployeeIncident';
+import EscalateIncident from '../pages/header_department/IncidentManagement/EscalateIncident';
 import HeaderDepartmentCertificateManagementPage from '../pages/header_department/CertificateManagement';
 import HeaderDepartmentIncidentManagementPage from '../pages/header_department/IncidentManagement';
 import HeaderDepartmentPPEManagementPage from '../pages/header_department/PPEManagement';
@@ -27,8 +27,10 @@ import HeaderDepartmentTrainingManagementPage from '../pages/header_department/T
 import HeaderDepartmentDashboard from '../pages/header_department/Dashboard';
 import HeaderDepartmentHikvisionEventsPage from '../pages/header_department/HikvisionEvents';
 import HeaderDepartmentLayout from '../components/HeaderDepartment/HeaderDepartmentLayout';
+import { ManagerLayout } from '../components/Manager';
 import ReportIncident from '../pages/Employee/ReportIncident';
 import ManagerReportIncident from '../pages/Manager/ReportIncident';
+import AssignedIncidents from '../pages/Manager/IncidentHandling/AssignedIncidents';
 import EmployeeTraining from '../pages/Employee/Training';
 import TrainingSession from '../pages/Employee/TrainingSession';
 import EmployeePPE from '../pages/Employee/PPE';
@@ -43,12 +45,14 @@ import WebSocketTest from '../pages/WebSocketTest';
 import LandingPage from '../pages/Landing';
 import PricingPage from '../pages/Pricing';
 import OrderFormPage from '../pages/Pricing/OrderForm';
+import ContractPreviewPage from '../pages/Pricing/ContractPreview';
 import PaymentSuccess from '../pages/Pricing/PaymentSuccess';
 import PaymentFailed from '../pages/Pricing/PaymentFailed';
 import PaymentCancelled from '../pages/Pricing/PaymentCancelled';
 import AboutPage from '../pages/About';
 import ContactPage from '../pages/Contact';
 import FAQPage from '../pages/FAQ';
+import ProfilePage from '../pages/Profile';
 import { projectManagementRoutes } from './projectManagementRoutes';
 import ProjectManagementRouteWrapper from './ProjectManagementRouteWrapper';
 
@@ -64,6 +68,7 @@ const AppRoutes = () => {
             <Route path="/" element={<LandingPage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/pricing/order" element={<OrderFormPage />} />
+            <Route path="/pricing/contract-preview" element={<ContractPreviewPage />} />
             <Route path="/pricing/payment-success" element={<PaymentSuccess />} />
             <Route path="/pricing/payment-failed" element={<PaymentFailed />} />
             <Route path="/pricing/payment-cancelled" element={<PaymentCancelled />} />
@@ -79,6 +84,18 @@ const AppRoutes = () => {
                 element={
                     <AuthGuard>
                         <HomePage />
+                    </AuthGuard>
+                } 
+            />
+
+            {/* Profile route - accessible to all authenticated users */}
+            <Route 
+                path="/profile" 
+                element={
+                    <AuthGuard>
+                        <AdminLayout>
+                            <ProfilePage />
+                        </AdminLayout>
                     </AuthGuard>
                 } 
             />
@@ -141,6 +158,56 @@ const AppRoutes = () => {
                 element={
                     <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <ManagerReportIncident />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/incidents/assigned" 
+                element={
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
+                        <ManagerLayout>
+                            <AssignedIncidents />
+                        </ManagerLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/incidents/:id/investigate" 
+                element={
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
+                        <ManagerLayout>
+                            <InvestigateIncident />
+                        </ManagerLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/incidents/:id/escalate" 
+                element={
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
+                        <ManagerLayout>
+                            <EscalateIncident />
+                        </ManagerLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/incidents/:id/progress-history" 
+                element={
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
+                        <ManagerLayout>
+                            <ProgressHistory />
+                        </ManagerLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/manager/incidents/:id/progress" 
+                element={
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
+                        <ManagerLayout>
+                            <UpdateProgress />
+                        </ManagerLayout>
                     </AuthGuard>
                 } 
             />
@@ -377,7 +444,7 @@ const AppRoutes = () => {
             <Route 
                 path="/header-department/incident-management/:id/investigate" 
                 element={
-                    <AuthGuard requiredRole="header_department">
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <HeaderDepartmentLayout>
                             <InvestigateIncident />
                         </HeaderDepartmentLayout>
@@ -387,7 +454,17 @@ const AppRoutes = () => {
             <Route 
                 path="/header-department/incident-management/:id/progress" 
                 element={
-                    <AuthGuard requiredRole="header_department">
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
+                        <HeaderDepartmentLayout>
+                            <UpdateProgress />
+                        </HeaderDepartmentLayout>
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/header-department/incident-management/:id/update-progress" 
+                element={
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <HeaderDepartmentLayout>
                             <UpdateProgress />
                         </HeaderDepartmentLayout>
@@ -397,7 +474,7 @@ const AppRoutes = () => {
             <Route 
                 path="/header-department/incident-management/:id/progress-history" 
                 element={
-                    <AuthGuard requiredRole="header_department">
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
                         <HeaderDepartmentLayout>
                             <ProgressHistory />
                         </HeaderDepartmentLayout>
@@ -415,12 +492,12 @@ const AppRoutes = () => {
                 } 
             />
             <Route 
-                path="/admin/incidents/:id/update-employee" 
+                path="/header-department/incident-management/:id/escalate" 
                 element={
-                    <AuthGuard requiredRole="admin">
-                        <AdminLayout>
-                            <UpdateEmployeeIncident />
-                        </AdminLayout>
+                    <AuthGuard requiredRole="header_department">
+                        <HeaderDepartmentLayout>
+                            <EscalateIncident />
+                        </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 
             />

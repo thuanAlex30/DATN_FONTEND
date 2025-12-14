@@ -68,7 +68,10 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
       'department_header': ['department header', 'department_header', 'header_department', 'header department'],
       'department header': ['department header', 'department_header', 'header_department', 'header department'],
       'company_admin': ['company admin', 'company_admin', 'admin'],
+      'company admin': ['company admin', 'company_admin', 'admin'],
+      'admin': ['company admin', 'company_admin', 'system admin', 'system_admin', 'admin'], // Admin includes both company and system admin
       'system_admin': ['system admin', 'system_admin'],
+      'system admin': ['system admin', 'system_admin'],
       'department_manager': ['department manager', 'department_manager', 'manager'],
       'department manager': ['department manager', 'department_manager', 'manager'],
       'manager': ['department manager', 'department_manager', 'manager', 'dept manager'],

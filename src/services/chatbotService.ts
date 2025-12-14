@@ -1,9 +1,16 @@
 import { api } from '../config/axios';
 
+export interface NavigationAction {
+  label: string;
+  path: string;
+  icon?: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp?: Date;
+  actions?: NavigationAction[];
 }
 
 export interface ChatHistoryResponse {

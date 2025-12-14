@@ -52,6 +52,9 @@ const ExpiryManagementModal: React.FC<ExpiryManagementModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [submittingTracking, setSubmittingTracking] = useState(false);
+  const [submittingReplace, setSubmittingReplace] = useState(false);
+  const [submittingDispose, setSubmittingDispose] = useState(false);
   const [activeTab, setActiveTab] = useState('tracking');
   const [expiryReport, setExpiryReport] = useState<ExpiryReport | null>(null);
   const [expiringItems, setExpiringItems] = useState<PPEExpiryTracking[]>([]);
@@ -93,6 +96,7 @@ const ExpiryManagementModal: React.FC<ExpiryManagementModalProps> = ({
   };
 
   const handleCreateTracking = async () => {
+    setSubmittingTracking(true);
     try {
       const values = await form.validateFields();
       await ppeService.createExpiryTracking({
@@ -107,6 +111,8 @@ const ExpiryManagementModal: React.FC<ExpiryManagementModalProps> = ({
       loadExpiryReport();
     } catch (error: any) {
       message.error(error.message || 'Lỗi khi tạo tracking record');
+    } finally {
+      setSubmittingTracking(false);
     }
   };
 
@@ -134,6 +140,7 @@ const ExpiryManagementModal: React.FC<ExpiryManagementModalProps> = ({
 
   const handleReplace = async (values: any) => {
     if (!selectedItem) return;
+    setSubmittingReplace(true);
     try {
       await ppeService.replaceExpiredPPE(selectedItem.id, {
         replacement_item_id: values.replacement_item_id,
@@ -149,11 +156,14 @@ const ExpiryManagementModal: React.FC<ExpiryManagementModalProps> = ({
       loadExpiryReport();
     } catch (error: any) {
       message.error(error.message || 'Lỗi khi thay thế PPE');
+    } finally {
+      setSubmittingReplace(false);
     }
   };
 
   const handleDispose = async (values: any) => {
     if (!selectedItem) return;
+    setSubmittingDispose(true);
     try {
       await ppeService.disposeExpiredPPE(selectedItem.id, {
         disposal_method: values.disposal_method,
@@ -165,6 +175,8 @@ const ExpiryManagementModal: React.FC<ExpiryManagementModalProps> = ({
       loadExpiryReport();
     } catch (error: any) {
       message.error(error.message || 'Lỗi khi xử lý PPE');
+    } finally {
+      setSubmittingDispose(false);
     }
   };
 
@@ -414,7 +426,7 @@ const ExpiryManagementModal: React.FC<ExpiryManagementModalProps> = ({
                   </Col>
                   <Col span={12}>
                     <Form.Item label=" ">
-                      <Button type="primary" htmlType="submit">
+                      <Button type="primary" htmlType="submit" loading={submittingTracking}>
                         Create Tracking
                       </Button>
                     </Form.Item>
@@ -497,10 +509,10 @@ const ExpiryManagementModal: React.FC<ExpiryManagementModalProps> = ({
             </Form.Item>
             <Form.Item>
               <Space>
-                <Button type="primary" htmlType="submit">
+                <Button type="primary" htmlType="submit" loading={submittingReplace}>
                   Replace PPE
                 </Button>
-                <Button onClick={() => setShowReplaceModal(false)}>
+                <Button onClick={() => setShowReplaceModal(false)} disabled={submittingReplace}>
                   Cancel
                 </Button>
               </Space>
@@ -536,10 +548,10 @@ const ExpiryManagementModal: React.FC<ExpiryManagementModalProps> = ({
             </Form.Item>
             <Form.Item>
               <Space>
-                <Button type="primary" htmlType="submit" danger>
+                <Button type="primary" htmlType="submit" danger loading={submittingDispose}>
                   Dispose PPE
                 </Button>
-                <Button onClick={() => setShowDisposeModal(false)}>
+                <Button onClick={() => setShowDisposeModal(false)} disabled={submittingDispose}>
                   Cancel
                 </Button>
               </Space>

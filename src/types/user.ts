@@ -4,6 +4,7 @@ export interface User {
   email: string;
   full_name: string;
   phone?: string;
+  address?: string;
   role?: {
     _id: string;
     role_name: string;
@@ -24,12 +25,6 @@ export interface User {
     department_name: string;
     is_active: boolean;
   };
-  position?: {
-    _id: string;
-    position_name: string;
-    level: number;
-    is_active: boolean;
-  };
   is_active: boolean;
   created_at: string;
 }
@@ -42,7 +37,6 @@ export interface UserQuery {
   role?: string;
   role_id?: string;
   department_id?: string;
-  position_id?: string;
 }
 
 export interface UserCreate {
@@ -54,7 +48,6 @@ export interface UserCreate {
   birth_date?: string;
   address?: string;
   department_id?: string;
-  position_id?: string;
 }
 
 export interface UserUpdate {
@@ -62,5 +55,4 @@ export interface UserUpdate {
   full_name?: string;
   phone?: string;
   department_id?: string;
-  position_id?: string;
 }

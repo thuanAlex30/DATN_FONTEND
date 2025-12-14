@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Table,
@@ -14,7 +14,9 @@ import {
   Empty,
   Spin,
   message,
-  Button
+  Button,
+  Image,
+  Avatar
 } from 'antd';
 import {
   HistoryOutlined,
@@ -28,6 +30,7 @@ import {
 } from '@ant-design/icons';
 import type { PPEIssuance } from '../../../services/ppeService';
 import dayjs from 'dayjs';
+import { ENV } from '../../../config/env';
 
 const { Title, Text } = Typography;
 
@@ -57,6 +60,17 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
 }) => {
   const [history, setHistory] = useState<PPEHistory[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Helper function to resolve image URL
+  const apiBaseForImages = useMemo(() => {
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
 
   useEffect(() => {
     if (visible && issuance) {
@@ -303,7 +317,18 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
         >
           <Descriptions.Item label="Thiết bị" span={2}>
             <Space>
-              <SafetyOutlined />
+              {(item as any)?.image_url ? (
+                <Image
+                  src={resolveImageUrl((item as any).image_url)}
+                  width={80}
+                  height={80}
+                  style={{ objectFit: 'cover', borderRadius: 8 }}
+                  preview={{ mask: 'Xem ảnh' }}
+                  fallback=""
+                />
+              ) : (
+                <Avatar icon={<SafetyOutlined />} size={80} />
+              )}
               <div>
                 <div style={{ fontWeight: 'bold' }}>{item?.item_name || 'Không xác định'}</div>
                 <Text type="secondary" style={{ fontSize: '12px' }}>

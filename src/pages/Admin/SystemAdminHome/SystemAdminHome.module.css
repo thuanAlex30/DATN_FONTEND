@@ -1,7 +1,7 @@
 /* System Admin Home Styles */
 .container {
   padding: 32px;
-  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  background: transparent;
   min-height: calc(100vh - 64px);
   position: relative;
   overflow: hidden;

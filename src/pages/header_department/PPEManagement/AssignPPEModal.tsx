@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Modal, 
   Form, 
@@ -11,7 +11,10 @@ import {
   Row,
   Col,
   Typography,
-  Alert
+  Alert,
+  Image,
+  Avatar,
+  Card
 } from 'antd';
 import { UserOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
@@ -19,6 +22,7 @@ import type { RootState } from '../../../store';
 import * as ppeService from '../../../services/ppeService';
 import type { CreateIssuanceData } from '../../../services/ppeService';
 import dayjs from 'dayjs';
+import { ENV } from '../../../config/env';
 
 interface AssignPPEModalProps {
   isOpen: boolean;
@@ -27,7 +31,7 @@ interface AssignPPEModalProps {
   selectedUser?: any;
 }
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 
 const AssignPPEModal: React.FC<AssignPPEModalProps> = ({
@@ -42,6 +46,17 @@ const AssignPPEModal: React.FC<AssignPPEModalProps> = ({
   const [ppeItems, setPpeItems] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const { user } = useSelector((state: RootState) => state.auth);
+
+  // Helper function to resolve image URL
+  const apiBaseForImages = useMemo(() => {
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -133,7 +148,7 @@ const AssignPPEModal: React.FC<AssignPPEModalProps> = ({
         {selectedUser && (
           <Alert
             message={`Đang phát PPE cho: ${selectedUser.full_name}`}
-            description={`${selectedUser.department_name || 'Không xác định'} - ${selectedUser.position_name || 'Không xác định'}`}
+            description={`${selectedUser.department_name || 'Không xác định'}`}
             type="info"
             style={{ marginBottom: 16 }}
             showIcon
@@ -160,7 +175,7 @@ const AssignPPEModal: React.FC<AssignPPEModalProps> = ({
                       <div>
                         <div>{user.full_name}</div>
                         <Text type="secondary" style={{ fontSize: '12px' }}>
-                          {user.department_name || 'Không xác định'} - {user.position_name || 'Không xác định'}
+                          {user.department_name || 'Không xác định'}
                         </Text>
                       </div>
                     </Space>
@@ -177,37 +192,85 @@ const AssignPPEModal: React.FC<AssignPPEModalProps> = ({
               name="item_id"
               label="Thiết bị PPE"
               rules={[{ required: true, message: 'Vui lòng chọn thiết bị' }]}
-            >
+              >
               <Select
                 placeholder="Chọn thiết bị PPE"
                 showSearch
                 optionFilterProp="children"
                 onChange={handleItemChange}
               >
-                {ppeItems.map(item => (
-                  <Option key={item.id} value={item.id}>
-                    <Space>
-                      <SafetyOutlined />
-                      <div>
-                        <div>{item.item_name}</div>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                          {item.item_code} - Còn lại: {(item.quantity_available || 0) - (item.quantity_allocated || 0)}
-                        </Text>
-                      </div>
-                    </Space>
-                  </Option>
-                ))}
+                {ppeItems.map(item => {
+                  const available = (item.quantity_available || 0) - (item.quantity_allocated || 0);
+                  const inactive = item.status === 'inactive';
+                  return (
+                    <Option key={item.id} value={item.id} disabled={inactive}>
+                      <Space>
+                        <SafetyOutlined />
+                        <div>
+                          <div>
+                            {item.item_name}{' '}
+                            {inactive && <Text type="danger">(Inactive)</Text>}
+                          </div>
+                          <Text type="secondary" style={{ fontSize: '12px' }}>
+                            {item.item_code} - Còn lại: {available}
+                          </Text>
+                        </div>
+                      </Space>
+                    </Option>
+                  );
+                })}
               </Select>
             </Form.Item>
           </Col>
         </Row>
 
         {selectedItem && (
-          <Alert
-            message={`Số lượng có sẵn: ${getAvailableQuantity()}`}
-            type="info"
-            style={{ marginBottom: 16 }}
-          />
+          <>
+            <Card size="small" title="Thông tin thiết bị" style={{ marginBottom: 16 }}>
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                {selectedItem.image_url ? (
+                  <div style={{ textAlign: 'center' }}>
+                    <Image
+                      src={resolveImageUrl(selectedItem.image_url)}
+                      width={120}
+                      height={120}
+                      style={{ objectFit: 'cover', borderRadius: 8 }}
+                      preview={{ mask: 'Xem ảnh' }}
+                      fallback=""
+                    />
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center' }}>
+                    <Avatar icon={<SafetyOutlined />} size={120} />
+                  </div>
+                )}
+                <div>
+                  <Text strong>Tên thiết bị: </Text>
+                  <Text>{selectedItem.item_name}</Text>
+                </div>
+                <div>
+                  <Text strong>Mã thiết bị: </Text>
+                  <Text>{selectedItem.item_code}</Text>
+                </div>
+                {selectedItem.brand && (
+                  <div>
+                    <Text strong>Thương hiệu: </Text>
+                    <Text>{selectedItem.brand}</Text>
+                  </div>
+                )}
+                {selectedItem.model && (
+                  <div>
+                    <Text strong>Model: </Text>
+                    <Text>{selectedItem.model}</Text>
+                  </div>
+                )}
+                <div>
+                  <Text strong>Số lượng có sẵn: </Text>
+                  <Text type="success">{getAvailableQuantity()}</Text>
+                </div>
+              </Space>
+            </Card>
+          </>
         )}
 
         <Row gutter={16}>
@@ -252,7 +315,18 @@ const AssignPPEModal: React.FC<AssignPPEModalProps> = ({
             <Form.Item
               name="expected_return_date"
               label="Ngày trả dự kiến"
-              rules={[{ required: true, message: 'Vui lòng chọn ngày trả dự kiến' }]}
+              rules={[
+                { required: true, message: 'Vui lòng chọn ngày trả dự kiến' },
+                {
+                  validator: (_, value) => {
+                    const issuedDate = form.getFieldValue('issued_date');
+                    if (issuedDate && value && !dayjs(value).isAfter(dayjs(issuedDate), 'day')) {
+                      return Promise.reject(new Error('Ngày trả dự kiến phải sau ngày phát'));
+                    }
+                    return Promise.resolve();
+                  }
+                }
+              ]}
             >
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>

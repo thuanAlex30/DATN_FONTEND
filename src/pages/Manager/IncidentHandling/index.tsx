@@ -463,7 +463,7 @@ const ManagerIncidentHandling: React.FC = () => {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)' }}>
+    <Layout style={{ minHeight: '100vh' }}>
       <ManagerSidebar />
       <Layout.Content 
         style={{ 

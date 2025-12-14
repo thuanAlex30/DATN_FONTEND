@@ -94,7 +94,8 @@ export interface OrderInfo {
   companyInfo: CompanyInfo;
   contactPerson: ContactPerson;
   paymentDate?: string;
-  contractPath?: string;
+  contractId?: string;
+  contractPdfUrl?: string;
 }
 
 class PricingService {
@@ -161,6 +162,32 @@ class PricingService {
       }
     } catch (error: any) {
       console.error('Error getting order:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate contract preview PDF từ thông tin form
+   */
+  async generateContractPreview(data: {
+    planType: 'monthly' | 'quarterly' | 'yearly';
+    companyInfo: CompanyInfo;
+    contactPerson: ContactPerson;
+  }): Promise<{ previewPdfUrl: string }> {
+    try {
+      const response = await pricingApi.post<{
+        success: boolean;
+        message: string;
+        data: { previewPdfUrl: string };
+      }>('/pricing/contract-preview', data);
+
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || 'Failed to generate contract preview');
+      }
+    } catch (error: any) {
+      console.error('Error generating contract preview:', error);
       throw error;
     }
   }

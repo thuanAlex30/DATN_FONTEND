@@ -49,7 +49,8 @@ const IncidentManagement: React.FC = () => {
             total: statsData.total || 0,
             inProgress: (statsData.byStatus?.['Đang xử lý'] || 0),
             resolved: (statsData.byStatus?.['Đã đóng'] || 0),
-            critical: (statsData.bySeverity?.['rất nghiêm trọng'] || statsData.bySeverity?.['nặng'] || 0)
+            // "Nghiêm trọng" chỉ đếm "rất nghiêm trọng", sử dụng giá trị từ backend
+            critical: statsData.critical || (statsData.bySeverity?.['rất nghiêm trọng'] || 0)
           });
           return;
         }
@@ -137,9 +138,7 @@ const IncidentManagement: React.FC = () => {
 
   return (
     <div style={{ 
-      padding: '24px', 
-      background: 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
-      minHeight: '100vh'
+      padding: '24px'
     }}>
       {/* Header */}
       <Card

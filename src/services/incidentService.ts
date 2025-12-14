@@ -2,8 +2,10 @@ import { api } from '../config/axios';
 
 const incidentService = {
   // List incidents
-  getIncidents: (project_id?: string) => {
-    const params = project_id ? { project_id } : {};
+  getIncidents: (project_id?: string, assignedTo?: string) => {
+    const params: any = {};
+    if (project_id) params.project_id = project_id;
+    if (assignedTo) params.assignedTo = assignedTo;
     return api.get('/incidents', { params });
   },
 
@@ -62,9 +64,6 @@ const incidentService = {
 
   // Admin - close incident
   closeIncident: (id: string) => api.put(`/incidents/close/${id}`),
-
-  // Admin - update incident
-  updateIncident: (id: string, data: any) => api.put(`/incidents/${id}`, data),
 
   // Admin - delete incident
   deleteIncident: (id: string) => api.delete(`/incidents/${id}`),
