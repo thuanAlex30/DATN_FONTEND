@@ -75,6 +75,11 @@ interface DepartmentSummary {
     name: string;
     email?: string;
   } | null;
+  managers?: Array<{
+    id: string;
+    name: string;
+    email?: string;
+  }>;
   employee_count: number;
   is_active: boolean;
   created_at: string;
@@ -297,9 +302,13 @@ const DepartmentManagementPage = () => {
     let filtered = [...data];
 
     if (hasManagerFilter !== 'all') {
-      filtered = filtered.filter((dept) =>
-        hasManagerFilter === 'yes' ? Boolean(dept.manager_id) : !dept.manager_id
-      );
+      filtered = filtered.filter((dept) => {
+        const hasManagers = Boolean(
+          (dept.manager_ids && Array.isArray(dept.manager_ids) && dept.manager_ids.length > 0) ||
+          dept.manager_id
+        );
+        return hasManagerFilter === 'yes' ? hasManagers : !hasManagers;
+      });
     }
 
     if (hasEmployeesFilter !== 'all') {
@@ -311,6 +320,16 @@ const DepartmentManagementPage = () => {
 
     if (managerFilter) {
       filtered = filtered.filter((dept) => {
+        // Check in manager_ids array
+        if (dept.manager_ids && Array.isArray(dept.manager_ids)) {
+          const managerIds = dept.manager_ids.map((m: any) => 
+            typeof m === 'string' ? m : (m._id || m.id)
+          );
+          if (managerIds.includes(managerFilter)) {
+            return true;
+          }
+        }
+        // Check in manager_id (legacy)
         const managerId =
           (dept.manager_id?._id || (dept.manager_id as any)?.id || (dept.manager_id as any)?._id) ?? '';
         return managerId === managerFilter;
@@ -332,17 +351,36 @@ const DepartmentManagementPage = () => {
   const openCreateModal = () => {
     setEditingDepartment(null);
     form.resetFields();
-    form.setFieldsValue({ is_active: true });
+    form.setFieldsValue({ 
+      is_active: true,
+      manager_ids: []
+    });
     setSubmitting(false);
     setIsFormVisible(true);
   };
 
   const openEditModal = (department: Department) => {
     setEditingDepartment(department);
+    
+    // Get manager_ids from department (support both array and single manager_id)
+    let managerIds: string[] = [];
+    if (department.manager_ids && Array.isArray(department.manager_ids)) {
+      managerIds = department.manager_ids.map((m: any) => 
+        typeof m === 'string' ? m : (m._id || m.id)
+      ).filter(Boolean);
+    } else if (department.manager_id) {
+      const managerId = typeof department.manager_id === 'string' 
+        ? department.manager_id 
+        : (department.manager_id._id || (department.manager_id as any).id);
+      if (managerId) {
+        managerIds = [managerId];
+      }
+    }
+    
     form.setFieldsValue({
       department_name: department.department_name,
       description: department.description,
-      manager_id: department.manager_id?._id || (department.manager_id as any)?.id,
+      manager_ids: managerIds,
       is_active: department.is_active
     });
     setSubmitting(false);
@@ -462,7 +500,7 @@ const DepartmentManagementPage = () => {
     setEmployeesLoading(true);
     try {
       const response = await departmentService.getDepartmentEmployees(department.id, {
-        include_inactive: true
+        include_inactive: true // Lấy cả nhân viên đã ngừng hoạt động
       });
       const payload = (response as any)?.data ?? response;
       setEmployeeList(payload?.employees ?? []);
@@ -547,19 +585,41 @@ const DepartmentManagementPage = () => {
     },
     {
       title: 'Quản lý',
-      dataIndex: 'manager_id',
-      key: 'manager',
-      render: (manager: Department['manager_id']) => {
-        if (!manager) {
+      dataIndex: 'manager_ids',
+      key: 'managers',
+      render: (_: unknown, record: Department) => {
+        // Get managers from manager_ids array or fallback to manager_id
+        let managers: any[] = [];
+        if (record.manager_ids && Array.isArray(record.manager_ids) && record.manager_ids.length > 0) {
+          managers = record.manager_ids;
+        } else if (record.manager_id) {
+          managers = [record.manager_id];
+        }
+        
+        if (managers.length === 0) {
           return <Tag color="volcano">Chưa phân công</Tag>;
         }
+        
         return (
-          <Space>
-            <Avatar size="small" icon={<UserOutlined />} />
-            <div>
-              <div>{(manager as any)?.full_name || (manager as any)?.username}</div>
-              <div className={styles.subText}>{(manager as any)?.email}</div>
-            </div>
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            {managers.slice(0, 3).map((manager: any, index: number) => {
+              const managerId = typeof manager === 'string' ? manager : (manager._id || manager.id);
+              const managerName = typeof manager === 'string' ? manager : (manager.full_name || manager.username || 'N/A');
+              const managerEmail = typeof manager === 'string' ? '' : (manager.email || '');
+              
+              return (
+                <Space key={managerId || index} size="small">
+                  <Avatar size="small" icon={<UserOutlined />} />
+                  <div>
+                    <div>{managerName}</div>
+                    {managerEmail && <div className={styles.subText}>{managerEmail}</div>}
+                  </div>
+                </Space>
+              );
+            })}
+            {managers.length > 3 && (
+              <Tag color="blue">+{managers.length - 3} quản lý khác</Tag>
+            )}
           </Space>
         );
       }
@@ -822,12 +882,31 @@ const DepartmentManagementPage = () => {
           <Form.Item label="Mô tả" name="description">
             <Input.TextArea rows={3} placeholder="Mô tả ngắn gọn chức năng phòng ban" />
           </Form.Item>
-          <Form.Item label="Quản lý phụ trách" name="manager_id">
+          <Form.Item 
+            label="Quản lý phụ trách (tối đa 5)" 
+            name="manager_ids"
+            rules={[
+              {
+                validator: (_, value) => {
+                  if (!value || value.length === 0) {
+                    return Promise.resolve();
+                  }
+                  if (value.length > 5) {
+                    return Promise.reject(new Error('Một phòng ban chỉ có thể có tối đa 5 quản lý'));
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
+          >
             <Select
+              mode="multiple"
               allowClear
-              placeholder="Chọn quản lý"
+              placeholder="Chọn quản lý (tối đa 5)"
               showSearch
               optionFilterProp="children"
+              maxTagCount="responsive"
+              maxTagTextLength={20}
             >
               {managerCandidates.map((manager) => (
                 <Option key={manager.id} value={manager.id}>

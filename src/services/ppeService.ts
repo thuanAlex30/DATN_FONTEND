@@ -201,20 +201,32 @@ export const deletePPECategory = async (id: string): Promise<void> => {
 };
 
 // PPE Items API
-export const getPPEItems = async (): Promise<PPEItem[]> => {
+export const getPPEItems = async (includeInactive: boolean = true): Promise<PPEItem[]> => {
   try {
-    const response = await api.get('/ppe/items');
-    // Handle different response formats
-    if (Array.isArray(response.data)) {
-      return response.data;
-    } else if (response.data && response.data.data) {
-      return Array.isArray(response.data.data) ? response.data.data : [];
-    } else if (response.data && response.data.items) {
-      return Array.isArray(response.data.items) ? response.data.items : [];
+    const params: any = {};
+    if (includeInactive) {
+      params.include_inactive = 'true';
     }
-    return [];
+    
+    const response = await api.get('/ppe/items', { params });
+    console.log('getPPEItems response:', response);
+    
+    // Handle different response formats
+    let items: PPEItem[] = [];
+    
+    if (Array.isArray(response.data)) {
+      items = response.data;
+    } else if (response.data && response.data.data) {
+      items = Array.isArray(response.data.data) ? response.data.data : [];
+    } else if (response.data && response.data.items) {
+      items = Array.isArray(response.data.items) ? response.data.items : [];
+    }
+    
+    console.log('getPPEItems parsed items:', items.length, 'items');
+    return items;
   } catch (error: any) {
     console.error('Error fetching PPE items:', error);
+    console.error('Error details:', error.response?.data || error.message);
     // Return empty array on error instead of throwing
     return [];
   }

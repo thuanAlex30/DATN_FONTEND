@@ -19,6 +19,16 @@ interface ProfileData {
         created_at: string;
         updated_at: string;
     };
+    department?: {
+        id?: string;
+        _id?: string;
+        department_name?: string;
+        name?: string;
+        description?: string;
+        is_active?: boolean;
+        created_at?: string;
+        updated_at?: string;
+    };
     is_active: boolean;
     last_login: string;
     created_at: string;
@@ -131,6 +141,21 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
         }
     };
 
+    const getInitials = (name: string) => {
+        if (!name) return 'U';
+        const parts = name.trim().split(' ');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return name[0].toUpperCase();
+    };
+
+    const formatPermissionName = (permission: string) => {
+        return permission
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (l) => l.toUpperCase());
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -183,18 +208,44 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                         <div className={styles.profileContent}>
                             {/* Profile Header */}
                             <div className={styles.profileHeader}>
-                                <div className={styles.avatar}>
-                                    <i className="fas fa-user"></i>
+                                <div className={styles.avatarContainer}>
+                                    <div className={styles.avatar}>
+                                        <span className={styles.avatarInitials}>
+                                            {getInitials(profileData.full_name)}
+                                        </span>
+                                    </div>
+                                    <div className={styles.statusIndicator}>
+                                        <span className={`${styles.statusDot} ${profileData.is_active ? styles.active : styles.inactive}`}></span>
+                                    </div>
                                 </div>
                                 <div className={styles.profileInfo}>
-                                    <h3 className={styles.fullName}>{profileData.full_name}</h3>
-                                    {profileData.role && (
-                                        <div className={`${styles.roleBadge} ${getRoleBadgeColor(profileData.role.role_name)}`}>
-                                            <i className="fas fa-crown"></i>
-                                            {profileData.role.role_name.toUpperCase()}
+                                    <h3 className={styles.fullName}>{profileData.full_name || 'Chưa cập nhật'}</h3>
+                                    <div className={styles.badgesContainer}>
+                                        {profileData.role && (
+                                            <div className={`${styles.roleBadge} ${getRoleBadgeColor(profileData.role.role_name)}`}>
+                                                <i className="fas fa-user-shield"></i>
+                                                <span>{profileData.role.role_name}</span>
+                                            </div>
+                                        )}
+                                        {profileData.department && (
+                                            <div className={styles.departmentBadge}>
+                                                <i className="fas fa-building"></i>
+                                                <span>{profileData.department.department_name || profileData.department.name}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className={styles.contactInfo}>
+                                        <div className={styles.contactItem}>
+                                            <i className="fas fa-envelope"></i>
+                                            <span>{profileData.email}</span>
                                         </div>
-                                    )}
-                                    <p className={styles.email}>{profileData.email}</p>
+                                        {profileData.phone && (
+                                            <div className={styles.contactItem}>
+                                                <i className="fas fa-phone"></i>
+                                                <span>{profileData.phone}</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -203,26 +254,47 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                                 <div className={styles.detailSection}>
                                     <h4 className={styles.sectionTitle}>
                                         <i className="fas fa-info-circle"></i>
-                                        Thông tin cơ bản
+                                        <span>Thông tin cơ bản</span>
                                     </h4>
                                     <div className={styles.detailGrid}>
                                         <div className={styles.detailItem}>
-                                            <label>Tên đăng nhập</label>
-                                            <span>{profileData.username}</span>
+                                            <div className={styles.detailIcon}>
+                                                <i className="fas fa-user"></i>
+                                            </div>
+                                            <div className={styles.detailContent}>
+                                                <label>Tên đăng nhập</label>
+                                                <span>{profileData.username}</span>
+                                            </div>
                                         </div>
                                         <div className={styles.detailItem}>
-                                            <label>Số điện thoại</label>
-                                            <span>{profileData.phone || 'Chưa cập nhật'}</span>
+                                            <div className={styles.detailIcon}>
+                                                <i className="fas fa-phone"></i>
+                                            </div>
+                                            <div className={styles.detailContent}>
+                                                <label>Số điện thoại</label>
+                                                <span>{profileData.phone || 'Chưa cập nhật'}</span>
+                                            </div>
                                         </div>
                                         <div className={styles.detailItem}>
-                                            <label>Trạng thái</label>
-                                            <span className={profileData.is_active ? styles.activeStatus : styles.inactiveStatus}>
-                                                {profileData.is_active ? 'Hoạt động' : 'Không hoạt động'}
-                                            </span>
+                                            <div className={styles.detailIcon}>
+                                                <i className="fas fa-toggle-on"></i>
+                                            </div>
+                                            <div className={styles.detailContent}>
+                                                <label>Trạng thái</label>
+                                                <span className={`${styles.statusBadge} ${profileData.is_active ? styles.activeStatus : styles.inactiveStatus}`}>
+                                                    <span className={styles.statusDotSmall}></span>
+                                                    {profileData.is_active ? 'Hoạt động' : 'Không hoạt động'}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className={styles.detailItem}>
-                                            <label>Lần đăng nhập cuối</label>
-                                            <span>{formatDate(profileData.last_login)}</span>
+                                            <div className={styles.detailIcon}>
+                                                <i className="fas fa-clock"></i>
+                                            </div>
+                                            <div className={styles.detailContent}>
+                                                <label>Lần đăng nhập cuối</label>
+                                                <span>{formatDate(profileData.last_login)}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -231,13 +303,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                                     <div className={styles.detailSection}>
                                         <h4 className={styles.sectionTitle}>
                                             <i className="fas fa-shield-alt"></i>
-                                            Quyền hạn
+                                            <span>Quyền hạn</span>
                                         </h4>
                                         <div className={styles.permissionsGrid}>
                                             {Object.entries(profileData.role.permissions).map(([permission, hasAccess]) => (
                                                 <div key={permission} className={`${styles.permissionItem} ${hasAccess ? styles.hasPermission : styles.noPermission}`}>
-                                                    <i className={`fas ${hasAccess ? 'fa-check' : 'fa-times'}`}></i>
-                                                    <span>{permission}</span>
+                                                    <div className={styles.permissionIcon}>
+                                                        <i className={`fas ${hasAccess ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                                                    </div>
+                                                    <span className={styles.permissionName}>{formatPermissionName(permission)}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -246,17 +320,27 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
 
                                 <div className={styles.detailSection}>
                                     <h4 className={styles.sectionTitle}>
-                                        <i className="fas fa-calendar"></i>
-                                        Thông tin hệ thống
+                                        <i className="fas fa-calendar-alt"></i>
+                                        <span>Thông tin hệ thống</span>
                                     </h4>
                                     <div className={styles.detailGrid}>
                                         <div className={styles.detailItem}>
-                                            <label>Ngày tạo tài khoản</label>
-                                            <span>{formatDate(profileData.created_at)}</span>
+                                            <div className={styles.detailIcon}>
+                                                <i className="fas fa-calendar-plus"></i>
+                                            </div>
+                                            <div className={styles.detailContent}>
+                                                <label>Ngày tạo tài khoản</label>
+                                                <span>{formatDate(profileData.created_at)}</span>
+                                            </div>
                                         </div>
                                         <div className={styles.detailItem}>
-                                            <label>Cập nhật lần cuối</label>
-                                            <span>{formatDate(profileData.updated_at)}</span>
+                                            <div className={styles.detailIcon}>
+                                                <i className="fas fa-edit"></i>
+                                            </div>
+                                            <div className={styles.detailContent}>
+                                                <label>Cập nhật lần cuối</label>
+                                                <span>{formatDate(profileData.updated_at)}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

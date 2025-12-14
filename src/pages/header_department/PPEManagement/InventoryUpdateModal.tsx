@@ -12,7 +12,9 @@ import {
   Typography,
   Alert,
   Table,
-  Tag
+  Tag,
+  Spin,
+  Empty
 } from 'antd';
 import { DatabaseOutlined, SafetyOutlined, PlusOutlined } from '@ant-design/icons';
 import * as ppeService from '../../../services/ppeService';
@@ -44,6 +46,7 @@ const InventoryUpdateModal: React.FC<InventoryUpdateModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [ppeItems, setPpeItems] = useState<any[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -51,15 +54,75 @@ const InventoryUpdateModal: React.FC<InventoryUpdateModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       loadPPEItems();
+    } else {
+      // Reset when modal closes
+      setInventoryItems([]);
+      setSelectedItem(null);
+      form.resetFields();
     }
   }, [isOpen]);
 
   const loadPPEItems = async () => {
     try {
-      const itemsData = await ppeService.getPPEItems();
-      setPpeItems(itemsData || []);
-    } catch (err) {
+      setLoadingItems(true);
+      console.log('Loading PPE items for inventory update...');
+      
+      // Try to get all items including inactive ones
+      const itemsData = await ppeService.getPPEItems(true);
+      console.log('Raw items data from service:', itemsData);
+      
+      // Handle different response structures
+      let items: any[] = [];
+      if (Array.isArray(itemsData)) {
+        items = itemsData;
+      } else if (itemsData && typeof itemsData === 'object') {
+        if (Array.isArray(itemsData.data)) {
+          items = itemsData.data;
+        } else if (Array.isArray(itemsData.items)) {
+          items = itemsData.items;
+        }
+      }
+      
+      console.log('Processed items array:', items);
+      setPpeItems(items);
+      
+      // Auto-populate inventory items with all PPE items
+      if (items && items.length > 0) {
+        const initialInventoryItems: InventoryItem[] = items.map((item: any) => {
+          // Calculate current quantity (available)
+          const quantityAvailable = item.quantity_available || 0;
+          
+          // Calculate allocated quantity
+          const quantityAllocated = item.quantity_allocated || 
+                                   item.actual_allocated_quantity || 
+                                   0;
+          
+          return {
+            id: String(item.id || item._id),
+            item_name: item.item_name || 'N/A',
+            item_code: item.item_code || 'N/A',
+            current_quantity: quantityAvailable,
+            new_quantity: quantityAvailable, // Start with current quantity
+            allocated_quantity: quantityAllocated,
+            reorder_level: item.reorder_level || 0
+          };
+        });
+        setInventoryItems(initialInventoryItems);
+        console.log('Loaded inventory items:', initialInventoryItems);
+        message.success(`Đã tải ${initialInventoryItems.length} thiết bị`);
+      } else {
+        console.warn('No items found. Items array:', items);
+        setInventoryItems([]);
+        message.warning('Không tìm thấy thiết bị nào. Vui lòng kiểm tra lại dữ liệu.');
+      }
+    } catch (err: any) {
       console.error('Error loading PPE items:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách thiết bị';
+      message.error(errorMessage);
+      setInventoryItems([]);
+      setPpeItems([]);
+    } finally {
+      setLoadingItems(false);
     }
   };
 
@@ -69,25 +132,32 @@ const InventoryUpdateModal: React.FC<InventoryUpdateModalProps> = ({
       return;
     }
 
-    const existingItem = inventoryItems.find(item => item.id === selectedItem.id);
+    const selectedItemId = String(selectedItem.id || selectedItem._id);
+    const existingItem = inventoryItems.find(item => String(item.id) === selectedItemId);
     if (existingItem) {
-      message.warning('Thiết bị này đã được thêm vào danh sách');
+      message.warning('Thiết bị này đã có trong danh sách');
       return;
     }
 
+    const quantityAvailable = selectedItem.quantity_available || 0;
+    const quantityAllocated = selectedItem.quantity_allocated || 
+                             selectedItem.actual_allocated_quantity || 
+                             0;
+
     const newItem: InventoryItem = {
-      id: selectedItem.id ?? selectedItem._id,
-      item_name: selectedItem.item_name,
-      item_code: selectedItem.item_code,
-      current_quantity: (selectedItem.remaining_quantity ?? selectedItem.quantity_available ?? 0),
-      new_quantity: (selectedItem.remaining_quantity ?? selectedItem.quantity_available ?? 0),
-      allocated_quantity: (selectedItem.quantity_allocated ?? selectedItem.actual_allocated_quantity ?? 0),
+      id: selectedItemId,
+      item_name: selectedItem.item_name || 'N/A',
+      item_code: selectedItem.item_code || 'N/A',
+      current_quantity: quantityAvailable,
+      new_quantity: quantityAvailable,
+      allocated_quantity: quantityAllocated,
       reorder_level: selectedItem.reorder_level || 0
     };
 
     setInventoryItems([...inventoryItems, newItem]);
     setSelectedItem(null);
-    form.resetFields(['item_id']);
+    form.setFieldsValue({ item_id: undefined });
+    message.success(`Đã thêm ${newItem.item_name} vào danh sách`);
   };
 
   const handleQuantityChange = (itemId: string, value: number) => {
@@ -228,33 +298,94 @@ const InventoryUpdateModal: React.FC<InventoryUpdateModalProps> = ({
     >
       <div style={{ marginBottom: 16 }}>
         <Row gutter={16} align="middle">
+          <Col span={24}>
+            <Alert
+              message="Danh sách tất cả thiết bị PPE"
+              description="Bạn có thể cập nhật số lượng tồn kho cho từng thiết bị. Số lượng mới sẽ thay thế số lượng hiện tại."
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+          </Col>
+        </Row>
+        <Row gutter={16} align="middle">
           <Col span={16}>
             <Form form={form} layout="inline">
               <Form.Item name="item_id" style={{ marginRight: 8 }}>
                 <Select
-                  placeholder="Chọn thiết bị để thêm"
-                  style={{ width: 300 }}
+                  placeholder="Tìm kiếm và thêm thiết bị (tùy chọn)"
+                  style={{ width: 400 }}
                   showSearch
                   optionFilterProp="children"
-                  value={selectedItem?.id}
+                  value={selectedItem ? (selectedItem.id || selectedItem._id) : undefined}
                   onChange={(value) => {
-                    const item = ppeItems.find(i => (i.id ?? i._id) === value);
-                    setSelectedItem(item);
+                    if (!value) {
+                      setSelectedItem(null);
+                      return;
+                    }
+                    const item = ppeItems.find(i => {
+                      const itemId = String(i.id || i._id);
+                      const searchId = String(value);
+                      return itemId === searchId;
+                    });
+                    if (item) {
+                      setSelectedItem(item);
+                    } else {
+                      console.warn('Item not found:', value, 'Available items:', ppeItems.map(i => i.id || i._id));
+                    }
+                  }}
+                  allowClear
+                  loading={loadingItems}
+                  notFoundContent={loadingItems ? 'Đang tải...' : 'Không tìm thấy thiết bị'}
+                  filterOption={(input, option) => {
+                    const children = option?.children;
+                    if (!children) return false;
+                    const text = Array.isArray(children) 
+                      ? children.map((c: any) => c?.props?.children || c).join(' ')
+                      : String(children);
+                    return text.toLowerCase().includes(input.toLowerCase());
                   }}
                 >
-                  {ppeItems.map(item => (
-                    <Option key={item.id ?? item._id} value={item.id ?? item._id}>
-                      <Space>
-                        <SafetyOutlined />
-                        <div>
-                          <div>{item.item_name}</div>
-                          <Text type="secondary" style={{ fontSize: '12px' }}>
-                            {item.item_code} - Hiện tại: {(item.remaining_quantity ?? item.quantity_available ?? 0)}
-                          </Text>
-                        </div>
-                      </Space>
-                    </Option>
-                  ))}
+                  {ppeItems.length > 0 ? (
+                    ppeItems.map(item => {
+                      const itemId = String(item.id || item._id);
+                      const itemName = item.item_name || 'N/A';
+                      const itemCode = item.item_code || 'N/A';
+                      const currentQty = item.remaining_quantity ?? item.quantity_available ?? 0;
+                      const isInList = inventoryItems.some(invItem => String(invItem.id) === itemId);
+                      
+                      return (
+                        <Option 
+                          key={itemId} 
+                          value={itemId}
+                          disabled={isInList}
+                        >
+                          <Space>
+                            <SafetyOutlined />
+                            <div>
+                              <div style={{ fontWeight: 500 }}>
+                                {itemName}
+                                {isInList && (
+                                  <Tag color="green" style={{ marginLeft: 8, fontSize: '10px' }}>
+                                    Đã có
+                                  </Tag>
+                                )}
+                              </div>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                {itemCode} - Hiện tại: {currentQty}
+                              </Text>
+                            </div>
+                          </Space>
+                        </Option>
+                      );
+                    })
+                  ) : (
+                    !loadingItems && (
+                      <Option disabled value="no-items">
+                        <Text type="secondary">Không có thiết bị nào</Text>
+                      </Option>
+                    )
+                  )}
                 </Select>
               </Form.Item>
               <Form.Item>
@@ -264,7 +395,7 @@ const InventoryUpdateModal: React.FC<InventoryUpdateModalProps> = ({
                   onClick={handleAddItem}
                   disabled={!selectedItem}
                 >
-                  Thêm
+                  Thêm thiết bị
                 </Button>
               </Form.Item>
             </Form>
@@ -275,20 +406,38 @@ const InventoryUpdateModal: React.FC<InventoryUpdateModalProps> = ({
       {inventoryItems.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <Alert
-            message={`Đã chọn ${inventoryItems.length} thiết bị để cập nhật`}
-            type="info"
+            message={`Đang hiển thị ${inventoryItems.length} thiết bị`}
+            type="success"
+            showIcon
           />
         </div>
       )}
 
-      <Table
-        columns={inventoryColumns}
-        dataSource={inventoryItems}
-        rowKey="id"
-        pagination={false}
-        size="small"
-        style={{ marginBottom: 16 }}
-      />
+      {loadingItems ? (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <Spin size="large" />
+          <div style={{ marginTop: 16 }}>
+            <Text type="secondary">Đang tải dữ liệu tồn kho...</Text>
+          </div>
+        </div>
+      ) : inventoryItems.length === 0 ? (
+        <div style={{ marginBottom: 16 }}>
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="Không có thiết bị nào để cập nhật"
+          />
+        </div>
+      ) : (
+        <Table
+          columns={inventoryColumns}
+          dataSource={inventoryItems}
+          rowKey="id"
+          pagination={false}
+          size="small"
+          style={{ marginBottom: 16 }}
+          scroll={{ x: 'max-content' }}
+        />
+      )}
 
       <div style={{ textAlign: 'right' }}>
         <Space>

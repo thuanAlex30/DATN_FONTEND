@@ -8,7 +8,14 @@ export interface Department {
     username: string;
     full_name: string;
     email: string;
-  };
+  } | string | null;
+  manager_ids?: Array<{
+    _id?: string;
+    id?: string;
+    username?: string;
+    full_name?: string;
+    email?: string;
+  } | string> | string[];
   is_active: boolean;
   employees_count?: number;
   created_at?: string;
@@ -24,12 +31,15 @@ export interface DepartmentCreate {
   department_name: string;
   description?: string;
   manager_id?: string;
+  manager_ids?: string[];
+  is_active?: boolean;
 }
 
 export interface DepartmentUpdate {
   department_name?: string;
   description?: string;
   manager_id?: string;
+  manager_ids?: string[];
   is_active?: boolean;
 }
 

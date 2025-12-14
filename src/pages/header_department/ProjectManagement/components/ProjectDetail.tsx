@@ -23,8 +23,6 @@ import {
   AimOutlined,
   ExclamationCircleOutlined,
   MessageOutlined,
-  FileTextOutlined,
-  ToolOutlined,
   DollarOutlined
 } from '@ant-design/icons';
 import type { RootState, AppDispatch } from '../../../../store';
@@ -32,15 +30,12 @@ import { fetchProjectById, fetchProjectTimeline, fetchProjectAssignments } from 
 import ProjectOverview from './ProjectOverview';
 import ProjectMilestones from './ProjectMilestones';
 import ProjectTasks from './ProjectTasks';
-import ProjectResources from './ProjectResources';
 import ProjectWorkLocations from './ProjectWorkLocations';
 import ProjectRisks from './ProjectRisks';
 import ProgressTrackingDashboard from './ProgressTrackingDashboard';
 import EditProjectModal from './EditProjectModal';
 import TaskManagement from './TaskManagement';
-import ResourceManagement from './ResourceManagement';
 import ProjectCommunication from './ProjectCommunication';
-import ChangeRequestManagement from './ChangeRequestManagement';
 import StatusReportManagement from './StatusReportManagement';
 
 interface ProjectDetailProps {
@@ -556,23 +551,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                 })()
               },
               {
-                key: 'resources',
-                label: (
-                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
-                    <EnvironmentOutlined />
-                    <span>Tài nguyên</span>
-                  </span>
-                ),
-                children: (() => {
-                  try {
-                    return <ProjectResources projectId={projectId} />;
-                  } catch (error) {
-                    console.error('Error rendering ProjectResources:', error);
-                    return <div>Lỗi tải tab Tài nguyên</div>;
-                  }
-                })()
-              },
-              {
                 key: 'task-management',
                 label: (
                   <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
@@ -590,23 +568,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                 })()
               },
               {
-                key: 'resource-management',
-                label: (
-                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
-                    <ToolOutlined />
-                    <span>Quản lý Tài nguyên</span>
-                  </span>
-                ),
-                children: (() => {
-                  try {
-                    return <ResourceManagement projectId={projectId} />;
-                  } catch (error) {
-                    console.error('Error rendering ResourceManagement:', error);
-                    return <div>Lỗi tải tab Quản lý Tài nguyên</div>;
-                  }
-                })()
-              },
-              {
                 key: 'communication',
                 label: (
                   <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
@@ -620,23 +581,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                   } catch (error) {
                     console.error('Error rendering ProjectCommunication:', error);
                     return <div>Lỗi tải tab Giao tiếp</div>;
-                  }
-                })()
-              },
-              {
-                key: 'change-requests',
-                label: (
-                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
-                    <FileTextOutlined />
-                    <span>Yêu cầu Thay đổi</span>
-                  </span>
-                ),
-                children: (() => {
-                  try {
-                    return <ChangeRequestManagement projectId={projectId} />;
-                  } catch (error) {
-                    console.error('Error rendering ChangeRequestManagement:', error);
-                    return <div>Lỗi tải tab Yêu cầu Thay đổi</div>;
                   }
                 })()
               },

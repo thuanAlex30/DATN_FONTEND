@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { 
   Button, 
   Typography, 
@@ -32,7 +32,6 @@ import { fetchProjects } from '../../../store/slices/projectSlice';
 import { fetchProjectStats } from '../../../store/slices/projectSlice';
 import ProjectList from './components/ProjectList';
 import ProjectDetail from './components/ProjectDetail';
-import ProjectFormModal from './components/ProjectFormModal';
 import ProjectFiltersPanel from './components/ProjectFiltersPanel';
 import SimpleProjectCreateModal from './components/SimpleProjectCreateModal';
 import type { RootState } from '../../../store';
@@ -41,39 +40,25 @@ import type { Project, ProjectFilters } from '../../../types/project';
 
 const ProjectManagement: React.FC = () => {
   const dispatch = useDispatch();
-    const location = useLocation();
+  const location = useLocation();
+  const params = useParams<{ projectId?: string }>();
   const { projects, loading, error, stats } = useSelector((state: RootState) => state.project);
   
   // State management
-  const [isProjectDetailView, setIsProjectDetailView] = useState(false);
-  const [urlProjectId, setUrlProjectId] = useState<string | undefined>(undefined);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
   
   const [filters, setFilters] = useState<ProjectFilters>({
     status: '',
     priority: '',
-        leader_id: '',
+    leader_id: '',
     site_id: '',
     search: ''
   });
 
-  // Extract project ID from URL
-    useEffect(() => {
-    const pathParts = location.pathname.split('/');
-    const projectIndex = pathParts.indexOf('project-management');
-    
-    if (projectIndex !== -1 && pathParts[projectIndex + 1]) {
-      const projectId = pathParts[projectIndex + 1];
-      setUrlProjectId(projectId);
-      setIsProjectDetailView(true);
-            } else {
-      setUrlProjectId(undefined);
-      setIsProjectDetailView(false);
-    }
-  }, [location.pathname]);
+  // Extract project ID from URL params
+  const urlProjectId = params.projectId;
+  const isProjectDetailView = !!urlProjectId;
 
   // Load data
   useEffect(() => {
@@ -105,28 +90,12 @@ const ProjectManagement: React.FC = () => {
     setShowWizard(false);
   };
 
-  const handleEditProject = (project: Project) => {
-            setEditingProject(project);
-    setShowEditModal(true);
-  };
-
 
 
 
   const handleFiltersChange = (newFilters: ProjectFilters) => {
     setFilters(newFilters);
   };
-
-
-  // Debug logging (only when values change)
-  useEffect(() => {
-    console.log('ProjectManagement Debug:', {
-      projectId: urlProjectId,
-      isProjectDetailView,
-      pathname: location.pathname,
-      projectsCount: projects.length
-    });
-  }, [urlProjectId, isProjectDetailView, location.pathname, projects.length]);
 
     if (loading) {
         return (
@@ -629,7 +598,6 @@ const ProjectManagement: React.FC = () => {
                       projects={filteredProjects}
                       loading={loading}
                       viewMode="list"
-                      onEditProject={handleEditProject}
                     />
                   </motion.div>
                 )}
@@ -638,21 +606,6 @@ const ProjectManagement: React.FC = () => {
           </motion.div>
 
       {/* Modals */}
-      {showEditModal && editingProject && (
-        <ProjectFormModal
-          project={editingProject}
-          onClose={() => {
-            setShowEditModal(false);
-            setEditingProject(null);
-          }}
-          onSuccess={() => {
-            setShowEditModal(false);
-            setEditingProject(null);
-            dispatch(fetchProjects({}) as any);
-          }}
-        />
-      )}
-
       <SimpleProjectCreateModal
         visible={showWizard}
         onClose={handleWizardClose}

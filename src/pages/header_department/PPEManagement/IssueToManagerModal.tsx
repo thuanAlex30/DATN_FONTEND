@@ -82,6 +82,7 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
       const allUsers = await userService.getAllUsers();
       
       // Filter users with role "manager" or "warehouse_staff" (case-insensitive)
+      // AND only show managers from "AN TOÀN LAO ĐỘNG" department
       const managers = allUsers.filter((user: any) => {
         const roleName = user.role?.role_name?.toLowerCase() || '';
         const roleCode = user.role?.role_code?.toLowerCase() || '';
@@ -91,6 +92,26 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
         const isWarehouseStaff = roleName === 'warehouse_staff' || roleCode === 'warehouse_staff' || 
                                  roleName === 'warehouse staff' || roleCode === 'warehouse_staff';
         
+        // For managers, check if they are from "AN TOÀN LAO ĐỘNG" department
+        if (isManager && !isWarehouseStaff) {
+          // Handle both populated department object and department_id string
+          let deptName = '';
+          if (user.department?.department_name) {
+            deptName = user.department.department_name;
+          } else if (user.department?.name) {
+            deptName = user.department.name;
+          } else if ((user as any).department_id?.department_name) {
+            deptName = (user as any).department_id.department_name;
+          } else if ((user as any).department_id?.name) {
+            deptName = (user as any).department_id.name;
+          }
+          
+          if (deptName.toUpperCase() !== 'AN TOÀN LAO ĐỘNG') {
+            return false; // Skip managers not from AN TOÀN LAO ĐỘNG
+          }
+        }
+        
+        // Warehouse staff can still be shown (no department restriction)
         return isManager || isWarehouseStaff;
       });
       
@@ -98,13 +119,14 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
       console.log('[IssueToManagerModal] Filtered managers/warehouse_staff:', managers.length);
       console.log('[IssueToManagerModal] Managers data:', managers.map((m: any) => ({
         name: m.full_name,
-        role: m.role?.role_name || m.role?.role_code
+        role: m.role?.role_name || m.role?.role_code,
+        department: m.department?.department_name || 'N/A'
       })));
       
       setManagers(managers);
       
       if (managers.length === 0) {
-        message.warning('Không tìm thấy Manager hoặc Warehouse Staff nào trong hệ thống');
+        message.warning('Không tìm thấy Manager của phòng AN TOÀN LAO ĐỘNG hoặc Warehouse Staff nào trong hệ thống');
       }
     } catch (error) {
       console.error('Error loading managers:', error);
@@ -340,13 +362,13 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
               rules={[{ required: true, message: 'Vui lòng chọn Manager' }]}
             >
               <Select
-                placeholder="Chọn Manager hoặc Warehouse Staff"
+                placeholder="Chọn Manager (AN TOÀN LAO ĐỘNG) hoặc Warehouse Staff"
                 showSearch
                 optionFilterProp="children"
                 onChange={handleManagerChange}
                 suffixIcon={<UserOutlined />}
                 loading={loading}
-                notFoundContent={loading ? <span>Đang tải...</span> : <span>Không tìm thấy Manager hoặc Warehouse Staff</span>}
+                notFoundContent={loading ? <span>Đang tải...</span> : <span>Không tìm thấy Manager của phòng AN TOÀN LAO ĐỘNG hoặc Warehouse Staff</span>}
                 filterOption={(input, option: any) => {
                   const children = option?.children;
                   if (typeof children === 'string') {

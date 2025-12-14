@@ -600,11 +600,35 @@ const UserManagement: React.FC = () => {
       title: 'Vai trò',
       dataIndex: ['role', 'role_name'],
       key: 'role',
-      render: (role: string) => (
-        <Tag color={role === 'admin' ? 'red' : 'blue'}>
-          {role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
-        </Tag>
-      ),
+      render: (roleName: string, record: User) => {
+        const role = record.role;
+        if (!role || !roleName) {
+          return <Tag color="default">Chưa phân vai trò</Tag>;
+        }
+        
+        const roleCode = (role.role_code || '').toLowerCase();
+        const level = role.role_level || 0;
+        
+        // Determine color based on role level and code
+        let color = 'blue';
+        if (level >= 90 || roleCode === 'system_admin' || roleCode === 'company_admin') {
+          color = 'red';
+        } else if (level >= 80 || roleCode === 'manager' || roleCode === 'department_header') {
+          color = 'purple';
+        } else if (level >= 70) {
+          color = 'orange';
+        } else if (level >= 50) {
+          color = 'cyan';
+        } else {
+          color = 'blue';
+        }
+        
+        return (
+          <Tag color={color}>
+            {roleName}
+          </Tag>
+        );
+      },
     },
     {
       title: 'Phòng ban',

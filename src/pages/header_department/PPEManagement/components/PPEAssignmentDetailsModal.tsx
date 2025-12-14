@@ -1,12 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, Descriptions, Tag, Button, Space, message, Form, Input, Select, Image, Avatar, Card } from 'antd';
-import { EyeOutlined, CheckOutlined, CloseOutlined, SafetyOutlined } from '@ant-design/icons';
+import { Modal, Descriptions, Tag, Button, Space, message, Form, Input, Select, Image, Avatar, Card, Divider, Typography } from 'antd';
+import { 
+  EyeOutlined, 
+  CheckOutlined, 
+  CloseOutlined, 
+  SafetyOutlined,
+  UserOutlined,
+  ToolOutlined,
+  CalendarOutlined,
+  NumberOutlined,
+  FileTextOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  WarningOutlined,
+  IdcardOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  BankOutlined
+} from '@ant-design/icons';
 import ppeAssignmentService from '../../../../services/ppeAssignmentService';
 import type { PPEAssignment, UpdatePPEAssignmentData } from '../../../../services/ppeAssignmentService';
 import { ENV } from '../../../../config/env';
 
 const { TextArea } = Input;
 const { Option } = Select;
+const { Title, Text } = Typography;
 
 interface PPEAssignmentDetailsModalProps {
   visible: boolean;
@@ -52,10 +70,16 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
       const response = await ppeAssignmentService.getPPEAssignmentById(assignmentId);
       if (response.success) {
         setAssignment(response.data);
+        // Debug: Log image URL
+        if (response.data?.item_id && typeof response.data.item_id === 'object') {
+          console.log('Item image_url:', (response.data.item_id as any).image_url);
+          console.log('Resolved image URL:', resolveImageUrl((response.data.item_id as any).image_url));
+        }
       } else {
         message.error(response.message || 'Không thể tải thông tin phân công');
       }
     } catch (error) {
+      console.error('Error fetching assignment details:', error);
       message.error('Có lỗi xảy ra khi tải thông tin phân công');
     } finally {
       setLoading(false);
@@ -176,112 +200,314 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
       footer={[
         <Button key="close" onClick={onCancel}>
           Đóng
-        </Button>,
-        assignment.status === 'issued' && (
-          <Button 
-            key="return" 
-            type="default"
-            onClick={() => setShowReturnForm(true)}
-          >
-            Trả PPE
-          </Button>
-        )
+        </Button>
       ]}
     >
       {/* Thông tin thiết bị với ảnh */}
       {typeof assignment.item_id === 'object' && assignment.item_id && (
-        <Card size="small" title="Thông tin thiết bị" style={{ marginBottom: 16 }}>
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            {(assignment.item_id as any)?.image_url ? (
-              <div style={{ textAlign: 'center' }}>
-                <Image
-                  src={resolveImageUrl((assignment.item_id as any).image_url)}
-                  width={120}
-                  height={120}
-                  style={{ objectFit: 'cover', borderRadius: 8 }}
-                  preview={{ mask: 'Xem ảnh' }}
-                  fallback=""
-                />
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center' }}>
-                <Avatar icon={<SafetyOutlined />} size={120} />
-              </div>
-            )}
-            <div>
-              <strong>Tên thiết bị: </strong>
-              {assignment.item_id.item_name || 'Không xác định'}
+        <Card 
+          size="small" 
+          title={
+            <Space>
+              <ToolOutlined style={{ color: '#1890ff' }} />
+              <span style={{ fontWeight: 600 }}>Thông tin thiết bị</span>
+            </Space>
+          } 
+          style={{ marginBottom: 20, borderRadius: 8 }}
+        >
+          <Space direction="vertical" style={{ width: '100%' }} size="large" align="center">
+            {(() => {
+              const itemId = assignment.item_id;
+              let imageUrl: string | null = null;
+              
+              if (typeof itemId === 'object' && itemId) {
+                imageUrl = (itemId as any).image_url || null;
+              }
+              
+              const resolvedUrl = imageUrl ? resolveImageUrl(imageUrl) : null;
+              
+              console.log('Image debug:', {
+                itemId,
+                imageUrl,
+                resolvedUrl,
+                apiBase: apiBaseForImages
+              });
+              
+              if (resolvedUrl) {
+                return (
+                  <div style={{ textAlign: 'center' }}>
+                    <Image
+                      src={resolvedUrl}
+                      width={150}
+                      height={150}
+                      style={{ objectFit: 'cover', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      preview={{ mask: 'Xem ảnh' }}
+                      fallback={
+                        <div style={{ 
+                          width: 150, 
+                          height: 150, 
+                          borderRadius: 12,
+                          backgroundColor: '#1890ff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        }}>
+                          <SafetyOutlined style={{ fontSize: 60, color: 'white' }} />
+                        </div>
+                      }
+                    />
+                  </div>
+                );
+              } else {
+                return (
+                  <div style={{ textAlign: 'center' }}>
+                    <Avatar 
+                      icon={<SafetyOutlined />} 
+                      size={150}
+                      style={{ 
+                        backgroundColor: '#1890ff',
+                        fontSize: 60,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      }} 
+                    />
+                  </div>
+                );
+              }
+            })()}
+            <div style={{ width: '100%', textAlign: 'center' }}>
+              <Title level={4} style={{ margin: '8px 0', color: '#1890ff' }}>
+                {assignment.item_id.item_name || 'Không xác định'}
+              </Title>
+              {(assignment.item_id as any)?.item_code && (
+                <div style={{ marginTop: 8 }}>
+                  <Text type="secondary">
+                    <IdcardOutlined style={{ marginRight: 4 }} />
+                    Mã: {(assignment.item_id as any).item_code}
+                  </Text>
+                </div>
+              )}
+              {(assignment.item_id as any)?.brand && (
+                <div style={{ marginTop: 4 }}>
+                  <Text type="secondary">
+                    Thương hiệu: {(assignment.item_id as any).brand}
+                  </Text>
+                </div>
+              )}
+              {(assignment.item_id as any)?.model && (
+                <div style={{ marginTop: 4 }}>
+                  <Text type="secondary">
+                    Model: {(assignment.item_id as any).model}
+                  </Text>
+                </div>
+              )}
             </div>
-            {(assignment.item_id as any)?.item_code && (
+          </Space>
+        </Card>
+      )}
+
+      {/* Thông tin nhân viên */}
+      {typeof assignment.user_id === 'object' && assignment.user_id && (
+        <Card 
+          size="small" 
+          title={
+            <Space>
+              <UserOutlined style={{ color: '#52c41a' }} />
+              <span style={{ fontWeight: 600 }}>Thông tin nhân viên</span>
+            </Space>
+          } 
+          style={{ marginBottom: 20, borderRadius: 8 }}
+        >
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <div>
+              <Text strong style={{ fontSize: 16 }}>
+                {assignment.user_id.full_name || 'Không xác định'}
+              </Text>
+            </div>
+            {assignment.user_id.email && (
               <div>
-                <strong>Mã thiết bị: </strong>
-                {(assignment.item_id as any).item_code}
+                <MailOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                <Text>{assignment.user_id.email}</Text>
               </div>
             )}
-            {(assignment.item_id as any)?.brand && (
+            {assignment.user_id.phone && (
               <div>
-                <strong>Thương hiệu: </strong>
-                {(assignment.item_id as any).brand}
+                <PhoneOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                <Text>{assignment.user_id.phone}</Text>
               </div>
             )}
-            {(assignment.item_id as any)?.model && (
+            {assignment.user_id.department_id && (
               <div>
-                <strong>Model: </strong>
-                {(assignment.item_id as any).model}
+                <BankOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                <Text>
+                  {typeof assignment.user_id.department_id === 'object' 
+                    ? assignment.user_id.department_id.department_name 
+                    : assignment.user_id.department_id}
+                </Text>
               </div>
             )}
           </Space>
         </Card>
       )}
 
-      <Descriptions bordered column={2}>
-        <Descriptions.Item label="Mã phân công" span={2}>
-          {assignment._id || assignment.id}
+      <Divider />
+
+      <Descriptions 
+        bordered 
+        column={2}
+        size="middle"
+        labelStyle={{ 
+          fontWeight: 600, 
+          backgroundColor: '#fafafa',
+          width: '35%'
+        }}
+        contentStyle={{ backgroundColor: '#fff' }}
+      >
+        <Descriptions.Item 
+          label={
+            <Space>
+              <IdcardOutlined />
+              <span>Mã phân công</span>
+            </Space>
+          } 
+          span={2}
+        >
+          <Text code style={{ fontSize: 12 }}>
+            {assignment._id || assignment.id}
+          </Text>
         </Descriptions.Item>
         
-        <Descriptions.Item label="Nhân viên">
-          {typeof assignment.user_id === 'object' ? assignment.user_id.full_name : 'Không xác định'}
+        <Descriptions.Item 
+          label={
+            <Space>
+              <NumberOutlined />
+              <span>Số lượng</span>
+            </Space>
+          }
+        >
+          <Text strong style={{ fontSize: 16, color: '#1890ff' }}>
+            {assignment.quantity}
+          </Text>
         </Descriptions.Item>
         
-        <Descriptions.Item label="Thiết bị">
-          {typeof assignment.item_id === 'object' ? assignment.item_id.item_name : 'Không xác định'}
-        </Descriptions.Item>
-        
-        <Descriptions.Item label="Trạng thái">
-          <Tag color={getStatusColor(assignment.status)}>
+        <Descriptions.Item 
+          label={
+            <Space>
+              <CheckCircleOutlined />
+              <span>Trạng thái</span>
+            </Space>
+          }
+        >
+          <Tag 
+            color={getStatusColor(assignment.status)}
+            style={{ fontSize: 13, padding: '4px 12px' }}
+          >
             {getStatusText(assignment.status)}
           </Tag>
         </Descriptions.Item>
         
-        <Descriptions.Item label="Tình trạng">
-          <Tag color={getConditionColor(assignment.return_condition || assignment.condition)}>
+        <Descriptions.Item 
+          label={
+            <Space>
+              <SafetyOutlined />
+              <span>Tình trạng</span>
+            </Space>
+          }
+        >
+          <Tag 
+            color={getConditionColor(assignment.return_condition || assignment.condition)}
+            style={{ fontSize: 13, padding: '4px 12px' }}
+          >
             {getConditionText(assignment.return_condition || assignment.condition)}
           </Tag>
         </Descriptions.Item>
         
-        <Descriptions.Item label="Số lượng">
-          {assignment.quantity}
-        </Descriptions.Item>
-        
-        <Descriptions.Item label="Ngày phân công">
-          {assignment.issued_date ? new Date(assignment.issued_date).toLocaleDateString('vi-VN') : 'Chưa cấp phát'}
+        <Descriptions.Item 
+          label={
+            <Space>
+              <CalendarOutlined />
+              <span>Ngày phân công</span>
+            </Space>
+          }
+        >
+          {assignment.issued_date ? (
+            <Space>
+              <Text>{new Date(assignment.issued_date).toLocaleDateString('vi-VN', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</Text>
+            </Space>
+          ) : (
+            <Text type="secondary">Chưa cấp phát</Text>
+          )}
         </Descriptions.Item>
         
         {assignment.expected_return_date && (
-          <Descriptions.Item label="Ngày trả dự kiến">
-            {new Date(assignment.expected_return_date).toLocaleDateString('vi-VN')}
+          <Descriptions.Item 
+            label={
+              <Space>
+                <ClockCircleOutlined />
+                <span>Ngày trả dự kiến</span>
+              </Space>
+            }
+          >
+            <Space>
+              <Text>{new Date(assignment.expected_return_date).toLocaleDateString('vi-VN', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric'
+              })}</Text>
+              {new Date(assignment.expected_return_date) < new Date() && assignment.status === 'issued' && (
+                <Tag color="red" icon={<WarningOutlined />}>
+                  Quá hạn
+                </Tag>
+              )}
+            </Space>
           </Descriptions.Item>
         )}
         
         {assignment.actual_return_date && (
-          <Descriptions.Item label="Ngày trả thực tế">
-            {new Date(assignment.actual_return_date).toLocaleDateString('vi-VN')}
+          <Descriptions.Item 
+            label={
+              <Space>
+                <CheckCircleOutlined />
+                <span>Ngày trả thực tế</span>
+              </Space>
+            }
+            span={2}
+          >
+            <Text>{new Date(assignment.actual_return_date).toLocaleDateString('vi-VN', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}</Text>
           </Descriptions.Item>
         )}
         
         {assignment.notes && (
-          <Descriptions.Item label="Ghi chú" span={2}>
-            {assignment.notes}
+          <Descriptions.Item 
+            label={
+              <Space>
+                <FileTextOutlined />
+                <span>Ghi chú</span>
+              </Space>
+            } 
+            span={2}
+          >
+            <div style={{ 
+              padding: '8px 12px', 
+              backgroundColor: '#f5f5f5', 
+              borderRadius: 4,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word'
+            }}>
+              {assignment.notes}
+            </div>
           </Descriptions.Item>
         )}
       </Descriptions>
