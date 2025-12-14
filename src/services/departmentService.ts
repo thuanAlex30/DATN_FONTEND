@@ -114,9 +114,11 @@ const departmentService = {
   },
 
   // Delete department
-  async deleteDepartment(id: string): Promise<void> {
+  async deleteDepartment(id: string, password?: string): Promise<void> {
     try {
-      await api.delete(`/departments/${id}`);
+      await api.delete(`/departments/${id}`, {
+        data: password ? { password } : {}
+      });
       clearDepartmentCache();
     } catch (error) {
       console.error('Error deleting department:', error);

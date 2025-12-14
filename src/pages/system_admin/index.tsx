@@ -124,6 +124,10 @@ const SystemAdmin: React.FC = () => {
   const [backupsLoading, setBackupsLoading] = useState(false);
   const [backupModalVisible, setBackupModalVisible] = useState(false);
   const [backupForm] = Form.useForm();
+  const [submittingBackup, setSubmittingBackup] = useState(false);
+  const [submittingTenant, setSubmittingTenant] = useState(false);
+  const [submittingSubscription, setSubmittingSubscription] = useState(false);
+  const [submittingSettings, setSubmittingSettings] = useState(false);
 
   // Load dashboard data
   useEffect(() => {
@@ -275,6 +279,7 @@ const SystemAdmin: React.FC = () => {
 
   // Tenant handlers
   const handleCreateTenant = async (values: TenantCreate) => {
+    setSubmittingTenant(true);
     try {
       await systemAdminService.createTenant(values);
       message.success('Tạo công ty thành công');
@@ -283,11 +288,14 @@ const SystemAdmin: React.FC = () => {
       loadTenants();
     } catch (error: any) {
       message.error('Không thể tạo công ty: ' + (error.message || 'Lỗi không xác định'));
+    } finally {
+      setSubmittingTenant(false);
     }
   };
 
   const handleUpdateTenant = async (values: TenantUpdate) => {
     if (!editingTenant) return;
+    setSubmittingTenant(true);
     try {
       await systemAdminService.updateTenant(editingTenant.id, values);
       message.success('Cập nhật công ty thành công');
@@ -297,6 +305,8 @@ const SystemAdmin: React.FC = () => {
       loadTenants();
     } catch (error: any) {
       message.error('Không thể cập nhật công ty: ' + (error.message || 'Lỗi không xác định'));
+    } finally {
+      setSubmittingTenant(false);
     }
   };
 
@@ -338,6 +348,7 @@ const SystemAdmin: React.FC = () => {
 
   // Subscription handlers
   const handleCreateSubscription = async (values: SubscriptionPlanCreate) => {
+    setSubmittingSubscription(true);
     try {
       await systemAdminService.createSubscriptionPlan(values);
       message.success('Tạo gói dịch vụ thành công');
@@ -346,11 +357,14 @@ const SystemAdmin: React.FC = () => {
       loadSubscriptions();
     } catch (error: any) {
       message.error('Không thể tạo gói dịch vụ: ' + (error.message || 'Lỗi không xác định'));
+    } finally {
+      setSubmittingSubscription(false);
     }
   };
 
   const handleUpdateSubscription = async (values: Partial<SubscriptionPlanCreate>) => {
     if (!editingSubscription) return;
+    setSubmittingSubscription(true);
     try {
       await systemAdminService.updateSubscriptionPlan(editingSubscription.id, values);
       message.success('Cập nhật gói dịch vụ thành công');
@@ -360,6 +374,8 @@ const SystemAdmin: React.FC = () => {
       loadSubscriptions();
     } catch (error: any) {
       message.error('Không thể cập nhật gói dịch vụ: ' + (error.message || 'Lỗi không xác định'));
+    } finally {
+      setSubmittingSubscription(false);
     }
   };
 
@@ -387,6 +403,7 @@ const SystemAdmin: React.FC = () => {
 
   // Backup handlers
   const handleStartBackup = async (values: any) => {
+    setSubmittingBackup(true);
     try {
       await systemAdminService.startBackup(values);
       message.success('Backup đã được bắt đầu');
@@ -395,6 +412,8 @@ const SystemAdmin: React.FC = () => {
       loadBackups();
     } catch (error: any) {
       message.error('Không thể bắt đầu backup: ' + (error.message || 'Lỗi không xác định'));
+    } finally {
+      setSubmittingBackup(false);
     }
   };
 
@@ -952,7 +971,7 @@ const SystemAdmin: React.FC = () => {
                         <Switch /> Nén dữ liệu
                       </Form.Item>
                       <Form.Item>
-                        <Button type="primary" htmlType="submit" block>
+                        <Button type="primary" htmlType="submit" block loading={submittingBackup}>
                           Bắt đầu Backup
                         </Button>
                       </Form.Item>
@@ -1030,7 +1049,7 @@ const SystemAdmin: React.FC = () => {
                   </Card>
                   <Form.Item>
                     <Space>
-                      <Button type="primary" htmlType="submit" icon={<SaveOutlined />}>
+                      <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={submittingSettings}>
                         Lưu cấu hình
                       </Button>
                       <Button onClick={() => loadSettings()}>
@@ -1104,7 +1123,7 @@ const SystemAdmin: React.FC = () => {
           </Form.Item>
           <Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit">
+              <Button type="primary" htmlType="submit" loading={submittingTenant}>
                 {editingTenant ? 'Cập nhật' : 'Tạo'}
               </Button>
               <Button onClick={() => {
@@ -1162,7 +1181,7 @@ const SystemAdmin: React.FC = () => {
           </Form.Item>
           <Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit">
+              <Button type="primary" htmlType="submit" loading={submittingSubscription}>
                 {editingSubscription ? 'Cập nhật' : 'Tạo'}
               </Button>
               <Button onClick={() => {

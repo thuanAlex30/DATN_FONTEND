@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Layout, Typography, Badge, Button, Dropdown, Avatar } from 'antd';
 import {
   BellOutlined,
@@ -11,6 +11,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
+import ProfileModal from '../ProfileModal/ProfileModal';
+import SettingsModal from '../SettingsModal/SettingsModal';
 import styles from './ManagerHeader.module.css';
 
 const { Header } = Layout;
@@ -36,6 +38,8 @@ const ManagerHeader: React.FC<ManagerHeaderProps> = ({
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const handleLogout = () => {
     if (onLogout) {
@@ -44,6 +48,14 @@ const ManagerHeader: React.FC<ManagerHeaderProps> = ({
       dispatch(logout());
       navigate('/login');
     }
+  };
+
+  const handleProfile = () => {
+    setShowProfileModal(true);
+  };
+
+  const handleSettings = () => {
+    setShowSettingsModal(true);
   };
 
   const userMenuItems = [
@@ -72,7 +84,9 @@ const ManagerHeader: React.FC<ManagerHeaderProps> = ({
     if (key === 'logout') {
       handleLogout();
     } else if (key === 'profile') {
+      handleProfile();
     } else if (key === 'settings') {
+      handleSettings();
     }
   };
 
@@ -129,6 +143,18 @@ const ManagerHeader: React.FC<ManagerHeaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* Profile Modal */}
+      <ProfileModal 
+        isOpen={showProfileModal} 
+        onClose={() => setShowProfileModal(false)} 
+      />
+      
+      {/* Settings Modal */}
+      <SettingsModal 
+        isOpen={showSettingsModal} 
+        onClose={() => setShowSettingsModal(false)} 
+      />
     </Header>
   );
 };

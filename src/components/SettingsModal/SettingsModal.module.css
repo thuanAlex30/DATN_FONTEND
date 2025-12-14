@@ -1,0 +1,25 @@
+.settingsModal :global(.ant-modal-body) {
+  padding: 24px;
+}
+
+.passwordForm {
+  max-width: 100%;
+}
+
+.settingItem {
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.settingItem:last-child {
+  border-bottom: none;
+}
+
+.colorIndicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+}
+

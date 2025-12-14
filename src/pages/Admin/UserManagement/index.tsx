@@ -26,15 +26,27 @@ import {
   UploadOutlined as UploadIcon,
   DownloadOutlined as DownloadIcon
 } from '@ant-design/icons';
+import * as XLSX from 'xlsx';
 import userService from '../../../services/userService';
 import departmentService from '../../../services/departmentService';
 import RoleService from '../../../services/roleService';
+import ImportUsers from '../../../components/ImportUsers';
 import type { User } from '../../../types/user';
 import type { RootState } from '../../../store';
 
 const { Title } = Typography;
 const { Search } = Input;
 const { Option } = Select;
+
+// Helper function to remove Vietnamese diacritics
+const removeVietnameseDiacritics = (str: string): string => {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+};
 
 type CreateUserPayload = {
   username: string;
@@ -59,6 +71,7 @@ const UserManagement: React.FC = () => {
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -228,6 +241,14 @@ const UserManagement: React.FC = () => {
       // Transform users to match expected type structure
       const transformedUsers = users.map(user => ({
         ...user,
+        // Ensure is_active is properly set (default to true if not provided)
+        is_active: user.is_active !== undefined ? user.is_active : true,
+        // Ensure phone and address are included
+        phone: (user as any).phone || '',
+        address: (user as any).address || '',
+        // Ensure tenant is properly mapped
+        tenant: (user as any).tenant || undefined,
+        tenant_id: (user as any).tenant_id || user.tenant_id || undefined,
         role: user.role ? {
           _id: (user.role as any)._id || (user.role as any).id || '',
           role_name: user.role.role_name,
@@ -236,6 +257,12 @@ const UserManagement: React.FC = () => {
           scope_rules: (user.role as any).scope_rules,
           permissions: (user.role as any).permissions || {},
           is_active: (user.role as any).is_active
+        } : undefined,
+        // Ensure department is properly mapped
+        department: user.department ? {
+          _id: (user.department as any)._id || (user.department as any).id || '',
+          department_name: (user.department as any).department_name || (user.department as any).name || '',
+          is_active: (user.department as any).is_active !== undefined ? (user.department as any).is_active : true
         } : undefined
       })) as User[];
 
@@ -315,14 +342,30 @@ const UserManagement: React.FC = () => {
     }
 
     if (statusFilter) {
-      filtered = filtered.filter(user => user.is_active === (statusFilter === 'active'));
+      if (statusFilter === 'active') {
+        filtered = filtered.filter(user => user.is_active === true);
+      } else if (statusFilter === 'inactive') {
+        filtered = filtered.filter(user => {
+          // Check both is_active field and ensure it's explicitly false
+          const isInactive = user.is_active === false || user.is_active === undefined || user.is_active === null;
+          return isInactive;
+        });
+      }
     }
 
     if (departmentAssignmentFilter) {
       if (departmentAssignmentFilter === 'no_department') {
-        filtered = filtered.filter(user => !user.department?._id);
+        // Check both department object and department_id
+        filtered = filtered.filter(user => {
+          const hasDepartment = user.department?._id || (user as any).department_id;
+          return !hasDepartment;
+        });
       } else if (departmentAssignmentFilter === 'has_department') {
-        filtered = filtered.filter(user => !!user.department?._id);
+        // Check both department object and department_id
+        filtered = filtered.filter(user => {
+          const hasDepartment = user.department?._id || (user as any).department_id;
+          return !!hasDepartment;
+        });
       }
     }
 
@@ -336,8 +379,8 @@ const UserManagement: React.FC = () => {
   };
 
   // Handle status filter
-  const handleStatusFilter = (value: string) => {
-    setStatusFilter(value);
+  const handleStatusFilter = (value: string | null) => {
+    setStatusFilter(value || '');
   };
 
   // Handle add user
@@ -348,19 +391,29 @@ const UserManagement: React.FC = () => {
   };
 
   // Handle edit user
-  const handleEditUser = (user: User) => {
-    setEditingUser(user);
+  const handleEditUser = async (user: User) => {
+    try {
+      setLoading(true);
+      // Fetch full user details to get phone and address
+      const userDetails = await userService.getUserById(user.id);
+      setEditingUser(userDetails);
     form.setFieldsValue({
-      username: user.username,
-      email: user.email,
-      fullName: user.full_name,
-      phone: user.phone,
-      birthDate: (user as any).birth_date || '',
-      departmentId: user.department?._id,
-      roleId: user.role?._id,
-      address: (user as any).address || ''
+        username: userDetails.username,
+        email: userDetails.email,
+        fullName: userDetails.full_name,
+        phone: userDetails.phone || '',
+        birthDate: (userDetails as any).birth_date || '',
+        departmentId: userDetails.department?._id,
+        roleId: userDetails.role?._id,
+        address: userDetails.address || ''
     });
     setIsModalOpen(true);
+    } catch (err) {
+      message.error('Không thể tải thông tin người dùng');
+      console.error('Error loading user details:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle delete user
@@ -372,6 +425,72 @@ const UserManagement: React.FC = () => {
     } catch (err) {
       message.error('Không thể xóa người dùng');
       console.error('Error deleting user:', err);
+    }
+  };
+
+  // Handle export users to Excel
+  const handleExportUsers = () => {
+    try {
+      // Use filteredUsers to export only visible/filtered users
+      const dataToExport = filteredUsers.map(user => {
+        // Get tenant name - check multiple possible locations
+        let tenantName = '';
+        if ((user as any).tenant) {
+          if (typeof (user as any).tenant === 'string') {
+            tenantName = (user as any).tenant;
+          } else if ((user as any).tenant?.tenant_name) {
+            tenantName = (user as any).tenant.tenant_name;
+          } else if ((user as any).tenant?.name) {
+            tenantName = (user as any).tenant.name;
+          }
+        } else if ((user as any).tenant_id) {
+          const tenantId = (user as any).tenant_id;
+          if (typeof tenantId === 'object' && (tenantId.tenant_name || tenantId.name)) {
+            tenantName = tenantId.tenant_name || tenantId.name || '';
+          }
+        }
+
+        // Get gender - check if user has gender field, otherwise leave empty
+        const gender = (user as any).gender || '';
+
+        return {
+          'ID người dùng': (user as any).user_id || user.id || '',
+          'Tên công ty': tenantName,
+          'Họ và tên': removeVietnameseDiacritics(user.full_name || ''),
+          'Giới tính': gender,
+          'Điện thoại': user.phone || (user as any).phone || '',
+          'Email': user.email || ''
+        };
+      });
+
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+      // Set column widths
+      const columnWidths = [
+        { wch: 20 }, // ID người dùng
+        { wch: 30 }, // Tên công ty
+        { wch: 25 }, // Họ và tên
+        { wch: 12 }, // Giới tính
+        { wch: 15 }, // Điện thoại
+        { wch: 30 }  // Email
+      ];
+      worksheet['!cols'] = columnWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Danh sách người dùng');
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `danh_sach_nguoi_dung_${timestamp}.xlsx`;
+
+      // Write file
+      XLSX.writeFile(workbook, filename);
+      message.success(`Đã xuất ${filteredUsers.length} người dùng ra file Excel`);
+    } catch (error) {
+      console.error('Error exporting users:', error);
+      message.error('Lỗi khi xuất file Excel');
     }
   };
 
@@ -431,6 +550,7 @@ const UserManagement: React.FC = () => {
 
   // Handle form submit
   const handleFormSubmit = async (values: any) => {
+    setSubmitting(true);
     try {
       if (editingUser) {
         await userService.updateUser(
@@ -450,6 +570,8 @@ const UserManagement: React.FC = () => {
       const errorMessage = err?.response?.data?.message || 'Có lỗi xảy ra khi lưu người dùng';
       message.error(errorMessage);
       console.error('Error saving user:', err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -478,11 +600,35 @@ const UserManagement: React.FC = () => {
       title: 'Vai trò',
       dataIndex: ['role', 'role_name'],
       key: 'role',
-      render: (role: string) => (
-        <Tag color={role === 'admin' ? 'red' : 'blue'}>
-          {role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
-        </Tag>
-      ),
+      render: (roleName: string, record: User) => {
+        const role = record.role;
+        if (!role || !roleName) {
+          return <Tag color="default">Chưa phân vai trò</Tag>;
+        }
+        
+        const roleCode = (role.role_code || '').toLowerCase();
+        const level = role.role_level || 0;
+        
+        // Determine color based on role level and code
+        let color = 'blue';
+        if (level >= 90 || roleCode === 'system_admin' || roleCode === 'company_admin') {
+          color = 'red';
+        } else if (level >= 80 || roleCode === 'manager' || roleCode === 'department_header') {
+          color = 'purple';
+        } else if (level >= 70) {
+          color = 'orange';
+        } else if (level >= 50) {
+          color = 'cyan';
+        } else {
+          color = 'blue';
+        }
+        
+        return (
+          <Tag color={color}>
+            {roleName}
+          </Tag>
+        );
+      },
     },
     {
       title: 'Phòng ban',
@@ -631,6 +777,7 @@ const UserManagement: React.FC = () => {
             <Select
               placeholder="Lọc theo trạng thái"
               style={{ width: '100%' }}
+              value={statusFilter || undefined}
               onChange={handleStatusFilter}
               allowClear
             >
@@ -642,7 +789,8 @@ const UserManagement: React.FC = () => {
             <Select
               placeholder="Lọc theo phòng ban"
               style={{ width: '100%' }}
-              onChange={(value) => setDepartmentAssignmentFilter(value ?? '')}
+              value={departmentAssignmentFilter || undefined}
+              onChange={(value) => setDepartmentAssignmentFilter(value || '')}
               allowClear
             >
               <Option value="has_department">Đã có phòng ban</Option>
@@ -654,7 +802,7 @@ const UserManagement: React.FC = () => {
               <Button icon={<UploadIcon />} onClick={() => setShowImportUsers(true)}>
                 Import
               </Button>
-              <Button icon={<DownloadIcon />}>
+              <Button icon={<DownloadIcon />} onClick={handleExportUsers}>
                 Export
               </Button>
             </Space>
@@ -705,7 +853,7 @@ const UserManagement: React.FC = () => {
                 label="Tên đăng nhập"
                 rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập!' }]}
               >
-                <Input />
+                <Input disabled={!!editingUser} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -747,9 +895,8 @@ const UserManagement: React.FC = () => {
               <Form.Item
                 name="departmentId"
                 label="Phòng ban"
-                rules={[{ required: true, message: 'Vui lòng chọn phòng ban!' }]}
               >
-                <Select placeholder="Chọn phòng ban">
+                <Select placeholder="Chọn phòng ban (tùy chọn)" allowClear>
                   {Array.isArray(departments) && departments.map(dept => {
                     const value = dept?._id || dept?.id;
                     if (!value) return null;
@@ -834,7 +981,7 @@ const UserManagement: React.FC = () => {
               <Button onClick={() => setIsModalOpen(false)}>
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit">
+              <Button type="primary" htmlType="submit" loading={submitting}>
                 {editingUser ? 'Cập nhật' : 'Tạo mới'}
               </Button>
             </Space>
@@ -843,11 +990,27 @@ const UserManagement: React.FC = () => {
       </Modal>
 
       {/* Import Users Modal */}
-      {showImportUsers && (
-        <div>
-          {/* ImportUsers component will be rendered here */}
-        </div>
-      )}
+      <Modal
+        title="Import Users từ Excel"
+        open={showImportUsers}
+        onCancel={() => {
+          setShowImportUsers(false);
+        }}
+        footer={null}
+        width={800}
+        destroyOnClose
+      >
+        <ImportUsers 
+          onSuccess={() => {
+            setShowImportUsers(false);
+            loadUsers();
+            message.success('Import users thành công!');
+          }}
+          onClose={() => {
+            setShowImportUsers(false);
+          }}
+        />
+      </Modal>
     </div>
   );
 };

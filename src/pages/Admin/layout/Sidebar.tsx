@@ -16,7 +16,6 @@ import {
   BankOutlined,
   FileTextOutlined,
   LogoutOutlined,
-  WifiOutlined,
   TeamOutlined,
   MessageOutlined
 } from '@ant-design/icons';
@@ -143,11 +142,6 @@ const Sidebar = () => {
                     <Text className={styles.logoSubtitle}>
                         Administrator Dashboard
                     </Text>
-                    <div className={styles.connectionStatus}>
-                        <div className={styles.statusDot}></div>
-                        <WifiOutlined style={{ fontSize: '10px' }} />
-                        <span>Đã kết nối</span>
-                    </div>
                 </div>
             </div>
 

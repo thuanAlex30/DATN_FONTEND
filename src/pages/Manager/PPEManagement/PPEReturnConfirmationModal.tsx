@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Modal,
   Form,
@@ -13,7 +13,9 @@ import {
   Tag,
   Alert,
   Divider,
-  InputNumber
+  InputNumber,
+  Image,
+  Avatar
 } from 'antd';
 import {
   UndoOutlined,
@@ -26,6 +28,7 @@ import {
 import * as ppeService from '../../../services/ppeService';
 import type { PPEIssuance } from '../../../services/ppeService';
 import dayjs from 'dayjs';
+import { ENV } from '../../../config/env';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -48,6 +51,17 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+
+  // Helper function to resolve image URL
+  const apiBaseForImages = useMemo(() => {
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
 
   const handleSubmit = async (values: any) => {
     if (!issuance) return;
@@ -147,7 +161,18 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
       >
         <Descriptions.Item label="Thiết bị">
           <Space>
-            <SafetyOutlined />
+            {(item as any)?.image_url ? (
+              <Image
+                src={resolveImageUrl((item as any).image_url)}
+                width={60}
+                height={60}
+                style={{ objectFit: 'cover', borderRadius: 8 }}
+                preview={{ mask: 'Xem ảnh' }}
+                fallback=""
+              />
+            ) : (
+              <Avatar icon={<SafetyOutlined />} size={60} />
+            )}
             <div>
               <div style={{ fontWeight: 'bold' }}>{item?.item_name || 'Không xác định'}</div>
               <Text type="secondary" style={{ fontSize: '12px' }}>

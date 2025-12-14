@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Form,
@@ -14,7 +14,9 @@ import {
   Row,
   Col,
   Alert,
-  Divider
+  Divider,
+  Image,
+  Avatar
 } from 'antd';
 import {
   SafetyOutlined,
@@ -30,6 +32,7 @@ import type { User } from '../../../types/user';
 import dayjs from 'dayjs';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store';
+import { ENV } from '../../../config/env';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -54,6 +57,17 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
   const [selectedManager, setSelectedManager] = useState<User | null>(null);
   const { user } = useSelector((state: RootState) => state.auth);
 
+  // Helper function to resolve image URL
+  const apiBaseForImages = useMemo(() => {
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
+
   useEffect(() => {
     if (visible) {
       loadManagers();
@@ -68,6 +82,7 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
       const allUsers = await userService.getAllUsers();
       
       // Filter users with role "manager" or "warehouse_staff" (case-insensitive)
+      // AND only show managers from "AN TOÀN LAO ĐỘNG" department
       const managers = allUsers.filter((user: any) => {
         const roleName = user.role?.role_name?.toLowerCase() || '';
         const roleCode = user.role?.role_code?.toLowerCase() || '';
@@ -77,6 +92,26 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
         const isWarehouseStaff = roleName === 'warehouse_staff' || roleCode === 'warehouse_staff' || 
                                  roleName === 'warehouse staff' || roleCode === 'warehouse_staff';
         
+        // For managers, check if they are from "AN TOÀN LAO ĐỘNG" department
+        if (isManager && !isWarehouseStaff) {
+          // Handle both populated department object and department_id string
+          let deptName = '';
+          if (user.department?.department_name) {
+            deptName = user.department.department_name;
+          } else if (user.department?.name) {
+            deptName = user.department.name;
+          } else if ((user as any).department_id?.department_name) {
+            deptName = (user as any).department_id.department_name;
+          } else if ((user as any).department_id?.name) {
+            deptName = (user as any).department_id.name;
+          }
+          
+          if (deptName.toUpperCase() !== 'AN TOÀN LAO ĐỘNG') {
+            return false; // Skip managers not from AN TOÀN LAO ĐỘNG
+          }
+        }
+        
+        // Warehouse staff can still be shown (no department restriction)
         return isManager || isWarehouseStaff;
       });
       
@@ -84,13 +119,14 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
       console.log('[IssueToManagerModal] Filtered managers/warehouse_staff:', managers.length);
       console.log('[IssueToManagerModal] Managers data:', managers.map((m: any) => ({
         name: m.full_name,
-        role: m.role?.role_name || m.role?.role_code
+        role: m.role?.role_name || m.role?.role_code,
+        department: m.department?.department_name || 'N/A'
       })));
       
       setManagers(managers);
       
       if (managers.length === 0) {
-        message.warning('Không tìm thấy Manager hoặc Warehouse Staff nào trong hệ thống');
+        message.warning('Không tìm thấy Manager của phòng AN TOÀN LAO ĐỘNG hoặc Warehouse Staff nào trong hệ thống');
       }
     } catch (error) {
       console.error('Error loading managers:', error);
@@ -156,6 +192,8 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
           quantity_allocated: item.quantity_allocated || item.allocated_quantity || item.actual_allocated_quantity || 0,
           total_quantity: item.total_quantity || item.quantity_available || 0,
           remaining_quantity: item.remaining_quantity || item.quantity_available || 0,
+          // Preserve image_url if it exists (don't set to empty string)
+          ...(item.image_url || (item as any).image_url ? { image_url: item.image_url || (item as any).image_url } : {}),
         };
         console.log('[IssueToManagerModal] Normalized item:', {
           original: item,
@@ -203,6 +241,8 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
                 quantity_allocated: item.quantity_allocated || item.allocated_quantity || item.actual_allocated_quantity || 0,
                 total_quantity: item.total_quantity || item.quantity_available || 0,
                 remaining_quantity: item.remaining_quantity || item.quantity_available || 0,
+                // Preserve image_url if it exists (don't set to empty string)
+                ...(item.image_url || (item as any).image_url ? { image_url: item.image_url || (item as any).image_url } : {}),
               };
             }).filter((item: any) => item.id);
           }
@@ -242,6 +282,8 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
       const currentId = i.id || (i as any)._id;
       return currentId === itemId || currentId?.toString() === itemId?.toString();
     });
+    console.log('[IssueToManagerModal] Selected item:', item);
+    console.log('[IssueToManagerModal] Selected item image_url:', item ? (item as any).image_url : 'no item');
     setSelectedItem(item || null);
   };
 
@@ -320,13 +362,13 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
               rules={[{ required: true, message: 'Vui lòng chọn Manager' }]}
             >
               <Select
-                placeholder="Chọn Manager hoặc Warehouse Staff"
+                placeholder="Chọn Manager (AN TOÀN LAO ĐỘNG) hoặc Warehouse Staff"
                 showSearch
                 optionFilterProp="children"
                 onChange={handleManagerChange}
                 suffixIcon={<UserOutlined />}
                 loading={loading}
-                notFoundContent={loading ? <span>Đang tải...</span> : <span>Không tìm thấy Manager hoặc Warehouse Staff</span>}
+                notFoundContent={loading ? <span>Đang tải...</span> : <span>Không tìm thấy Manager của phòng AN TOÀN LAO ĐỘNG hoặc Warehouse Staff</span>}
                 filterOption={(input, option: any) => {
                   const children = option?.children;
                   if (typeof children === 'string') {
@@ -516,7 +558,23 @@ const IssueToManagerModal: React.FC<IssueToManagerModalProps> = ({
               {selectedItem && (
                 <Col span={12}>
                   <Card size="small" title="Thông tin thiết bị">
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                      {(selectedItem as any)?.image_url && (selectedItem as any).image_url.trim() ? (
+                        <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                          <Image
+                            src={resolveImageUrl((selectedItem as any).image_url)}
+                            width={120}
+                            height={120}
+                            style={{ objectFit: 'cover', borderRadius: 8 }}
+                            preview={{ mask: 'Xem ảnh' }}
+                            fallback=""
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                          <Avatar icon={<SafetyOutlined />} size={120} />
+                        </div>
+                      )}
                       <div>
                         <Text strong>Tên thiết bị: </Text>
                         <Text>{selectedItem.item_name}</Text>

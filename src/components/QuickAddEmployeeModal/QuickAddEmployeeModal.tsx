@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import userService from '../../services/userService';
 import departmentService from '../../services/departmentService';
 import roleService from '../../services/roleService';
@@ -18,7 +18,6 @@ interface FormData {
   password: string;
   confirmPassword: string;
   departmentId: string;
-
   roleId: string;
 }
 
@@ -35,7 +34,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
     password: '',
     confirmPassword: '',
     departmentId: '',
-
     roleId: ''
   });
 
@@ -58,6 +56,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
     console.log('Departments state changed:', departments);
   }, [departments]);
 
+
   useEffect(() => {
     console.log('Roles state changed:', roles);
   }, [roles]);
@@ -75,12 +74,14 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         setRoles([]);
         return;
       }
+
       console.log('Loading dropdown data...');
       const [deptResponse, roleResponse] = await Promise.all([
         departmentService.getActiveDepartments(),
         roleService.getAllActiveRoles()
       ]);
 
+      console.log('API Responses:', { deptResponse, roleResponse });
 
       // Extract data from responses - handle different response formats
       let deptData: any[] = [];
@@ -95,7 +96,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         deptData = deptResponse;
       }
 
-
       // Handle role response
       if (roleResponse && (roleResponse as any).data && (roleResponse as any).data.data && Array.isArray((roleResponse as any).data.data)) {
         roleData = (roleResponse as any).data.data;
@@ -105,6 +105,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         roleData = roleResponse;
       }
 
+      console.log('Extracted data:', { deptData, roleData });
       console.log('Department data length:', deptData.length);
       console.log('Role data length:', roleData.length);
 
@@ -223,7 +224,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         password: '',
         confirmPassword: '',
         departmentId: '',
-    
         roleId: ''
       });
 
@@ -262,7 +262,6 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
         password: '',
         confirmPassword: '',
         departmentId: '',
-    
         roleId: ''
       });
       setErrors([]);
@@ -308,7 +307,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="username">Tên đăng nhập*</label>
+              <label htmlFor="username">Tên đăng nhập *</label>
               <input
                 type="text"
                 id="username"
@@ -338,14 +337,14 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="fullName">Họ Và Tên *</label>
+              <label htmlFor="fullName">Họ tên *</label>
               <input
                 type="text"
                 id="fullName"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleInputChange}
-                placeholder="Nhập họ và tên"
+                placeholder="Nhập họ tên"
                 required
                 disabled={isLoading}
               />
@@ -367,7 +366,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="password">Mật khẩu*</label>
+              <label htmlFor="password">Mật khẩu *</label>
               <input
                 type="password"
                 id="password"
@@ -397,7 +396,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="roleId">Vai trò*</label>
+              <label htmlFor="roleId">Vai trò *</label>
               <select
                 id="roleId"
                 name="roleId"
@@ -427,7 +426,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
                 disabled={isLoading || isLoadingDropdowns}
               >
                 <option value="">
-                  {isLoadingDropdowns ? 'Đang tải....' : 'Chọn phòng ban'}
+                  {isLoadingDropdowns ? 'Đang tải...' : 'Chọn phòng ban'}
                 </option>
                 {departments.map(dept => (
                   <option key={dept.id} value={dept.id}>

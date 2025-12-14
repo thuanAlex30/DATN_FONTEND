@@ -16,7 +16,6 @@ import {
   Table
 } from 'antd';
 import { 
-  EditOutlined, 
   EyeOutlined, 
   CalendarOutlined, 
   UserOutlined,
@@ -29,14 +28,12 @@ interface ProjectListProps {
   projects: Project[];
   loading: boolean;
   viewMode: 'list' | 'grid';
-  onEditProject: (project: Project) => void;
 }
 
 const ProjectList: React.FC<ProjectListProps> = ({
   projects,
   loading,
   viewMode,
-  onEditProject,
 }) => {
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -167,35 +164,20 @@ const ProjectList: React.FC<ProjectListProps> = ({
                     hoverable
                     className="h-full border-0 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-white to-gray-50/50 backdrop-blur-sm"
                     actions={[
-                      <Tooltip title="Chỉnh sửa">
+                      <Tooltip title="Xem chi tiết" key="view">
                         <motion.div
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          <Button 
-                            type="text" 
-                            icon={<EditOutlined />}
-                            onClick={() => onEditProject(project)}
-                            className="hover:bg-green-50 hover:text-green-600 transition-colors"
-                          >
-                            Chỉnh sửa
-                          </Button>
-                        </motion.div>
-                      </Tooltip>,
-                      <Tooltip title="Xem chi tiết">
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <Button 
-                            type="text" 
-                            icon={<EyeOutlined />}
-                            className="hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                          >
-                            <Link to={`/header-department/project-management/${project.id}`}>
+                          <Link to={`/header-department/project-management/${project.id}`}>
+                            <Button 
+                              type="text" 
+                              icon={<EyeOutlined />}
+                              className="hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                            >
                               Xem chi tiết
-                            </Link>
-                          </Button>
+                            </Button>
+                          </Link>
                         </motion.div>
                       </Tooltip>
                     ]}
@@ -446,33 +428,20 @@ const ProjectList: React.FC<ProjectListProps> = ({
       key: 'actions',
       render: (_: unknown, record: Project) => (
         <Space>
-          <Tooltip title="Chỉnh sửa">
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Button 
-                type="text" 
-                icon={<EditOutlined />}
-                onClick={() => onEditProject(record)}
-                className="hover:bg-green-50 hover:text-green-600 transition-colors"
-              />
-            </motion.div>
-          </Tooltip>
           <Tooltip title="Xem chi tiết">
             <motion.div
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Button 
-                type="text" 
-                icon={<EyeOutlined />}
-                className="hover:bg-blue-50 hover:text-blue-600 transition-colors"
-              >
-                <Link to={`/header-department/project-management/${record.id}`}>
+              <Link to={`/header-department/project-management/${record.id}`}>
+                <Button 
+                  type="text" 
+                  icon={<EyeOutlined />}
+                  className="hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                >
                   Xem
-                </Link>
-              </Button>
+                </Button>
+              </Link>
             </motion.div>
           </Tooltip>
         </Space>

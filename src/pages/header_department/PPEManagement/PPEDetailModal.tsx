@@ -1,7 +1,8 @@
-import React from 'react';
-import { Modal, Card, Typography, Space, Row, Col, Statistic, Tag, Button, Divider } from 'antd';
+import React, { useMemo } from 'react';
+import { Modal, Card, Typography, Space, Row, Col, Statistic, Tag, Button, Divider, Image } from 'antd';
 import { SafetyOutlined, ShoppingCartOutlined, CheckCircleOutlined, ExclamationCircleOutlined, EditOutlined } from '@ant-design/icons';
 import type { PPEItem } from '../../../services/ppeService';
+import { ENV } from '../../../config/env';
 
 interface PPEDetailModalProps {
   item: PPEItem | null;
@@ -19,6 +20,17 @@ const PPEDetailModal: React.FC<PPEDetailModalProps> = ({
   onEdit
 }) => {
   if (!isOpen || !item) return null;
+
+  const apiBaseForImages = useMemo(() => {
+    if (!ENV.API_BASE_URL) return '';
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
 
   const remaining = (item.remaining_quantity ?? ((item.quantity_available || 0) - (item.quantity_allocated || 0)));
   const reorderLevel = item.reorder_level || 0;
@@ -55,6 +67,19 @@ const PPEDetailModal: React.FC<PPEDetailModalProps> = ({
       ]}
       width={800}
     >
+      {item.image_url && (
+        <div style={{ marginBottom: 24 }}>
+          <Image
+            src={resolveImageUrl(item.image_url)}
+            width={200}
+            height={200}
+            style={{ objectFit: 'cover', borderRadius: 8 }}
+            preview={{ mask: 'Xem ảnh' }}
+            fallback=""
+          />
+        </div>
+      )}
+
       <div style={{ marginBottom: '24px' }}>
         <Space direction="vertical" size="small">
           <div>

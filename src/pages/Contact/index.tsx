@@ -16,7 +16,6 @@ import {
 import {
   SafetyOutlined,
   LoginOutlined,
-  ArrowLeftOutlined,
   PhoneOutlined,
   MailOutlined,
   EnvironmentOutlined,
@@ -34,7 +33,7 @@ import {
 import styles from './Contact.module.css';
 
 const { Header, Content, Footer } = Layout;
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const ContactPage: React.FC = () => {

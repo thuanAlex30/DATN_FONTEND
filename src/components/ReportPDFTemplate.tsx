@@ -180,7 +180,7 @@ const ReportPDFTemplate: React.FC<ReportPDFTemplateProps> = ({ reportData, repor
                     {reportData.categories.map((category: any, index: number) => (
                       <tr key={index}>
                         <td>{index + 1}</td>
-                        <td>{category.name}</td>
+                        <td>{category.name || category.category_name || 'N/A'}</td>
                         <td>{category.total_quantity || 0}</td>
                         <td>{category.issued_quantity || 0}</td>
                         <td>{category.remaining_quantity || 0}</td>
@@ -188,6 +188,78 @@ const ReportPDFTemplate: React.FC<ReportPDFTemplateProps> = ({ reportData, repor
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {reportData.items && reportData.items.length > 0 && (
+              <div className="details-section">
+                <h3>CHI TIẾT THIẾT BỊ</h3>
+                <table className="report-table">
+                  <thead>
+                    <tr>
+                      <th>STT</th>
+                      <th>Tên thiết bị</th>
+                      <th>Mã thiết bị</th>
+                      <th>Danh mục</th>
+                      <th>Tổng số lượng</th>
+                      <th>Đã phát</th>
+                      <th>Còn lại</th>
+                      <th>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.items.map((item: any, index: number) => {
+                      // Extract item name
+                      const itemName = item.item_name || item.name || 'N/A';
+                      
+                      // Extract item code
+                      const itemCode = item.item_code || item.code || 'N/A';
+                      
+                      // Extract category name
+                      let categoryName = 'N/A';
+                      if (item.category_name) {
+                        categoryName = item.category_name;
+                      } else if (item.category) {
+                        // Check nested category object from aggregation pipeline
+                        if (typeof item.category === 'object') {
+                          categoryName = item.category.category_name || item.category.name || 'N/A';
+                        }
+                      } else if (item.category_id) {
+                        if (typeof item.category_id === 'object') {
+                          categoryName = item.category_id.category_name || item.category_id.name || 'N/A';
+                        }
+                      }
+                      
+                      // Calculate quantities
+                      const totalQuantity = item.quantity_available || item.total_quantity || 0;
+                      const allocatedQuantity = item.quantity_allocated || item.issued_quantity || 0;
+                      const availableQuantity = totalQuantity - allocatedQuantity;
+                      
+                      // Get status
+                      const status = item.status || item.condition_status || 'active';
+                      const statusText = status === 'active' ? 'Hoạt động' : 
+                                       status === 'inactive' ? 'Ngừng hoạt động' : 
+                                       status === 'expired' ? 'Hết hạn' : 
+                                       status === 'damaged' ? 'Hư hỏng' : status;
+                      
+                      return (
+                        <tr key={item.id || item._id || index}>
+                          <td>{index + 1}</td>
+                          <td>{itemName}</td>
+                          <td>{itemCode}</td>
+                          <td>{categoryName}</td>
+                          <td>{totalQuantity}</td>
+                          <td>{allocatedQuantity}</td>
+                          <td>{availableQuantity}</td>
+                          <td>{statusText}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {reportData.items.length > 50 && (
+                  <p className="note">* Chỉ hiển thị 50 thiết bị đầu tiên</p>
+                )}
               </div>
             )}
           </div>
@@ -293,38 +365,92 @@ const ReportPDFTemplate: React.FC<ReportPDFTemplateProps> = ({ reportData, repor
               </div>
             </div>
 
-            {reportData.assignments && reportData.assignments.length > 0 && (
-              <div className="details-section">
-                <h3>CHI TIẾT PHÂN CÔNG</h3>
-                <table className="report-table">
-                  <thead>
-                    <tr>
-                      <th>STT</th>
-                      <th>Người được phân công</th>
-                      <th>Thiết bị</th>
-                      <th>Số lượng</th>
-                      <th>Ngày bắt đầu</th>
-                      <th>Trạng thái</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reportData.assignments.slice(0, 20).map((assignment: any, index: number) => (
-                      <tr key={index}>
-                        <td>{index + 1}</td>
-                        <td>{assignment.user_name || 'N/A'}</td>
-                        <td>{assignment.item_name || 'N/A'}</td>
-                        <td>{assignment.quantity || 0}</td>
-                        <td>{assignment.start_date ? new Date(assignment.start_date).toLocaleDateString('vi-VN') : 'N/A'}</td>
-                        <td>{assignment.status || 'N/A'}</td>
+            {reportData.assignments && reportData.assignments.length > 0 && (() => {
+              // Helper function to get status text in Vietnamese
+              const getStatusText = (status: string) => {
+                const statusMap: { [key: string]: string } = {
+                  'pending_confirmation': 'Chờ xác nhận',
+                  'issued': 'Đã cấp phát',
+                  'returned': 'Đã trả',
+                  'overdue': 'Quá hạn',
+                  'damaged': 'Bị hỏng',
+                  'replacement_needed': 'Cần thay thế',
+                  'pending_manager_return': 'Chờ trả',
+                  'active': 'Đang hoạt động',
+                  'assigned': 'Đã phân công',
+                  'completed': 'Đã hoàn thành'
+                };
+                return statusMap[status] || status || 'N/A';
+              };
+
+              // Helper function to get user name
+              const getUserName = (assignment: any) => {
+                if (assignment.user_name) return assignment.user_name;
+                if (assignment.user_id) {
+                  if (typeof assignment.user_id === 'object') {
+                    return assignment.user_id.full_name || assignment.user_id.username || 'N/A';
+                  }
+                }
+                return 'N/A';
+              };
+
+              // Helper function to get item name
+              const getItemName = (assignment: any) => {
+                if (assignment.item_name) return assignment.item_name;
+                if (assignment.item_id) {
+                  if (typeof assignment.item_id === 'object') {
+                    return assignment.item_id.item_name || 'N/A';
+                  }
+                }
+                return 'N/A';
+              };
+
+              // Helper function to get start date
+              const getStartDate = (assignment: any) => {
+                const date = assignment.start_date || assignment.issued_date || assignment.created_at;
+                if (date) {
+                  try {
+                    return new Date(date).toLocaleDateString('vi-VN');
+                  } catch (e) {
+                    return 'N/A';
+                  }
+                }
+                return 'N/A';
+              };
+
+              return (
+                <div className="details-section">
+                  <h3>CHI TIẾT PHÂN CÔNG</h3>
+                  <table className="report-table">
+                    <thead>
+                      <tr>
+                        <th>STT</th>
+                        <th>Người được phân công</th>
+                        <th>Thiết bị</th>
+                        <th>Số lượng</th>
+                        <th>Ngày bắt đầu</th>
+                        <th>Trạng thái</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {reportData.assignments.length > 20 && (
-                  <p className="note">* Chỉ hiển thị 20 bản ghi đầu tiên</p>
-                )}
-              </div>
-            )}
+                    </thead>
+                    <tbody>
+                      {reportData.assignments.slice(0, 20).map((assignment: any, index: number) => (
+                        <tr key={assignment.id || assignment._id || index}>
+                          <td>{index + 1}</td>
+                          <td>{getUserName(assignment)}</td>
+                          <td>{getItemName(assignment)}</td>
+                          <td>{assignment.quantity || 0}</td>
+                          <td>{getStartDate(assignment)}</td>
+                          <td>{getStatusText(assignment.status || assignment.assignment_status)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {reportData.assignments.length > 20 && (
+                    <p className="note">* Chỉ hiển thị 20 bản ghi đầu tiên</p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         );
 

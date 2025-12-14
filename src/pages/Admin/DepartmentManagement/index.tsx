@@ -22,7 +22,8 @@ import {
   Avatar,
   List,
   Empty,
-  message
+  message,
+  Alert
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -74,6 +75,11 @@ interface DepartmentSummary {
     name: string;
     email?: string;
   } | null;
+  managers?: Array<{
+    id: string;
+    name: string;
+    email?: string;
+  }>;
   employee_count: number;
   is_active: boolean;
   created_at: string;
@@ -139,9 +145,14 @@ const DepartmentManagementPage = () => {
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [departmentSummary, setDepartmentSummary] = useState<DepartmentSummary | null>(null);
   const [employeesModalVisible, setEmployeesModalVisible] = useState(false);
+  const [deletePasswordModalVisible, setDeletePasswordModalVisible] = useState(false);
+  const [deletingDepartment, setDeletingDepartment] = useState<Department | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletePasswordForm] = Form.useForm();
   const [employeesLoading, setEmployeesLoading] = useState(false);
   const [employeeList, setEmployeeList] = useState<DepartmentEmployee[]>([]);
   const [employeeModalTitle, setEmployeeModalTitle] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const handler = window.setTimeout(() => setDebouncedSearch(searchValue.trim()), 350);
@@ -291,9 +302,13 @@ const DepartmentManagementPage = () => {
     let filtered = [...data];
 
     if (hasManagerFilter !== 'all') {
-      filtered = filtered.filter((dept) =>
-        hasManagerFilter === 'yes' ? Boolean(dept.manager_id) : !dept.manager_id
-      );
+      filtered = filtered.filter((dept) => {
+        const hasManagers = Boolean(
+          (dept.manager_ids && Array.isArray(dept.manager_ids) && dept.manager_ids.length > 0) ||
+          dept.manager_id
+        );
+        return hasManagerFilter === 'yes' ? hasManagers : !hasManagers;
+      });
     }
 
     if (hasEmployeesFilter !== 'all') {
@@ -305,6 +320,16 @@ const DepartmentManagementPage = () => {
 
     if (managerFilter) {
       filtered = filtered.filter((dept) => {
+        // Check in manager_ids array
+        if (dept.manager_ids && Array.isArray(dept.manager_ids)) {
+          const managerIds = dept.manager_ids.map((m: any) => 
+            typeof m === 'string' ? m : (m._id || m.id)
+          );
+          if (managerIds.includes(managerFilter)) {
+            return true;
+          }
+        }
+        // Check in manager_id (legacy)
         const managerId =
           (dept.manager_id?._id || (dept.manager_id as any)?.id || (dept.manager_id as any)?._id) ?? '';
         return managerId === managerFilter;
@@ -326,22 +351,44 @@ const DepartmentManagementPage = () => {
   const openCreateModal = () => {
     setEditingDepartment(null);
     form.resetFields();
-    form.setFieldsValue({ is_active: true });
+    form.setFieldsValue({ 
+      is_active: true,
+      manager_ids: []
+    });
+    setSubmitting(false);
     setIsFormVisible(true);
   };
 
   const openEditModal = (department: Department) => {
     setEditingDepartment(department);
+    
+    // Get manager_ids from department (support both array and single manager_id)
+    let managerIds: string[] = [];
+    if (department.manager_ids && Array.isArray(department.manager_ids)) {
+      managerIds = department.manager_ids.map((m: any) => 
+        typeof m === 'string' ? m : (m._id || m.id)
+      ).filter(Boolean);
+    } else if (department.manager_id) {
+      const managerId = typeof department.manager_id === 'string' 
+        ? department.manager_id 
+        : (department.manager_id._id || (department.manager_id as any).id);
+      if (managerId) {
+        managerIds = [managerId];
+      }
+    }
+    
     form.setFieldsValue({
       department_name: department.department_name,
       description: department.description,
-      manager_id: department.manager_id?._id || (department.manager_id as any)?.id,
+      manager_ids: managerIds,
       is_active: department.is_active
     });
+    setSubmitting(false);
     setIsFormVisible(true);
   };
 
   const handleFormSubmit = async () => {
+    setSubmitting(true);
     try {
       const values = await form.validateFields();
       if (editingDepartment) {
@@ -356,13 +403,29 @@ const DepartmentManagementPage = () => {
       fetchStats();
       fetchDepartmentOptions();
     } catch (error: any) {
-      if (error?.errorFields) return;
+      if (error?.errorFields) {
+        setSubmitting(false);
+        return;
+      }
       const errorMessage = error?.response?.data?.message || 'Không thể lưu phòng ban';
       message.error(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const confirmDeleteDepartment = (department: Department) => {
+    const hasEmployees = (department.employees_count ?? 0) > 0;
+    const isInactive = !department.is_active;
+
+    // If department is inactive and has employees, show password modal
+    if (isInactive && hasEmployees) {
+      setDeletingDepartment(department);
+      setDeletePassword('');
+      deletePasswordForm.resetFields();
+      setDeletePasswordModalVisible(true);
+    } else {
+      // Normal confirmation for departments without employees or active departments
     Modal.confirm({
       title: 'Xóa phòng ban',
       content: `Bạn có chắc chắn muốn xóa phòng ban "${department.department_name}"?`,
@@ -371,18 +434,38 @@ const DepartmentManagementPage = () => {
       cancelText: 'Hủy',
       onOk: () => handleDeleteDepartment(department)
     });
+    }
   };
 
-  const handleDeleteDepartment = async (department: Department) => {
+  const handleDeleteWithPassword = async () => {
+    if (!deletingDepartment) return;
+    
     try {
-      await departmentService.deleteDepartment(department.id);
-      message.success('Đã xóa phòng ban');
+      const values = await deletePasswordForm.validateFields();
+      await handleDeleteDepartment(deletingDepartment, values.password);
+      setDeletePasswordModalVisible(false);
+      setDeletingDepartment(null);
+      deletePasswordForm.resetFields();
+    } catch (error: any) {
+      if (error?.errorFields) {
+        // Validation error
+        return;
+      }
+      // API error already handled in handleDeleteDepartment
+    }
+  };
+
+  const handleDeleteDepartment = async (department: Department, password?: string) => {
+    try {
+      await departmentService.deleteDepartment(department.id, password);
+      message.success('Đã xóa phòng ban thành công');
       fetchDepartments();
       fetchStats();
       fetchDepartmentOptions();
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || 'Không thể xóa phòng ban';
       message.error(errorMessage);
+      throw error; // Re-throw to prevent modal from closing on error
     }
   };
 
@@ -417,7 +500,7 @@ const DepartmentManagementPage = () => {
     setEmployeesLoading(true);
     try {
       const response = await departmentService.getDepartmentEmployees(department.id, {
-        include_inactive: true
+        include_inactive: true // Lấy cả nhân viên đã ngừng hoạt động
       });
       const payload = (response as any)?.data ?? response;
       setEmployeeList(payload?.employees ?? []);
@@ -502,19 +585,41 @@ const DepartmentManagementPage = () => {
     },
     {
       title: 'Quản lý',
-      dataIndex: 'manager_id',
-      key: 'manager',
-      render: (manager: Department['manager_id']) => {
-        if (!manager) {
+      dataIndex: 'manager_ids',
+      key: 'managers',
+      render: (_: unknown, record: Department) => {
+        // Get managers from manager_ids array or fallback to manager_id
+        let managers: any[] = [];
+        if (record.manager_ids && Array.isArray(record.manager_ids) && record.manager_ids.length > 0) {
+          managers = record.manager_ids;
+        } else if (record.manager_id) {
+          managers = [record.manager_id];
+        }
+        
+        if (managers.length === 0) {
           return <Tag color="volcano">Chưa phân công</Tag>;
         }
+        
         return (
-          <Space>
-            <Avatar size="small" icon={<UserOutlined />} />
-            <div>
-              <div>{(manager as any)?.full_name || (manager as any)?.username}</div>
-              <div className={styles.subText}>{(manager as any)?.email}</div>
-            </div>
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            {managers.slice(0, 3).map((manager: any, index: number) => {
+              const managerId = typeof manager === 'string' ? manager : (manager._id || manager.id);
+              const managerName = typeof manager === 'string' ? manager : (manager.full_name || manager.username || 'N/A');
+              const managerEmail = typeof manager === 'string' ? '' : (manager.email || '');
+              
+              return (
+                <Space key={managerId || index} size="small">
+                  <Avatar size="small" icon={<UserOutlined />} />
+                  <div>
+                    <div>{managerName}</div>
+                    {managerEmail && <div className={styles.subText}>{managerEmail}</div>}
+                  </div>
+                </Space>
+              );
+            })}
+            {managers.length > 3 && (
+              <Tag color="blue">+{managers.length - 3} quản lý khác</Tag>
+            )}
           </Space>
         );
       }
@@ -586,12 +691,20 @@ const DepartmentManagementPage = () => {
             </Tooltip>
           )}
           {canDelete && (
-            <Tooltip title="Xóa">
+            <Tooltip 
+              title={
+                !record.is_active 
+                  ? "Xóa phòng ban đã ngừng hoạt động" 
+                  : (record.employees_count ?? 0) > 0 
+                    ? "Không thể xóa phòng ban đang hoạt động có nhân viên" 
+                    : "Xóa phòng ban"
+              }
+            >
               <Button
                 type="text"
                 danger
                 icon={<DeleteOutlined />}
-                disabled={(record.employees_count ?? 0) > 0}
+                disabled={record.is_active && (record.employees_count ?? 0) > 0}
                 onClick={() => confirmDeleteDepartment(record)}
               />
             </Tooltip>
@@ -747,9 +860,13 @@ const DepartmentManagementPage = () => {
       <Modal
         title={editingDepartment ? 'Chỉnh sửa phòng ban' : 'Thêm phòng ban mới'}
         open={isFormVisible}
-        onCancel={() => setIsFormVisible(false)}
+        onCancel={() => {
+          setIsFormVisible(false);
+          setSubmitting(false);
+        }}
         onOk={handleFormSubmit}
         okText={editingDepartment ? 'Cập nhật' : 'Tạo mới'}
+        confirmLoading={submitting}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -765,12 +882,31 @@ const DepartmentManagementPage = () => {
           <Form.Item label="Mô tả" name="description">
             <Input.TextArea rows={3} placeholder="Mô tả ngắn gọn chức năng phòng ban" />
           </Form.Item>
-          <Form.Item label="Quản lý phụ trách" name="manager_id">
+          <Form.Item 
+            label="Quản lý phụ trách (tối đa 5)" 
+            name="manager_ids"
+            rules={[
+              {
+                validator: (_, value) => {
+                  if (!value || value.length === 0) {
+                    return Promise.resolve();
+                  }
+                  if (value.length > 5) {
+                    return Promise.reject(new Error('Một phòng ban chỉ có thể có tối đa 5 quản lý'));
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
+          >
             <Select
+              mode="multiple"
               allowClear
-              placeholder="Chọn quản lý"
+              placeholder="Chọn quản lý (tối đa 5)"
               showSearch
               optionFilterProp="children"
+              maxTagCount="responsive"
+              maxTagTextLength={20}
             >
               {managerCandidates.map((manager) => (
                 <Option key={manager.id} value={manager.id}>
@@ -941,6 +1077,69 @@ const DepartmentManagementPage = () => {
               </List.Item>
             )}
           />
+        )}
+      </Modal>
+
+      {/* Password confirmation modal for deleting inactive departments with employees */}
+      <Modal
+        title="⚠️ Xác nhận xóa phòng ban có nhân viên"
+        open={deletePasswordModalVisible}
+        onOk={handleDeleteWithPassword}
+        onCancel={() => {
+          setDeletePasswordModalVisible(false);
+          setDeletingDepartment(null);
+          deletePasswordForm.resetFields();
+        }}
+        okText="Xóa"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true }}
+        width={600}
+        destroyOnClose
+      >
+        {deletingDepartment && (
+          <div>
+            <Alert
+              message="Cảnh báo"
+              description={
+                <div>
+                  <p style={{ marginBottom: 8 }}>
+                    Phòng ban <strong>"{deletingDepartment.department_name}"</strong> đã ngừng hoạt động nhưng vẫn còn <strong style={{ color: '#ff4d4f', fontSize: '16px' }}>{deletingDepartment.employees_count}</strong> nhân viên.
+                  </p>
+                  <p style={{ marginBottom: 0, fontWeight: 'bold' }}>
+                    ⚠️ Sau khi xóa, tất cả nhân viên trong phòng ban này sẽ bị xóa khỏi phòng ban (chưa có phòng ban nào).
+                  </p>
+                </div>
+              }
+              type="warning"
+              showIcon
+              style={{ marginBottom: 24 }}
+            />
+            
+            <Alert
+              message="Yêu cầu xác thực"
+              description="Vui lòng nhập mật khẩu của tài khoản đang đăng nhập để xác nhận xóa phòng ban này."
+              type="info"
+              showIcon
+              style={{ marginBottom: 24 }}
+            />
+
+            <Form form={deletePasswordForm} layout="vertical">
+              <Form.Item
+                label="Mật khẩu"
+                name="password"
+                rules={[
+                  { required: true, message: 'Vui lòng nhập mật khẩu' }
+                ]}
+              >
+                <Input.Password
+                  placeholder="Nhập mật khẩu của bạn"
+                  autoFocus
+                  onPressEnter={handleDeleteWithPassword}
+                  size="large"
+                />
+              </Form.Item>
+            </Form>
+          </div>
         )}
       </Modal>
     </div>

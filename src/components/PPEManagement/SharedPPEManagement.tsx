@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Row,
@@ -21,7 +21,9 @@ import {
   Tooltip,
   Table,
   Alert,
-  Progress
+  Progress,
+  Image,
+  Avatar
 } from 'antd';
 import {
   SafetyOutlined,
@@ -54,6 +56,7 @@ import type { RootState } from '../../store';
 import IssueToEmployeeModal from '../../pages/header_department/PPEManagement/IssueToEmployeeModal';
 import PPEReturnConfirmationModal from '../../pages/Manager/PPEManagement/PPEReturnConfirmationModal';
 import PPEAssignmentHistoryModal from '../../pages/Manager/PPEManagement/PPEAssignmentHistoryModal';
+import { ENV } from '../../config/env';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -114,6 +117,28 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
   const [confirmForm] = Form.useForm();
 
   const isManager = userRole === 'manager';
+  
+  // Helper function to resolve image URL
+  const apiBaseForImages = useMemo(() => {
+    return ENV.API_BASE_URL.replace(/\/api\/?$/, '');
+  }, []);
+
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    return `${apiBaseForImages}${url}`;
+  };
+
+  const handleRefresh = () => {
+    setLoading(true);
+    const tasks = [loadUserPPE()];
+    if (isManager) {
+      tasks.push(loadManagerPPE(), loadEmployeePPE(), loadPPEHistory());
+    } else {
+      tasks.push(loadEmployeePPEHistory());
+    }
+    Promise.all(tasks).finally(() => setLoading(false));
+  };
 
   // WebSocket hook for realtime updates
   const { isConnected } = usePPEWebSocket({
@@ -497,17 +522,31 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       title: 'Thiết bị PPE',
       dataIndex: ['item', 'item_name'],
       key: 'item_name',
-      render: (text: string, record: ManagerPPE) => (
-        <Space>
-          <SafetyOutlined style={{ color: '#1890ff' }} />
-          <div>
-            <div style={{ fontWeight: 'bold' }}>{text}</div>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              {record.item.item_code}
-            </Text>
-          </div>
-        </Space>
-      )
+      render: (text: string, record: ManagerPPE) => {
+        const imageUrl = (record.item as any)?.image_url;
+        return (
+          <Space>
+            {imageUrl ? (
+              <Image
+                src={resolveImageUrl(imageUrl)}
+                width={40}
+                height={40}
+                style={{ objectFit: 'cover', borderRadius: 8 }}
+                preview={{ mask: 'Xem ảnh' }}
+                fallback=""
+              />
+            ) : (
+              <Avatar icon={<SafetyOutlined />} />
+            )}
+            <div>
+              <div style={{ fontWeight: 'bold' }}>{text}</div>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                {record.item.item_code}
+              </Text>
+            </div>
+          </Space>
+        );
+      }
     },
     {
       title: 'Đã nhận từ Header Department',
@@ -618,17 +657,32 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       title: 'Thiết bị PPE',
       dataIndex: ['item_id', 'item_name'],
       key: 'item_name',
-      render: (text: string, record: PPEIssuance) => (
-        <Space>
-          <SafetyOutlined />
-          <div>
-            <div>{text}</div>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              {typeof record.item_id === 'object' && record.item_id ? record.item_id.item_code : 'N/A'}
-            </Text>
-          </div>
-        </Space>
-      )
+      render: (text: string, record: PPEIssuance) => {
+        const item = typeof record.item_id === 'object' && record.item_id ? record.item_id : null;
+        const imageUrl = (item as any)?.image_url;
+        return (
+          <Space>
+            {imageUrl ? (
+              <Image
+                src={resolveImageUrl(imageUrl)}
+                width={40}
+                height={40}
+                style={{ objectFit: 'cover', borderRadius: 8 }}
+                preview={{ mask: 'Xem ảnh' }}
+                fallback=""
+              />
+            ) : (
+              <Avatar icon={<SafetyOutlined />} />
+            )}
+            <div>
+              <div>{text}</div>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                {item?.item_code || 'N/A'}
+              </Text>
+            </div>
+          </Space>
+        );
+      }
     },
     {
       title: 'Số lượng',
@@ -1066,6 +1120,11 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
             onChange={setActiveTab}
             style={{ padding: '0 24px' }}
             tabBarStyle={{ marginBottom: 0, paddingTop: '16px' }}
+            tabBarExtraContent={
+              <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
+                Làm mới
+              </Button>
+            }
           >
             <TabPane
               tab={
@@ -1099,6 +1158,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                           const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
                             issuance.item_id : null;
                           const isOverdueItem = isOverdue(issuance.expected_return_date);
+                          const imageUrl = (item as any)?.image_url;
                           
                           return (
                             <Col xs={24} sm={12} lg={8} xl={6} key={issuance.id}>
@@ -1106,7 +1166,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                 hoverable
                                 style={{ 
                                   borderRadius: '8px',
-                                  border: '1px solid #e8e8e8',
+                                  border: `1px solid ${isOverdueItem ? '#ff4d4f' : '#e8e8e8'}`,
                                   boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
                                   height: '100%',
                                   transition: 'all 0.3s ease'
@@ -1114,7 +1174,18 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                 bodyStyle={{ padding: '16px' }}
                                 title={
                                   <Space style={{ width: '100%' }}>
-                                    <SafetyOutlined style={{ color: '#1890ff', fontSize: '18px' }} />
+                                    {imageUrl ? (
+                                      <Image
+                                        src={resolveImageUrl(imageUrl)}
+                                        width={32}
+                                        height={32}
+                                        style={{ objectFit: 'cover', borderRadius: 6 }}
+                                        preview={{ mask: 'Xem ảnh' }}
+                                        fallback=""
+                                      />
+                                    ) : (
+                                      <SafetyOutlined style={{ color: '#1890ff', fontSize: '18px' }} />
+                                    )}
                                     <span style={{ fontWeight: 'bold', fontSize: '14px' }}>
                                       {item?.item_name || 'Không xác định'}
                                     </span>
@@ -1186,7 +1257,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                     <Badge 
                                       count={issuance.quantity} 
                                       style={{ backgroundColor: '#52c41a' }}
-                                      overflowCount={999}
+                                    overflowCount={Number.MAX_SAFE_INTEGER}
                                     />
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -1368,6 +1439,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                     {ppeHistory.map((issuance, index) => {
                       const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
                         issuance.item_id : null;
+                      const imageUrl = (item as any)?.image_url;
                       
                       return (
                         <Col xs={24} sm={12} lg={8} key={issuance.id || issuance._id || `history-${index}`}>
@@ -1375,7 +1447,18 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                             hoverable
                             title={
                               <Space>
-                                <SafetyOutlined style={{ color: '#52c41a' }} />
+                                {imageUrl ? (
+                                  <Image
+                                    src={resolveImageUrl(imageUrl)}
+                                    width={32}
+                                    height={32}
+                                    style={{ objectFit: 'cover', borderRadius: 6 }}
+                                    preview={{ mask: 'Xem ảnh' }}
+                                    fallback=""
+                                  />
+                                ) : (
+                                  <SafetyOutlined style={{ color: '#52c41a' }} />
+                                )}
                                 <span style={{ fontWeight: 'bold' }}>
                                   {item?.item_name || 'Không xác định'}
                                 </span>
@@ -1424,7 +1507,12 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                               <div>
                                 <NumberOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
                                 <Text strong>Số lượng: </Text>
-                                <Badge count={issuance.quantity} style={{ backgroundColor: '#52c41a' }} />
+                                <Badge 
+                                  count={issuance.quantity} 
+                                  style={{ backgroundColor: '#52c41a' }} 
+                                  overflowCount={Number.MAX_SAFE_INTEGER}
+                                  showZero
+                                />
                               </div>
                               <div>
                                 <CalendarOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
