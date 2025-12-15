@@ -1,0 +1,29 @@
+.weatherWidget {
+  min-width: 150px;
+  max-width: 250px;
+}
+
+.weatherWidgetCompact {
+  min-width: 80px;
+  cursor: pointer;
+}
+
+.sunIcon {
+  color: #faad14;
+  font-size: 18px;
+}
+
+.cloudIcon {
+  color: #1890ff;
+  font-size: 18px;
+}
+
+.thunderIcon {
+  color: #722ed1;
+  font-size: 18px;
+}
+
+.errorIcon {
+  color: #ff4d4f;
+}
+

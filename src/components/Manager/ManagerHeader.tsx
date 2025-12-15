@@ -11,6 +11,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
+import { WeatherWidget, EquipmentSuggestion } from '../Weather';
 import styles from './ManagerHeader.module.css';
 
 const { Header } = Layout;
@@ -97,6 +98,9 @@ const ManagerHeader: React.FC<ManagerHeaderProps> = ({
 
         <div className={styles.headerRight}>
           {extra && <div className={styles.headerExtra}>{extra}</div>}
+          
+          <WeatherWidget compact />
+          <EquipmentSuggestion compact />
           
           {showNotifications && (
             <Badge count={0} size="small">

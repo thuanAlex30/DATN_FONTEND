@@ -35,6 +35,7 @@ import {
 } from '../../../store/slices/websocketSlice';
 import type { NotificationData } from '../../../store/slices/websocketSlice';
 import NotificationService from '../../../services/notificationService';
+import { WeatherWidget, EquipmentSuggestion } from '../../../components/Weather';
 
 const { Header: AntHeader } = Layout;
 const { Title, Text } = Typography;
@@ -667,6 +668,9 @@ const Header = () => {
                         />
                     </Badge>
                 </Popover>
+                
+                <WeatherWidget compact />
+                <EquipmentSuggestion compact />
                 
                 <Dropdown
                     menu={{ items: profileMenuItems }}
