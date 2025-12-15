@@ -20,7 +20,7 @@ import {
   UserOutlined,
   BarChartOutlined,
   TeamOutlined,
-  AimOutlined,
+  LockOutlined,
   ExclamationCircleOutlined,
   MessageOutlined,
   DollarOutlined
@@ -30,7 +30,8 @@ import { fetchProjectById, fetchProjectTimeline, fetchProjectAssignments } from 
 import ProjectOverview from './ProjectOverview';
 import ProjectMilestones from './ProjectMilestones';
 import ProjectTasks from './ProjectTasks';
-import ProjectWorkLocations from './ProjectWorkLocations';
+import ProjectAccessControl from './ProjectAccessControl';
+import ProjectWorkers from './ProjectWorkers';
 import ProjectRisks from './ProjectRisks';
 import ProgressTrackingDashboard from './ProgressTrackingDashboard';
 import EditProjectModal from './EditProjectModal';
@@ -517,19 +518,19 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                 })()
               },
               {
-                key: 'work-locations',
+                key: 'access-control',
                 label: (
                   <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
-                    <AimOutlined />
-                    <span>Vị trí Làm việc</span>
+                    <LockOutlined />
+                    <span>Kiểm soát Ra vào</span>
                   </span>
                 ),
                 children: (() => {
                   try {
-                    return <ProjectWorkLocations projectId={projectId} />;
+                    return <ProjectAccessControl projectId={projectId} />;
                   } catch (error) {
-                    console.error('Error rendering ProjectWorkLocations:', error);
-                    return <div>Lỗi tải tab Vị trí Làm việc</div>;
+                    console.error('Error rendering ProjectAccessControl:', error);
+                    return <div>Lỗi tải tab Kiểm soát Ra vào</div>;
                   }
                 })()
               },
@@ -564,6 +565,23 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId }) => {
                   } catch (error) {
                     console.error('Error rendering TaskManagement:', error);
                     return <div>Lỗi tải tab Quản lý Nhiệm vụ</div>;
+                  }
+                })()
+              },
+              {
+                key: 'workers',
+                label: (
+                  <span className="flex items-center space-x-2" style={{ pointerEvents: 'auto' }}>
+                    <TeamOutlined />
+                    <span>Công nhân dự án</span>
+                  </span>
+                ),
+                children: (() => {
+                  try {
+                    return <ProjectWorkers projectId={projectId} />;
+                  } catch (error) {
+                    console.error('Error rendering ProjectWorkers:', error);
+                    return <div>Lỗi tải tab Công nhân dự án</div>;
                   }
                 })()
               },

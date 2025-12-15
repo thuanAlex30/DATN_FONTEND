@@ -337,14 +337,14 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="fullName">Họ tên *</label>
+              <label htmlFor="fullName">Họ Và Tên *</label>
               <input
                 type="text"
                 id="fullName"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleInputChange}
-                placeholder="Nhập họ tên"
+                placeholder="Nhập họ và tên"
                 required
                 disabled={isLoading}
               />
@@ -366,7 +366,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="password">Mật khẩu *</label>
+              <label htmlFor="password">Mật khẩu*</label>
               <input
                 type="password"
                 id="password"
@@ -396,7 +396,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="roleId">Vai trò *</label>
+              <label htmlFor="roleId">Vai trò*</label>
               <select
                 id="roleId"
                 name="roleId"
@@ -426,7 +426,7 @@ const QuickAddEmployeeModal: React.FC<QuickAddEmployeeModalProps> = ({
                 disabled={isLoading || isLoadingDropdowns}
               >
                 <option value="">
-                  {isLoadingDropdowns ? 'Đang tải...' : 'Chọn phòng ban'}
+                  {isLoadingDropdowns ? 'Đang tải....' : 'Chọn phòng ban'}
                 </option>
                 {departments.map(dept => (
                   <option key={dept.id} value={dept.id}>

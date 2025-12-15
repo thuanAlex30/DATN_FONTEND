@@ -1,36 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
-  List,
+  Table,
   Tag,
   Space,
   Spin,
   Alert,
   Empty,
   Statistic,
-  Pagination,
   Button,
   DatePicker,
   Typography,
   Segmented,
   Row,
   Col,
-  Tooltip,
+  message,
 } from 'antd';
-import { LockOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  LockOutlined,
+  ReloadOutlined,
+  DownloadOutlined,
+  ApartmentOutlined,
+  ClusterOutlined,
+  TeamOutlined,
+} from '@ant-design/icons';
 import hikvisionService, { type AcsEventInfo } from '../../../services/hikvisionService';
 import HeaderDepartmentLayout from '../../../components/HeaderDepartment/HeaderDepartmentLayout';
 import dayjs, { type Dayjs } from 'dayjs';
 
 const { RangePicker } = DatePicker;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const HikvisionEventsPage: React.FC = () => {
-  const [hikvisionEvents, setHikvisionEvents] = useState<AcsEventInfo[]>([]);
-  const [hikvisionLoading, setHikvisionLoading] = useState(false);
-  const [hikvisionError, setHikvisionError] = useState<string | null>(null);
-  const [hikvisionCurrentPage, setHikvisionCurrentPage] = useState(1);
-  const [hikvisionPageSize] = useState(10);
+  const [events, setEvents] = useState<AcsEventInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [quickRange, setQuickRange] = useState<'today' | '3d' | '7d' | 'custom'>('today');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([
     dayjs().startOf('day'),
@@ -38,7 +42,8 @@ const HikvisionEventsPage: React.FC = () => {
   ]);
 
   useEffect(() => {
-    loadHikvisionEvents();
+    loadEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -51,7 +56,7 @@ const HikvisionEventsPage: React.FC = () => {
     }
   }, [quickRange]);
 
-  const formatEventTime = (timeString: string) => {
+  const formatTime = (timeString: string) => {
     try {
       const date = new Date(timeString);
       return date.toLocaleString('vi-VN', {
@@ -67,23 +72,21 @@ const HikvisionEventsPage: React.FC = () => {
     }
   };
 
-  const loadHikvisionEvents = async () => {
+  const loadEvents = async () => {
     try {
-      setHikvisionLoading(true);
-      setHikvisionError(null);
-      setHikvisionCurrentPage(1);
+      setLoading(true);
+      setError(null);
 
       let response;
       if (dateRange[0] && dateRange[1]) {
-        // Format timestamp without timezone to match Hikvision API format: "2025-12-13T00:00:00"
         const startTime = dateRange[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss');
         const endTime = dateRange[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss');
         response = await hikvisionService.getAccessControlEvents({
           startTime,
           endTime,
           major: 5,
-          minor: 38, // Chỉ lấy events vân tay
-          maxResults: 100,
+          minor: 38,
+          maxResults: 500,
           getAll: true,
         });
       } else {
@@ -97,46 +100,29 @@ const HikvisionEventsPage: React.FC = () => {
             : typeof response.data?.data === 'string'
             ? response.data.data
             : 'Không thể tải dữ liệu kiểm soát truy cập';
-        setHikvisionError(errorMsg);
-        setHikvisionEvents([]);
+        setError(errorMsg);
+        setEvents([]);
         return;
       }
 
       const data = response.data?.data;
-
-      console.log('📥 Response data structure:', {
-        hasData: !!data,
-        hasAcsEvent: data && 'AcsEvent' in data,
-        hasEvents: data && 'events' in data,
-        dataKeys: data ? Object.keys(data) : [],
-        eventsCount: data?.events?.length || data?.AcsEvent?.InfoList?.length || 0
-      });
-
       if (data && 'AcsEvent' in data && data.AcsEvent?.InfoList) {
-        console.log('✅ Using AcsEvent.InfoList, count:', data.AcsEvent.InfoList.length);
-        setHikvisionEvents(data.AcsEvent.InfoList);
+        setEvents(data.AcsEvent.InfoList);
       } else if (data && 'events' in data) {
-        console.log('✅ Using events array, count:', data.events.length);
-        console.log('📋 Sample events:', data.events.slice(0, 3).map(e => ({
-          time: e.time,
-          employeeNoString: e.employeeNoString
-        })));
-        setHikvisionEvents(data.events);
+        setEvents(data.events);
       } else {
-        console.warn('⚠️ No events found in response data');
-        setHikvisionEvents([]);
+        setEvents([]);
       }
     } catch (err: any) {
-      console.error('Error loading Hikvision events:', err);
       const errorMessage =
         err.response?.data?.message ||
         err.response?.data?.data ||
         err.message ||
         'Không thể tải dữ liệu kiểm soát truy cập. Vui lòng kiểm tra kết nối đến thiết bị Hikvision.';
-      setHikvisionError(errorMessage);
-      setHikvisionEvents([]);
+      setError(errorMessage);
+      setEvents([]);
     } finally {
-      setHikvisionLoading(false);
+      setLoading(false);
     }
   };
 
@@ -147,30 +133,113 @@ const HikvisionEventsPage: React.FC = () => {
     }
   };
 
-  const statCards = [
+  const summary = useMemo(() => {
+    return {
+      total: events.length,
+      doors: new Set(events.map((e) => e.doorNo)).size || 0,
+      readers: new Set(events.map((e) => e.cardReaderNo)).size || 0,
+      withEmployees: events.filter((e) => e.employeeNoString).length || 0,
+    };
+  }, [events]);
+
+  const exportCsv = () => {
+    if (events.length === 0) {
+      message.warning('Không có sự kiện để xuất');
+      return;
+    }
+    const rows = [
+      ['time', 'full_name', 'employee_no', 'door', 'reader', 'major', 'minor', 'card_no', 'device_ip'],
+      ...events.map((ev) => [
+        formatTime(ev.time),
+        (ev.user as any)?.full_name || '',
+        ev.employeeNoString || '',
+        ev.doorNo ?? '',
+        ev.cardReaderNo ?? '',
+        ev.major ?? '',
+        ev.minor ?? '',
+        ev.cardNo || '',
+        ev.remoteHostAddr || '',
+      ]),
+    ];
+    const csv = rows
+      .map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hikvision-events.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const columns = [
     {
-      title: 'Tổng số sự kiện',
-      value: hikvisionEvents.length,
-      color: '#1677ff',
-      bg: 'linear-gradient(135deg, #e6f4ff 0%, #f0f7ff 100%)',
+      title: 'Thời gian',
+      dataIndex: 'time',
+      key: 'time',
+      render: (t: string) => formatTime(t),
+      width: 180,
     },
     {
-      title: 'Cửa truy cập',
-      value: new Set(hikvisionEvents.map((e) => e.doorNo)).size || 0,
-      color: '#fa8c16',
-      bg: 'linear-gradient(135deg, #fff7e6 0%, #fff9f0 100%)',
+      title: 'Người quét',
+      key: 'user',
+      render: (_: any, record: AcsEventInfo) => {
+        if (record.user) {
+          return (
+            <Space direction="vertical" size={2}>
+              <Text strong>{record.user.full_name}</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {record.user.username} {record.employeeNoString ? `(${record.employeeNoString})` : ''}
+              </Text>
+            </Space>
+          );
+        }
+        return record.employeeNoString ? (
+          <Tag color="purple">Mã NV: {record.employeeNoString}</Tag>
+        ) : (
+          <Text type="secondary">N/A</Text>
+        );
+      },
+    },
+    {
+      title: 'Cửa',
+      dataIndex: 'doorNo',
+      key: 'doorNo',
+      width: 80,
+      render: (v: number) => <Tag color="blue">Cửa {v}</Tag>,
     },
     {
       title: 'Đầu đọc',
-      value: new Set(hikvisionEvents.map((e) => e.cardReaderNo)).size || 0,
-      color: '#52c41a',
-      bg: 'linear-gradient(135deg, #f6ffed 0%, #fbfff3 100%)',
+      dataIndex: 'cardReaderNo',
+      key: 'cardReaderNo',
+      width: 90,
+      render: (v: number) => <Tag color="green">Reader {v}</Tag>,
     },
     {
-      title: 'Sự kiện có nhân viên',
-      value: hikvisionEvents.filter((e) => e.employeeNoString).length || 0,
-      color: '#722ed1',
-      bg: 'linear-gradient(135deg, #f9f0ff 0%, #fbf5ff 100%)',
+      title: 'Loại sự kiện',
+      key: 'eventType',
+      width: 140,
+      render: (_: any, record: AcsEventInfo) => (
+        <Space wrap size={4}>
+          <Tag color="geekblue">Major {record.major}</Tag>
+          <Tag color="purple">Minor {record.minor}</Tag>
+        </Space>
+      ),
+    },
+    {
+      title: 'Thẻ',
+      dataIndex: 'cardNo',
+      key: 'cardNo',
+      width: 120,
+      render: (v: string) => (v ? <Tag color="gold">{v}</Tag> : <Text type="secondary">-</Text>),
+    },
+    {
+      title: 'Địa chỉ thiết bị',
+      dataIndex: 'remoteHostAddr',
+      key: 'remoteHostAddr',
+      width: 140,
+      render: (v: string) => <Text type="secondary">{v || 'N/A'}</Text>,
     },
   ];
 
@@ -197,158 +266,105 @@ const HikvisionEventsPage: React.FC = () => {
             allowClear={false}
             disabled={quickRange !== 'custom'}
           />
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={loadHikvisionEvents}
-            loading={hikvisionLoading}
-            type="primary"
-          >
+          <Button icon={<ReloadOutlined />} onClick={loadEvents} loading={loading} type="primary">
             Làm mới
+          </Button>
+          <Button icon={<DownloadOutlined />} onClick={exportCsv} disabled={events.length === 0}>
+            Export CSV
           </Button>
         </Space>
       }
     >
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          {statCards.map((card) => (
-            <Col xs={24} sm={12} md={12} lg={6} key={card.title}>
-              <Card
-                bordered={false}
-                style={{
-                  background: card.bg,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
-                  borderRadius: 12,
-                }}
-              >
-                <Space direction="vertical" size={8}>
-                  <Text type="secondary">{card.title}</Text>
-                  <Statistic value={card.value} valueStyle={{ color: card.color, fontSize: 26 }} />
-                </Space>
+      {/* Full-width wrapper to bù trừ padding mặc định 24px của layout */}
+      <div style={{ marginLeft: -24, marginRight: -24 }}>
+        <Card
+          bordered={false}
+          style={{
+            borderRadius: 16,
+            boxShadow: '0 20px 50px rgba(0,0,0,0.04)',
+            background: 'linear-gradient(135deg, #fdfefe 0%, #f4f7fb 100%)',
+            marginBottom: 16,
+          }}
+        >
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} md={6}>
+              <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+                <Statistic
+                  title="Tổng sự kiện"
+                  value={summary.total}
+                  prefix={<LockOutlined />}
+                  valueStyle={{ color: '#1677ff', fontWeight: 700 }}
+                />
               </Card>
             </Col>
-          ))}
-        </Row>
+            <Col xs={24} sm={12} md={6}>
+              <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+                <Statistic
+                  title="Cửa truy cập"
+                  value={summary.doors}
+                  prefix={<ApartmentOutlined />}
+                  valueStyle={{ color: '#fa8c16', fontWeight: 700 }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+                <Statistic
+                  title="Đầu đọc"
+                  value={summary.readers}
+                  prefix={<ClusterOutlined />}
+                  valueStyle={{ color: '#52c41a', fontWeight: 700 }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+                <Statistic
+                  title="Sự kiện có nhân viên"
+                  value={summary.withEmployees}
+                  prefix={<TeamOutlined />}
+                  valueStyle={{ color: '#722ed1', fontWeight: 700 }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </Card>
 
         <Card
           bordered={false}
-          style={{ boxShadow: '0 12px 32px rgba(0,0,0,0.06)', borderRadius: 12 }}
+          style={{ borderRadius: 16, boxShadow: '0 12px 32px rgba(0,0,0,0.06)' }}
+          bodyStyle={{ padding: 0 }}
         >
-          {hikvisionLoading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '48px' }}>
               <Spin size="large" />
             </div>
-          ) : hikvisionError ? (
+          ) : error ? (
             <Alert
-              message="Lỗi"
-              description={hikvisionError}
+              message="Lỗi tải dữ liệu"
+              description={error}
               type="error"
               showIcon
               action={
-                <Button onClick={loadHikvisionEvents} size="small">
+                <Button onClick={loadEvents} size="small">
                   Thử lại
                 </Button>
               }
             />
-          ) : hikvisionEvents.length > 0 ? (
-            <>
-              <List
-                itemLayout="vertical"
-                dataSource={hikvisionEvents.slice(
-                  (hikvisionCurrentPage - 1) * hikvisionPageSize,
-                  hikvisionCurrentPage * hikvisionPageSize
-                )}
-                renderItem={(event, index) => {
-                  const globalIndex = (hikvisionCurrentPage - 1) * hikvisionPageSize + index;
-                  return (
-                    <List.Item
-                      style={{
-                        background: '#f9fbff',
-                        borderRadius: 12,
-                        padding: 16,
-                        border: '1px solid #eef1f7',
-                        marginBottom: 12,
-                      }}
-                    >
-                      <List.Item.Meta
-                        avatar={
-                          <div
-                            style={{
-                              width: 38,
-                              height: 38,
-                              borderRadius: 10,
-                              display: 'grid',
-                              placeItems: 'center',
-                              background:
-                                'linear-gradient(135deg, rgba(22,119,255,0.15), rgba(99,102,241,0.18))',
-                              color: '#1677ff',
-                            }}
-                          >
-                            <LockOutlined />
-                          </div>
-                        }
-                        title={
-                          <Space wrap size={8} style={{ fontWeight: 600 }}>
-                            <span>Sự kiện #{globalIndex + 1}</span>
-                            <Tag color="blue">Cửa {event.doorNo}</Tag>
-                            <Tag color="green">Reader {event.cardReaderNo}</Tag>
-                            <Tag color="geekblue">Major {event.major}</Tag>
-                            <Tag color="purple">Minor {event.minor}</Tag>
-                          </Space>
-                        }
-                        description={
-                          <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                            <Space align="center" size={12} wrap>
-                              <Text type="secondary">
-                                <strong>Thời gian:</strong> {formatEventTime(event.time)}
-                              </Text>
-                              <Tooltip title="Địa chỉ thiết bị">
-                                <Tag color="default">
-                                  <strong>Địa chỉ:</strong> {event.remoteHostAddr || 'N/A'}
-                                </Tag>
-                              </Tooltip>
-                            </Space>
-                            <Space wrap>
-                              {event.user ? (
-                                <Tag color="purple">
-                                  <strong>Người quét:</strong> {event.user.full_name} ({event.user.username})
-                                </Tag>
-                              ) : event.employeeNoString ? (
-                                <Tag color="purple">
-                                  <strong>Mã NV:</strong> {event.employeeNoString}
-                                </Tag>
-                              ) : null}
-                              {event.cardNo && (
-                                <Tag color="gold">
-                                  <strong>Thẻ:</strong> {event.cardNo}
-                                </Tag>
-                              )}
-                              {event.netUser && (
-                                <Tag color="cyan">
-                                  <strong>Người dùng:</strong> {event.netUser}
-                                </Tag>
-                              )}
-                            </Space>
-                          </Space>
-                        }
-                      />
-                    </List.Item>
-                  );
-                }}
-              />
-              <div style={{ marginTop: '16px', textAlign: 'right' }}>
-                <Pagination
-                  current={hikvisionCurrentPage}
-                  pageSize={hikvisionPageSize}
-                  total={hikvisionEvents.length}
-                  onChange={(page) => setHikvisionCurrentPage(page)}
-                  showSizeChanger={false}
-                  showTotal={(total, range) => `${range[0]}-${range[1]} của ${total} sự kiện`}
-                />
-              </div>
-            </>
+          ) : events.length === 0 ? (
+            <Empty description="Chưa có sự kiện kiểm soát truy cập nào" style={{ padding: 32 }} />
           ) : (
-            <Empty description="Chưa có sự kiện kiểm soát truy cập nào" />
+            <Table
+              columns={columns}
+              dataSource={events}
+              rowKey={(record, idx) => `${record.time}-${idx}`}
+              pagination={{ pageSize: 10, showSizeChanger: false }}
+              scroll={{ x: 900 }}
+              style={{ borderRadius: 16 }}
+            />
           )}
         </Card>
+      </div>
     </HeaderDepartmentLayout>
   );
 };
