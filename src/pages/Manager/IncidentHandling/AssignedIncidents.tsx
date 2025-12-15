@@ -324,16 +324,6 @@ const AssignedIncidents: React.FC = () => {
                 Tiến độ
               </Button>
             </Tooltip>
-            <Tooltip title="Cập nhật tiến độ">
-              <Button 
-                type="link" 
-                size="small" 
-                icon={<InfoCircleOutlined />}
-                onClick={() => navigate(`/manager/incidents/${record._id}/progress`)}
-              >
-                Cập nhật
-              </Button>
-            </Tooltip>
             <Tooltip title="Báo cáo vượt cấp sự cố">
               <Button 
                 type="link" 
