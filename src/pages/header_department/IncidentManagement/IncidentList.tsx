@@ -391,6 +391,16 @@ const IncidentList: React.FC = () => {
                 Tiến độ
               </Button>
             </Tooltip>
+            <Tooltip title="Cập nhật tiến độ">
+              <Button 
+                type="link" 
+                size="small" 
+                icon={<InfoCircleOutlined />}
+                href={`/header-department/incident-management/${record._id}/progress`}
+              >
+                Cập nhật
+              </Button>
+            </Tooltip>
             <Tooltip title="Đóng sự cố">
               <Button 
                 type="link" 
