@@ -277,9 +277,9 @@ const HikvisionEventsPage: React.FC = () => {
     >
       {/* Full-width wrapper to bù trừ padding mặc định 24px của layout */}
       <div style={{ marginLeft: -24, marginRight: -24 }}>
-        <Card
-          bordered={false}
-          style={{
+              <Card
+                bordered={false}
+                style={{
             borderRadius: 16,
             boxShadow: '0 20px 50px rgba(0,0,0,0.04)',
             background: 'linear-gradient(135deg, #fdfefe 0%, #f4f7fb 100%)',
@@ -327,7 +327,7 @@ const HikvisionEventsPage: React.FC = () => {
                 />
               </Card>
             </Col>
-          </Row>
+        </Row>
         </Card>
 
         <Card
