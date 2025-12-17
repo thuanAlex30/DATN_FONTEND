@@ -10,8 +10,12 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
+<<<<<<< HEAD
 import ProfileModal from '../ProfileModal/ProfileModal';
 import SettingsModal from '../SettingsModal/SettingsModal';
+=======
+import { WeatherWidget, EquipmentSuggestion } from '../Weather';
+>>>>>>> 96f4b44d44d14fb0ec6d82d3fcd665fc6dcd26c8
 import styles from './HeaderDepartmentHeader.module.css';
 
 const { Header } = Layout;
@@ -108,6 +112,9 @@ const HeaderDepartmentHeader: React.FC<HeaderDepartmentHeaderProps> = ({
 
         <div className={styles.headerRight}>
           {extra && <div className={styles.headerExtra}>{extra}</div>}
+
+          <WeatherWidget compact />
+          <EquipmentSuggestion compact />
 
           {showUserInfo && user && (
             <Dropdown

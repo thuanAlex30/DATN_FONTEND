@@ -20,6 +20,7 @@ import projectCommunicationReducer from './slices/projectCommunicationSlice';
 import siteReducer from './slices/siteSlice';
 import siteAreaReducer from './slices/siteAreaSlice';
 import workLocationReducer from './slices/workLocationSlice';
+import weatherReducer from './slices/weatherSlice';
 
 // Gộp tất cả reducers
 const rootReducer = combineReducers({
@@ -41,6 +42,7 @@ const rootReducer = combineReducers({
   site: siteReducer,
   siteArea: siteAreaReducer,
   workLocation: workLocationReducer,
+  weather: weatherReducer,
 });
 
 // Cấu hình redux-persist

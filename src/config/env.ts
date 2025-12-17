@@ -27,6 +27,9 @@ export const ENV = {
   // Logging
   LOG_LEVEL: import.meta.env.VITE_LOG_LEVEL || 'info',
   ENABLE_CONSOLE_LOGS: import.meta.env.VITE_ENABLE_CONSOLE_LOGS !== 'false',
+  WEATHER_REFRESH_SECONDS: Number(import.meta.env.VITE_WEATHER_REFRESH_SECONDS) || 600,
+  DEFAULT_WEATHER_LAT: Number(import.meta.env.VITE_DEFAULT_WEATHER_LAT) || 16.0471,
+  DEFAULT_WEATHER_LON: Number(import.meta.env.VITE_DEFAULT_WEATHER_LON) || 108.2068,
   
   // Kafka UI
   KAFKA_UI_URL: import.meta.env.VITE_KAFKA_UI_URL || 'http://localhost:8080',

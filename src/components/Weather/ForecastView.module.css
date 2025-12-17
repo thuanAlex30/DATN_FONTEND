@@ -1,0 +1,30 @@
+.forecastContainer {
+  max-width: 800px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.forecastItem {
+  margin-bottom: 8px;
+}
+
+.todayCard {
+  border: 2px solid #1890ff;
+  background: #f0f8ff;
+}
+
+.sunIcon {
+  color: #faad14;
+  font-size: 20px;
+}
+
+.cloudIcon {
+  color: #1890ff;
+  font-size: 20px;
+}
+
+.thunderIcon {
+  color: #722ed1;
+  font-size: 20px;
+}
+
