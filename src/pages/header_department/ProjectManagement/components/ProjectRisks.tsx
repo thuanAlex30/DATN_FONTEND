@@ -14,7 +14,8 @@ import {
   Tooltip,
   Modal,
   message,
-  Progress
+  Progress,
+  Image
 } from 'antd';
 import { projectRiskService } from '../../../../services/projectRiskService';
 import dayjs from 'dayjs';
@@ -30,7 +31,8 @@ import {
   ReloadOutlined,
   EyeOutlined,
   HistoryOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  CheckCircleOutlined
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import type { RootState, AppDispatch } from '../../../../store';
@@ -57,6 +59,7 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
   const [selectedRisk, setSelectedRisk] = useState<ProjectRisk | null>(null);
   const [riskProgressLogs, setRiskProgressLogs] = useState<any[]>([]);
   const [loadingRiskLogs, setLoadingRiskLogs] = useState(false);
+  const [confirmingRisk, setConfirmingRisk] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -130,6 +133,32 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
       } finally {
         setLoadingRiskLogs(false);
       }
+    }
+  };
+
+  const handleConfirmRiskComplete = async () => {
+    if (!selectedRisk) return;
+    
+    const riskId = selectedRisk._id || selectedRisk.id;
+    if (!riskId) {
+      message.error('Không tìm thấy ID rủi ro');
+      return;
+    }
+
+    try {
+      setConfirmingRisk(true);
+      await projectRiskService.updateRiskStatus(riskId, 'RESOLVED');
+      message.success('Đã xác nhận hoàn thành rủi ro');
+      setViewModalVisible(false);
+      setSelectedRisk(null);
+      setRiskProgressLogs([]);
+      // Refresh risks list
+      dispatch(fetchProjectRisks(projectId));
+    } catch (error: any) {
+      console.error('Error confirming risk complete:', error);
+      message.error(error?.response?.data?.message || 'Không thể xác nhận hoàn thành rủi ro');
+    } finally {
+      setConfirmingRisk(false);
     }
   };
 
@@ -485,7 +514,27 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
             setRiskProgressLogs([]);
           }}>
             Đóng
-          </Button>
+          </Button>,
+          (() => {
+            if (!selectedRisk) return null;
+            const status = String(selectedRisk.status || '').toUpperCase();
+            const isResolved = status === 'RESOLVED' || status === 'ĐÃ GIẢI QUYẾT' || status === 'DA GIAI QUYET';
+            
+            // Nút luôn hiển thị (không cần check progress)
+            return (
+              <Button
+                key="confirm"
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                onClick={handleConfirmRiskComplete}
+                loading={confirmingRisk}
+                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                disabled={isResolved}
+              >
+                {isResolved ? 'Đã đóng rủi ro' : 'Xác nhận hoàn thành'}
+              </Button>
+            );
+          })()
         ]}
         width={800}
       >
@@ -605,6 +654,27 @@ const ProjectRisks: React.FC<ProjectRisksProps> = ({ projectId }) => {
                         {log.hours_worked > 0 && (
                           <div>
                             <Text type="secondary">Giờ làm việc: {log.hours_worked}h</Text>
+                          </div>
+                        )}
+                        {log.images && Array.isArray(log.images) && log.images.length > 0 && (
+                          <div style={{ marginTop: '12px' }}>
+                            <Text strong style={{ display: 'block', marginBottom: '8px', color: '#1890ff' }}>
+                              Hình ảnh báo cáo:
+                            </Text>
+                            <Row gutter={[8, 8]}>
+                              {log.images.map((imageUrl: string, imgIdx: number) => (
+                                <Col key={imgIdx} xs={12} sm={8} md={6}>
+                                  <Image
+                                    src={imageUrl}
+                                    alt={`report-${index}-${imgIdx}`}
+                                    style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '4px' }}
+                                    preview={{
+                                      mask: 'Xem ảnh'
+                                    }}
+                                  />
+                                </Col>
+                              ))}
+                            </Row>
                           </div>
                         )}
                       </Space>

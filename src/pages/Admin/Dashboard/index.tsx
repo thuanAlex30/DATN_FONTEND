@@ -125,15 +125,26 @@ const DashboardPage: React.FC = () => {
                     const projects = results[1].value;
                     // projects is ApiResponse<Project[]> with { success, data, message }
                     projectsList = Array.isArray(projects?.data) ? projects.data : [];
+                    console.log('📊 [Dashboard] Projects loaded:', {
+                        total: projectsList.length,
+                        projects: projectsList.map((p: any) => ({
+                            id: p.id || p._id,
+                            name: p.project_name,
+                            status: p.status
+                        }))
+                    });
                 } else {
                     console.error('Error fetching projects:', results[1].reason);
                 }
-                const activeProjects = projectsList.filter((p: any) => 
-                    p.status === 'ACTIVE' || p.status === 'IN_PROGRESS' || p.status === 'active' || p.status === 'in_progress'
-                ).length;
-                const completedProjects = projectsList.filter((p: any) => 
-                    p.status === 'COMPLETED' || p.status === 'completed'
-                ).length;
+                // Backend enum: ['PLANNING', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'ON_HOLD']
+                const activeProjects = projectsList.filter((p: any) => {
+                    const status = p.status?.toUpperCase();
+                    return status === 'ACTIVE';
+                }).length;
+                const completedProjects = projectsList.filter((p: any) => {
+                    const status = p.status?.toUpperCase();
+                    return status === 'COMPLETED';
+                }).length;
 
                 // Parse training stats from API
                 let trainingData = { total: 0, completed: 0, completionRate: 0 };
