@@ -14,7 +14,7 @@ import {
 } from 'antd';
 import { motion } from 'framer-motion';
 import projectTaskService from '../../../../services/projectTaskService';
-import projectService from '../../../../services/projectService';
+import userService from '../../../../services/userService';
 import dayjs from 'dayjs';
 // import projectPhaseService, { type ProjectPhase } from '../../../../services/projectPhaseService';
 import type { CreateTaskData, UpdateTaskData } from '../../../../types/projectTask';
@@ -72,32 +72,31 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({
   const loadUsers = async () => {
     try {
       setLoadingUsers(true);
-      // Load available employees để chọn làm người phụ trách
-      const employeesResponse = await projectService.getAvailableEmployees();
-      
-      if (employeesResponse.success && employeesResponse.data) {
-        const employeesData = Array.isArray(employeesResponse.data) 
-          ? employeesResponse.data 
-          : (employeesResponse.data.data || []);
-        
-        if (Array.isArray(employeesData) && employeesData.length > 0) {
-          const mappedUsers = employeesData.map((employee: any) => ({
-            id: employee.id || employee._id,
-            full_name: employee.full_name || employee.name || employee.fullName || '',
-            username: employee.username || employee.email || '',
-            email: employee.email || ''
-          }));
-          setUsers(mappedUsers);
-        } else {
-          setUsers([]);
-        }
-      } else {
-        console.error('Failed to load employees:', employeesResponse.message);
-        setUsers([]);
-      }
+
+      // Load all users và lọc chỉ những user có role là manager
+      const allUsers = await userService.getAllUsers();
+      const filteredManagers = allUsers.filter((u: any) => {
+        const roleCode = u.role?.role_code?.toLowerCase();
+        const roleName = u.role?.role_name?.toLowerCase();
+        const roleLevel = u.role?.role_level;
+
+        if (roleCode) return roleCode === 'manager';
+        if (roleName) return roleName.includes('manager') || roleName === 'department manager';
+        if (roleLevel !== undefined && roleLevel !== null) return roleLevel === 70;
+        return false;
+      });
+
+      const mappedUsers = filteredManagers.map((m: any) => ({
+        id: m.id || m._id,
+        full_name: m.full_name || m.name || m.fullName || '',
+        username: m.username || m.email || '',
+        email: m.email || ''
+      }));
+
+      setUsers(mappedUsers);
     } catch (error) {
-      console.error('Error loading employees:', error);
-      message.error('Lỗi khi tải danh sách nhân viên');
+      console.error('Error loading managers:', error);
+      message.error('Lỗi khi tải danh sách manager');
       setUsers([]);
     } finally {
       setLoadingUsers(false);

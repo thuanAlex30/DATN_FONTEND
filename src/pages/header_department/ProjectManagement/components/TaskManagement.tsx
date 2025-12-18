@@ -61,6 +61,14 @@ interface ProjectTask {
   dependencies: string[];
   tags: string[];
   notes: string;
+  // backend compatibility (optional)
+  _id?: string;
+  planned_start_date?: string;
+  planned_end_date?: string;
+  planned_duration_hours?: number;
+  actual_duration_hours?: number;
+  responsible_user_id?: any;
+  responsible_user?: any;
 }
 
 const TaskManagement: React.FC<TaskManagementProps> = ({ projectId }) => {
@@ -73,6 +81,79 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId }) => {
   const [taskProgressLogs, setTaskProgressLogs] = useState<any[]>([]);
   const [loadingTaskLogs, setLoadingTaskLogs] = useState(false);
 
+  const normalizeStatus = (statusRaw: any): string => {
+    const s = String(statusRaw || '').trim();
+    const upper = s.toUpperCase();
+
+    // Backend statuses
+    if (upper === 'PENDING') return 'not_started';
+    if (upper === 'IN_PROGRESS') return 'in_progress';
+    if (upper === 'COMPLETED') return 'completed';
+    if (upper === 'ON_HOLD') return 'on_hold';
+    if (upper === 'CANCELLED') return 'cancelled';
+
+    // Already normalized (frontend)
+    return s || 'not_started';
+  };
+
+  const normalizePriority = (priorityRaw: any): string => {
+    const p = String(priorityRaw || '').trim();
+    const upper = p.toUpperCase();
+
+    if (upper === 'LOW') return 'low';
+    if (upper === 'MEDIUM') return 'medium';
+    if (upper === 'HIGH') return 'high';
+    if (upper === 'URGENT') return 'critical';
+    if (upper === 'CRITICAL') return 'critical';
+
+    return p || 'medium';
+  };
+
+  const normalizeAssignedTo = (task: any): string => {
+    const responsible = task?.responsible_user_id || task?.responsible_user;
+    if (responsible && typeof responsible === 'object') {
+      return responsible.full_name || responsible.name || responsible.email || 'N/A';
+    }
+
+    const assigned = task?.assigned_to;
+    if (assigned && typeof assigned === 'object') {
+      return assigned.full_name || assigned.name || assigned.email || 'N/A';
+    }
+
+    if (typeof assigned === 'string' && assigned.trim()) return assigned;
+    return 'N/A';
+  };
+
+  const normalizeTask = (t: any): ProjectTask => {
+    const startDate = t.start_date || t.planned_start_date || t.planned_start || t.plannedStartDate || '';
+    const dueDate = t.due_date || t.planned_end_date || t.planned_end || t.plannedEndDate || '';
+
+    return {
+      id: t.id || t._id || '',
+      _id: t._id,
+      task_name: t.task_name || '',
+      description: t.description || '',
+      task_type: t.task_type || '',
+      priority: normalizePriority(t.priority),
+      status: normalizeStatus(t.status),
+      assigned_to: normalizeAssignedTo(t),
+      start_date: startDate,
+      due_date: dueDate,
+      estimated_hours: Number(t.estimated_hours ?? t.planned_duration_hours ?? 0) || 0,
+      actual_hours: Number(t.actual_hours ?? t.actual_duration_hours ?? 0) || 0,
+      progress_percentage: Number(t.progress_percentage ?? t.progress ?? 0) || 0,
+      dependencies: Array.isArray(t.dependencies) ? t.dependencies : [],
+      tags: Array.isArray(t.tags) ? t.tags : [],
+      notes: t.notes || '',
+      planned_start_date: t.planned_start_date,
+      planned_end_date: t.planned_end_date,
+      planned_duration_hours: t.planned_duration_hours,
+      actual_duration_hours: t.actual_duration_hours,
+      responsible_user_id: t.responsible_user_id,
+      responsible_user: t.responsible_user
+    };
+  };
+
   // Load tasks
   const loadTasks = async () => {
     if (!projectId) return;
@@ -80,7 +161,9 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId }) => {
     try {
       setLoading(true);
       const response = await projectTaskService.getProjectTasks(projectId);
-      setTasks(response.data || []);
+      const raw = response.data || [];
+      const normalized = Array.isArray(raw) ? raw.map(normalizeTask) : [];
+      setTasks(normalized);
     } catch (error: any) {
       console.error('Error loading tasks:', error);
       message.error('Không thể tải danh sách nhiệm vụ');
@@ -259,28 +342,42 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId }) => {
       title: 'Trạng Thái',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {status === 'not_started' && 'Chưa bắt đầu'}
-          {status === 'in_progress' && 'Đang thực hiện'}
-          {status === 'completed' && 'Hoàn thành'}
-          {status === 'on_hold' && 'Tạm dừng'}
-          {status === 'cancelled' && 'Hủy bỏ'}
-        </Tag>
-      )
+      render: (status: string) => {
+        const s = normalizeStatus(status);
+        const label =
+          s === 'not_started' ? 'Chưa bắt đầu' :
+          s === 'in_progress' ? 'Đang thực hiện' :
+          s === 'completed' ? 'Hoàn thành' :
+          s === 'on_hold' ? 'Tạm dừng' :
+          s === 'cancelled' ? 'Hủy bỏ' :
+          'Không xác định';
+
+        return (
+          <Tag color={getStatusColor(s)}>
+            {label}
+          </Tag>
+        );
+      }
     },
     {
       title: 'Ưu Tiên',
       dataIndex: 'priority',
       key: 'priority',
-      render: (priority: string) => (
-        <Tag color={getPriorityColor(priority)}>
-          {priority === 'low' && 'Thấp'}
-          {priority === 'medium' && 'Trung bình'}
-          {priority === 'high' && 'Cao'}
-          {priority === 'critical' && 'Nghiêm trọng'}
-        </Tag>
-      )
+      render: (priority: string) => {
+        const p = normalizePriority(priority);
+        const label =
+          p === 'low' ? 'Thấp' :
+          p === 'medium' ? 'Trung bình' :
+          p === 'high' ? 'Cao' :
+          p === 'critical' ? 'Nghiêm trọng' :
+          'Không xác định';
+
+        return (
+          <Tag color={getPriorityColor(p)}>
+            {label}
+          </Tag>
+        );
+      }
     },
     {
       title: 'Người Thực Hiện',
@@ -310,6 +407,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId }) => {
       dataIndex: 'due_date',
       key: 'due_date',
       render: (date: string) => {
+        if (!date) return <Text type="secondary">N/A</Text>;
         const isOverdue = dayjs(date).isBefore(dayjs());
         const isToday = dayjs(date).isSame(dayjs(), 'day');
         

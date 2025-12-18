@@ -19,7 +19,8 @@ import {
   Statistic,
   Badge,
   Modal,
-  message
+  message,
+  Image
 } from 'antd';
 import {
   PlusOutlined,
@@ -224,6 +225,14 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
     }
   };
 
+  const handleEditMilestone = (milestone: any) => {
+    // TODO: Implement edit milestone functionality
+    // For now, show a message that editing is not yet fully implemented
+    message.info('Chức năng chỉnh sửa milestone đang được phát triển. Vui lòng sử dụng chức năng xem chi tiết.');
+    // Alternatively, you can open the view modal for now
+    // handleViewMilestone(milestone);
+  };
+
   const menu = (milestoneId: string, milestone: any) => [
     {
       key: 'view',
@@ -346,7 +355,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => setCreateModalVisible(true)}
+                  onClick={() => setShowCreateModal(true)}
                   title="Tạo milestone mới"
                 >
                   Tạo milestone đầu tiên
@@ -362,9 +371,11 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
             const typeInfo = getMilestoneTypeInfo(milestone.milestone_type);
             const progress = milestone.progress || getProgressFromStatus(milestone.status);
             
+            const milestoneId = milestone.id || (milestone as any)._id;
+            
             return (
               <Col 
-                key={milestone._id} 
+                key={milestoneId} 
                 xs={24} 
                 sm={24} 
                 md={selectedView === 'grid' ? 12 : 24} 
@@ -374,7 +385,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                 <Card
                   hoverable
                   actions={[
-                    <Tooltip key={`edit-${milestone._id}`} title="Chỉnh sửa">
+                    <Tooltip key={`edit-${milestoneId}`} title="Chỉnh sửa">
                       <Button 
                         type="text" 
                         icon={<EditOutlined />} 
@@ -382,7 +393,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                         title="Chỉnh sửa milestone"
                       />
                     </Tooltip>,
-                    <Dropdown key={`more-${milestone._id}`} menu={{ items: menu(milestone._id) }} trigger={['click']}>
+                    <Dropdown key={`more-${milestoneId}`} menu={{ items: menu(milestoneId, milestone) }} trigger={['click']}>
                       <Button type="text" icon={<MoreOutlined />} />
                     </Dropdown>
                   ]}
@@ -400,15 +411,15 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                       />
                     }
                     title={
-                      <Space key={`title-${milestone._id}`}>
-                        <Text key={`text-${milestone._id}`} strong>{milestone.milestone_name}</Text>
+                      <Space>
+                        <Text strong>{milestone.milestone_name}</Text>
                         {milestone.is_critical && (
-                          <Badge key={`critical-badge-${milestone._id}`} status="error" text="Quan trọng" />
+                          <Badge status="error" text="Quan trọng" />
                         )}
                       </Space>
                     }
                     description={
-                      <Space key={`desc-${milestone._id}`} direction="vertical" size="small" style={{ width: '100%' }}>
+                      <Space direction="vertical" size="small" style={{ width: '100%' }}>
                         <Paragraph 
                           ellipsis={{ rows: 2 }} 
                           style={{ margin: 0, color: '#8c8c8c' }}
@@ -416,27 +427,31 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                           {milestone.description || 'Không có mô tả chi tiết'}
                         </Paragraph>
                         
-                        <Space key={`details-${milestone._id}`} direction="vertical" size="small" style={{ width: '100%' }}>
-                          <Space key={`planned-date-${milestone._id}`}>
+                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                          <Space>
                             <CalendarOutlined style={{ color: '#1890ff' }} />
                             <Text type="secondary" style={{ fontSize: '12px' }}>
                               Ngày dự kiến: {formatDate(milestone.planned_date)}
                             </Text>
                           </Space>
                           
-                          {milestone.actual_date && (
-                            <Space key={`actual-date-${milestone._id}`}>
+                          {(milestone as any).actual_date && (
+                            <Space>
                               <CheckCircleOutlined style={{ color: '#52c41a' }} />
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Hoàn thành: {formatDate(milestone.actual_date)}
+                                Hoàn thành: {formatDate((milestone as any).actual_date)}
                               </Text>
                             </Space>
                           )}
                           
-                          <Space key={`responsible-${milestone._id}`}>
+                          <Space>
                             <UserOutlined style={{ color: '#1890ff' }} />
                             <Text type="secondary" style={{ fontSize: '12px' }}>
-                              Phụ trách: {(milestone as any).responsible_user?.full_name || 'Chưa phân công'}
+                              Phụ trách: {
+                                typeof (milestone as any).responsible_user_id === 'object'
+                                  ? (milestone as any).responsible_user_id?.full_name || 'Chưa phân công'
+                                  : (milestone as any).responsible_user?.full_name || 'Chưa phân công'
+                              }
                             </Text>
                           </Space>
                         </Space>
@@ -569,7 +584,7 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                   <Spin size="small" />
                 </div>
               ) : milestoneProgressLogs.length === 0 ? (
-                <Empty description="Chưa có báo cáo nào từ Manager" size="small" />
+                <Empty description="Chưa có báo cáo nào từ Manager" />
               ) : (
                 <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                   {milestoneProgressLogs.map((log: any, index: number) => (
@@ -609,6 +624,27 @@ const ProjectMilestones: React.FC<ProjectMilestonesProps> = ({ projectId }) => {
                         {log.hours_worked > 0 && (
                           <div>
                             <Text type="secondary">Giờ làm việc: {log.hours_worked}h</Text>
+                          </div>
+                        )}
+                        {log.images && Array.isArray(log.images) && log.images.length > 0 && (
+                          <div style={{ marginTop: '12px' }}>
+                            <Text strong style={{ display: 'block', marginBottom: '8px', color: '#1890ff' }}>
+                              Hình ảnh báo cáo:
+                            </Text>
+                            <Row gutter={[8, 8]}>
+                              {log.images.map((imageUrl: string, imgIdx: number) => (
+                                <Col key={imgIdx} xs={12} sm={8} md={6}>
+                                  <Image
+                                    src={imageUrl}
+                                    alt={`report-${index}-${imgIdx}`}
+                                    style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '4px' }}
+                                    preview={{
+                                      mask: 'Xem ảnh'
+                                    }}
+                                  />
+                                </Col>
+                              ))}
+                            </Row>
                           </div>
                         )}
                       </Space>

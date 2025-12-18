@@ -203,10 +203,32 @@ export const projectTaskService = {
     }
   },
 
-  // Get all tasks
-  getAllTasks: async (): Promise<{ data: ProjectTask[]; success: boolean; message?: string }> => {
+  // Get all tasks (optionally filtered)
+  getAllTasks: async (filters?: {
+    project_id?: string;
+    user_id?: string;
+    responsible_user_id?: string;
+    assigned_to?: string;
+    status?: string;
+    priority?: string;
+    task_name?: string;
+    task_code?: string;
+  }): Promise<{ data: ProjectTask[]; success: boolean; message?: string }> => {
     try {
-      const response = await api.get(`${API_BASE}/tasks`);
+      const params = new URLSearchParams();
+      if (filters?.project_id) params.append('project_id', filters.project_id);
+      if (filters?.user_id) params.append('user_id', filters.user_id);
+      if (filters?.responsible_user_id) params.append('responsible_user_id', filters.responsible_user_id);
+      if (filters?.assigned_to) params.append('assigned_to', filters.assigned_to);
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.priority) params.append('priority', filters.priority);
+      if (filters?.task_name) params.append('task_name', filters.task_name);
+      if (filters?.task_code) params.append('task_code', filters.task_code);
+
+      const qs = params.toString();
+      const endpoint = qs ? `${API_BASE}/tasks?${qs}` : `${API_BASE}/tasks`;
+
+      const response = await api.get(endpoint);
       return { data: response.data.data || [], success: true };
     } catch (error) {
       console.error('Error fetching all tasks:', error);
@@ -217,10 +239,9 @@ export const projectTaskService = {
   // Get tasks assigned to a specific user - Updated to use projectId parameter
   getAssignedTasks: async (userId: string, projectId?: string): Promise<{ data: ProjectTask[]; success: boolean; message?: string }> => {
     try {
-      let endpoint = `${API_BASE}/tasks/assigned/${userId}`;
-      if (projectId) {
-        endpoint = `${API_BASE}/project/${projectId}/tasks/assigned/${userId}`;
-      }
+      const endpoint = projectId
+        ? `${API_BASE}/project/${projectId}/tasks/assigned/${userId}`
+        : `${API_BASE}/tasks?user_id=${encodeURIComponent(userId)}`;
       const response = await api.get(endpoint);
       return { data: response.data.data || [], success: true };
     } catch (error) {

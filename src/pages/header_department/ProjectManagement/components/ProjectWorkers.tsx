@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Table, Alert, Typography, Space, Tag, Upload, Button, message } from 'antd';
 import { UserOutlined, TeamOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
-import { useSelector } from 'react-redux';
 import projectService from '../../../../services/projectService';
 import userService from '../../../../services/userService';
-import type { RootState } from '../../../../store';
 
 const { Title, Text } = Typography;
 
@@ -17,11 +15,7 @@ const ProjectWorkers: React.FC<ProjectWorkersProps> = ({ projectId }) => {
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
 
-  const tenantFallbackName =
-    useSelector((state: RootState) => state.auth.user?.tenant?.name) ||
-    useSelector((state: RootState) => state.auth.user?.tenant?.tenant_name) ||
-    useSelector((state: RootState) => state.auth.user?.tenant?.company_name) ||
-    'N/A';
+  const tenantFallbackName = 'N/A';
 
   const loadAssignments = useCallback(async () => {
     try {
@@ -199,7 +193,7 @@ const ProjectWorkers: React.FC<ProjectWorkersProps> = ({ projectId }) => {
                 key: 'role_in_project',
                 width: 180,
                 render: (role: string) => (
-                  <Tag color="geekblue">{role || 'WORKER'}</Tag>
+                  <Tag color="geekblue">{role || 'Công nhân làm việc'}</Tag>
                 ),
               },
             ]}
