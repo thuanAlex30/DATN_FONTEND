@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../../../services/api';
+import { Modal, Card, Button, Form, Input, Space, Typography, Spin, Empty, Row, Col, Popconfirm, message } from 'antd';
+import { PlusOutlined, EyeOutlined, DeleteOutlined, CloseOutlined } from '@ant-design/icons';
+import api from '../../../../services/api';
 
 interface Course {
   _id: string;
@@ -16,8 +18,9 @@ interface QuestionBank {
   _id: string;
   name: string;
   description: string;
-  course_id: string;
-  questions: any[];
+  course_id: string | { _id: string; course_name: string };
+  questions?: any[];
+  questionCount?: number;
   created_at: string;
 }
 
@@ -45,12 +48,24 @@ const QuestionBankModal: React.FC<QuestionBankModalProps> = ({ course, onClose }
     setLoading(true);
     try {
       const response = await api.get(`/training/question-banks/course/${course._id}`);
-      // Ensure we always have an array
-      const data = response.data?.data || response.data || [];
+      console.log('Question banks response:', response);
+      // Handle different response structures
+      let data = [];
+      if (response.data) {
+        if (response.data.data) {
+          data = response.data.data;
+        } else if (Array.isArray(response.data)) {
+          data = response.data;
+        } else if (response.data.success && response.data.data) {
+          data = response.data.data;
+        }
+      }
       setQuestionBanks(Array.isArray(data) ? data : []);
-    } catch (error) {
+      console.log('Question banks set:', Array.isArray(data) ? data : []);
+    } catch (error: any) {
       console.error('Error fetching question banks:', error);
-      setQuestionBanks([]); // Set empty array on error
+      message.error(error.response?.data?.message || 'Không thể tải danh sách ngân hàng câu hỏi');
+      setQuestionBanks([]);
     } finally {
       setLoading(false);
     }
@@ -67,23 +82,25 @@ const QuestionBankModal: React.FC<QuestionBankModalProps> = ({ course, onClose }
         course_id: course._id,
       });
 
+      message.success('Tạo ngân hàng câu hỏi thành công');
       setNewBankName('');
       setNewBankDescription('');
       setShowCreateForm(false);
       fetchQuestionBanks();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating question bank:', error);
+      message.error(error.response?.data?.message || 'Không thể tạo ngân hàng câu hỏi');
     }
   };
 
   const handleDeleteBank = async (bankId: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa ngân hàng câu hỏi này?')) return;
-
     try {
       await api.delete(`/training/question-banks/${bankId}`);
+      message.success('Xóa ngân hàng câu hỏi thành công');
       fetchQuestionBanks();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting question bank:', error);
+      message.error(error.response?.data?.message || 'Không thể xóa ngân hàng câu hỏi');
     }
   };
 
@@ -92,110 +109,146 @@ const QuestionBankModal: React.FC<QuestionBankModalProps> = ({ course, onClose }
   }
 
   return (
-    <div className="modal active">
-      <div className="modal-content large">
-        <div className="modal-header">
-          <h2 className="modal-title">Ngân hàng câu hỏi - {course.course_name}</h2>
-          <span className="close-modal" onClick={onClose}>&times;</span>
+    <Modal
+      title={`Ngân hàng câu hỏi - ${course.course_name}`}
+      open={true}
+      onCancel={onClose}
+      footer={null}
+      width={900}
+      style={{ top: 20 }}
+    >
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <div>
+          <Button 
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setShowCreateForm(!showCreateForm)}
+          >
+            {showCreateForm ? 'Ẩn form tạo mới' : 'Tạo ngân hàng câu hỏi mới'}
+          </Button>
         </div>
-        <div className="modal-body">
-          <div className="question-bank-actions">
-            <button 
-              className="btn btn-primary"
-              onClick={() => setShowCreateForm(!showCreateForm)}
-            >
-              <i className="fas fa-plus"></i> Tạo ngân hàng câu hỏi mới
-            </button>
-          </div>
 
-          {showCreateForm && (
-            <div className="create-bank-form">
-              <h3>Tạo ngân hàng câu hỏi mới</h3>
-              <form onSubmit={handleCreateBank}>
-                <div className="form-group">
-                  <label>Tên ngân hàng câu hỏi:</label>
-                  <input
-                    type="text"
-                    value={newBankName}
-                    onChange={(e) => setNewBankName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Mô tả:</label>
-                  <textarea
-                    value={newBankDescription}
-                    onChange={(e) => setNewBankDescription(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <div className="form-actions">
-                  <button type="submit" className="btn btn-primary">
+        {showCreateForm && (
+          <Card title="Tạo ngân hàng câu hỏi mới" size="small">
+            <Form layout="vertical" onFinish={handleCreateBank}>
+              <Form.Item label="Tên ngân hàng câu hỏi" required>
+                <Input
+                  value={newBankName}
+                  onChange={(e) => setNewBankName(e.target.value)}
+                  placeholder="Nhập tên ngân hàng câu hỏi"
+                  required
+                />
+              </Form.Item>
+              <Form.Item label="Mô tả">
+                <Input.TextArea
+                  value={newBankDescription}
+                  onChange={(e) => setNewBankDescription(e.target.value)}
+                  rows={3}
+                  placeholder="Nhập mô tả (tùy chọn)"
+                />
+              </Form.Item>
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
                     Tạo
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary"
-                    onClick={() => setShowCreateForm(false)}
-                  >
+                  </Button>
+                  <Button onClick={() => setShowCreateForm(false)}>
                     Hủy
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Card>
+        )}
 
-          <div className="question-banks-list">
-            <h3>Danh sách ngân hàng câu hỏi</h3>
-            {loading ? (
-              <p>Đang tải...</p>
-            ) : !Array.isArray(questionBanks) || questionBanks.length === 0 ? (
-              <p>Chưa có ngân hàng câu hỏi nào.</p>
-            ) : (
-              <div className="banks-grid">
-                {questionBanks.map((bank) => (
-                  <div key={bank._id} className="bank-card">
-                    <div className="bank-header">
-                      <h4>{bank.name}</h4>
-                      <div className="bank-actions">
-                        <button 
-                          className="btn btn-info btn-sm"
-                          onClick={() => {
-                            // Preview bank functionality - show questions in modal
-                            console.log('Preview bank:', bank);
-                            alert(`Xem trước ngân hàng câu hỏi: ${bank.name}\nSố câu hỏi: ${bank.questions?.length || 0}`);
-                          }}
+        <div>
+          <Typography.Title level={4}>Danh sách ngân hàng câu hỏi</Typography.Title>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '50px' }}>
+              <Spin size="large" />
+              <div style={{ marginTop: '16px' }}>Đang tải...</div>
+            </div>
+          ) : !Array.isArray(questionBanks) || questionBanks.length === 0 ? (
+            <Empty
+              description="Chưa có ngân hàng câu hỏi nào"
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            >
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />}
+                onClick={() => setShowCreateForm(true)}
+              >
+                Tạo ngân hàng câu hỏi đầu tiên
+              </Button>
+            </Empty>
+          ) : (
+            <Row gutter={[16, 16]}>
+              {questionBanks.map((bank) => (
+                <Col xs={24} sm={12} lg={8} key={bank._id}>
+                  <Card
+                    hoverable
+                    style={{ height: '100%' }}
+                    actions={[
+                      <Button
+                        type="text"
+                        icon={<EyeOutlined />}
+                        onClick={() => {
+                          console.log('Preview bank:', bank);
+                          message.info(`Xem trước ngân hàng câu hỏi: ${bank.name}\nSố câu hỏi: ${bank.questionCount || 0}`);
+                        }}
+                      >
+                        Xem trước
+                      </Button>,
+                      <Popconfirm
+                        title="Xóa ngân hàng câu hỏi"
+                        description="Bạn có chắc chắn muốn xóa ngân hàng câu hỏi này?"
+                        onConfirm={() => handleDeleteBank(bank._id)}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                      >
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined />}
                         >
-                          <i className="fas fa-eye"></i> Xem trước
-                        </button>
-                        <button 
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleDeleteBank(bank._id)}
-                        >
-                          <i className="fas fa-trash"></i> Xóa
-                        </button>
-                      </div>
-                    </div>
-                    <div className="bank-content">
-                      <p>{bank.description}</p>
-                      <div className="bank-stats">
-                        <span>Số câu hỏi: {bank.questions?.length || 0}</span>
-                        <span>Tạo ngày: {new Date(bank.created_at).toLocaleDateString('vi-VN')}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                          Xóa
+                        </Button>
+                      </Popconfirm>
+                    ]}
+                  >
+                    <Card.Meta
+                      title={
+                        <Typography.Text strong>
+                          {bank.name}
+                        </Typography.Text>
+                      }
+                      description={
+                        <div>
+                          <Typography.Paragraph 
+                            ellipsis={{ rows: 2 }} 
+                            style={{ marginBottom: '12px', color: '#666' }}
+                          >
+                            {bank.description || 'Không có mô tả'}
+                          </Typography.Paragraph>
+                          <Space direction="vertical" size={4}>
+                            <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                              Số câu hỏi: {bank.questionCount || bank.questions?.length || 0}
+                            </Typography.Text>
+                            <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                              Tạo ngày: {bank.created_at ? new Date(bank.created_at).toLocaleDateString('vi-VN') : 'N/A'}
+                            </Typography.Text>
+                          </Space>
+                        </div>
+                      }
+                    />
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          )}
         </div>
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>
-            Đóng
-          </button>
-        </div>
-      </div>
-    </div>
+      </Space>
+    </Modal>
   );
 };
 

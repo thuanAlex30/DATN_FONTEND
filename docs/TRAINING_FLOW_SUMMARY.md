@@ -63,7 +63,7 @@ SCHEDULED → ONGOING → COMPLETED
 ## 📍 VỊ TRÍ FILES
 
 ### **Frontend:**
-- **Admin**: `DATN_FONTEND/src/pages/Admin/TrainingManagement/index.tsx`
+- **Header Department**: `DATN_FONTEND/src/pages/header_department/TrainingManagement/index.tsx`
 - **Employee**: `DATN_FONTEND/src/pages/Employee/Training/index.tsx`
 - **Training Session**: `DATN_FONTEND/src/pages/Employee/TrainingSession/index.tsx`
 - **API Services**: `DATN_FONTEND/src/services/trainingApi.ts`

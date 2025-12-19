@@ -49,13 +49,13 @@ const EmployeeTraining: React.FC = () => {
   const [isMandatory, setIsMandatory] = useState('');
   
 
-  // API hooks
+  // API hooks - Employee should always use available courses API
   const { courses, loading: coursesLoading } = useCourses({
-    courseSetId: selectedCourseSet || undefined,
+    isDeployed: true, // Force use employee-specific API
     isMandatory: isMandatory ? isMandatory === 'true' : undefined,
   });
   
-  const { sessions } = useTrainingSessions();
+  // Employee enrollments - now directly linked to courses, not sessions
   const { enrollments, loading: enrollmentsLoading } = useTrainingEnrollments();
 
   // Filter courses based on search term
@@ -69,13 +69,13 @@ const EmployeeTraining: React.FC = () => {
     user?.id && enrollment.user_id?._id === user.id
   );
 
-  // Get enrolled course IDs
-  const enrolledCourseIds = userEnrollments.map(enrollment => {
-    const session = sessions.find(s => s._id === enrollment.session_id?._id);
-    return session?.course_id?._id;
-  }).filter(Boolean);
+  // Get enrolled course IDs (directly from enrollment.course_id)
+  const enrolledCourseIds = userEnrollments
+    .map(enrollment => enrollment.course_id?._id || enrollment.course_id)
+    .filter(Boolean);
 
-  // Get available courses (not enrolled)
+  // Get available courses (courses where user hasn't enrolled in any session yet)
+  // Note: A course can have multiple sessions, so we check if user has enrolled in any session of that course
   const availableCourses = filteredCourses.filter(course => 
     !enrolledCourseIds.includes(course._id)
   );
@@ -85,31 +85,20 @@ const EmployeeTraining: React.FC = () => {
     enrolledCourseIds.includes(course._id)
   );
 
-  // Get completed courses
+  // Get completed courses (directly from enrollment.course_id)
   const completedCourses = userEnrollments
     .filter(enrollment => enrollment.status === 'completed')
     .map(enrollment => {
-      const session = sessions.find(s => s._id === enrollment.session_id?._id);
-      return session ? courses.find(c => c._id === session.course_id?._id) : null;
+      const courseId = enrollment.course_id?._id || enrollment.course_id;
+      return courses.find(c => c._id === courseId);
     })
     .filter(Boolean);
 
   const handleEnroll = async (courseId: string) => {
     try {
-      // Use new API to get available sessions
-      const { trainingHelperApi } = await import('../../../services/trainingApi');
-      const availableSessions = await trainingHelperApi.getAvailableSessions(courseId, user?.id);
-
-      if (availableSessions.length === 0) {
-        message.warning('Không có buổi đào tạo nào khả dụng cho khóa học này');
-        return;
-      }
-
-      // For now, enroll in the first available session
-      const sessionToEnroll = availableSessions[0];
-      
+      // Enroll directly into course (no session needed)
       const response = await api.post('/training/enrollments', {
-        session_id: sessionToEnroll._id,
+        course_id: courseId,
         user_id: user?.id,
       });
 
@@ -124,13 +113,17 @@ const EmployeeTraining: React.FC = () => {
       console.error('Error enrolling:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi đăng ký';
       
-      // Handle prerequisites error
+      // Handle specific errors
       if (error.response?.data?.data?.missingPrerequisites) {
         message.error(`Bạn cần hoàn thành ${error.response.data.data.missingPrerequisites.length} khóa học tiên quyết trước`);
+      } else if (error.response?.status === 400 && errorMessage.includes('already enrolled')) {
+        message.warning('Bạn đã đăng ký khóa học này rồi. Đang làm mới trang...');
+        // Refresh to update UI state
+        setTimeout(() => window.location.reload(), 1500);
       } else if (error.response?.status === 400 && errorMessage.includes('prerequisite')) {
         message.error('Bạn cần hoàn thành các khóa học tiên quyết trước khi đăng ký');
-      } else if (error.response?.status === 400 && errorMessage.includes('full')) {
-        message.error('Buổi đào tạo đã đầy, vui lòng chọn buổi khác');
+      } else if (error.response?.status === 400 && errorMessage.includes('not deployed')) {
+        message.error('Khóa học chưa được triển khai');
       } else {
         message.error(`Lỗi đăng ký: ${errorMessage}`);
       }
@@ -144,10 +137,10 @@ const EmployeeTraining: React.FC = () => {
 
   const handleStartTraining = async (courseId: string) => {
     try {
-      // Find the session for this course that user is enrolled in
+      // Check if user is enrolled in this course
       const enrollment = userEnrollments.find(enrollment => {
-        const session = sessions.find(s => s._id === enrollment.session_id?._id);
-        return session?.course_id?._id === courseId;
+        const enrolledCourseId = enrollment.course_id?._id || enrollment.course_id;
+        return enrolledCourseId === courseId;
       });
 
       if (!enrollment) {
@@ -155,30 +148,24 @@ const EmployeeTraining: React.FC = () => {
         return;
       }
 
-      const session = sessions.find(s => s._id === enrollment.session_id?._id);
-      if (!session) {
-        message.error('Không tìm thấy buổi đào tạo');
-        return;
-      }
-
-      // Call start training API (backend will check and update session status)
-      const response = await api.post(`/training/sessions/${session._id}/start`);
+      // Call start course quiz API (new endpoint)
+      const response = await api.post(`/training/courses/${courseId}/start`);
 
       if (response.data.success) {
-        // Navigate to training page with training data
+        // Navigate to training page with quiz data
         navigate('/training/session', { 
           state: { 
             trainingData: response.data.data,
-            sessionId: session._id,
-            courseId: courseId
+            courseId: courseId,
+            enrollmentId: enrollment._id
           } 
         });
       } else {
-        message.error(`Lỗi: ${response.data.message || 'Không thể bắt đầu học'}`);
+        message.error(`Lỗi: ${response.data.message || 'Không thể bắt đầu làm bài'}`);
       }
     } catch (error: any) {
-      console.error('Error starting training:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi bắt đầu học';
+      console.error('Error starting quiz:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi bắt đầu làm bài';
       message.error(`Lỗi: ${errorMessage}`);
     }
   };
@@ -238,23 +225,21 @@ const EmployeeTraining: React.FC = () => {
   };
 
 
-  const getEnrollmentStatus = (courseId: string): 'completed' | 'enrolled' | 'failed' | 'cancelled' | 'submitted' | 'not_enrolled' => {
+  const getEnrollmentStatus = (courseId: string): 'completed' | 'enrolled' | 'in_progress' | 'failed' | 'cancelled' | 'not_enrolled' => {
     const enrollment = userEnrollments.find(enrollment => {
-      const session = sessions.find(s => s._id === enrollment.session_id?._id);
-      return session?.course_id?._id === courseId;
+      const enrolledCourseId = enrollment.course_id?._id || enrollment.course_id;
+      return enrolledCourseId === courseId;
     });
     
-    if (enrollment?.status === 'enrolled' && enrollment?.score === null || enrollment?.score === undefined) {
-      return 'submitted';
-    }
-    
-    return (enrollment?.status as 'completed' | 'enrolled' | 'failed' | 'cancelled' | 'submitted') || 'not_enrolled';
+    // Backend tự động chấm điểm và cập nhật status ngay sau khi submit
+    // Status: enrolled, in_progress, completed, failed, cancelled
+    return (enrollment?.status as 'completed' | 'enrolled' | 'in_progress' | 'failed' | 'cancelled') || 'not_enrolled';
   };
 
   const getEnrollmentScore = (courseId: string) => {
     const enrollment = userEnrollments.find(enrollment => {
-      const session = sessions.find(s => s._id === enrollment.session_id?._id);
-      return session?.course_id?._id === courseId;
+      const enrolledCourseId = enrollment.course_id?._id || enrollment.course_id;
+      return enrolledCourseId === courseId;
     });
     return enrollment?.score || null;
   };
@@ -266,9 +251,10 @@ const EmployeeTraining: React.FC = () => {
     const getStatusColor = (status: string) => {
       switch (status) {
         case 'enrolled': return 'blue';
-        case 'submitted': return 'orange'; // Đã nộp, chờ chấm
+        case 'in_progress': return 'orange';
         case 'completed': return 'green';
         case 'failed': return 'red';
+        case 'cancelled': return 'default';
         default: return 'default';
       }
     };
@@ -276,9 +262,10 @@ const EmployeeTraining: React.FC = () => {
     const getStatusText = (status: string) => {
       switch (status) {
         case 'enrolled': return 'Đã đăng ký';
-        case 'submitted': return 'Đã nộp, chờ chấm';
+        case 'in_progress': return 'Đang làm bài';
         case 'completed': return 'Hoàn thành';
         case 'failed': return 'Chưa đạt';
+        case 'cancelled': return 'Đã hủy';
         default: return status;
       }
     };
@@ -318,22 +305,22 @@ const EmployeeTraining: React.FC = () => {
                 Đăng ký
               </Button>
             ),
-            enrollmentStatus === 'enrolled' && (
+            (enrollmentStatus === 'enrolled' || enrollmentStatus === 'in_progress') && (
               <Button 
                 type="primary"
                 icon={<PlayCircleOutlined />}
                 onClick={() => handleStartTraining(course._id)}
               >
-                Vào học
+                {enrollmentStatus === 'in_progress' ? 'Tiếp tục làm bài' : 'Làm bài kiểm tra'}
               </Button>
             ),
-            enrollmentStatus === 'submitted' && (
+            enrollmentStatus === 'completed' && (
               <Button 
                 type="default"
-                icon={<ClockCircleOutlined />}
+                icon={<CheckCircleOutlined />}
                 disabled
               >
-                Đã nộp, chờ chấm điểm
+                Đã hoàn thành
               </Button>
             ),
             enrollmentStatus === 'failed' && (

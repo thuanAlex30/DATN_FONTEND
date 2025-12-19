@@ -43,8 +43,12 @@ export const useCourseSets = () => {
       const data = await courseSetApi.getAll();
       setCourseSets(data);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch course sets');
-      toast.error('Failed to fetch course sets');
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch course sets';
+      setError(errorMessage);
+      // Only show toast if it's not a network error (to avoid spam)
+      if (!err.code || (err.code !== 'ERR_NETWORK' && err.code !== 'ECONNABORTED')) {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -118,6 +122,9 @@ export const useCourses = (filters?: CourseFilters) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Memoize filters to prevent unnecessary re-renders
+  const filtersString = JSON.stringify(filters || {});
+
   const fetchCourses = useCallback(async () => {
     try {
       setLoading(true);
@@ -125,7 +132,11 @@ export const useCourses = (filters?: CourseFilters) => {
       // Check if user is employee and needs available courses
       if (filters?.isDeployed === true) {
         // Use employee-specific API
-        const data = await courseApi.getAvailableForEmployee(filters);
+        const employeeFilters: { isMandatory?: boolean } = {};
+        if (filters?.isMandatory !== undefined) {
+          employeeFilters.isMandatory = filters.isMandatory;
+        }
+        const data = await courseApi.getAvailableForEmployee(employeeFilters);
         setCourses(data);
       } else {
         // Use regular API for admin/manager
@@ -133,12 +144,16 @@ export const useCourses = (filters?: CourseFilters) => {
         setCourses(data);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch courses');
-      toast.error('Failed to fetch courses');
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch courses';
+      setError(errorMessage);
+      // Only show toast if it's not a network error (to avoid spam)
+      if (!err.code || (err.code !== 'ERR_NETWORK' && err.code !== 'ECONNABORTED')) {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filtersString]);
 
   const createCourse = useCallback(async (data: CourseFormData) => {
     try {
@@ -177,10 +192,43 @@ export const useCourses = (filters?: CourseFilters) => {
       setLoading(true);
       await courseApi.delete(id);
       setCourses(prev => prev.filter(c => c._id !== id));
-      toast.success('Course deleted successfully');
+      toast.success('Xóa khóa học thành công');
     } catch (err: any) {
-      setError(err.message || 'Failed to delete course');
-      toast.error('Failed to delete course');
+      const errorMessage = err.response?.data?.message || err.message || 'Không thể xóa khóa học';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const deployCourse = useCallback(async (id: string) => {
+    try {
+      setLoading(true);
+      const updatedCourse = await courseApi.deploy(id);
+      setCourses(prev => prev.map(c => c._id === id ? updatedCourse : c));
+      toast.success('Triển khai khóa học thành công');
+      return updatedCourse;
+    } catch (err: any) {
+      setError(err.message || 'Failed to deploy course');
+      toast.error('Không thể triển khai khóa học');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const undeployCourse = useCallback(async (id: string) => {
+    try {
+      setLoading(true);
+      const updatedCourse = await courseApi.undeploy(id);
+      setCourses(prev => prev.map(c => c._id === id ? updatedCourse : c));
+      toast.success('Hủy triển khai khóa học thành công');
+      return updatedCourse;
+    } catch (err: any) {
+      setError(err.message || 'Failed to undeploy course');
+      toast.error('Không thể hủy triển khai khóa học');
       throw err;
     } finally {
       setLoading(false);
@@ -199,6 +247,8 @@ export const useCourses = (filters?: CourseFilters) => {
     createCourse,
     updateCourse,
     deleteCourse,
+    deployCourse,
+    undeployCourse,
   };
 };
 
@@ -278,8 +328,12 @@ export const useTrainingSessions = (filters?: SessionFilters) => {
       const data = await trainingSessionApi.getAll(filters);
       setSessions(data);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch training sessions');
-      toast.error('Failed to fetch training sessions');
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch training sessions';
+      setError(errorMessage);
+      // Only show toast if it's not a network error (to avoid spam)
+      if (!err.code || (err.code !== 'ERR_NETWORK' && err.code !== 'ECONNABORTED')) {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -487,8 +541,12 @@ export const useQuestionBanks = (filters?: QuestionBankFilters) => {
       const data = await questionBankApi.getAll(filters);
       setQuestionBanks(data);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch question banks');
-      toast.error('Failed to fetch question banks');
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch question banks';
+      setError(errorMessage);
+      // Only show toast if it's not a network error (to avoid spam)
+      if (!err.code || (err.code !== 'ERR_NETWORK' && err.code !== 'ECONNABORTED')) {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -680,8 +738,12 @@ export const useTrainingStats = () => {
       const data = await trainingStatsApi.getDashboardStats();
       setStats(data);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch training statistics');
-      toast.error('Failed to fetch training statistics');
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch training statistics';
+      setError(errorMessage);
+      // Only show toast if it's not a network error (to avoid spam)
+      if (!err.code || (err.code !== 'ERR_NETWORK' && err.code !== 'ECONNABORTED')) {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -712,8 +774,12 @@ export const useTrainingAssignments = (filters: { courseId?: string; departmentI
       const data = await trainingAssignmentApi.getAll(filters);
       setAssignments(data);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch training assignments');
-      toast.error('Failed to fetch training assignments');
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch training assignments';
+      setError(errorMessage);
+      // Only show toast if it's not a network error (to avoid spam)
+      if (!err.code || (err.code !== 'ERR_NETWORK' && err.code !== 'ECONNABORTED')) {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
