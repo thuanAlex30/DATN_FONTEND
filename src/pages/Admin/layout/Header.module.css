@@ -1,0 +1,15 @@
+/* Header Styles - Prevent Duplicate */
+.header {
+  position: relative;
+}
+
+/* Hide duplicate headers (StrictMode workaround) */
+.header:not(:first-of-type) {
+  display: none !important;
+}
+
+/* Ensure only one header is visible */
+[data-admin-header="true"]:not(:first-of-type) {
+  display: none !important;
+}
+

@@ -292,6 +292,16 @@ export const courseApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/training/courses/${id}`);
   },
+
+  deploy: async (id: string): Promise<Course> => {
+    const response = await api.post<ApiResponse<Course>>(`/training/courses/${id}/deploy`);
+    return response.data.data;
+  },
+
+  undeploy: async (id: string): Promise<Course> => {
+    const response = await api.post<ApiResponse<Course>>(`/training/courses/${id}/undeploy`);
+    return response.data.data;
+  },
 };
 
 // Training Session API

@@ -8,12 +8,13 @@ Hệ thống Training được chia thành 2 luồng chính:
 
 ---
 
-## 📋 PHẦN 1: LUỒNG QUẢN LÝ (ADMIN)
+## 📋 PHẦN 1: LUỒNG QUẢN LÝ (HEADER DEPARTMENT)
 
 ### **Vị trí truy cập:**
-- **Route**: `/admin/training-management`
-- **File**: `DATN_FONTEND/src/pages/Admin/TrainingManagement/index.tsx`
-- **Layout**: Admin Layout (có Header với menu Training Management)
+- **Route**: `/header-department/training-management`
+- **File**: `DATN_FONTEND/src/pages/header_department/TrainingManagement/index.tsx`
+- **Layout**: Header Department Layout (có Header với menu Training Management)
+- **Role**: Department Header và các role từ Department Header trở xuống
 
 ### **Các Tab quản lý:**
 

@@ -166,7 +166,6 @@ const Homepage: React.FC = () => {
       );
     } else if (userRole === 'trainer') {
       actions.push(
-        { label: 'Quản lý đào tạo', path: '/admin/training-management', icon: <BookOutlined />, color: '#fa8c16' },
         { label: 'PPE cá nhân', path: '/employee/ppe', icon: <SafetyOutlined />, color: '#13c2c2' }
       );
     } else if (userRole === 'safety_officer') {

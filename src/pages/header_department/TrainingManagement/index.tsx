@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Card, 
   Typography, 
@@ -42,7 +42,8 @@ import {
   CheckCircleOutlined,
   InfoCircleOutlined,
   ArrowLeftOutlined,
-  TeamOutlined
+  TeamOutlined,
+  FolderOutlined
 } from '@ant-design/icons';
 import { downloadQuestionTemplate } from '../../../utils/questionTemplate';
 import {
@@ -61,7 +62,7 @@ import EnrollmentModal from './components/EnrollmentModal';
 import CourseAssignmentModal from './components/CourseAssignmentModal';
 
 const TrainingManagement: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'courses' | 'sessions' | 'enrollments' | 'question-banks' | 'assignments'>('courses');
+  const [activeTab, setActiveTab] = useState<'course-sets' | 'courses' | 'sessions' | 'enrollments' | 'question-banks' | 'assignments'>('course-sets');
   const [showModal, setShowModal] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [filters, setFilters] = useState({
@@ -73,14 +74,6 @@ const TrainingManagement: React.FC = () => {
   });
 
   // Form states
-  const [courseForm, setCourseForm] = useState({
-    course_name: '',
-    description: '',
-    duration_hours: '',
-    validity_months: '',
-    course_set_id: '',
-    is_mandatory: false,
-  });
 
   const [sessionForm, setSessionForm] = useState({
     session_name: '',
@@ -92,11 +85,6 @@ const TrainingManagement: React.FC = () => {
     status_code: 'SCHEDULED',
   });
 
-  const [questionBankForm, setQuestionBankForm] = useState({
-    name: '',
-    description: '',
-    course_id: '',
-  });
 
   const [questionForm, setQuestionForm] = useState({
     content: '',
@@ -107,73 +95,55 @@ const TrainingManagement: React.FC = () => {
   const [excelFile, setExcelFile] = useState<File | null>(null);
 
   // Loading states for form submissions
+  const [submittingCourseSet, setSubmittingCourseSet] = useState(false);
   const [submittingCourse, setSubmittingCourse] = useState(false);
   const [submittingSession, setSubmittingSession] = useState(false);
   const [submittingQuestionBank, setSubmittingQuestionBank] = useState(false);
   const [submittingQuestion, setSubmittingQuestion] = useState(false);
 
   // API hooks
-  const { courseSets } = useCourseSets();
-  const { courses, loading: coursesLoading, createCourse, updateCourse, deleteCourse } = useCourses({
+  const { courseSets, loading: courseSetsLoading, createCourseSet, updateCourseSet, deleteCourseSet } = useCourseSets();
+  
+  // Memoize filters to prevent unnecessary re-renders
+  const courseFilters = useMemo(() => ({
     courseSetId: filters.courseSetId || undefined,
     isMandatory: filters.isMandatory ? filters.isMandatory === 'true' : undefined,
-  });
+  }), [filters.courseSetId, filters.isMandatory]);
   
-  // Load all courses for session form (without filters)
-  const { courses: allCourses } = useCourses({});
+  const { courses, loading: coursesLoading, createCourse, updateCourse, deleteCourse, deployCourse, undeployCourse } = useCourses(courseFilters);
+  
+  // Load all courses for session form (without filters) - use empty object that doesn't change
+  const emptyFilters = useMemo(() => ({}), []);
+  const { courses: allCourses } = useCourses(emptyFilters);
   
   // Training assignments
   const { assignments, loading: assignmentsLoading, deleteAssignment } = useTrainingAssignments();
   
-  // Debug courses
-  console.log('Available courses (filtered):', courses);
-  console.log('All courses (for session form):', allCourses);
-  console.log('Current sessionForm.course_id:', sessionForm.course_id);
-  
-  // Clear invalid course_id when all courses change
+  // Clear invalid course_id when all courses change (only when allCourses changes, not when course_id changes)
   useEffect(() => {
-    if (allCourses && sessionForm.course_id) {
-      // If no courses exist, clear course_id
-      if (allCourses.length === 0) {
-        console.log('No courses available, clearing course_id:', sessionForm.course_id);
-        setSessionForm(prev => ({ ...prev, course_id: '' }));
-      } else {
-        // If courses exist, check if current course_id is valid
-        const courseExists = allCourses.some(course => course._id === sessionForm.course_id);
-        if (!courseExists) {
-          console.log('Clearing invalid course_id:', sessionForm.course_id);
-          setSessionForm(prev => ({ ...prev, course_id: '' }));
+    if (!allCourses) return;
+    
+    // If no courses exist, clear course_id
+    if (allCourses.length === 0) {
+      setSessionForm(prev => {
+        if (prev.course_id) {
+          return { ...prev, course_id: '' };
         }
-      }
+        return prev;
+      });
+    } else {
+      // If courses exist, check if current course_id is valid
+      setSessionForm(prev => {
+        if (prev.course_id) {
+          const courseExists = allCourses.some(course => course._id === prev.course_id);
+          if (!courseExists) {
+            return { ...prev, course_id: '' };
+          }
+        }
+        return prev;
+      });
     }
-  }, [allCourses, sessionForm.course_id]);
-
-  // Clear course_id immediately if no courses are available
-  useEffect(() => {
-    if (allCourses && allCourses.length === 0 && sessionForm.course_id) {
-      console.log('Immediately clearing course_id because no courses available:', sessionForm.course_id);
-      setSessionForm(prev => ({ ...prev, course_id: '' }));
-    }
-  }, [allCourses, sessionForm.course_id]);
-
-      // Force clear course_id on component mount if no courses
-      useEffect(() => {
-        if (allCourses && allCourses.length === 0) {
-          console.log('Component mount: No courses available, forcing course_id to empty');
-          setSessionForm(prev => ({ ...prev, course_id: '' }));
-        }
-      }, []); // Run only on mount
-
-      // Debug: Log courses when they change
-      useEffect(() => {
-        console.log('Courses updated:', allCourses);
-        if (allCourses && allCourses.length > 0) {
-          console.log('Available courses:');
-          allCourses.forEach(course => {
-            console.log(`- ID: ${course._id}, Name: ${course.course_name}`);
-          });
-        }
-      }, [allCourses]);
+  }, [allCourses]); // Only depend on allCourses, not sessionForm.course_id
   const { sessions, loading: sessionsLoading, createSession, updateSession, deleteSession } = useTrainingSessions({
     courseId: filters.courseId || undefined,
     status: filters.statusCode || undefined,
@@ -197,14 +167,6 @@ const TrainingManagement: React.FC = () => {
 
   // Form handlers
   const resetForms = () => {
-    setCourseForm({
-      course_name: '',
-      description: '',
-      duration_hours: '',
-      validity_months: '',
-      course_set_id: '',
-      is_mandatory: false,
-    });
     setSessionForm({
       session_name: '',
       course_id: '',
@@ -214,11 +176,6 @@ const TrainingManagement: React.FC = () => {
       location: '',
       status_code: 'SCHEDULED',
     });
-    setQuestionBankForm({
-      name: '',
-      description: '',
-      course_id: '',
-    });
     setQuestionForm({
       content: '',
       options: ['', '', '', ''],
@@ -227,14 +184,36 @@ const TrainingManagement: React.FC = () => {
     setEditingItem(null);
   };
 
-  const handleCourseSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCourseSetSubmit = async (values: any) => {
+    setSubmittingCourseSet(true);
+    try {
+      const courseSetData = {
+        name: values.name,
+        description: values.description || undefined,
+      };
+      
+      if (editingItem) {
+        await updateCourseSet(editingItem._id, courseSetData);
+      } else {
+        await createCourseSet(courseSetData);
+      }
+      closeModal();
+      resetForms();
+    } catch (error) {
+      console.error('Error saving course set:', error);
+    } finally {
+      setSubmittingCourseSet(false);
+    }
+  };
+
+  const handleCourseSubmit = async (values: any) => {
     setSubmittingCourse(true);
     try {
       const courseData = {
-        ...courseForm,
-        duration_hours: parseInt(courseForm.duration_hours),
-        validity_months: courseForm.validity_months ? parseInt(courseForm.validity_months) : undefined,
+        ...values,
+        duration_hours: parseInt(values.duration_hours),
+        validity_months: values.validity_months ? parseInt(values.validity_months) : undefined,
+        is_mandatory: values.is_mandatory || false,
       };
       
       if (editingItem) {
@@ -359,19 +338,21 @@ const TrainingManagement: React.FC = () => {
     }
   };
 
-  const handleQuestionBankSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleQuestionBankSubmit = async (values: any) => {
     setSubmittingQuestionBank(true);
     try {
       if (editingItem) {
-        await updateQuestionBank(editingItem._id, questionBankForm);
+        await updateQuestionBank(editingItem._id, values);
+        // Toast notification đã được hiển thị trong hook
       } else {
-        await createQuestionBank(questionBankForm);
+        await createQuestionBank(values);
+        // Toast notification đã được hiển thị trong hook
       }
       closeModal();
       resetForms();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving question bank:', error);
+      // Error message đã được hiển thị trong toast từ hook
     } finally {
       setSubmittingQuestionBank(false);
     }
@@ -420,16 +401,21 @@ const TrainingManagement: React.FC = () => {
     }
   };
 
+  const handleEditCourseSet = (courseSet: any) => {
+    setEditingItem(courseSet);
+    openModal('addCourseSetModal');
+  };
+
+  const handleDeleteCourseSet = async (id: string) => {
+    try {
+      await deleteCourseSet(id);
+    } catch (error) {
+      console.error('Error deleting course set:', error);
+    }
+  };
+
   const handleEditCourse = (course: any) => {
     setEditingItem(course);
-    setCourseForm({
-      course_name: course.course_name,
-      description: course.description || '',
-      duration_hours: course.duration_hours.toString(),
-      validity_months: course.validity_months ? course.validity_months.toString() : '',
-      course_set_id: course.course_set_id._id,
-      is_mandatory: course.is_mandatory,
-    });
     openModal('addCourseModal');
   };
 
@@ -449,22 +435,16 @@ const TrainingManagement: React.FC = () => {
 
   const handleEditQuestionBank = (bank: any) => {
     setEditingItem(bank);
-    setQuestionBankForm({
-      name: bank.name,
-      description: bank.description || '',
-      course_id: bank.course_id._id,
-    });
     openModal('addBankModal');
   };
 
   // Delete handlers
   const handleDeleteCourse = async (id: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa khóa học này?')) {
-      try {
-        await deleteCourse(id);
-      } catch (error) {
-        console.error('Error deleting course:', error);
-      }
+    try {
+      await deleteCourse(id);
+    } catch (error: any) {
+      // Error message đã được hiển thị trong toast từ hook
+      console.error('Error deleting course:', error);
     }
   };
 
@@ -579,10 +559,6 @@ const TrainingManagement: React.FC = () => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  // Debug state values
-  console.log('Current state - showModal:', showModal, 'editingItem:', editingItem);
-  console.log('Courses data:', courses);
-
   return (
     <div style={{ padding: '24px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -621,6 +597,16 @@ const TrainingManagement: React.FC = () => {
             activeKey={activeTab}
             onChange={(key) => switchTab(key as any)}
             items={[
+              {
+                key: 'course-sets',
+                label: (
+                  <span>
+                    <FolderOutlined />
+                    Bộ khóa học
+                  </span>
+                ),
+                children: null
+              },
               {
                 key: 'courses',
                 label: (
@@ -673,6 +659,120 @@ const TrainingManagement: React.FC = () => {
               }
             ]}
           />
+
+          {/* Course Sets Tab */}
+          {activeTab === 'course-sets' && (
+            <div style={{ marginTop: '16px' }}>
+              <Card>
+                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+                  <Col>
+                    <Input
+                      placeholder="Tìm kiếm bộ khóa học..."
+                      prefix={<SearchOutlined />}
+                      style={{ width: 300 }}
+                      value={filters.search}
+                      onChange={(e) => handleFilterChange('search', e.target.value)}
+                    />
+                  </Col>
+                  <Col>
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />}
+                      onClick={() => openModal('addCourseSetModal')}
+                    >
+                      Tạo bộ khóa học
+                    </Button>
+                  </Col>
+                </Row>
+
+                {courseSetsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
+                  </div>
+                ) : courseSets.length === 0 ? (
+                  <Empty
+                    image={<BookOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                    description={
+                      <div>
+                        <Typography.Title level={4}>Chưa có bộ khóa học nào</Typography.Title>
+                        <Typography.Text type="secondary">
+                          Hãy tạo bộ khóa học đầu tiên để bắt đầu quản lý đào tạo
+                        </Typography.Text>
+                      </div>
+                    }
+                  >
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />}
+                      onClick={() => openModal('addCourseSetModal')}
+                    >
+                      Tạo bộ khóa học
+                    </Button>
+                  </Empty>
+                ) : (
+                  <Row gutter={[16, 16]}>
+                    {courseSets
+                      .filter(courseSet => 
+                        !filters.search || 
+                        courseSet.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+                        (courseSet.description && courseSet.description.toLowerCase().includes(filters.search.toLowerCase()))
+                      )
+                      .map(courseSet => (
+                      <Col xs={24} sm={12} lg={8} xl={6} key={courseSet._id}>
+                        <Card
+                          hoverable
+                          style={{ height: '100%' }}
+                          actions={[
+                            <Tooltip title="Sửa">
+                              <Button 
+                                type="text" 
+                                icon={<EditOutlined />}
+                                onClick={() => handleEditCourseSet(courseSet)}
+                              />
+                            </Tooltip>,
+                            <Popconfirm
+                              title="Xóa bộ khóa học"
+                              description="Bạn có chắc chắn muốn xóa bộ khóa học này? Tất cả các khóa học trong bộ này sẽ bị ảnh hưởng."
+                              onConfirm={() => handleDeleteCourseSet(courseSet._id)}
+                              okText="Xóa"
+                              cancelText="Hủy"
+                            >
+                              <Tooltip title="Xóa">
+                                <Button 
+                                  type="text" 
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                />
+                              </Tooltip>
+                            </Popconfirm>
+                          ]}
+                        >
+                          <Card.Meta
+                            title={
+                              <Typography.Text strong style={{ fontSize: '16px' }}>
+                                {courseSet.name}
+                              </Typography.Text>
+                            }
+                            description={
+                              <div>
+                                <Typography.Paragraph 
+                                  ellipsis={{ rows: 3 }} 
+                                  style={{ marginBottom: '12px', color: '#666' }}
+                                >
+                                  {courseSet.description || 'Không có mô tả'}
+                                </Typography.Paragraph>
+                              </div>
+                            }
+                          />
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+                )}
+              </Card>
+            </div>
+          )}
 
           {/* Courses Tab */}
           {activeTab === 'courses' && (
@@ -780,6 +880,39 @@ const TrainingManagement: React.FC = () => {
                                 onClick={() => openModalWithData('questionBankModal', course)}
                               />
                             </Tooltip>,
+                            course.is_deployed ? (
+                              <Popconfirm
+                                title="Hủy triển khai khóa học"
+                                description="Bạn có chắc chắn muốn hủy triển khai khóa học này? Nhân viên sẽ không thể thấy khóa học này nữa."
+                                onConfirm={() => undeployCourse(course._id)}
+                                okText="Hủy triển khai"
+                                cancelText="Hủy"
+                              >
+                                <Tooltip title="Hủy triển khai">
+                                  <Button 
+                                    type="text" 
+                                    icon={<InfoCircleOutlined />}
+                                    style={{ color: '#faad14' }}
+                                  />
+                                </Tooltip>
+                              </Popconfirm>
+                            ) : (
+                              <Popconfirm
+                                title="Triển khai khóa học"
+                                description="Bạn có chắc chắn muốn triển khai khóa học này? Khóa học sẽ hiển thị cho nhân viên sau khi được gán cho phòng ban."
+                                onConfirm={() => deployCourse(course._id)}
+                                okText="Triển khai"
+                                cancelText="Hủy"
+                              >
+                                <Tooltip title="Triển khai">
+                                  <Button 
+                                    type="text" 
+                                    icon={<CheckCircleOutlined />}
+                                    style={{ color: '#52c41a' }}
+                                  />
+                                </Tooltip>
+                              </Popconfirm>
+                            ),
                             <Popconfirm
                               title="Xóa khóa học"
                               description="Bạn có chắc chắn muốn xóa khóa học này?"
@@ -1461,6 +1594,57 @@ const TrainingManagement: React.FC = () => {
         </Card>
       </div>
 
+      {/* Add Course Set Modal */}
+      <Modal
+        title={editingItem ? 'Chỉnh sửa bộ khóa học' : 'Tạo bộ khóa học mới'}
+        open={showModal === 'addCourseSetModal'}
+        onCancel={closeModal}
+        footer={null}
+        width={600}
+      >
+        <Form
+          key={editingItem?._id || 'new'}
+          layout="vertical"
+          onFinish={handleCourseSetSubmit}
+          initialValues={editingItem ? {
+            name: editingItem.name,
+            description: editingItem.description || '',
+          } : {
+            name: '',
+            description: '',
+          }}
+        >
+          <Form.Item
+            label="Tên bộ khóa học"
+            name="name"
+            rules={[{ required: true, message: 'Vui lòng nhập tên bộ khóa học' }]}
+          >
+            <Input 
+              placeholder="Nhập tên bộ khóa học"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Mô tả"
+            name="description"
+          >
+            <Input.TextArea 
+              placeholder="Nhập mô tả bộ khóa học"
+              rows={4}
+            />
+          </Form.Item>
+
+          <Form.Item>
+            <Space>
+              <Button onClick={closeModal}>Hủy</Button>
+              <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={submittingCourseSet}>
+                {editingItem ? 'Cập nhật' : 'Tạo mới'}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
       {/* Add Course Modal */}
       <Modal
         title={editingItem ? 'Chỉnh sửa khóa học' : 'Tạo khóa học mới'}
@@ -1470,9 +1654,28 @@ const TrainingManagement: React.FC = () => {
         width={800}
       >
         <Form
+          key={editingItem?._id || 'new'}
           layout="vertical"
           onFinish={handleCourseSubmit}
-          initialValues={courseForm}
+          initialValues={
+            editingItem
+              ? {
+                  course_name: editingItem.course_name,
+                  course_set_id: editingItem.course_set_id?._id || editingItem.course_set_id || '',
+                  duration_hours: editingItem.duration_hours?.toString() || '',
+                  validity_months: editingItem.validity_months?.toString() || '',
+                  description: editingItem.description || '',
+                  is_mandatory: editingItem.is_mandatory || false,
+                }
+              : {
+                  course_name: '',
+                  course_set_id: '',
+                  duration_hours: '',
+                  validity_months: '',
+                  description: '',
+                  is_mandatory: false,
+                }
+          }
         >
           <Row gutter={16}>
             <Col span={12}>
@@ -1483,8 +1686,6 @@ const TrainingManagement: React.FC = () => {
               >
                 <Input 
                   placeholder="Nhập tên khóa học"
-                  value={courseForm.course_name}
-                  onChange={(e) => setCourseForm(prev => ({ ...prev, course_name: e.target.value }))}
                 />
               </Form.Item>
             </Col>
@@ -1496,8 +1697,6 @@ const TrainingManagement: React.FC = () => {
               >
                 <Select
                   placeholder="Chọn bộ khóa học"
-                  value={courseForm.course_set_id}
-                  onChange={(value) => setCourseForm(prev => ({ ...prev, course_set_id: value }))}
                 >
                   {courseSets.map(courseSet => (
                     <Select.Option key={courseSet._id} value={courseSet._id}>
@@ -1520,8 +1719,6 @@ const TrainingManagement: React.FC = () => {
                   type="number"
                   min={1}
                   placeholder="Nhập số giờ"
-                  value={courseForm.duration_hours}
-                  onChange={(e) => setCourseForm(prev => ({ ...prev, duration_hours: e.target.value }))}
                 />
               </Form.Item>
             </Col>
@@ -1534,8 +1731,6 @@ const TrainingManagement: React.FC = () => {
                   type="number"
                   min={1}
                   placeholder="Nhập số tháng"
-                  value={courseForm.validity_months}
-                  onChange={(e) => setCourseForm(prev => ({ ...prev, validity_months: e.target.value }))}
                 />
               </Form.Item>
             </Col>
@@ -1548,16 +1743,11 @@ const TrainingManagement: React.FC = () => {
             <Input.TextArea 
               rows={4}
               placeholder="Nhập mô tả khóa học"
-              value={courseForm.description}
-              onChange={(e) => setCourseForm(prev => ({ ...prev, description: e.target.value }))}
             />
           </Form.Item>
 
           <Form.Item name="is_mandatory" valuePropName="checked">
-            <Checkbox
-              checked={courseForm.is_mandatory}
-              onChange={(e) => setCourseForm(prev => ({ ...prev, is_mandatory: e.target.checked }))}
-            >
+            <Checkbox>
               Khóa học bắt buộc
             </Checkbox>
           </Form.Item>
@@ -1747,9 +1937,22 @@ const TrainingManagement: React.FC = () => {
         width={600}
       >
         <Form
+          key={editingItem?._id || 'new'}
           layout="vertical"
           onFinish={handleQuestionBankSubmit}
-          initialValues={questionBankForm}
+          initialValues={
+            editingItem
+              ? {
+                  name: editingItem.name,
+                  description: editingItem.description || '',
+                  course_id: editingItem.course_id?._id || editingItem.course_id || '',
+                }
+              : {
+                  name: '',
+                  description: '',
+                  course_id: '',
+                }
+          }
         >
           <Form.Item
             label="Tên ngân hàng câu hỏi"
@@ -1758,8 +1961,6 @@ const TrainingManagement: React.FC = () => {
           >
             <Input 
               placeholder="Nhập tên ngân hàng câu hỏi"
-              value={questionBankForm.name}
-              onChange={(e) => setQuestionBankForm(prev => ({ ...prev, name: e.target.value }))}
             />
           </Form.Item>
 
@@ -1778,8 +1979,6 @@ const TrainingManagement: React.FC = () => {
             ) : (
               <Select
                 placeholder="Chọn khóa học"
-                value={questionBankForm.course_id}
-                onChange={(value) => setQuestionBankForm(prev => ({ ...prev, course_id: value }))}
               >
                 {allCourses.map(course => (
                   <Select.Option key={course._id} value={course._id}>
@@ -1797,8 +1996,6 @@ const TrainingManagement: React.FC = () => {
             <Input.TextArea 
               rows={3}
               placeholder="Nhập mô tả ngân hàng câu hỏi"
-              value={questionBankForm.description}
-              onChange={(e) => setQuestionBankForm(prev => ({ ...prev, description: e.target.value }))}
             />
           </Form.Item>
 

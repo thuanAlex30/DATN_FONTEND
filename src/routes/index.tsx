@@ -414,11 +414,11 @@ const AppRoutes = () => {
                     </AuthGuard>
                 } 
             />
-            {/* Các route /admin dưới đây đã được chuyển cho Header Department nên tạm thời ẩn khỏi Admin:
-                - /admin/training-management
-                - /admin/certificate-management
-                - /admin/ppe-management
-                - /admin/incident-management
+            {/* Các route /admin dưới đây đã được chuyển hoàn toàn cho Header Department:
+                - /admin/training-management (đã chuyển sang /header-department/training-management)
+                - /admin/certificate-management (đã chuyển sang /header-department/certificate-management)
+                - /admin/ppe-management (đã chuyển sang /header-department/ppe-management)
+                - /admin/incident-management (đã chuyển sang /header-department/incident-management)
             */}
             {/* Header Department incident action routes */}
             <Route 
