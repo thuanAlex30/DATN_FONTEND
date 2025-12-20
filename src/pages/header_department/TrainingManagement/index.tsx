@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { 
   Card, 
   Typography, 
   Button, 
   Space, 
-  Tabs, 
   Table, 
   Tag, 
   Avatar, 
@@ -23,7 +23,8 @@ import {
   Divider,
   Alert,
   Checkbox,
-  DatePicker
+  DatePicker,
+  message
 } from 'antd';
 import { 
   BookOutlined, 
@@ -62,9 +63,14 @@ import EnrollmentModal from './components/EnrollmentModal';
 import CourseAssignmentModal from './components/CourseAssignmentModal';
 
 const TrainingManagement: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'course-sets' | 'courses' | 'sessions' | 'enrollments' | 'question-banks' | 'assignments'>('course-sets');
+  // Navigation state - hierarchical view
+  const [currentView, setCurrentView] = useState<'course-sets' | 'courses' | 'question-banks' | 'sessions' | 'enrollments' | 'assignments'>('course-sets');
+  const [selectedCourseSet, setSelectedCourseSet] = useState<any>(null);
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  
   const [showModal, setShowModal] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [currentQuestionBankId, setCurrentQuestionBankId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     courseSetId: '',
     courseId: '',
@@ -120,30 +126,31 @@ const TrainingManagement: React.FC = () => {
   const { assignments, loading: assignmentsLoading, deleteAssignment } = useTrainingAssignments();
   
   // Clear invalid course_id when all courses change (only when allCourses changes, not when course_id changes)
+  // Use useMemo to create a stable reference for allCourses array
+  const allCoursesIds = useMemo(() => {
+    if (!allCourses || allCourses.length === 0) return [];
+    return allCourses.map(c => c._id);
+  }, [allCourses]);
+
   useEffect(() => {
-    if (!allCourses) return;
-    
-    // If no courses exist, clear course_id
-    if (allCourses.length === 0) {
+    if (!allCourses || allCourses.length === 0) {
       setSessionForm(prev => {
         if (prev.course_id) {
           return { ...prev, course_id: '' };
         }
         return prev;
       });
-    } else {
-      // If courses exist, check if current course_id is valid
-      setSessionForm(prev => {
-        if (prev.course_id) {
-          const courseExists = allCourses.some(course => course._id === prev.course_id);
-          if (!courseExists) {
-            return { ...prev, course_id: '' };
-          }
-        }
-        return prev;
-      });
+      return;
     }
-  }, [allCourses]); // Only depend on allCourses, not sessionForm.course_id
+    
+    // If courses exist, check if current course_id is valid
+    setSessionForm(prev => {
+      if (prev.course_id && !allCoursesIds.includes(prev.course_id)) {
+        return { ...prev, course_id: '' };
+      }
+      return prev;
+    });
+  }, [allCoursesIds]); // Only depend on allCoursesIds, not allCourses array reference
   const { sessions, loading: sessionsLoading, createSession, updateSession, deleteSession } = useTrainingSessions({
     courseId: filters.courseId || undefined,
     status: filters.statusCode || undefined,
@@ -358,44 +365,101 @@ const TrainingManagement: React.FC = () => {
     }
   };
 
-  const handleQuestionSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Filter out empty options
-    const validOptions = questionForm.options.filter(option => option.trim() !== '');
-    
-    if (validOptions.length < 2) {
-      alert('Cần ít nhất 2 lựa chọn');
+  const handleQuestionSubmit = async (values: any) => {
+    // Get question bank ID - check if editingItem is a question bank or a question
+    let bankId: string | null = null;
+    let isEditingQuestion = false;
+    let questionId: string | undefined;
+
+    console.log('handleQuestionSubmit - editingItem:', editingItem);
+    console.log('handleQuestionSubmit - currentQuestionBankId:', currentQuestionBankId);
+    console.log('handleQuestionSubmit - editingItem.content:', editingItem?.content);
+    console.log('handleQuestionSubmit - editingItem._id:', editingItem?._id);
+    console.log('handleQuestionSubmit - editingItem.name:', editingItem?.name);
+
+    if (editingItem && editingItem.content) {
+      // editingItem is a question (editing mode)
+      isEditingQuestion = true;
+      questionId = editingItem._id;
+      bankId = editingItem.bank_id?._id || editingItem.bank_id;
+    } else if (currentQuestionBankId) {
+      // Use stored question bank ID (most reliable)
+      bankId = currentQuestionBankId;
+    } else if (editingItem && editingItem._id) {
+      // editingItem is a question bank (creating new question)
+      // Check if it has 'name' property (question bank) or 'course_name' (course)
+      // Question bank should have 'name' property, not 'content'
+      if (editingItem.name || (!editingItem.content && !editingItem.course_name)) {
+        bankId = editingItem._id;
+      } else {
+        console.error('Invalid editingItem for question bank:', editingItem);
+        message.error('Không tìm thấy ngân hàng câu hỏi. Vui lòng thử lại.');
+        return;
+      }
+    } else {
+      console.error('No editingItem or currentQuestionBankId found');
+      message.error('Không tìm thấy ngân hàng câu hỏi. Vui lòng đóng modal và thử lại.');
       return;
     }
 
-    if (!validOptions.includes(questionForm.correct_answer)) {
-      alert('Đáp án đúng phải là một trong các lựa chọn');
+    if (!bankId) {
+      console.error('bankId is empty');
+      message.error('Không tìm thấy ID ngân hàng câu hỏi');
+      return;
+    }
+
+    // Use values from form, but fallback to questionForm state for options (since we're using controlled components)
+    const content = values.content || questionForm.content;
+    const optionsArray = questionForm.options; // Always use state for options
+    const validOptions = optionsArray.filter((option: string) => option && option.trim() !== '');
+    
+    if (validOptions.length < 2) {
+      message.warning('Cần ít nhất 2 lựa chọn');
+      return;
+    }
+
+    const correctAnswer = values.correct_answer || questionForm.correct_answer;
+    if (!correctAnswer || correctAnswer.trim() === '') {
+      message.warning('Vui lòng nhập đáp án đúng');
+      return;
+    }
+
+    if (!validOptions.includes(correctAnswer.trim())) {
+      message.warning('Đáp án đúng phải là một trong các lựa chọn');
+      return;
+    }
+    
+    if (!content || content.trim() === '') {
+      message.warning('Vui lòng nhập nội dung câu hỏi');
       return;
     }
     
     setSubmittingQuestion(true);
     try {
-
       const questionData = {
-        bank_id: editingItem._id,
-        content: questionForm.content,
+        bank_id: bankId,
+        content: content.trim(),
         options: validOptions,
-        correct_answer: questionForm.correct_answer,
+        correct_answer: correctAnswer.trim(),
       };
 
       // Create or update question using API
-      if (editingItem && editingItem._id && editingItem.content) {
+      if (isEditingQuestion && questionId) {
         // Editing existing question
-        await updateQuestion(editingItem._id, questionData);
+        await updateQuestion(questionId, questionData);
+        message.success('Cập nhật câu hỏi thành công');
       } else {
         // Creating new question
         await createQuestion(questionData);
+        message.success('Thêm câu hỏi thành công');
       }
       
       closeModal();
       resetForms();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving question:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Không thể lưu câu hỏi';
+      message.error(errorMessage);
     } finally {
       setSubmittingQuestion(false);
     }
@@ -403,7 +467,7 @@ const TrainingManagement: React.FC = () => {
 
   const handleEditCourseSet = (courseSet: any) => {
     setEditingItem(courseSet);
-    openModal('addCourseSetModal');
+    openModal('addCourseSetModal', false);
   };
 
   const handleDeleteCourseSet = async (id: string) => {
@@ -416,7 +480,7 @@ const TrainingManagement: React.FC = () => {
 
   const handleEditCourse = (course: any) => {
     setEditingItem(course);
-    openModal('addCourseModal');
+    openModal('addCourseModal', false);
   };
 
   const handleEditSession = (session: any) => {
@@ -430,12 +494,12 @@ const TrainingManagement: React.FC = () => {
       location: session.location || '',
       status_code: session.status_code || 'SCHEDULED',
     });
-    openModal('addSessionModal');
+    openModal('addSessionModal', false);
   };
 
   const handleEditQuestionBank = (bank: any) => {
     setEditingItem(bank);
-    openModal('addBankModal');
+    openModal('addBankModal', false);
   };
 
   // Delete handlers
@@ -490,16 +554,54 @@ const TrainingManagement: React.FC = () => {
 
   const handleImportExcel = async () => {
     if (!excelFile || !editingItem) {
-      alert('Vui lòng chọn file Excel và ngân hàng câu hỏi');
+      message.warning('Vui lòng chọn file Excel và ngân hàng câu hỏi');
       return;
     }
 
     try {
-      await importQuestionsFromExcel(editingItem._id, excelFile);
+      const result: any = await importQuestionsFromExcel(editingItem._id, excelFile);
+      console.log('Import result:', result);
+      
+      // Handle different response formats
+      const importedRows = result?.importedRows ?? (Array.isArray(result) ? result.length : (result?.questions?.length ?? 0));
+      const failedRows = result?.failedRows ?? 0;
+      const errors = result?.errors ?? [];
+      
+      if (importedRows > 0) {
+        if (failedRows > 0 || errors.length > 0) {
+          message.warning(
+            `Đã import ${importedRows} câu hỏi thành công. Có ${failedRows} dòng bị lỗi.`,
+            8
+          );
+          // Show first few errors if any
+          if (errors.length > 0) {
+            const errorPreview = errors.slice(0, 3).join('\n');
+            if (errors.length > 3) {
+              message.info(`${errorPreview}\n... và ${errors.length - 3} lỗi khác`, 10);
+            } else {
+              message.info(errorPreview, 10);
+            }
+          }
+        } else {
+          message.success(`Đã import thành công ${importedRows} câu hỏi`);
+        }
+      } else {
+        // No questions imported
+        if (failedRows > 0 || errors.length > 0) {
+          const errorMessage = errors.length > 0 
+            ? `Không thể import câu hỏi nào. Lỗi:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n... và ${errors.length - 5} lỗi khác` : ''}`
+            : `Không thể import câu hỏi nào. Có ${failedRows} dòng bị lỗi.`;
+          message.error(errorMessage, 10);
+        } else {
+          message.warning('Không có câu hỏi nào được import. Vui lòng kiểm tra lại file Excel.');
+        }
+      }
       setExcelFile(null);
       closeModal();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error importing Excel:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Không thể import câu hỏi từ Excel';
+      message.error(errorMessage, 8);
     }
   };
 
@@ -533,25 +635,63 @@ const TrainingManagement: React.FC = () => {
     return new Date(dateTimeString).toLocaleString('vi-VN');
   };
 
-  const switchTab = (tabName: 'courses' | 'sessions' | 'enrollments' | 'question-banks') => {
-    setActiveTab(tabName);
+  // Navigation handlers
+  const handleCourseSetClick = (courseSet: any) => {
+    setSelectedCourseSet(courseSet);
+    setSelectedCourse(null);
+    setCurrentView('courses');
+    setFilters(prev => ({ ...prev, courseSetId: courseSet._id }));
   };
 
-  const openModal = (modalId: string) => {
+  const handleCourseClick = (course: any) => {
+    setSelectedCourse(course);
+    setCurrentView('question-banks');
+    setFilters(prev => ({ ...prev, courseId: course._id }));
+  };
+
+  const handleBackToCourseSets = () => {
+    setCurrentView('course-sets');
+    setSelectedCourseSet(null);
+    setSelectedCourse(null);
+    setFilters(prev => ({ ...prev, courseSetId: '', courseId: '' }));
+  };
+
+  const handleBackToCourses = () => {
+    setCurrentView('courses');
+    setSelectedCourse(null);
+    setFilters(prev => ({ ...prev, courseId: '' }));
+  };
+
+  const switchTab = (tabName: 'sessions' | 'enrollments' | 'assignments') => {
+    setCurrentView(tabName);
+    setSelectedCourseSet(null);
+    setSelectedCourse(null);
+    setFilters(prev => ({ ...prev, courseSetId: '', courseId: '' }));
+  };
+
+  const openModal = (modalId: string, shouldReset: boolean = true) => {
     console.log('Opening modal:', modalId, 'Current editingItem:', editingItem);
     setShowModal(modalId);
-    resetForms();
+    if (shouldReset) {
+      resetForms();
+    }
   };
 
   const openModalWithData = (modalId: string, data: any) => {
     console.log('Opening modal with data:', modalId, 'Data:', data);
     setEditingItem(data);
+    // If opening manage questions modal, store the question bank ID
+    if (modalId === 'manageQuestionsModal' && data && data._id) {
+      setCurrentQuestionBankId(data._id);
+    }
     setShowModal(modalId);
     // Không gọi resetForms() để không reset editingItem
   };
 
   const closeModal = () => {
     setShowModal(null);
+    setEditingItem(null);
+    setCurrentQuestionBankId(null);
     resetForms();
   };
 
@@ -560,22 +700,104 @@ const TrainingManagement: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <motion.div 
+      style={{ 
+        padding: '32px', 
+        background: 'linear-gradient(180deg, #f0f9ff 0%, #ffffff 40%, #f8fafc 100%)',
+        minHeight: '100vh',
+        position: 'relative'
+      }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* Background decorative elements */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage: `
+            radial-gradient(circle at 10% 20%, rgba(102, 126, 234, 0.1), transparent 50%),
+            radial-gradient(circle at 90% 80%, rgba(118, 75, 162, 0.08), transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.05), transparent 60%)
+          `,
+          backgroundPosition: '10% 20%, 90% 80%, 50% 50%',
+          backgroundSize: 'auto, auto, auto',
+          backgroundRepeat: 'no-repeat',
+          zIndex: 0,
+          pointerEvents: 'none'
+        }}
+      />
+      
+      <div style={{ 
+        position: 'relative', 
+        zIndex: 1, 
+        maxWidth: '1600px', 
+        margin: '0 auto'
+      }}>
         {/* Header */}
-        <Card style={{ marginBottom: '24px' }}>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          <Card
+            styles={{ body: { padding: '24px 32px' } }}
+            style={{ 
+              marginBottom: '32px',
+              borderRadius: '20px',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(239, 246, 255, 0.8) 100%)',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 20px 60px rgba(102, 126, 234, 0.12), 0 0 0 1px rgba(102, 126, 234, 0.05)',
+              border: 'none'
+            }}
+          >
           <Row justify="space-between" align="middle">
             <Col>
               <Space direction="vertical" size={0}>
-                <Typography.Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-                  <BookOutlined style={{ marginRight: '8px' }} />
+                <Typography.Title 
+                  level={2} 
+                  style={{ 
+                    margin: 0, 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    fontWeight: 700,
+                    fontSize: '28px'
+                  }}
+                >
+                  <BookOutlined style={{ 
+                    color: '#667eea',
+                    fontSize: '32px',
+                    filter: 'drop-shadow(0 2px 4px rgba(102, 126, 234, 0.3))'
+                  }} />
                   Quản lý đào tạo
                 </Typography.Title>
-                <Breadcrumb style={{ marginTop: '8px' }}>
+                <Breadcrumb 
+                  style={{ marginTop: '4px' }}
+                  separator={<span style={{ color: '#94a3b8' }}>/</span>}
+                >
                   <Breadcrumb.Item>
-                    <a href="/header-department/dashboard">Dashboard</a>
+                    <a 
+                      href="/header-department/dashboard"
+                      style={{ 
+                        color: '#64748b',
+                        textDecoration: 'none',
+                        transition: 'all 0.3s',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = '#667eea'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
+                    >
+                      Dashboard
+                    </a>
                   </Breadcrumb.Item>
-                  <Breadcrumb.Item>Quản lý đào tạo</Breadcrumb.Item>
+                  <Breadcrumb.Item>
+                    <span style={{ color: '#1e293b', fontWeight: 500 }}>Quản lý đào tạo</span>
+                  </Breadcrumb.Item>
                 </Breadcrumb>
               </Space>
             </Col>
@@ -584,92 +806,205 @@ const TrainingManagement: React.FC = () => {
                 type="default" 
                 icon={<ArrowLeftOutlined />}
                 href="/header-department/dashboard"
+                size="large"
+                style={{
+                  borderRadius: '10px',
+                  height: '40px',
+                  padding: '0 20px',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                  border: '1px solid #e2e8f0',
+                  transition: 'all 0.3s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.12)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
                 Quay lại
               </Button>
             </Col>
           </Row>
         </Card>
+        </motion.div>
 
-        {/* Tabs */}
-        <Card>
-          <Tabs
-            activeKey={activeTab}
-            onChange={(key) => switchTab(key as any)}
-            items={[
-              {
-                key: 'course-sets',
-                label: (
-                  <span>
-                    <FolderOutlined />
-                    Bộ khóa học
-                  </span>
-                ),
-                children: null
-              },
-              {
-                key: 'courses',
-                label: (
-                  <span>
-                    <BookOutlined />
-                    Khóa học
-                  </span>
-                ),
-                children: null
-              },
-              {
-                key: 'sessions',
-                label: (
-                  <span>
-                    <CalendarOutlined />
-                    Buổi đào tạo
-                  </span>
-                ),
-                children: null
-              },
-              {
-                key: 'enrollments',
-                label: (
-                  <span>
-                    <UserOutlined />
-                    Đăng ký tham gia
-                  </span>
-                ),
-                children: null
-              },
-              {
-                key: 'question-banks',
-                label: (
-                  <span>
-                    <QuestionCircleOutlined />
-                    Ngân hàng câu hỏi
-                  </span>
-                ),
-                children: null
-              },
-              {
-                key: 'assignments',
-                label: (
-                  <span>
-                    <TeamOutlined />
-                    Gán khóa học
-                  </span>
-                ),
-                children: null
-              }
-            ]}
-          />
+        {/* Navigation Menu */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <Card
+            styles={{ body: { padding: '16px 24px' } }}
+            style={{
+              borderRadius: '20px',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(239, 246, 255, 0.8) 100%)',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 20px 60px rgba(102, 126, 234, 0.12), 0 0 0 1px rgba(102, 126, 234, 0.05)',
+              border: 'none',
+              marginBottom: '24px'
+            }}
+          >
+            <Space wrap size="middle">
+              <Button
+                type={currentView === 'course-sets' ? 'primary' : 'default'}
+                icon={<FolderOutlined />}
+                onClick={() => {
+                  setCurrentView('course-sets');
+                  setSelectedCourseSet(null);
+                  setSelectedCourse(null);
+                  setFilters(prev => ({ ...prev, courseSetId: '', courseId: '' }));
+                }}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 20px',
+                  fontWeight: currentView === 'course-sets' ? 600 : 400
+                }}
+              >
+                Bộ khóa học
+              </Button>
+              <Button
+                type={currentView === 'sessions' ? 'primary' : 'default'}
+                icon={<CalendarOutlined />}
+                onClick={() => switchTab('sessions')}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 20px',
+                  fontWeight: currentView === 'sessions' ? 600 : 400
+                }}
+              >
+                Buổi đào tạo
+              </Button>
+              <Button
+                type={currentView === 'enrollments' ? 'primary' : 'default'}
+                icon={<UserOutlined />}
+                onClick={() => switchTab('enrollments')}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 20px',
+                  fontWeight: currentView === 'enrollments' ? 600 : 400
+                }}
+              >
+                Đăng ký tham gia
+              </Button>
+              <Button
+                type={currentView === 'assignments' ? 'primary' : 'default'}
+                icon={<TeamOutlined />}
+                onClick={() => switchTab('assignments')}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 20px',
+                  fontWeight: currentView === 'assignments' ? 600 : 400
+                }}
+              >
+                Gán khóa học
+              </Button>
+            </Space>
+          </Card>
 
-          {/* Course Sets Tab */}
-          {activeTab === 'course-sets' && (
-            <div style={{ marginTop: '16px' }}>
-              <Card>
-                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+          {/* Breadcrumb Navigation */}
+          {(currentView === 'courses' || currentView === 'question-banks') && (
+            <Card
+              styles={{ body: { padding: '16px 24px' } }}
+              style={{
+                borderRadius: '12px',
+                background: 'rgba(255, 255, 255, 0.9)',
+                marginBottom: '24px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)'
+              }}
+            >
+              <Breadcrumb
+                separator={<span style={{ color: '#94a3b8' }}>/</span>}
+                items={[
+                  {
+                    title: (
+                      <Button
+                        type="link"
+                        icon={<FolderOutlined />}
+                        onClick={handleBackToCourseSets}
+                        style={{ padding: 0, height: 'auto' }}
+                      >
+                        Bộ khóa học
+                      </Button>
+                    )
+                  },
+                  selectedCourseSet && {
+                    title: currentView === 'courses' ? (
+                      <span style={{ color: '#1e293b', fontWeight: 500 }}>
+                        {selectedCourseSet.name}
+                      </span>
+                    ) : (
+                      <Button
+                        type="link"
+                        icon={<BookOutlined />}
+                        onClick={handleBackToCourses}
+                        style={{ padding: 0, height: 'auto' }}
+                      >
+                        {selectedCourseSet.name}
+                      </Button>
+                    )
+                  },
+                  currentView === 'question-banks' && selectedCourse && {
+                    title: (
+                      <span style={{ color: '#1e293b', fontWeight: 500 }}>
+                        {selectedCourse.course_name}
+                      </span>
+                    )
+                  }
+                ].filter(Boolean)}
+              />
+            </Card>
+          )}
+
+          {/* Content Card */}
+          <Card
+            styles={{ body: { padding: '24px' } }}
+            style={{
+              borderRadius: '20px',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(239, 246, 255, 0.8) 100%)',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 20px 60px rgba(102, 126, 234, 0.12), 0 0 0 1px rgba(102, 126, 234, 0.05)',
+              border: 'none',
+              overflow: 'hidden'
+            }}
+          >
+
+          {/* Course Sets View */}
+          {currentView === 'course-sets' && (
+            <motion.div 
+              style={{ marginTop: '24px' }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Card
+                styles={{ body: { padding: '24px' } }}
+                style={{
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.8)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <Row justify="space-between" align="middle" style={{ marginBottom: '24px' }}>
                   <Col>
                     <Input
                       placeholder="Tìm kiếm bộ khóa học..."
                       prefix={<SearchOutlined />}
-                      style={{ width: 300 }}
+                      style={{ 
+                        width: 320,
+                        borderRadius: '8px',
+                        height: '40px'
+                      }}
                       value={filters.search}
                       onChange={(e) => handleFilterChange('search', e.target.value)}
                     />
@@ -679,6 +1014,25 @@ const TrainingManagement: React.FC = () => {
                       type="primary" 
                       icon={<PlusOutlined />}
                       onClick={() => openModal('addCourseSetModal')}
+                      style={{
+                        borderRadius: '10px',
+                        height: '44px',
+                        padding: '0 28px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)',
+                        fontWeight: 600,
+                        fontSize: '15px',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+                      }}
                     >
                       Tạo bộ khóa học
                     </Button>
@@ -686,17 +1040,19 @@ const TrainingManagement: React.FC = () => {
                 </Row>
 
                 {courseSetsLoading ? (
-                  <div style={{ textAlign: 'center', padding: '50px' }}>
-                    <Spin size="large" />
-                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
+                  <div style={{ textAlign: 'center', padding: '100px' }}>
+                    <Spin size="large" style={{ color: '#667eea' }} />
+                    <div style={{ marginTop: '24px', fontSize: '16px', color: '#666', fontWeight: 500 }}>Đang tải dữ liệu...</div>
                   </div>
                 ) : courseSets.length === 0 ? (
                   <Empty
-                    image={<BookOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                    image={<BookOutlined style={{ fontSize: '100px', color: '#d9d9d9', opacity: 0.5 }} />}
                     description={
                       <div>
-                        <Typography.Title level={4}>Chưa có bộ khóa học nào</Typography.Title>
-                        <Typography.Text type="secondary">
+                        <Typography.Title level={4} style={{ color: '#1a1a1a', marginBottom: '12px', fontWeight: 600 }}>
+                          Chưa có bộ khóa học nào
+                        </Typography.Title>
+                        <Typography.Text type="secondary" style={{ fontSize: '15px', color: '#8c8c8c' }}>
                           Hãy tạo bộ khóa học đầu tiên để bắt đầu quản lý đào tạo
                         </Typography.Text>
                       </div>
@@ -706,12 +1062,31 @@ const TrainingManagement: React.FC = () => {
                       type="primary" 
                       icon={<PlusOutlined />}
                       onClick={() => openModal('addCourseSetModal')}
+                      style={{
+                        borderRadius: '10px',
+                        height: '44px',
+                        padding: '0 28px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)',
+                        fontWeight: 600,
+                        fontSize: '15px',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+                      }}
                     >
                       Tạo bộ khóa học
                     </Button>
                   </Empty>
                 ) : (
-                  <Row gutter={[16, 16]}>
+                  <Row gutter={[24, 24]} style={{ display: 'flex', alignItems: 'stretch' }}>
                     {courseSets
                       .filter(courseSet => 
                         !filters.search || 
@@ -719,22 +1094,52 @@ const TrainingManagement: React.FC = () => {
                         (courseSet.description && courseSet.description.toLowerCase().includes(filters.search.toLowerCase()))
                       )
                       .map(courseSet => (
-                      <Col xs={24} sm={12} lg={8} xl={6} key={courseSet._id}>
-                        <Card
-                          hoverable
-                          style={{ height: '100%' }}
-                          actions={[
+                      <Col xs={24} sm={12} lg={8} xl={6} key={courseSet._id} style={{ display: 'flex' }}>
+                        <motion.div
+                          whileHover={{ y: -8, scale: 1.02 }}
+                          transition={{ duration: 0.2 }}
+                          style={{ width: '100%', display: 'flex' }}
+                        >
+                          <Card
+                            hoverable
+                            onClick={() => handleCourseSetClick(courseSet)}
+                            style={{ 
+                              height: '100%',
+                              width: '100%',
+                              borderRadius: '18px',
+                              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04)',
+                              border: '1px solid rgba(255, 255, 255, 0.8)',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              background: 'rgba(255, 255, 255, 0.95)',
+                              backdropFilter: 'blur(8px)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column'
+                            }}
+                            bodyStyle={{
+                              padding: '20px',
+                              flex: 1,
+                              display: 'flex',
+                              flexDirection: 'column'
+                            }}
+                            actions={[
                             <Tooltip title="Sửa">
                               <Button 
                                 type="text" 
                                 icon={<EditOutlined />}
-                                onClick={() => handleEditCourseSet(courseSet)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditCourseSet(courseSet);
+                                }}
                               />
                             </Tooltip>,
                             <Popconfirm
                               title="Xóa bộ khóa học"
                               description="Bạn có chắc chắn muốn xóa bộ khóa học này? Tất cả các khóa học trong bộ này sẽ bị ảnh hưởng."
-                              onConfirm={() => handleDeleteCourseSet(courseSet._id)}
+                              onConfirm={(e) => {
+                                e?.stopPropagation();
+                                handleDeleteCourseSet(courseSet._id);
+                              }}
                               okText="Xóa"
                               cancelText="Hủy"
                             >
@@ -743,69 +1148,106 @@ const TrainingManagement: React.FC = () => {
                                   type="text" 
                                   danger
                                   icon={<DeleteOutlined />}
+                                  onClick={(e) => e.stopPropagation()}
                                 />
                               </Tooltip>
                             </Popconfirm>
                           ]}
                         >
                           <Card.Meta
+                            avatar={
+                              <div style={{
+                                width: '64px',
+                                height: '64px',
+                                borderRadius: '16px',
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '28px',
+                                color: '#fff',
+                                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                                transition: 'all 0.3s ease'
+                              }}>
+                                <FolderOutlined />
+                              </div>
+                            }
                             title={
-                              <Typography.Text strong style={{ fontSize: '16px' }}>
+                              <Typography.Text strong style={{ fontSize: '18px', color: '#1a1a1a' }}>
                                 {courseSet.name}
                               </Typography.Text>
                             }
                             description={
-                              <div>
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                                 <Typography.Paragraph 
                                   ellipsis={{ rows: 3 }} 
-                                  style={{ marginBottom: '12px', color: '#666' }}
+                                  style={{ marginBottom: '12px', color: '#666', fontSize: '14px', lineHeight: '1.6', flex: 1 }}
                                 >
                                   {courseSet.description || 'Không có mô tả'}
                                 </Typography.Paragraph>
                               </div>
                             }
                           />
-                        </Card>
+                          </Card>
+                        </motion.div>
                       </Col>
                     ))}
                   </Row>
                 )}
               </Card>
-            </div>
+            </motion.div>
           )}
 
-          {/* Courses Tab */}
-          {activeTab === 'courses' && (
-            <div style={{ marginTop: '16px' }}>
-              <Card>
-                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+          {/* Courses View */}
+          {currentView === 'courses' && (
+            <motion.div 
+              style={{ marginTop: '24px' }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Card
+                styles={{ body: { padding: '24px' } }}
+                style={{
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.8)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                {selectedCourseSet && (
+                  <div style={{ marginBottom: '20px', padding: '16px', background: 'linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 100%)', borderRadius: '12px', border: '1px solid rgba(24, 144, 255, 0.2)' }}>
+                    <Space>
+                      <FolderOutlined style={{ color: '#1890ff', fontSize: '20px' }} />
+                      <Typography.Text strong style={{ fontSize: '16px', color: '#1890ff' }}>
+                        Bộ khóa học: {selectedCourseSet.name}
+                      </Typography.Text>
+                    </Space>
+                  </div>
+                )}
+                <Row justify="space-between" align="middle" style={{ marginBottom: '24px' }}>
                   <Col>
                     <Space wrap>
                       <Input
                         placeholder="Tìm kiếm khóa học..."
                         prefix={<SearchOutlined />}
-                        style={{ width: 300 }}
+                        style={{ 
+                          width: 300,
+                          borderRadius: '8px',
+                          height: '40px'
+                        }}
                         value={filters.search}
                         onChange={(e) => handleFilterChange('search', e.target.value)}
                       />
                       
                       <Select
-                        placeholder="Tất cả bộ khóa học"
-                        style={{ width: 200 }}
-                        value={filters.courseSetId}
-                        onChange={(value) => handleFilterChange('courseSetId', value)}
-                        allowClear
-                      >
-                        {courseSets.map(courseSet => (
-                          <Select.Option key={courseSet._id} value={courseSet._id}>
-                            {courseSet.name}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                      
-                      <Select
                         placeholder="Tất cả"
-                        style={{ width: 150 }}
+                        style={{ 
+                          width: 150,
+                          borderRadius: '8px'
+                        }}
                         value={filters.isMandatory}
                         onChange={(value) => handleFilterChange('isMandatory', value)}
                         allowClear
@@ -819,7 +1261,22 @@ const TrainingManagement: React.FC = () => {
                     <Button 
                       type="primary" 
                       icon={<PlusOutlined />}
-                      onClick={() => openModal('addCourseModal')}
+                      onClick={() => {
+                        if (selectedCourseSet) {
+                          // Pre-fill course_set_id when creating from course set view
+                          setEditingItem({ course_set_id: selectedCourseSet._id });
+                        }
+                        openModal('addCourseModal');
+                      }}
+                      style={{
+                        borderRadius: '8px',
+                        height: '40px',
+                        padding: '0 24px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                        fontWeight: 600
+                      }}
                     >
                       Tạo khóa học
                     </Button>
@@ -827,17 +1284,19 @@ const TrainingManagement: React.FC = () => {
                 </Row>
 
                 {coursesLoading ? (
-                  <div style={{ textAlign: 'center', padding: '50px' }}>
-                    <Spin size="large" />
-                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
+                  <div style={{ textAlign: 'center', padding: '80px' }}>
+                    <Spin size="large" style={{ color: '#667eea' }} />
+                    <div style={{ marginTop: '24px', fontSize: '16px', color: '#666' }}>Đang tải dữ liệu...</div>
                   </div>
                 ) : courses.length === 0 ? (
                   <Empty
-                    image={<BookOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                    image={<BookOutlined style={{ fontSize: '80px', color: '#d9d9d9' }} />}
                     description={
                       <div>
-                        <Typography.Title level={4}>Chưa có khóa học nào</Typography.Title>
-                        <Typography.Text type="secondary">
+                        <Typography.Title level={4} style={{ color: '#1a1a1a', marginBottom: '8px' }}>
+                          Chưa có khóa học nào
+                        </Typography.Title>
+                        <Typography.Text type="secondary" style={{ fontSize: '14px' }}>
                           Hãy tạo khóa học đầu tiên để bắt đầu quản lý đào tạo
                         </Typography.Text>
                       </div>
@@ -847,44 +1306,91 @@ const TrainingManagement: React.FC = () => {
                       type="primary" 
                       icon={<PlusOutlined />}
                       onClick={() => openModal('addCourseModal')}
+                      style={{
+                        borderRadius: '8px',
+                        height: '40px',
+                        padding: '0 24px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                        fontWeight: 600
+                      }}
                     >
                       Tạo khóa học
                     </Button>
                   </Empty>
                 ) : (
-                  <Row gutter={[16, 16]}>
-                    {courses.map(course => (
-                      <Col xs={24} sm={12} lg={8} xl={6} key={course._id}>
-                        <Card
-                          hoverable
-                          style={{ height: '100%' }}
-                          actions={[
+                  <Row gutter={[24, 24]} style={{ display: 'flex', alignItems: 'stretch' }}>
+                    {courses
+                      .filter(course => !selectedCourseSet || course.course_set_id?._id === selectedCourseSet._id || course.course_set_id === selectedCourseSet._id)
+                      .map(course => (
+                      <Col xs={24} sm={12} lg={8} xl={6} key={course._id} style={{ display: 'flex' }}>
+                        <motion.div
+                          whileHover={{ y: -8, scale: 1.02 }}
+                          transition={{ duration: 0.2 }}
+                          style={{ width: '100%', display: 'flex' }}
+                        >
+                          <Card
+                            hoverable
+                            onClick={() => handleCourseClick(course)}
+                            style={{ 
+                              height: '100%',
+                              width: '100%',
+                              borderRadius: '18px',
+                              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04)',
+                              border: '1px solid rgba(255, 255, 255, 0.8)',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              background: 'rgba(255, 255, 255, 0.95)',
+                              backdropFilter: 'blur(8px)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column'
+                            }}
+                            bodyStyle={{
+                              padding: '20px',
+                              flex: 1,
+                              display: 'flex',
+                              flexDirection: 'column'
+                            }}
+                            actions={[
                             <Tooltip title="Sửa">
                               <Button 
                                 type="text" 
                                 icon={<EditOutlined />}
-                                onClick={() => handleEditCourse(course)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditCourse(course);
+                                }}
                               />
                             </Tooltip>,
                             <Tooltip title="Xem">
                               <Button 
                                 type="text" 
                                 icon={<EyeOutlined />}
-                                onClick={() => openModalWithData('viewCourseModal', course)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openModalWithData('viewCourseModal', course);
+                                }}
                               />
                             </Tooltip>,
                             <Tooltip title="Câu hỏi">
                               <Button 
                                 type="text" 
                                 icon={<QuestionCircleOutlined />}
-                                onClick={() => openModalWithData('questionBankModal', course)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCourseClick(course);
+                                }}
                               />
                             </Tooltip>,
                             course.is_deployed ? (
                               <Popconfirm
                                 title="Hủy triển khai khóa học"
                                 description="Bạn có chắc chắn muốn hủy triển khai khóa học này? Nhân viên sẽ không thể thấy khóa học này nữa."
-                                onConfirm={() => undeployCourse(course._id)}
+                                onConfirm={(e) => {
+                                  e?.stopPropagation();
+                                  undeployCourse(course._id);
+                                }}
                                 okText="Hủy triển khai"
                                 cancelText="Hủy"
                               >
@@ -893,6 +1399,7 @@ const TrainingManagement: React.FC = () => {
                                     type="text" 
                                     icon={<InfoCircleOutlined />}
                                     style={{ color: '#faad14' }}
+                                    onClick={(e) => e.stopPropagation()}
                                   />
                                 </Tooltip>
                               </Popconfirm>
@@ -900,7 +1407,10 @@ const TrainingManagement: React.FC = () => {
                               <Popconfirm
                                 title="Triển khai khóa học"
                                 description="Bạn có chắc chắn muốn triển khai khóa học này? Khóa học sẽ hiển thị cho nhân viên sau khi được gán cho phòng ban."
-                                onConfirm={() => deployCourse(course._id)}
+                                onConfirm={(e) => {
+                                  e?.stopPropagation();
+                                  deployCourse(course._id);
+                                }}
                                 okText="Triển khai"
                                 cancelText="Hủy"
                               >
@@ -909,6 +1419,7 @@ const TrainingManagement: React.FC = () => {
                                     type="text" 
                                     icon={<CheckCircleOutlined />}
                                     style={{ color: '#52c41a' }}
+                                    onClick={(e) => e.stopPropagation()}
                                   />
                                 </Tooltip>
                               </Popconfirm>
@@ -916,7 +1427,10 @@ const TrainingManagement: React.FC = () => {
                             <Popconfirm
                               title="Xóa khóa học"
                               description="Bạn có chắc chắn muốn xóa khóa học này?"
-                              onConfirm={() => handleDeleteCourse(course._id)}
+                              onConfirm={(e) => {
+                                e?.stopPropagation();
+                                handleDeleteCourse(course._id);
+                              }}
                               okText="Xóa"
                               cancelText="Hủy"
                             >
@@ -925,77 +1439,178 @@ const TrainingManagement: React.FC = () => {
                                   type="text" 
                                   danger
                                   icon={<DeleteOutlined />}
+                                  onClick={(e) => e.stopPropagation()}
                                 />
                               </Tooltip>
                             </Popconfirm>
                           ]}
                         >
                           <Card.Meta
+                            avatar={
+                              <div style={{
+                                width: '64px',
+                                height: '64px',
+                                borderRadius: '16px',
+                                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '28px',
+                                color: '#fff',
+                                boxShadow: '0 4px 12px rgba(240, 147, 251, 0.3)',
+                                transition: 'all 0.3s ease'
+                              }}>
+                                <BookOutlined />
+                              </div>
+                            }
                             title={
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography.Text strong style={{ fontSize: '16px' }}>
+                              <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                marginBottom: '8px',
+                                gap: '8px',
+                                flexWrap: 'wrap'
+                              }}>
+                                <Typography.Text 
+                                  strong 
+                                  style={{ 
+                                    fontSize: '18px', 
+                                    color: '#1a1a1a',
+                                    flex: '1 1 auto',
+                                    minWidth: 0
+                                  }}
+                                  ellipsis={{ tooltip: course.course_name }}
+                                >
                                   {course.course_name}
                                 </Typography.Text>
                                 {course.is_mandatory && (
-                                  <Tag color="red">Bắt buộc</Tag>
+                                  <Tag 
+                                    color="red"
+                                    style={{
+                                      borderRadius: '8px',
+                                      padding: '4px 12px',
+                                      fontSize: '12px',
+                                      fontWeight: 600,
+                                      whiteSpace: 'nowrap',
+                                      flexShrink: 0,
+                                      marginLeft: 'auto'
+                                    }}
+                                  >
+                                    Bắt buộc
+                                  </Tag>
                                 )}
                               </div>
                             }
                             description={
-                              <div>
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                                 <Typography.Paragraph 
                                   ellipsis={{ rows: 2 }} 
-                                  style={{ marginBottom: '12px', color: '#666' }}
+                                  style={{ marginBottom: '16px', color: '#666', fontSize: '14px', lineHeight: '1.6' }}
                                 >
                                   {course.description}
                                 </Typography.Paragraph>
                                 
-                                <Space direction="vertical" size={4}>
-                                  <Space>
-                                    <ClockCircleOutlined style={{ color: '#1890ff' }} />
-                                    <Typography.Text>{course.duration_hours} giờ</Typography.Text>
-                                  </Space>
-                                  <Space>
-                                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                                    <Typography.Text>
+                                <Space direction="vertical" size={8} style={{ width: '100%', flex: 1 }}>
+                                  <div style={{
+                                    padding: '10px 14px',
+                                    background: 'linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 100%)',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    border: '1px solid rgba(24, 144, 255, 0.1)',
+                                    transition: 'all 0.2s ease'
+                                  }}>
+                                    <ClockCircleOutlined style={{ color: '#1890ff', fontSize: '18px' }} />
+                                    <Typography.Text style={{ fontSize: '14px', color: '#1890ff', fontWeight: 500 }}>
+                                      {course.duration_hours} giờ
+                                    </Typography.Text>
+                                  </div>
+                                  <div style={{
+                                    padding: '10px 14px',
+                                    background: 'linear-gradient(135deg, #f6ffed 0%, #fcffe6 100%)',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    border: '1px solid rgba(82, 196, 26, 0.1)',
+                                    transition: 'all 0.2s ease'
+                                  }}>
+                                    <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
+                                    <Typography.Text style={{ fontSize: '14px', color: '#52c41a', fontWeight: 500 }}>
                                       {course.validity_months ? course.validity_months + ' tháng' : 'Vĩnh viễn'}
                                     </Typography.Text>
-                                  </Space>
-                                  <Space>
-                                    <BookOutlined style={{ color: '#722ed1' }} />
-                                    <Typography.Text>{course.course_set_id?.name || 'N/A'}</Typography.Text>
-                                  </Space>
+                                  </div>
+                                  <div style={{
+                                    padding: '10px 14px',
+                                    background: 'linear-gradient(135deg, #f9f0ff 0%, #efdbff 100%)',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    border: '1px solid rgba(114, 46, 209, 0.1)',
+                                    transition: 'all 0.2s ease'
+                                  }}>
+                                    <BookOutlined style={{ color: '#722ed1', fontSize: '18px' }} />
+                                    <Typography.Text style={{ fontSize: '14px', color: '#722ed1', fontWeight: 500 }}>
+                                      {course.course_set_id?.name || 'N/A'}
+                                    </Typography.Text>
+                                  </div>
                                 </Space>
                               </div>
                             }
                           />
-                        </Card>
+                          </Card>
+                        </motion.div>
                       </Col>
                     ))}
                   </Row>
                 )}
               </Card>
-            </div>
+            </motion.div>
           )}
 
-          {/* Sessions Tab */}
-          {activeTab === 'sessions' && (
-            <div style={{ marginTop: '16px' }}>
-              <Card>
-                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+          {/* Sessions View */}
+          {currentView === 'sessions' && (
+            <motion.div 
+              style={{ marginTop: '24px' }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Card
+                styles={{ body: { padding: '24px' } }}
+                style={{
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.8)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <Row justify="space-between" align="middle" style={{ marginBottom: '24px' }}>
                   <Col>
                     <Space wrap>
                       <Input
                         placeholder="Tìm kiếm buổi đào tạo..."
                         prefix={<SearchOutlined />}
-                        style={{ width: 300 }}
+                        style={{ 
+                          width: 300,
+                          borderRadius: '8px',
+                          height: '40px'
+                        }}
                         value={filters.search}
                         onChange={(e) => handleFilterChange('search', e.target.value)}
                       />
                       
                       <Select
                         placeholder="Tất cả trạng thái"
-                        style={{ width: 180 }}
+                        style={{ 
+                          width: 180,
+                          borderRadius: '8px'
+                        }}
                         value={filters.statusCode}
                         onChange={(value) => handleFilterChange('statusCode', value)}
                         allowClear
@@ -1008,7 +1623,10 @@ const TrainingManagement: React.FC = () => {
 
                       <Select
                         placeholder="Tất cả khóa học"
-                        style={{ width: 200 }}
+                        style={{ 
+                          width: 200,
+                          borderRadius: '8px'
+                        }}
                         value={filters.courseId}
                         onChange={(value) => handleFilterChange('courseId', value)}
                         allowClear
@@ -1026,6 +1644,15 @@ const TrainingManagement: React.FC = () => {
                       type="primary" 
                       icon={<PlusOutlined />}
                       onClick={() => openModal('addSessionModal')}
+                      style={{
+                        borderRadius: '8px',
+                        height: '40px',
+                        padding: '0 24px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                        fontWeight: 600
+                      }}
                     >
                       Lên lịch đào tạo
                     </Button>
@@ -1033,17 +1660,19 @@ const TrainingManagement: React.FC = () => {
                 </Row>
 
                 {sessionsLoading ? (
-                  <div style={{ textAlign: 'center', padding: '50px' }}>
-                    <Spin size="large" />
-                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
+                  <div style={{ textAlign: 'center', padding: '80px' }}>
+                    <Spin size="large" style={{ color: '#667eea' }} />
+                    <div style={{ marginTop: '24px', fontSize: '16px', color: '#666' }}>Đang tải dữ liệu...</div>
                   </div>
                 ) : sessions.length === 0 ? (
                   <Empty
-                    image={<CalendarOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                    image={<CalendarOutlined style={{ fontSize: '80px', color: '#d9d9d9' }} />}
                     description={
                       <div>
-                        <Typography.Title level={4}>Chưa có buổi đào tạo nào</Typography.Title>
-                        <Typography.Text type="secondary">
+                        <Typography.Title level={4} style={{ color: '#1a1a1a', marginBottom: '8px' }}>
+                          Chưa có buổi đào tạo nào
+                        </Typography.Title>
+                        <Typography.Text type="secondary" style={{ fontSize: '14px' }}>
                           Hãy lên lịch buổi đào tạo đầu tiên
                         </Typography.Text>
                       </div>
@@ -1053,12 +1682,21 @@ const TrainingManagement: React.FC = () => {
                       type="primary" 
                       icon={<PlusOutlined />}
                       onClick={() => openModal('addSessionModal')}
+                      style={{
+                        borderRadius: '8px',
+                        height: '40px',
+                        padding: '0 24px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                        fontWeight: 600
+                      }}
                     >
                       Lên lịch đào tạo
                     </Button>
                   </Empty>
                 ) : (
-                  <Row gutter={[16, 16]}>
+                  <Row gutter={[24, 24]} style={{ display: 'flex', alignItems: 'stretch' }}>
                     {sessions.map(session => {
                       const getStatusColor = (status: string) => {
                         switch (status) {
@@ -1071,10 +1709,33 @@ const TrainingManagement: React.FC = () => {
                       };
 
                       return (
-                        <Col xs={24} sm={12} lg={8} xl={6} key={session._id}>
-                          <Card
-                            hoverable
-                            style={{ height: '100%' }}
+                        <Col xs={24} sm={12} lg={8} xl={6} key={session._id} style={{ display: 'flex' }}>
+                          <motion.div
+                            whileHover={{ y: -8, scale: 1.02 }}
+                            transition={{ duration: 0.2 }}
+                            style={{ width: '100%', display: 'flex' }}
+                          >
+                            <Card
+                              hoverable
+                              style={{ 
+                                height: '100%',
+                                width: '100%',
+                                borderRadius: '18px',
+                                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04)',
+                                border: '1px solid rgba(255, 255, 255, 0.8)',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                background: 'rgba(255, 255, 255, 0.95)',
+                                backdropFilter: 'blur(8px)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                flexDirection: 'column'
+                              }}
+                              bodyStyle={{
+                                padding: '20px',
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column'
+                              }}
                             actions={[
                               <Tooltip title="Sửa">
                                 <Button 
@@ -1115,73 +1776,144 @@ const TrainingManagement: React.FC = () => {
                             ]}
                           >
                             <Card.Meta
+                              avatar={
+                                <div style={{
+                                  width: '56px',
+                                  height: '56px',
+                                  borderRadius: '12px',
+                                  background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '24px',
+                                  color: '#fff'
+                                }}>
+                                  <CalendarOutlined />
+                                </div>
+                              }
                               title={
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Typography.Text strong style={{ fontSize: '16px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                  <Typography.Text strong style={{ fontSize: '18px', color: '#1a1a1a' }}>
                                     {session.session_name}
                                   </Typography.Text>
-                                  <Tag color={getStatusColor(session.status_code)}>
+                                  <Tag 
+                                    color={getStatusColor(session.status_code)}
+                                    style={{
+                                      borderRadius: '6px',
+                                      padding: '2px 8px',
+                                      fontSize: '12px',
+                                      fontWeight: 600
+                                    }}
+                                  >
                                     {getStatusLabel(session.status_code)}
                                   </Tag>
                                 </div>
                               }
                               description={
                                 <div>
-                                  <Typography.Text type="secondary" style={{ fontSize: '14px' }}>
+                                  <Typography.Text type="secondary" style={{ fontSize: '14px', fontWeight: 500 }}>
                                     {session.course_id.course_name}
                                   </Typography.Text>
                                   
-                                  <Divider style={{ margin: '12px 0' }} />
+                                  <Divider style={{ margin: '16px 0', borderColor: '#f0f0f0' }} />
                                   
-                                  <Space direction="vertical" size={4}>
-                                    <Space>
-                                      <CalendarOutlined style={{ color: '#1890ff' }} />
-                                      <Typography.Text style={{ fontSize: '12px' }}>
+                                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                    <div style={{
+                                      padding: '10px 14px',
+                                      background: 'linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 100%)',
+                                      borderRadius: '10px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                      border: '1px solid rgba(24, 144, 255, 0.1)'
+                                    }}>
+                                      <CalendarOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
+                                      <Typography.Text style={{ fontSize: '13px', color: '#1890ff', fontWeight: 500 }}>
                                         {formatDateTime(session.start_time)}
                                       </Typography.Text>
-                                    </Space>
-                                    <Space>
-                                      <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                                      <Typography.Text style={{ fontSize: '12px' }}>
+                                    </div>
+                                    <div style={{
+                                      padding: '10px 14px',
+                                      background: 'linear-gradient(135deg, #f6ffed 0%, #fcffe6 100%)',
+                                      borderRadius: '10px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                      border: '1px solid rgba(82, 196, 26, 0.1)'
+                                    }}>
+                                      <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+                                      <Typography.Text style={{ fontSize: '13px', color: '#52c41a', fontWeight: 500 }}>
                                         {formatDateTime(session.end_time)}
                                       </Typography.Text>
-                                    </Space>
-                                    <Space>
-                                      <InfoCircleOutlined style={{ color: '#722ed1' }} />
-                                      <Typography.Text style={{ fontSize: '12px' }}>
+                                    </div>
+                                    <div style={{
+                                      padding: '10px 14px',
+                                      background: 'linear-gradient(135deg, #f9f0ff 0%, #efdbff 100%)',
+                                      borderRadius: '10px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                      border: '1px solid rgba(114, 46, 209, 0.1)'
+                                    }}>
+                                      <InfoCircleOutlined style={{ color: '#722ed1', fontSize: '16px' }} />
+                                      <Typography.Text style={{ fontSize: '13px', color: '#722ed1', fontWeight: 500 }}>
                                         {session.location || 'Chưa xác định'}
                                       </Typography.Text>
-                                    </Space>
+                                    </div>
                                   </Space>
                                 </div>
                               }
                             />
                           </Card>
+                        </motion.div>
                         </Col>
                       );
                     })}
                   </Row>
                 )}
               </Card>
-            </div>
+            </motion.div>
           )}
 
-          {/* Enrollments Tab */}
-          {activeTab === 'enrollments' && (
-            <div style={{ marginTop: '16px' }}>
-              <Card>
-                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+          {/* Enrollments View */}
+          {currentView === 'enrollments' && (
+            <motion.div 
+              style={{ marginTop: '24px' }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Card
+                styles={{ body: { padding: '24px' } }}
+                style={{
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.8)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <Row justify="space-between" align="middle" style={{ marginBottom: '24px' }}>
                   <Col>
                     <Space wrap>
                       <Input
                         placeholder="Tìm kiếm theo tên nhân viên..."
                         prefix={<SearchOutlined />}
-                        style={{ width: 300 }}
+                        style={{ 
+                          width: 320,
+                          borderRadius: '10px',
+                          height: '44px'
+                        }}
                       />
                       
                       <Select
                         placeholder="Tất cả trạng thái"
-                        style={{ width: 180 }}
+                        style={{ 
+                          width: 200,
+                          borderRadius: '10px',
+                          height: '44px'
+                        }}
                         allowClear
                       >
                         <Select.Option value="enrolled">Đã đăng ký</Select.Option>
@@ -1195,6 +1927,25 @@ const TrainingManagement: React.FC = () => {
                       type="primary" 
                       icon={<DownloadOutlined />}
                       onClick={() => openModal('exportReportModal')}
+                      style={{
+                        borderRadius: '10px',
+                        height: '44px',
+                        padding: '0 28px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)',
+                        fontWeight: 600,
+                        fontSize: '15px',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+                      }}
                     >
                       Xuất báo cáo
                     </Button>
@@ -1210,6 +1961,11 @@ const TrainingManagement: React.FC = () => {
                     showQuickJumper: true,
                     showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} mục`
                   }}
+                  style={{
+                    borderRadius: '12px',
+                    overflow: 'hidden'
+                  }}
+                  className="training-table"
                   columns={[
                     {
                       title: 'Nhân viên',
@@ -1318,41 +2074,62 @@ const TrainingManagement: React.FC = () => {
                   ]}
                 />
               </Card>
-            </div>
+            </motion.div>
           )}
 
-          {/* Question Banks Tab */}
-
-          {activeTab === 'question-banks' && (
-            <div style={{ marginTop: '16px' }}>
-              <Card>
-                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+          {/* Question Banks View */}
+          {currentView === 'question-banks' && (
+            <motion.div 
+              style={{ marginTop: '24px' }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Card
+                styles={{ body: { padding: '24px' } }}
+                style={{
+                  borderRadius: '20px',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.8)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <Row justify="space-between" align="middle" style={{ marginBottom: '24px' }}>
                   <Col>
                     <Space wrap>
                       <Input
                         placeholder="Tìm kiếm ngân hàng câu hỏi..."
                         prefix={<SearchOutlined />}
-                        style={{ width: 300 }}
+                        style={{ 
+                          width: 300,
+                          borderRadius: '8px',
+                          height: '40px'
+                        }}
                       />
-                      
-                      <Select
-                        placeholder="Tất cả khóa học"
-                        style={{ width: 200 }}
-                        allowClear
-                      >
-                        {courses.map(course => (
-                          <Select.Option key={course._id} value={course._id}>
-                            {course.course_name}
-                          </Select.Option>
-                        ))}
-                      </Select>
                     </Space>
                   </Col>
                   <Col>
                     <Button 
                       type="primary" 
                       icon={<PlusOutlined />}
-                      onClick={() => openModal('addBankModal')}
+                      onClick={() => {
+                        if (selectedCourse) {
+                          // Pre-fill course_id when creating from course view
+                          setEditingItem({ course_id: selectedCourse._id });
+                        }
+                        openModal('addBankModal');
+                      }}
+                      style={{
+                        borderRadius: '8px',
+                        height: '40px',
+                        padding: '0 24px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                        fontWeight: 600
+                      }}
                     >
                       Tạo ngân hàng câu hỏi
                     </Button>
@@ -1360,17 +2137,19 @@ const TrainingManagement: React.FC = () => {
                 </Row>
 
                 {questionBanksLoading ? (
-                  <div style={{ textAlign: 'center', padding: '50px' }}>
-                    <Spin size="large" />
-                    <div style={{ marginTop: '16px' }}>Đang tải dữ liệu...</div>
+                  <div style={{ textAlign: 'center', padding: '80px' }}>
+                    <Spin size="large" style={{ color: '#667eea' }} />
+                    <div style={{ marginTop: '24px', fontSize: '16px', color: '#666' }}>Đang tải dữ liệu...</div>
                   </div>
                 ) : questionBanks.length === 0 ? (
                   <Empty
-                    image={<QuestionCircleOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                    image={<QuestionCircleOutlined style={{ fontSize: '80px', color: '#d9d9d9' }} />}
                     description={
                       <div>
-                        <Typography.Title level={4}>Chưa có ngân hàng câu hỏi nào</Typography.Title>
-                        <Typography.Text type="secondary">
+                        <Typography.Title level={4} style={{ color: '#1a1a1a', marginBottom: '8px' }}>
+                          Chưa có ngân hàng câu hỏi nào
+                        </Typography.Title>
+                        <Typography.Text type="secondary" style={{ fontSize: '14px' }}>
                           Hãy tạo ngân hàng câu hỏi đầu tiên
                         </Typography.Text>
                       </div>
@@ -1380,43 +2159,89 @@ const TrainingManagement: React.FC = () => {
                       type="primary" 
                       icon={<PlusOutlined />}
                       onClick={() => openModal('addBankModal')}
+                      style={{
+                        borderRadius: '8px',
+                        height: '40px',
+                        padding: '0 24px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                        fontWeight: 600
+                      }}
                     >
                       Tạo ngân hàng câu hỏi
                     </Button>
                   </Empty>
                 ) : (
-                  <Row gutter={[16, 16]}>
-                    {questionBanks.map(bank => (
-                      <Col xs={24} sm={12} lg={8} xl={6} key={bank._id}>
-                        <Card
-                          hoverable
-                          style={{ height: '100%' }}
-                          actions={[
+                  <Row gutter={[24, 24]} style={{ display: 'flex', alignItems: 'stretch' }}>
+                    {questionBanks
+                      .filter(bank => !selectedCourse || bank.course_id?._id === selectedCourse._id || bank.course_id === selectedCourse._id)
+                      .map(bank => (
+                      <Col xs={24} sm={12} lg={8} xl={6} key={bank._id} style={{ display: 'flex' }}>
+                        <motion.div
+                          whileHover={{ y: -8, scale: 1.02 }}
+                          transition={{ duration: 0.2 }}
+                          style={{ width: '100%', display: 'flex' }}
+                        >
+                          <Card
+                            hoverable
+                            style={{ 
+                              height: '100%',
+                              width: '100%',
+                              borderRadius: '18px',
+                              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04)',
+                              border: '1px solid rgba(255, 255, 255, 0.8)',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              background: 'rgba(255, 255, 255, 0.95)',
+                              backdropFilter: 'blur(8px)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column'
+                            }}
+                            bodyStyle={{
+                              padding: '20px',
+                              flex: 1,
+                              display: 'flex',
+                              flexDirection: 'column'
+                            }}
+                            actions={[
                             <Tooltip title="Sửa">
                               <Button 
                                 type="text" 
                                 icon={<EditOutlined />}
-                                onClick={() => handleEditQuestionBank(bank)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditQuestionBank(bank);
+                                }}
                               />
                             </Tooltip>,
                             <Tooltip title="Quản lý câu hỏi">
                               <Button 
                                 type="text" 
                                 icon={<QuestionCircleOutlined />}
-                                onClick={() => openModalWithData('manageQuestionsModal', bank)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openModalWithData('manageQuestionsModal', bank);
+                                }}
                               />
                             </Tooltip>,
                             <Tooltip title="Xem trước">
                               <Button 
                                 type="text" 
                                 icon={<EyeOutlined />}
-                                onClick={() => openModalWithData('previewBankModal', bank)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openModalWithData('previewBankModal', bank);
+                                }}
                               />
                             </Tooltip>,
                             <Popconfirm
                               title="Xóa ngân hàng câu hỏi"
                               description="Bạn có chắc chắn muốn xóa ngân hàng câu hỏi này?"
-                              onConfirm={() => handleDeleteQuestionBank(bank._id)}
+                              onConfirm={(e) => {
+                                e?.stopPropagation();
+                                handleDeleteQuestionBank(bank._id);
+                              }}
                               okText="Xóa"
                               cancelText="Hủy"
                             >
@@ -1425,14 +2250,30 @@ const TrainingManagement: React.FC = () => {
                                   type="text" 
                                   danger
                                   icon={<DeleteOutlined />}
+                                  onClick={(e) => e.stopPropagation()}
                                 />
                               </Tooltip>
                             </Popconfirm>
                           ]}
                         >
                           <Card.Meta
+                            avatar={
+                              <div style={{
+                                width: '56px',
+                                height: '56px',
+                                borderRadius: '12px',
+                                background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '24px',
+                                color: '#fff'
+                              }}>
+                                <QuestionCircleOutlined />
+                              </div>
+                            }
                             title={
-                              <Typography.Text strong style={{ fontSize: '16px' }}>
+                              <Typography.Text strong style={{ fontSize: '18px', color: '#1a1a1a' }}>
                                 {bank.name}
                               </Typography.Text>
                             }
@@ -1440,46 +2281,83 @@ const TrainingManagement: React.FC = () => {
                               <div>
                                 <Typography.Paragraph 
                                   ellipsis={{ rows: 2 }} 
-                                  style={{ marginBottom: '12px', color: '#666' }}
+                                  style={{ marginBottom: '16px', color: '#666', fontSize: '14px', lineHeight: '1.6' }}
                                 >
                                   {bank.description}
                                 </Typography.Paragraph>
                                 
-                                <Space direction="vertical" size={4}>
-                                  <Space>
-                                    <BookOutlined style={{ color: '#1890ff' }} />
-                                    <Typography.Text>{bank.course_id.course_name}</Typography.Text>
-                                  </Space>
-                                  <Space>
-                                    <QuestionCircleOutlined style={{ color: '#52c41a' }} />
-                                    <Typography.Text>
+                                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                  <div style={{
+                                    padding: '10px 14px',
+                                    background: 'linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 100%)',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    border: '1px solid rgba(24, 144, 255, 0.1)'
+                                  }}>
+                                    <BookOutlined style={{ color: '#1890ff', fontSize: '18px' }} />
+                                    <Typography.Text style={{ fontSize: '14px', color: '#1890ff', fontWeight: 500 }}>
+                                      {bank.course_id.course_name}
+                                    </Typography.Text>
+                                  </div>
+                                  <div style={{
+                                    padding: '10px 14px',
+                                    background: 'linear-gradient(135deg, #f6ffed 0%, #fcffe6 100%)',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    border: '1px solid rgba(82, 196, 26, 0.1)'
+                                  }}>
+                                    <QuestionCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
+                                    <Typography.Text style={{ fontSize: '14px', color: '#52c41a', fontWeight: 600 }}>
                                       {questions.filter(q => q.bank_id === bank._id).length} câu hỏi
                                     </Typography.Text>
-                                  </Space>
+                                  </div>
                                 </Space>
                               </div>
                             }
                           />
-                        </Card>
+                          </Card>
+                        </motion.div>
                       </Col>
                     ))}
                   </Row>
                 )}
               </Card>
-            </div>
+            </motion.div>
           )}
 
-          {/* Assignments Tab */}
-          {activeTab === 'assignments' && (
-            <div style={{ marginTop: '16px' }}>
-              <Card>
-                <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+          {/* Assignments View */}
+          {currentView === 'assignments' && (
+            <motion.div 
+              style={{ marginTop: '24px' }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Card
+                styles={{ body: { padding: '24px' } }}
+                style={{
+                  borderRadius: '16px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                  border: 'none',
+                  background: '#ffffff',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <Row justify="space-between" align="middle" style={{ marginBottom: '24px' }}>
                   <Col>
                     <Space wrap>
                       <Input
                         placeholder="Tìm kiếm gán khóa học..."
                         prefix={<SearchOutlined />}
-                        style={{ width: 300 }}
+                        style={{ 
+                          width: 300,
+                          borderRadius: '8px',
+                          height: '40px'
+                        }}
                       />
                     </Space>
                   </Col>
@@ -1488,6 +2366,15 @@ const TrainingManagement: React.FC = () => {
                       type="primary" 
                       icon={<PlusOutlined />}
                       onClick={() => openModal('addAssignmentModal')}
+                      style={{
+                        borderRadius: '8px',
+                        height: '40px',
+                        padding: '0 24px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                        fontWeight: 600
+                      }}
                     >
                       Gán khóa học cho phòng ban
                     </Button>
@@ -1520,13 +2407,36 @@ const TrainingManagement: React.FC = () => {
                     </Button>
                   </Empty>
                 ) : (
-                  <Row gutter={[16, 16]}>
+                  <Row gutter={[24, 24]} style={{ display: 'flex', alignItems: 'stretch' }}>
                     {assignments.map(assignment => (
-                      <Col xs={24} sm={12} lg={8} xl={6} key={assignment._id}>
-                        <Card
-                          hoverable
-                          style={{ height: '100%' }}
-                          actions={[
+                      <Col xs={24} sm={12} lg={8} xl={6} key={assignment._id} style={{ display: 'flex' }}>
+                        <motion.div
+                          whileHover={{ y: -8, scale: 1.02 }}
+                          transition={{ duration: 0.2 }}
+                          style={{ width: '100%', display: 'flex' }}
+                        >
+                          <Card
+                            hoverable
+                            style={{ 
+                              height: '100%',
+                              width: '100%',
+                              borderRadius: '18px',
+                              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04)',
+                              border: '1px solid rgba(255, 255, 255, 0.8)',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              background: 'rgba(255, 255, 255, 0.95)',
+                              backdropFilter: 'blur(8px)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column'
+                            }}
+                            bodyStyle={{
+                              padding: '20px',
+                              flex: 1,
+                              display: 'flex',
+                              flexDirection: 'column'
+                            }}
+                            actions={[
                             <Tooltip title="Sửa">
                               <Button 
                                 type="text" 
@@ -1552,30 +2462,73 @@ const TrainingManagement: React.FC = () => {
                           ]}
                         >
                           <Card.Meta
+                            avatar={
+                              <div style={{
+                                width: '56px',
+                                height: '56px',
+                                borderRadius: '12px',
+                                background: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '24px',
+                                color: '#fff'
+                              }}>
+                                <TeamOutlined />
+                              </div>
+                            }
                             title={
-                              <Typography.Text strong style={{ fontSize: '16px' }}>
+                              <Typography.Text strong style={{ fontSize: '18px', color: '#1a1a1a' }}>
                                 {assignment.course_id?.course_name}
                               </Typography.Text>
                             }
                             description={
                               <div>
-                                <Space direction="vertical" size={4}>
-                                  <Space>
-                                    <TeamOutlined style={{ color: '#1890ff' }} />
-                                    <Typography.Text>{assignment.department_id?.department_name}</Typography.Text>
-                                  </Space>
-                                  <Space>
-                                    <UserOutlined style={{ color: '#52c41a' }} />
-                                    <Typography.Text>Gán bởi: {assignment.assigned_by?.full_name}</Typography.Text>
-                                  </Space>
-                                  <Space>
-                                    <ClockCircleOutlined style={{ color: '#faad14' }} />
-                                    <Typography.Text>
+                                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                  <div style={{
+                                    padding: '10px 14px',
+                                    background: 'linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 100%)',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    border: '1px solid rgba(24, 144, 255, 0.1)'
+                                  }}>
+                                    <TeamOutlined style={{ color: '#1890ff', fontSize: '18px' }} />
+                                    <Typography.Text style={{ fontSize: '14px', color: '#1890ff', fontWeight: 500 }}>
+                                      {assignment.department_id?.department_name}
+                                    </Typography.Text>
+                                  </div>
+                                  <div style={{
+                                    padding: '10px 14px',
+                                    background: 'linear-gradient(135deg, #f6ffed 0%, #fcffe6 100%)',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    border: '1px solid rgba(82, 196, 26, 0.1)'
+                                  }}>
+                                    <UserOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
+                                    <Typography.Text style={{ fontSize: '14px', color: '#52c41a', fontWeight: 500 }}>
+                                      Gán bởi: {assignment.assigned_by?.full_name}
+                                    </Typography.Text>
+                                  </div>
+                                  <div style={{
+                                    padding: '10px 14px',
+                                    background: 'linear-gradient(135deg, #fffbe6 0%, #fff7e6 100%)',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    border: '1px solid rgba(250, 173, 20, 0.1)'
+                                  }}>
+                                    <ClockCircleOutlined style={{ color: '#faad14', fontSize: '18px' }} />
+                                    <Typography.Text style={{ fontSize: '14px', color: '#faad14', fontWeight: 500 }}>
                                       {new Date(assignment.assigned_at).toLocaleDateString('vi-VN')}
                                     </Typography.Text>
-                                  </Space>
+                                  </div>
                                   {assignment.notes && (
-                                    <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                                    <Typography.Text type="secondary" style={{ fontSize: '12px', padding: '8px 12px', background: '#fafafa', borderRadius: '8px' }}>
                                       {assignment.notes}
                                     </Typography.Text>
                                   )}
@@ -1583,15 +2536,17 @@ const TrainingManagement: React.FC = () => {
                               </div>
                             }
                           />
-                        </Card>
+                          </Card>
+                        </motion.div>
                       </Col>
                     ))}
                   </Row>
                 )}
               </Card>
-            </div>
+            </motion.div>
           )}
         </Card>
+        </motion.div>
       </div>
 
       {/* Add Course Set Modal */}
@@ -1601,6 +2556,22 @@ const TrainingManagement: React.FC = () => {
         onCancel={closeModal}
         footer={null}
         width={600}
+        style={{
+          borderRadius: '20px'
+        }}
+        styles={{
+          content: {
+            borderRadius: '20px',
+            padding: '24px'
+          },
+          header: {
+            borderRadius: '20px 20px 0 0',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: '#fff',
+            borderBottom: 'none'
+          }
+        }}
       >
         <Form
           key={editingItem?._id || 'new'}
@@ -1636,8 +2607,31 @@ const TrainingManagement: React.FC = () => {
 
           <Form.Item>
             <Space>
-              <Button onClick={closeModal}>Hủy</Button>
-              <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={submittingCourseSet}>
+              <Button 
+                onClick={closeModal}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 24px'
+                }}
+              >
+                Hủy
+              </Button>
+              <Button 
+                type="primary" 
+                htmlType="submit" 
+                icon={<PlusOutlined />} 
+                loading={submittingCourseSet}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 24px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                  fontWeight: 600
+                }}
+              >
                 {editingItem ? 'Cập nhật' : 'Tạo mới'}
               </Button>
             </Space>
@@ -1754,10 +2748,31 @@ const TrainingManagement: React.FC = () => {
 
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={closeModal}>
+              <Button 
+                onClick={closeModal}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 24px'
+                }}
+              >
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={submittingCourse}>
+              <Button 
+                type="primary" 
+                htmlType="submit" 
+                icon={<PlusOutlined />} 
+                loading={submittingCourse}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 24px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                  fontWeight: 600
+                }}
+              >
                 {editingItem ? 'Cập nhật' : 'Tạo'} khóa học
               </Button>
             </Space>
@@ -1917,10 +2932,31 @@ const TrainingManagement: React.FC = () => {
 
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={closeModal}>
+              <Button 
+                onClick={closeModal}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 24px'
+                }}
+              >
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit" icon={<CalendarOutlined />} loading={submittingSession}>
+              <Button 
+                type="primary" 
+                htmlType="submit" 
+                icon={<CalendarOutlined />} 
+                loading={submittingSession}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 24px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                  fontWeight: 600
+                }}
+              >
                 {editingItem ? 'Cập nhật' : 'Tạo'} lịch đào tạo
               </Button>
             </Space>
@@ -2001,10 +3037,31 @@ const TrainingManagement: React.FC = () => {
 
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={closeModal}>
+              <Button 
+                onClick={closeModal}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 24px'
+                }}
+              >
                 Hủy
               </Button>
-              <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={submittingQuestionBank}>
+              <Button 
+                type="primary" 
+                htmlType="submit" 
+                icon={<PlusOutlined />} 
+                loading={submittingQuestionBank}
+                style={{
+                  borderRadius: '8px',
+                  height: '40px',
+                  padding: '0 24px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                  fontWeight: 600
+                }}
+              >
                 {editingItem ? 'Cập nhật' : 'Tạo'} ngân hàng câu hỏi
               </Button>
             </Space>
@@ -2061,7 +3118,24 @@ const TrainingManagement: React.FC = () => {
                   <Button 
                     type="primary"
                     icon={<PlusOutlined />}
-                    onClick={() => openModal('addQuestionModal')}
+                    onClick={() => {
+                      // Store the question bank to ensure it's preserved
+                      const currentBank = editingItem;
+                      if (!currentBank || !currentBank._id) {
+                        message.error('Không tìm thấy ngân hàng câu hỏi');
+                        return;
+                      }
+                      // Store question bank ID separately
+                      setCurrentQuestionBankId(currentBank._id);
+                      // Ensure editingItem is the question bank
+                      setEditingItem(currentBank);
+                      setQuestionForm({
+                        content: '',
+                        options: ['', '', '', ''],
+                        correct_answer: '',
+                      });
+                      openModal('addQuestionModal', false);
+                    }}
                   >
                     Thêm câu hỏi
                   </Button>
@@ -2084,7 +3158,25 @@ const TrainingManagement: React.FC = () => {
                 <Button 
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => openModal('addQuestionModal')}
+                  onClick={() => {
+                    // Store the question bank to ensure it's preserved
+                    const currentBank = editingItem;
+                    if (!currentBank || !currentBank._id) {
+                      message.error('Không tìm thấy ngân hàng câu hỏi');
+                      return;
+                    }
+                    console.log('Opening add question modal with bank:', currentBank);
+                    // Store question bank ID separately
+                    setCurrentQuestionBankId(currentBank._id);
+                    // Set editingItem to question bank for creating new question
+                    setEditingItem(currentBank);
+                    setQuestionForm({
+                      content: '',
+                      options: ['', '', '', ''],
+                      correct_answer: '',
+                    });
+                    openModal('addQuestionModal', false);
+                  }}
                 >
                   Thêm câu hỏi
                 </Button>
@@ -2321,32 +3413,45 @@ const TrainingManagement: React.FC = () => {
         <Form
           layout="vertical"
           onFinish={handleQuestionSubmit}
-          initialValues={questionForm}
+          initialValues={{
+            content: questionForm.content,
+            options: questionForm.options,
+            correct_answer: questionForm.correct_answer
+          }}
+          key={`question-form-${editingItem?._id || 'new'}-${showModal === 'addQuestionModal' ? 'add' : 'edit'}`}
         >
           <Form.Item
-            label="Nội dung câu hỏi"
+            label="* Nội dung câu hỏi"
             name="content"
             rules={[{ required: true, message: 'Vui lòng nhập nội dung câu hỏi' }]}
           >
             <Input.TextArea 
               rows={3}
               placeholder="Nhập nội dung câu hỏi..."
-              value={questionForm.content}
-              onChange={(e) => setQuestionForm(prev => ({ ...prev, content: e.target.value }))}
             />
           </Form.Item>
 
           <Form.Item
-            label="Các lựa chọn"
-            name="options"
-            rules={[{ required: true, message: 'Vui lòng nhập ít nhất 2 lựa chọn' }]}
+            label="* Các lựa chọn"
+            required
+            rules={[
+              {
+                validator: () => {
+                  const validOptions = questionForm.options.filter(opt => opt && opt.trim() !== '');
+                  if (validOptions.length < 2) {
+                    return Promise.reject(new Error('Cần ít nhất 2 lựa chọn'));
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
           >
             <Space direction="vertical" style={{ width: '100%' }}>
-              {questionForm.options.map((option, index) => (
+              {questionForm.options.map((_, index) => (
                 <Input
                   key={index}
                   placeholder={`Lựa chọn ${String.fromCharCode(65 + index)}`}
-                  value={option}
+                  value={questionForm.options[index]}
                   onChange={(e) => {
                     const newOptions = [...questionForm.options];
                     newOptions[index] = e.target.value;
@@ -2359,14 +3464,26 @@ const TrainingManagement: React.FC = () => {
           </Form.Item>
 
           <Form.Item
-            label="Đáp án đúng"
+            label="* Đáp án đúng"
             name="correct_answer"
-            rules={[{ required: true, message: 'Vui lòng nhập đáp án đúng' }]}
+            rules={[
+              { required: true, message: 'Vui lòng nhập đáp án đúng' },
+              {
+                validator: (_, value) => {
+                  if (!value || value.trim() === '') {
+                    return Promise.reject(new Error('Vui lòng nhập đáp án đúng'));
+                  }
+                  const validOptions = questionForm.options.filter(opt => opt && opt.trim() !== '');
+                  if (validOptions.length > 0 && !validOptions.includes(value.trim())) {
+                    return Promise.reject(new Error('Đáp án đúng phải là một trong các lựa chọn'));
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
           >
             <Input 
-              placeholder="Nhập đáp án đúng..."
-              value={questionForm.correct_answer}
-              onChange={(e) => setQuestionForm(prev => ({ ...prev, correct_answer: e.target.value }))}
+              placeholder="Nhập đáp án đúng (phải khớp với một trong các lựa chọn)..."
             />
           </Form.Item>
 
@@ -2456,7 +3573,7 @@ const TrainingManagement: React.FC = () => {
           // Refresh assignments
         }}
       />
-    </div>
+    </motion.div>
   );
 };
 
