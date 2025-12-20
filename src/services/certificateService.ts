@@ -48,6 +48,10 @@ export interface Certificate {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  issueDate?: string;
+  expiryDate?: string;
+  lastRenewalDate?: string;
+  renewalNotes?: string;
 }
 
 export interface CertificateStats {
@@ -182,12 +186,60 @@ export const certificateService = {
   },
 
   // Renew certificate
-  async renewCertificate(id: string): Promise<Certificate> {
+  async renewCertificate(id: string, renewalData?: { renewalDate?: string; notes?: string }): Promise<Certificate> {
     try {
-      const response = await api.post(`/certificates/${id}/renew`);
+      const response = await api.post(`/certificates/${id}/renew`, renewalData || {});
       return response.data.data;
     } catch (error) {
       console.error('Error renewing certificate:', error);
+      throw error;
+    }
+  },
+
+  // Check duplicate
+  async checkDuplicate(certificateName?: string, certificateCode?: string): Promise<{ isDuplicate: boolean; duplicateInfo?: { field: string; value: string } }> {
+    try {
+      const params: any = {};
+      if (certificateName) params.certificateName = certificateName;
+      if (certificateCode) params.certificateCode = certificateCode;
+      const response = await api.get('/certificates/check/duplicate', { params });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error checking duplicate:', error);
+      throw error;
+    }
+  },
+
+  // Search certificates
+  async searchCertificates(query: string, filters?: CertificateFilters): Promise<Certificate[]> {
+    try {
+      const params: any = { q: query, ...filters };
+      const response = await api.get('/certificates/search/query', { params });
+      return response.data.data?.data || response.data.data || [];
+    } catch (error) {
+      console.error('Error searching certificates:', error);
+      throw error;
+    }
+  },
+
+  // Export certificates
+  async exportCertificates(format: string = 'json'): Promise<any> {
+    try {
+      const response = await api.get('/certificates/export/data', { params: { format } });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error exporting certificates:', error);
+      throw error;
+    }
+  },
+
+  // Generate report
+  async generateReport(filters?: CertificateFilters): Promise<any> {
+    try {
+      const response = await api.get('/certificates/reports/generate', { params: filters });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error generating report:', error);
       throw error;
     }
   },
