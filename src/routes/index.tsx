@@ -348,9 +348,7 @@ const AppRoutes = () => {
                 path="/header-department/hikvision-events" 
                 element={
                     <AuthGuard requiredRole="header_department">
-                        <HeaderDepartmentLayout>
-                            <HeaderDepartmentHikvisionEventsPage />
-                        </HeaderDepartmentLayout>
+                        <HeaderDepartmentHikvisionEventsPage />
                     </AuthGuard>
                 } 
             />

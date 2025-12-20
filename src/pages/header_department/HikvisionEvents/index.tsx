@@ -275,17 +275,15 @@ const HikvisionEventsPage: React.FC = () => {
         </Space>
       }
     >
-      {/* Full-width wrapper to bù trừ padding mặc định 24px của layout */}
-      <div style={{ marginLeft: -24, marginRight: -24 }}>
-              <Card
-                bordered={false}
-                style={{
-            borderRadius: 16,
-            boxShadow: '0 20px 50px rgba(0,0,0,0.04)',
-            background: 'linear-gradient(135deg, #fdfefe 0%, #f4f7fb 100%)',
-            marginBottom: 16,
-          }}
-        >
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 16,
+          boxShadow: '0 20px 50px rgba(0,0,0,0.04)',
+          background: 'linear-gradient(135deg, #fdfefe 0%, #f4f7fb 100%)',
+          marginBottom: 16,
+        }}
+      >
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12} md={6}>
               <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
@@ -328,43 +326,42 @@ const HikvisionEventsPage: React.FC = () => {
               </Card>
             </Col>
         </Row>
-        </Card>
+      </Card>
 
-        <Card
-          bordered={false}
-          style={{ borderRadius: 16, boxShadow: '0 12px 32px rgba(0,0,0,0.06)' }}
-          bodyStyle={{ padding: 0 }}
-        >
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '48px' }}>
-              <Spin size="large" />
-            </div>
-          ) : error ? (
-            <Alert
-              message="Lỗi tải dữ liệu"
-              description={error}
-              type="error"
-              showIcon
-              action={
-                <Button onClick={loadEvents} size="small">
-                  Thử lại
-                </Button>
-              }
-            />
-          ) : events.length === 0 ? (
-            <Empty description="Chưa có sự kiện kiểm soát truy cập nào" style={{ padding: 32 }} />
-          ) : (
-            <Table
-              columns={columns}
-              dataSource={events}
-              rowKey={(record, idx) => `${record.time}-${idx}`}
-              pagination={{ pageSize: 10, showSizeChanger: false }}
-              scroll={{ x: 900 }}
-              style={{ borderRadius: 16 }}
-            />
-          )}
-        </Card>
-      </div>
+      <Card
+        bordered={false}
+        style={{ borderRadius: 16, boxShadow: '0 12px 32px rgba(0,0,0,0.06)' }}
+        bodyStyle={{ padding: 0 }}
+      >
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '48px' }}>
+            <Spin size="large" />
+          </div>
+        ) : error ? (
+          <Alert
+            message="Lỗi tải dữ liệu"
+            description={error}
+            type="error"
+            showIcon
+            action={
+              <Button onClick={loadEvents} size="small">
+                Thử lại
+              </Button>
+            }
+          />
+        ) : events.length === 0 ? (
+          <Empty description="Chưa có sự kiện kiểm soát truy cập nào" style={{ padding: 32 }} />
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={events}
+            rowKey={(record, idx) => `${record.time}-${idx}`}
+            pagination={{ pageSize: 10, showSizeChanger: false }}
+            scroll={{ x: 900 }}
+            style={{ borderRadius: 16 }}
+          />
+        )}
+      </Card>
     </HeaderDepartmentLayout>
   );
 };
