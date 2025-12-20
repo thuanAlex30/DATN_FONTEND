@@ -208,12 +208,6 @@ const Chatbot: React.FC = () => {
           // Nếu có lỗi khi kiểm tra role, bỏ qua
           console.error('Error checking user role:', error);
         }
-      } else {
-        actions.push({
-          label: 'Đăng nhập để báo cáo',
-          path: '/login',
-          icon: 'ExclamationCircleOutlined'
-        });
       }
     }
 

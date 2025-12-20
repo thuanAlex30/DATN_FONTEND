@@ -22,7 +22,9 @@ import {
   Descriptions,
   Empty,
   Breadcrumb,
-  Dropdown
+  Dropdown,
+  Tabs,
+  Badge
 } from 'antd';
 import { 
   SafetyCertificateOutlined, 
@@ -137,44 +139,145 @@ const CertificateManagement: React.FC = () => {
     total: 0,
     active: 0,
     inactive: 0,
-    expired: 0
+    expired: 0,
+    expiringSoon: 0
   });
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pages: 1,
+    total: 0,
+    limit: 10
+  });
+  
+  // Expiring certificates state
+  const [expiringCertificates, setExpiringCertificates] = useState<Certificate[]>([]);
+  const [activeTab, setActiveTab] = useState<string>('all');
+  const [loadingExpiring, setLoadingExpiring] = useState(false);
 
-  // Load certificates
+  // Load statistics from API
+  const loadStats = async () => {
+    try {
+      const statsData = await certificateService.getCertificateStats();
+      setStats({
+        total: statsData.total || 0,
+        active: statsData.active || 0,
+        inactive: statsData.inactive || 0,
+        expired: statsData.expired || 0,
+        expiringSoon: statsData.expiringSoon || 0
+      });
+    } catch (err) {
+      console.error('Error loading stats:', err);
+      // Fallback: calculate from local data if API fails
+      const total = certificates.length;
+      const active = certificates.filter((cert) => cert.status === 'ACTIVE').length;
+      const inactive = certificates.filter((cert) => cert.status === 'INACTIVE').length;
+      const expired = certificates.filter((cert) => cert.status === 'EXPIRED').length;
+      setStats({ total, active, inactive, expired, expiringSoon: 0 });
+    }
+  };
+
+  // Load certificates with server-side filtering
   const loadCertificates = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log('🔍 Loading certificates...');
-      const res = await certificateService.getCertificates();
-      console.log('📦 CertificateList API Response:', res);
-      console.log('📦 Response status:', res?.status);
-      console.log('📦 Response data:', res?.data);
+      console.log('🔍 Loading certificates with filters...', {
+        search: searchTerm,
+        category: categoryFilter,
+        status: statusFilter,
+        priority: priorityFilter,
+        page: currentPage,
+        limit: pageSize
+      });
       
-      // Handle response - support multiple formats
+      // Call API with filters for server-side filtering
+      // Build params object - only include defined values
+      // Backend validation only accepts: q, category, status, priority, page, limit
+      const params: any = {
+        page: currentPage,
+        limit: pageSize
+      };
+      
+      // Backend uses 'q' for search query parameter (not 'search')
+      if (searchTerm && searchTerm.trim()) {
+        params.q = searchTerm.trim();
+      }
+      if (categoryFilter) {
+        params.category = categoryFilter;
+      }
+      if (statusFilter) {
+        params.status = statusFilter;
+      }
+      if (priorityFilter) {
+        params.priority = priorityFilter;
+      }
+      // Note: sortBy and sortOrder are not validated by backend, so don't send them
+      // Backend defaults to createdAt DESC anyway
+      
+      const res = await certificateService.getCertificates(params);
+      
+      console.log('📦 CertificateList API Response:', res);
+      
+      // Handle response - simplified approach similar to incidentService
       let certificatesData: Certificate[] = [];
+      let paginationData = {
+        current: currentPage,
+        pages: 1,
+        total: 0,
+        limit: pageSize
+      };
       
       if (res?.data) {
         const responseData = res.data;
         
-        // Format 1: { success: true, data: [...] }
+        // Primary format: { success: true, data: { data: [...], pagination: {...} } }
         if (responseData.success && responseData.data) {
-          if (Array.isArray(responseData.data)) {
-            certificatesData = responseData.data;
-          } else if (responseData.data && typeof responseData.data === 'object' && Array.isArray(responseData.data.data)) {
-            // Format 2: { success: true, data: { data: [...], pagination: {...} } }
+          // Check for nested data.data structure (most common)
+          if (responseData.data.data && Array.isArray(responseData.data.data)) {
             certificatesData = responseData.data.data;
+            if (responseData.data.pagination) {
+              paginationData = {
+                current: responseData.data.pagination.current || currentPage,
+                pages: responseData.data.pagination.pages || 1,
+                total: responseData.data.pagination.total || 0,
+                limit: responseData.data.pagination.limit || pageSize
+              };
+            }
+          }
+          // Fallback: { success: true, data: [...] }
+          else if (Array.isArray(responseData.data)) {
+            certificatesData = responseData.data;
           }
         }
-        // Format 3: Direct array
+        // Fallback format: Direct array or { data: [...] }
         else if (Array.isArray(responseData)) {
           certificatesData = responseData;
         }
-        // Format 4: { data: [...] }
-        else if (responseData.data && Array.isArray(responseData.data)) {
-          certificatesData = responseData.data;
+        else if (responseData.data) {
+          if (Array.isArray(responseData.data)) {
+            certificatesData = responseData.data;
+          } else if (responseData.data.data && Array.isArray(responseData.data.data)) {
+            certificatesData = responseData.data.data;
+            if (responseData.data.pagination) {
+              paginationData = {
+                current: responseData.data.pagination.current || currentPage,
+                pages: responseData.data.pagination.pages || 1,
+                total: responseData.data.pagination.total || 0,
+                limit: responseData.data.pagination.limit || pageSize
+              };
+            }
+          }
         }
+      }
+      
+      console.log('📦 Parsed certificates:', certificatesData.length);
+      if (certificatesData.length === 0) {
+        console.warn('⚠️ No certificates found in response. Full response:', JSON.stringify(res?.data, null, 2));
       }
       
       // Ensure all certificates have required fields with defaults
@@ -200,16 +303,26 @@ const CertificateManagement: React.FC = () => {
         attachments: cert.attachments || []
       }));
       
-      console.log('Final certificates data:', certificatesData);
+      console.log('✅ Final certificates data:', certificatesData.length, 'items');
+      console.log('✅ Pagination data:', paginationData);
+      
+      // Debug: Log if no certificates found
+      if (certificatesData.length === 0 && res?.data) {
+        console.warn('⚠️ No certificates found. Full response:', JSON.stringify(res.data, null, 2));
+        console.warn('⚠️ Response structure:', {
+          hasData: !!res.data,
+          hasSuccess: !!res.data?.success,
+          dataType: typeof res.data?.data,
+          isArray: Array.isArray(res.data?.data),
+          dataKeys: res.data?.data ? Object.keys(res.data.data) : []
+        });
+      }
+      
       setCertificates(certificatesData);
+      setPagination(paginationData);
       
-      // Calculate stats
-      const total = certificatesData.length;
-      const active = certificatesData.filter((cert) => cert.status === 'ACTIVE').length;
-      const inactive = certificatesData.filter((cert) => cert.status === 'INACTIVE').length;
-      const expired = certificatesData.filter((cert) => cert.status === 'EXPIRED').length;
-      
-      setStats({ total, active, inactive, expired });
+      // Load stats from API (independent of certificates data)
+      loadStats();
     } catch (err: any) {
       console.error('❌ CertificateList fetch error:', err);
       console.error('❌ Error details:', {
@@ -246,34 +359,75 @@ const CertificateManagement: React.FC = () => {
       message.error(errorMessage);
       // Set empty arrays on error to prevent crashes
       setCertificates([]);
-      setStats({ total: 0, active: 0, inactive: 0, expired: 0 });
+      setPagination({ current: 1, pages: 1, total: 0, limit: pageSize });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadCertificates();
-  }, []);
-
-  // Filter certificates - ensure certificates is an array and handle missing fields
-  const filteredCertificates = Array.isArray(certificates) ? certificates.filter(certificate => {
+  // Load expiring certificates
+  const loadExpiringCertificates = async () => {
     try {
-      const matchesSearch = !searchTerm || 
-        (certificate.certificateName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (certificate.certificateCode || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (certificate.issuingAuthority || '').toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesCategory = !categoryFilter || (certificate.category || '') === categoryFilter;
-      const matchesStatus = !statusFilter || (certificate.status || 'ACTIVE') === statusFilter;
-      const matchesPriority = !priorityFilter || (certificate.priority || 'MEDIUM') === priorityFilter;
-      
-      return matchesSearch && matchesCategory && matchesStatus && matchesPriority;
+      setLoadingExpiring(true);
+      const expiring = await certificateService.getExpiringCertificates(30); // 30 days
+      const normalizedExpiring = expiring.map((cert: any) => ({
+        ...cert,
+        _id: cert._id || cert.id,
+        status: cert.status || 'ACTIVE',
+        priority: cert.priority || 'MEDIUM',
+        cost: cert.cost || 0,
+        currency: cert.currency || 'VND',
+        validityPeriod: cert.validityPeriod || 12,
+        validityPeriodUnit: cert.validityPeriodUnit || 'MONTHS',
+        renewalRequired: cert.renewalRequired !== undefined ? cert.renewalRequired : true,
+        tags: cert.tags || [],
+        reminderSettings: cert.reminderSettings || {
+          enabled: true,
+          reminderDays: [],
+          notificationMethods: [],
+          recipients: []
+        },
+        contactInfo: cert.contactInfo || {},
+        attachments: cert.attachments || []
+      }));
+      setExpiringCertificates(normalizedExpiring);
     } catch (err) {
-      console.error('Error filtering certificate:', err, certificate);
-      return false;
+      console.error('Error loading expiring certificates:', err);
+      message.error('Không thể tải chứng chỉ sắp hết hạn');
+      setExpiringCertificates([]);
+    } finally {
+      setLoadingExpiring(false);
     }
-  }) : [];
+  };
+
+  // Load data on mount and when filters change
+  useEffect(() => {
+    if (activeTab === 'all') {
+      loadCertificates();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, categoryFilter, statusFilter, priorityFilter, currentPage, pageSize, activeTab]);
+
+  // Load expiring certificates when expiring tab is active
+  useEffect(() => {
+    if (activeTab === 'expiring') {
+      loadExpiringCertificates();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Use certificates directly from API (server-side filtered)
+  // Keep filteredCertificates as fallback for client-side filtering if needed
+  const filteredCertificates = certificates;
+  
+  // Debug: Log certificates state
+  useEffect(() => {
+    console.log('🔍 Certificates state updated:', certificates.length, 'items');
+    console.log('🔍 Filtered certificates:', filteredCertificates.length, 'items');
+    if (certificates.length > 0) {
+      console.log('🔍 First certificate:', certificates[0]);
+    }
+  }, [certificates, filteredCertificates]);
 
   // Get category label
   const getCategoryLabel = (category: string) => {
@@ -1082,7 +1236,7 @@ const CertificateManagement: React.FC = () => {
         />
       )}
 
-      {/* Table */}
+      {/* Table with Tabs */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1098,42 +1252,111 @@ const CertificateManagement: React.FC = () => {
             overflow: 'hidden'
           }}
         >
-          <Table
-            columns={columns}
-            dataSource={filteredCertificates}
-            rowKey={(record) => {
-              try {
-                return record._id || (record as any).id || record.certificateCode || `cert-${Math.random()}`;
-              } catch {
-                return `cert-${Math.random()}`;
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            items={[
+              {
+                key: 'all',
+                label: `Tất cả (${stats.total || 0})`,
+                children: (
+                  <Table
+                    columns={columns}
+                    dataSource={filteredCertificates}
+                    rowKey={(record) => {
+                      try {
+                        return record._id || (record as any).id || record.certificateCode || `cert-${Math.random()}`;
+                      } catch {
+                        return `cert-${Math.random()}`;
+                      }
+                    }}
+                    loading={loading}
+                    pagination={{
+                      current: pagination.current || currentPage,
+                      total: pagination.total || 0,
+                      pageSize: pagination.limit || pageSize,
+                      showSizeChanger: true,
+                      showQuickJumper: true,
+                      showTotal: (total, range) =>
+                        `${range[0]}-${range[1]} của ${total} chứng chỉ`,
+                      onChange: (page, size) => {
+                        setCurrentPage(page);
+                        setPageSize(size);
+                      },
+                      onShowSizeChange: (_current, size) => {
+                        setCurrentPage(1);
+                        setPageSize(size);
+                      },
+                      style: {
+                        marginTop: '24px',
+                        padding: '0 16px'
+                      }
+                    }}
+                    locale={{
+                      emptyText: (
+                        <Empty
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          description={error ? 'Không thể tải dữ liệu' : 'Không có chứng chỉ nào'}
+                          style={{ padding: '60px 0' }}
+                        />
+                      ),
+                    }}
+                    style={{
+                      borderRadius: '16px'
+                    }}
+                    rowClassName={() => 'certificate-table-row'}
+                  />
+                )
+              },
+              {
+                key: 'expiring',
+                label: (
+                  <span>
+                    <WarningOutlined /> Sắp hết hạn
+                    {expiringCertificates.length > 0 && (
+                      <Badge count={expiringCertificates.length} style={{ marginLeft: 8 }} />
+                    )}
+                  </span>
+                ),
+                children: (
+                  <Table
+                    columns={columns}
+                    dataSource={expiringCertificates}
+                    rowKey={(record) => {
+                      try {
+                        return record._id || (record as any).id || record.certificateCode || `cert-exp-${Math.random()}`;
+                      } catch {
+                        return `cert-exp-${Math.random()}`;
+                      }
+                    }}
+                    loading={loadingExpiring}
+                    pagination={{
+                      pageSize: 10,
+                      showSizeChanger: true,
+                      showTotal: (total, range) =>
+                        `${range[0]}-${range[1]} của ${total} chứng chỉ sắp hết hạn`,
+                      style: {
+                        marginTop: '24px',
+                        padding: '0 16px'
+                      }
+                    }}
+                    locale={{
+                      emptyText: (
+                        <Empty
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          description="Không có chứng chỉ nào sắp hết hạn"
+                          style={{ padding: '60px 0' }}
+                        />
+                      ),
+                    }}
+                    style={{
+                      borderRadius: '16px'
+                    }}
+                    rowClassName={() => 'certificate-table-row'}
+                  />
+                )
               }
-            }}
-            loading={loading}
-            pagination={{
-              total: filteredCertificates.length,
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} của ${total} chứng chỉ`,
-              style: {
-                marginTop: '24px',
-                padding: '0 16px'
-              }
-            }}
-            locale={{
-              emptyText: (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={error ? 'Không thể tải dữ liệu' : 'Không có chứng chỉ nào'}
-                  style={{ padding: '60px 0' }}
-                />
-              ),
-            }}
-            style={{
-              borderRadius: '16px'
-            }}
-            rowClassName={() => 'certificate-table-row'}
+            ]}
           />
         </Card>
       </motion.div>

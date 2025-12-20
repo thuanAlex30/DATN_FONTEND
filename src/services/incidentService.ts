@@ -52,7 +52,11 @@ const incidentService = {
     api.put(`/incidents/assign/${id}`, data),
 
   // Admin - investigate and solve
-  investigateIncident: (id: string, data: { investigation: string; solution: string }) =>
+  investigateIncident: (id: string, data: { 
+    investigation: string; 
+    solution: string;
+    findingsImages?: string[];
+  }) =>
     api.put(`/incidents/investigate/${id}`, data),
 
   // Admin - update progress (supports both 'note' and 'progress' field names)

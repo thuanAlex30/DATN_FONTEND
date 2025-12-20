@@ -10,7 +10,6 @@ import {
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
-  UserOutlined,
   ExclamationCircleOutlined,
   BookOutlined,
   SafetyOutlined,
@@ -49,11 +48,6 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
     key: '/manager/dashboard',
     icon: <DashboardOutlined />,
     label: 'Dashboard',
-  },
-  {
-    key: '/manager/profile',
-    icon: <UserOutlined />,
-    label: 'Thông tin cá nhân',
   },
   {
     key: '/manager/incidents/report',
