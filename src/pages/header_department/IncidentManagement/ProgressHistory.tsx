@@ -10,24 +10,22 @@ import {
   Avatar,
   Row,
   Col,
-  Input,
-  Modal,
-  Form,
   message,
   Alert,
-  Badge
+  Badge,
+  Image
 } from 'antd';
 import { 
   ClockCircleOutlined, 
   UserOutlined, 
-  PlusOutlined,
   ArrowLeftOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   InfoCircleOutlined,
   FileTextOutlined,
   ArrowUpOutlined,
-  CalendarOutlined
+  CalendarOutlined,
+  PictureOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 
@@ -41,6 +39,7 @@ interface ProgressEntry {
     username: string;
   } | null;
   timestamp: string;
+  findingsImages?: string[]; // Hình ảnh minh chứng cho action "Điều tra"
 }
 
 interface Incident {
@@ -66,8 +65,6 @@ const ProgressHistory: React.FC = () => {
   const [incident, setIncident] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form] = Form.useForm();
 
   useEffect(() => {
     const fetchIncident = async () => {
@@ -78,6 +75,18 @@ const ProgressHistory: React.FC = () => {
         const response = await incidentService.getIncidentById(id);
         // ApiResponse.success() => { success, message, data }
         const incidentData = response.data?.success ? response.data.data : response.data;
+        console.log('Incident data:', incidentData);
+        console.log('Histories:', incidentData?.histories);
+        if (incidentData?.histories) {
+          incidentData.histories.forEach((entry: any, index: number) => {
+            console.log(`History ${index}:`, {
+              action: entry.action,
+              findingsImages: entry.findingsImages,
+              hasFindingsImages: !!entry.findingsImages,
+              findingsImagesLength: entry.findingsImages?.length
+            });
+          });
+        }
         setIncident(incidentData || null);
       } catch (err: any) {
         setError('Không thể tải thông tin sự cố');
@@ -91,22 +100,6 @@ const ProgressHistory: React.FC = () => {
     fetchIncident();
   }, [id]);
 
-  const handleAddProgress = async (values: any) => {
-    if (!id) return;
-    try {
-      await incidentService.updateIncidentProgress(id, { note: values.note });
-      message.success('Thêm tiến độ thành công');
-      setIsModalOpen(false);
-      form.resetFields();
-      // Refresh incident data
-      const response = await incidentService.getIncidentById(id);
-      const incidentData = response.data?.success ? response.data.data : response.data;
-      setIncident(incidentData || null);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || 'Không thể thêm tiến độ';
-      message.error(errorMessage);
-    }
-  };
 
   const getActionColor = (action: string) => {
     switch (action?.toLowerCase()) {
@@ -434,36 +427,6 @@ const ProgressHistory: React.FC = () => {
               </Text>
             </div>
           </div>
-          {incident.status !== 'Đã đóng' && (
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />}
-              onClick={() => setIsModalOpen(true)}
-              size="large"
-              style={{
-                borderRadius: 8,
-                height: 44,
-                paddingLeft: 24,
-                paddingRight: 24,
-                fontSize: 15,
-                fontWeight: 600,
-                background: 'linear-gradient(135deg, #1677ff 0%, #1890ff 100%)',
-                border: 'none',
-                boxShadow: '0 4px 12px rgba(22, 119, 255, 0.3)',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(22, 119, 255, 0.4)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(22, 119, 255, 0.3)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              Thêm tiến độ
-            </Button>
-          )}
         </div>
         
         {incident.status === 'Đã đóng' && (
@@ -503,6 +466,21 @@ const ProgressHistory: React.FC = () => {
                 .map((entry, index) => {
                   const isLast = index === incident.histories!.length - 1;
                   const dotColor = getActionColor(entry.action);
+                  
+                  // Debug log để kiểm tra dữ liệu
+                  const isInvestigation = entry.action?.toLowerCase()?.trim() === 'điều tra';
+                  if (isInvestigation) {
+                    console.log('🔍 Điều tra entry found:', {
+                      index,
+                      action: entry.action,
+                      actionLower: entry.action?.toLowerCase()?.trim(),
+                      findingsImages: entry.findingsImages,
+                      findingsImagesType: typeof entry.findingsImages,
+                      isArray: Array.isArray(entry.findingsImages),
+                      length: entry.findingsImages?.length,
+                      fullEntry: JSON.stringify(entry, null, 2)
+                    });
+                  }
                   const getGradientColors = (color: string) => {
                     switch (color) {
                       case 'red': return { from: '#ff4d4f', to: '#ff7875' };
@@ -703,6 +681,106 @@ const ProgressHistory: React.FC = () => {
                             </Text>
                           </div>
                         )}
+                        {entry.action?.toLowerCase()?.trim() === 'điều tra' && entry.findingsImages && Array.isArray(entry.findingsImages) && entry.findingsImages.length > 0 && (
+                          <div style={{ 
+                            marginTop: 12,
+                            padding: 14,
+                            background: 'linear-gradient(135deg, #f0f5ff 0%, #e6f7ff 100%)',
+                            borderRadius: 10,
+                            border: '1px solid #d6e4ff'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                              <PictureOutlined style={{ color: '#1677ff', fontSize: 16 }} />
+                              <Text strong style={{ fontSize: 14, color: '#1677ff' }}>
+                                Hình ảnh minh chứng điều tra ({entry.findingsImages.length})
+                              </Text>
+                            </div>
+                            <Image.PreviewGroup>
+                              <div style={{ 
+                                display: 'grid', 
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                                gap: 16
+                              }}>
+                                {entry.findingsImages.map((image, imgIndex) => {
+                                  // Validate và format base64 string
+                                  let imageSrc = image;
+                                  if (image && typeof image === 'string') {
+                                    // Kiểm tra xem đã có prefix data: chưa
+                                    if (image.startsWith('data:image')) {
+                                      // Đã có prefix, sử dụng trực tiếp
+                                      imageSrc = image;
+                                    } else if (image.startsWith('data:')) {
+                                      // Có prefix data: nhưng không phải image, thử thêm image/jpeg
+                                      imageSrc = `data:image/jpeg;base64,${image.split(',')[1] || image}`;
+                                    } else {
+                                      // Không có prefix, thêm prefix data:image/jpeg;base64,
+                                      // Loại bỏ khoảng trắng và ký tự xuống dòng
+                                      const cleanBase64 = image.trim().replace(/\s+/g, '');
+                                      imageSrc = `data:image/jpeg;base64,${cleanBase64}`;
+                                    }
+                                  }
+                                  
+                                  return (
+                                    <div
+                                      key={imgIndex}
+                                      style={{
+                                        position: 'relative',
+                                        width: '100%',
+                                        aspectRatio: '16/9',
+                                        borderRadius: 8,
+                                        overflow: 'hidden',
+                                        cursor: 'pointer',
+                                        border: '2px solid #d6e4ff',
+                                        transition: 'all 0.3s ease',
+                                        background: '#fff'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.borderColor = '#1677ff';
+                                        e.currentTarget.style.transform = 'scale(1.02)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(22, 119, 255, 0.3)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.borderColor = '#d6e4ff';
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                      }}
+                                    >
+                                      <Image
+                                        src={imageSrc}
+                                        alt={`Minh chứng ${imgIndex + 1}`}
+                                        style={{
+                                          width: '100%',
+                                          height: '100%',
+                                          objectFit: 'cover',
+                                          objectPosition: 'center center',
+                                          display: 'block'
+                                        }}
+                                        preview={{
+                                          mask: 'Phóng to'
+                                        }}
+                                        fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='12'%3ELỗi%3C/text%3E%3C/svg%3E"
+                                        onError={(e) => {
+                                          console.error(`❌ Error loading image ${imgIndex + 1}:`, {
+                                            src: imageSrc?.substring(0, 100),
+                                            originalImage: image?.substring(0, 100),
+                                            error: e,
+                                            imageSrcType: typeof imageSrc,
+                                            imageSrcLength: imageSrc?.length
+                                          });
+                                        }}
+                                        onLoad={() => {
+                                          console.log(`✅ Image ${imgIndex + 1} loaded successfully`, {
+                                            srcPreview: imageSrc?.substring(0, 100)
+                                          });
+                                        }}
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </Image.PreviewGroup>
+                          </div>
+                        )}
                       </Card>
                     ),
                   };
@@ -803,120 +881,6 @@ const ProgressHistory: React.FC = () => {
           </div>
         )}
       </Card>
-
-      {/* Add Progress Modal */}
-      <Modal
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: 'linear-gradient(135deg, #1677ff 0%, #1890ff 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(22, 119, 255, 0.3)'
-            }}>
-              <PlusOutlined style={{ color: '#fff', fontSize: 18 }} />
-            </div>
-            <span style={{ fontSize: 18, fontWeight: 600 }}>Thêm tiến độ mới</span>
-          </div>
-        }
-        open={isModalOpen}
-        onCancel={() => {
-          setIsModalOpen(false);
-          form.resetFields();
-        }}
-        footer={null}
-        width={600}
-        style={{ borderRadius: 16 }}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleAddProgress}
-          requiredMark={false}
-        >
-          <Form.Item
-            name="note"
-            label={
-              <Space>
-                <FileTextOutlined style={{ color: '#1677ff' }} />
-                <Text strong style={{ fontSize: 15, color: '#262626' }}>Ghi chú tiến độ</Text>
-              </Space>
-            }
-            rules={[{ required: true, message: 'Vui lòng nhập ghi chú tiến độ!' }]}
-            style={{ marginBottom: 24 }}
-          >
-            <Input.TextArea 
-              rows={7} 
-              placeholder="Nhập ghi chú về tiến độ xử lý sự cố..."
-              style={{
-                borderRadius: 8,
-                fontSize: 14,
-                padding: '12px 16px',
-                border: '1px solid #d9d9d9',
-                transition: 'all 0.3s ease'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#1677ff';
-                e.target.style.boxShadow = '0 0 0 2px rgba(22, 119, 255, 0.1)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#d9d9d9';
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0 }}>
-            <Space style={{ width: '100%', justifyContent: 'flex-end' }} size="middle">
-              <Button 
-                onClick={() => setIsModalOpen(false)}
-                size="large"
-                style={{
-                  borderRadius: 8,
-                  height: 44,
-                  paddingLeft: 24,
-                  paddingRight: 24,
-                  fontSize: 15,
-                  fontWeight: 500
-                }}
-              >
-                Hủy
-              </Button>
-              <Button 
-                type="primary" 
-                htmlType="submit"
-                size="large"
-                style={{
-                  borderRadius: 8,
-                  height: 44,
-                  paddingLeft: 32,
-                  paddingRight: 32,
-                  fontSize: 15,
-                  fontWeight: 600,
-                  background: 'linear-gradient(135deg, #1677ff 0%, #1890ff 100%)',
-                  border: 'none',
-                  boxShadow: '0 4px 12px rgba(22, 119, 255, 0.3)',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(22, 119, 255, 0.4)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(22, 119, 255, 0.3)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                Thêm tiến độ
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 };

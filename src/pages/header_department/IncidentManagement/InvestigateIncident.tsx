@@ -18,7 +18,8 @@ import {
   Avatar,
   Image,
   Modal,
-  Badge
+  Badge,
+  Upload
 } from 'antd';
 import { 
   SearchOutlined, 
@@ -31,7 +32,9 @@ import {
   FileTextOutlined,
   SafetyCertificateOutlined,
   EyeOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  UploadOutlined,
+  DeleteOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 
@@ -63,6 +66,7 @@ const InvestigateIncident: React.FC = () => {
   const [incident, setIncident] = useState<Incident | null>(null);
   const [form] = Form.useForm();
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [findingsImages, setFindingsImages] = useState<string[]>([]);
 
   // Detect if user is Manager or Department Head based on current route
   const isManagerRoute = location.pathname.includes('/manager/incidents');
@@ -88,6 +92,31 @@ const InvestigateIncident: React.FC = () => {
     fetchIncident();
   }, [id]);
 
+  const handleFilesSelected = async (files: FileList | null) => {
+    if (!files) return;
+    const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    try {
+      const selected = Array.from(files).slice(0, 5); // limit to 5 images
+      const base64Images = await Promise.all(selected.map((f) => toBase64(f)));
+      setFindingsImages((prev) => {
+        const updated = [...prev, ...base64Images];
+        return updated.slice(0, 5); // Max 5 images
+      });
+    } catch {
+      message.error('Không thể đọc file hình ảnh');
+    }
+  };
+
+  const handleRemoveImage = (idx: number) => {
+    setFindingsImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSubmit = async (values: any) => {
     if (!id) return;
     try {
@@ -95,7 +124,8 @@ const InvestigateIncident: React.FC = () => {
       setError(null);
       await incidentService.investigateIncident(id, { 
         investigation: values.findings,
-        solution: values.recommendations
+        solution: values.recommendations,
+        findingsImages: findingsImages.length > 0 ? findingsImages : undefined
       });
       message.success('Cập nhật kết quả điều tra thành công');
       // Redirect based on user role (Manager or Department Head)
@@ -571,6 +601,212 @@ const InvestigateIncident: React.FC = () => {
                     e.target.style.boxShadow = 'none';
                   }}
                 />
+              </Form.Item>
+
+              <Form.Item
+                label={
+                  <Space>
+                    <UploadOutlined style={{ color: '#1677ff', fontSize: 16 }} />
+                    <Text strong style={{ fontSize: 15, color: '#262626' }}>Hình ảnh minh chứng kết quả điều tra</Text>
+                    {findingsImages.length > 0 && (
+                      <Badge 
+                        count={findingsImages.length} 
+                        style={{ 
+                          backgroundColor: '#1677ff',
+                          boxShadow: '0 2px 8px rgba(22, 119, 255, 0.3)'
+                        }} 
+                      />
+                    )}
+                  </Space>
+                }
+                style={{ marginBottom: 24 }}
+              >
+                <Upload
+                  accept="image/*"
+                  multiple
+                  beforeUpload={(file) => {
+                    const files = [file];
+                    handleFilesSelected(files as any);
+                    return false; // Prevent upload
+                  }}
+                  showUploadList={false}
+                  disabled={findingsImages.length >= 5}
+                >
+                  <div
+                    style={{
+                      border: '2px dashed #d9d9d9',
+                      borderRadius: 12,
+                      padding: findingsImages.length === 0 ? '20px 16px' : '12px',
+                      textAlign: 'center',
+                      background: findingsImages.length === 0 
+                        ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.03) 0%, rgba(64, 169, 255, 0.03) 100%)'
+                        : 'transparent',
+                      cursor: findingsImages.length >= 5 ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (findingsImages.length < 5) {
+                        e.currentTarget.style.borderColor = '#1677ff';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(64, 169, 255, 0.08) 100%)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(22, 119, 255, 0.15)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (findingsImages.length === 0) {
+                        e.currentTarget.style.borderColor = '#d9d9d9';
+                        e.currentTarget.style.background = 'linear-gradient(135deg, rgba(24, 144, 255, 0.03) 0%, rgba(64, 169, 255, 0.03) 100%)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      } else {
+                        e.currentTarget.style.borderColor = '#d9d9d9';
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }
+                    }}
+                  >
+                    {findingsImages.length === 0 ? (
+                      <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                        <div style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 10,
+                          background: 'linear-gradient(135deg, #1677ff 0%, #40a9ff 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          margin: '0 auto',
+                          boxShadow: '0 2px 8px rgba(22, 119, 255, 0.3)'
+                        }}>
+                          <UploadOutlined style={{ color: '#fff', fontSize: 18 }} />
+                        </div>
+                        <Text style={{ fontSize: 14, color: '#595959', display: 'block' }}>
+                          Kéo thả hoặc click để chọn hình ảnh
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                          Hỗ trợ JPG, PNG, GIF
+                        </Text>
+                      </Space>
+                    ) : (
+                      <Button 
+                        type="default"
+                        icon={<UploadOutlined />}
+                        size="small"
+                        style={{
+                          borderRadius: 8,
+                          border: '1px solid #1677ff',
+                          color: '#1677ff',
+                          background: '#fff',
+                          fontWeight: 500
+                        }}
+                        disabled={findingsImages.length >= 5}
+                      >
+                        {findingsImages.length >= 5 ? 'Đã đạt giới hạn' : 'Thêm hình ảnh'}
+                      </Button>
+                    )}
+                  </div>
+                </Upload>
+                
+                {findingsImages.length > 0 && (
+                  <div style={{ marginTop: '20px' }}>
+                    <Row gutter={[12, 12]}>
+                      {findingsImages.map((img, idx) => (
+                        <Col key={idx} xs={12} sm={8} md={6}>
+                          <div 
+                            style={{ 
+                              position: 'relative', 
+                              borderRadius: 12, 
+                              overflow: 'hidden',
+                              border: '2px solid #f0f0f0',
+                              background: '#fff',
+                              transition: 'all 0.3s ease',
+                              cursor: 'pointer'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = '#1677ff';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(22, 119, 255, 0.2)';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = '#f0f0f0';
+                              e.currentTarget.style.boxShadow = 'none';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                            onClick={() => setPreviewImage(img)}
+                          >
+                            <Image
+                              src={img}
+                              alt={`findings-${idx}`}
+                              style={{ 
+                                width: '100%', 
+                                height: '120px', 
+                                objectFit: 'cover',
+                                display: 'block'
+                              }}
+                              preview={false}
+                            />
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 100%)',
+                              padding: '8px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}>
+                              <Badge 
+                                count={idx + 1} 
+                                style={{ 
+                                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                  color: '#1677ff',
+                                  fontWeight: 600,
+                                  minWidth: '24px',
+                                  height: '24px',
+                                  lineHeight: '24px'
+                                }} 
+                              />
+                            </div>
+                            <Button
+                              type="primary"
+                              danger
+                              size="small"
+                              icon={<DeleteOutlined />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveImage(idx);
+                              }}
+                              style={{
+                                position: 'absolute',
+                                bottom: '8px',
+                                right: '8px',
+                                minWidth: '32px',
+                                height: '32px',
+                                padding: '0',
+                                borderRadius: 8,
+                                boxShadow: '0 2px 8px rgba(255, 77, 79, 0.4)',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            />
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              height: '30px',
+                              background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.1) 100%)',
+                              pointerEvents: 'none'
+                            }} />
+                          </div>
+                        </Col>
+                      ))}
+                    </Row>
+                  </div>
+                )}
               </Form.Item>
 
               <Divider style={{ margin: '24px 0' }} />

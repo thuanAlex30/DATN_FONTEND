@@ -87,12 +87,13 @@ export const certificateService = {
     const params: any = {};
     
     // Only add params if they have values
-    if (filters.search) params.search = filters.search;
+    // Backend uses 'q' for search query parameter
+    if (filters.search) params.q = filters.search;
     if (filters.category) params.category = filters.category;
     if (filters.status) params.status = filters.status;
     if (filters.priority) params.priority = filters.priority;
-    if (filters.sortBy) params.sortBy = filters.sortBy;
-    if (filters.sortOrder) params.sortOrder = filters.sortOrder;
+    // Note: sortBy and sortOrder may not be supported by backend validation
+    // Remove them if causing 400 errors
     if (filters.page) params.page = filters.page;
     if (filters.limit) params.limit = filters.limit;
 
@@ -258,10 +259,23 @@ export const certificateService = {
   // Get expiring certificates
   async getExpiringCertificates(days: number = 30): Promise<Certificate[]> {
     try {
-      const response = await api.get(`/certificates/expiring?days=${days}`);
+      const response = await api.get('/certificates/expiring/soon', { 
+        params: { days } 
+      });
       return response.data.data;
     } catch (error) {
       console.error('Error fetching expiring certificates:', error);
+      throw error;
+    }
+  },
+
+  // Get certificate summary
+  async getCertificateSummary(id: string): Promise<any> {
+    try {
+      const response = await api.get(`/certificates/${id}/summary`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching certificate summary:', error);
       throw error;
     }
   },
