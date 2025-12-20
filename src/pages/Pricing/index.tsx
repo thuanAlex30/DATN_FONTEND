@@ -390,6 +390,14 @@ const PricingPage: React.FC = () => {
                   <Col xs={24} sm={24} md={8} key={plan.id}>
                     <Card
                       className={`${styles.pricingCard} ${plan.popular ? styles.popularCard : ''}`}
+                      tabIndex={-1}
+                      onFocus={(e) => {
+                        e.currentTarget.blur();
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => {
+                        e.currentTarget.blur();
+                      }}
                     >
                       {plan.popular && (
                         <div className={styles.popularBadge}>Phổ biến nhất</div>
@@ -426,7 +434,14 @@ const PricingPage: React.FC = () => {
                         size="large"
                         block
                         className={styles.selectButton}
-                        onClick={() => handleSelectPlan(plan.id)}
+                        onClick={(e) => {
+                          e.currentTarget.blur();
+                          handleSelectPlan(plan.id);
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.blur();
+                          e.stopPropagation();
+                        }}
                       >
                         Chọn gói này
                       </Button>
@@ -557,9 +572,7 @@ const PricingPage: React.FC = () => {
                 <Button type="link" className={styles.footerLink}>
                   Chính sách chất lượng
                 </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Tuyển dụng
-                </Button>
+                
                 <Button type="link" className={styles.footerLink}>
                   Quy chế hoạt động
                 </Button>
@@ -585,9 +598,7 @@ const PricingPage: React.FC = () => {
                 <Button type="link" className={styles.footerLink}>
                   Thông tin cá nhân
                 </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Lịch sử giao dịch
-                </Button>
+                
               </Space>
             </Col>
 
@@ -601,9 +612,7 @@ const PricingPage: React.FC = () => {
                 <Button type="link" className={styles.footerLink}>
                   Chương trình hợp tác
                 </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Đối tác giao hàng
-                </Button>
+                
                 <Button type="link" className={styles.footerLink}>
                   Đối tác kinh doanh
                 </Button>
@@ -641,9 +650,7 @@ const PricingPage: React.FC = () => {
                 >
                   Liên hệ
                 </Button>
-                <Button type="link" className={styles.footerLink}>
-                  Tài liệu hướng dẫn
-                </Button>
+                
               </Space>
             </Col>
           </Row>
