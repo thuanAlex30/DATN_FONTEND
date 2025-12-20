@@ -18,7 +18,8 @@ import {
   Badge,
   Modal,
   Space,
-  Empty
+  Empty,
+  Image
 } from 'antd';
 import {
   PlusOutlined,
@@ -59,6 +60,7 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [taskProgressLogs, setTaskProgressLogs] = useState<any[]>([]);
   const [loadingTaskLogs, setLoadingTaskLogs] = useState(false);
+  const [confirmingTask, setConfirmingTask] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -88,6 +90,35 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
   const handleTaskSuccess = () => {
     // Refresh tasks list
     dispatch(fetchProjectTasks(projectId));
+  };
+
+  const handleConfirmTaskComplete = async () => {
+    if (!selectedTask) return;
+    
+    const taskId = selectedTask._id || selectedTask.id;
+    if (!taskId) {
+      message.error('Không tìm thấy ID nhiệm vụ');
+      return;
+    }
+
+    try {
+      setConfirmingTask(true);
+      await projectTaskService.updateTask(taskId, {
+        status: 'COMPLETED',
+        progress_percentage: 100
+      });
+      message.success('Đã xác nhận hoàn thành nhiệm vụ');
+      setViewModalVisible(false);
+      setSelectedTask(null);
+      setTaskProgressLogs([]);
+      // Refresh tasks list
+      dispatch(fetchProjectTasks(projectId));
+    } catch (error: any) {
+      console.error('Error confirming task complete:', error);
+      message.error(error?.response?.data?.message || 'Không thể xác nhận hoàn thành nhiệm vụ');
+    } finally {
+      setConfirmingTask(false);
+    }
   };
 
   const handleViewTask = async (task: any) => {
@@ -512,7 +543,27 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
             setTaskProgressLogs([]);
           }}>
             Đóng
-          </Button>
+          </Button>,
+          (() => {
+            if (!selectedTask) return null;
+            const status = String(selectedTask.status || '').toUpperCase();
+            const isCompleted = status === 'COMPLETED' || status === 'HOÀN THÀNH' || status === 'HOAN THANH';
+            
+            // Nút luôn hiển thị (không cần check progress)
+            return (
+              <Button
+                key="confirm"
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                onClick={handleConfirmTaskComplete}
+                loading={confirmingTask}
+                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                disabled={isCompleted}
+              >
+                {isCompleted ? 'Đã đóng nhiệm vụ' : 'Xác nhận hoàn thành'}
+              </Button>
+            );
+          })()
         ]}
         width={800}
       >
@@ -635,6 +686,27 @@ const ProjectTasks: React.FC<ProjectTasksProps> = ({ projectId }) => {
                         {log.hours_worked > 0 && (
                           <div>
                             <Text type="secondary">Giờ làm việc: {log.hours_worked}h</Text>
+                          </div>
+                        )}
+                        {log.images && Array.isArray(log.images) && log.images.length > 0 && (
+                          <div style={{ marginTop: '12px' }}>
+                            <Text strong style={{ display: 'block', marginBottom: '8px', color: '#1890ff' }}>
+                              Hình ảnh báo cáo:
+                            </Text>
+                            <Row gutter={[8, 8]}>
+                              {log.images.map((imageUrl: string, imgIdx: number) => (
+                                <Col key={imgIdx} xs={12} sm={8} md={6}>
+                                  <Image
+                                    src={imageUrl}
+                                    alt={`report-${index}-${imgIdx}`}
+                                    style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '4px' }}
+                                    preview={{
+                                      mask: 'Xem ảnh'
+                                    }}
+                                  />
+                                </Col>
+                              ))}
+                            </Row>
                           </div>
                         )}
                       </Space>

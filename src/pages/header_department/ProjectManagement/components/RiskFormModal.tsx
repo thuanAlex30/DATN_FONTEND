@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../../../store';
 import { createRisk, updateRisk } from '../../../../store/slices/projectRiskSlice';
 import type { CreateRiskData, UpdateRiskData } from '../../../../types/projectRisk';
-import projectService from '../../../../services/projectService';
+import userService from '../../../../services/userService';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -66,31 +66,30 @@ const RiskFormModal: React.FC<RiskFormModalProps> = ({
   const loadManagers = async () => {
     try {
       setLoadingManagers(true);
-      // Load available employees để chọn làm người phụ trách
-      const employeesResponse = await projectService.getAvailableEmployees();
-      
-      if (employeesResponse.success && employeesResponse.data) {
-        const employeesData = Array.isArray(employeesResponse.data) 
-          ? employeesResponse.data 
-          : (employeesResponse.data.data || []);
-        
-        if (Array.isArray(employeesData) && employeesData.length > 0) {
-          const mappedManagers = employeesData.map((employee: any) => ({
-            id: employee.id || employee._id,
-            name: employee.full_name || employee.name || employee.fullName || '',
-            email: employee.email || ''
-          }));
-          setManagers(mappedManagers);
-        } else {
-          setManagers([]);
-        }
-      } else {
-        console.error('Failed to load employees:', employeesResponse.message);
-        setManagers([]);
-      }
+
+      // Load all users và lọc chỉ những user có role là manager
+      const allUsers = await userService.getAllUsers();
+      const filteredManagers = allUsers.filter((u: any) => {
+        const roleCode = u.role?.role_code?.toLowerCase();
+        const roleName = u.role?.role_name?.toLowerCase();
+        const roleLevel = u.role?.role_level;
+
+        if (roleCode) return roleCode === 'manager';
+        if (roleName) return roleName.includes('manager') || roleName === 'department manager';
+        if (roleLevel !== undefined && roleLevel !== null) return roleLevel === 70;
+        return false;
+      });
+
+      const mappedManagers = filteredManagers.map((m: any) => ({
+        id: m.id || m._id,
+        name: m.full_name || m.name || m.fullName || '',
+        email: m.email || ''
+      }));
+
+      setManagers(mappedManagers);
     } catch (error) {
-      console.error('Error loading employees:', error);
-      message.error('Lỗi khi tải danh sách nhân viên');
+      console.error('Error loading managers:', error);
+      message.error('Lỗi khi tải danh sách manager');
       setManagers([]);
     } finally {
       setLoadingManagers(false);

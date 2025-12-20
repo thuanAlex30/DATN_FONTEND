@@ -78,17 +78,20 @@ export const projectMilestoneService = {
       if (projectId) {
         endpoint = `${API_BASE}/project/${projectId}/milestones/assigned/${userId}`;
       }
+
       const response = await api.get<ProjectMilestonesResponse>(endpoint);
+      const milestones = Array.isArray(response.data?.data) ? response.data.data : [];
+
       return { 
-        data: response.data.data || [], 
+        data: milestones, 
         success: true 
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching assigned milestones:', error);
       return { 
         data: [], 
         success: false, 
-        message: 'Failed to fetch assigned milestones' 
+        message: error.response?.data?.message || error.message || 'Failed to fetch assigned milestones' 
       };
     }
   },
@@ -181,10 +184,20 @@ export const projectMilestoneService = {
     }
   },
 
-  // Get all milestones (for admin/manager overview)
-  getAllMilestones: async (): Promise<{ data: ProjectMilestone[]; success: boolean; message?: string }> => {
+  // Get all milestones (optionally filtered)
+  getAllMilestones: async (
+    filters?: { responsible_user_id?: string; project_id?: string; status?: string }
+  ): Promise<{ data: ProjectMilestone[]; success: boolean; message?: string }> => {
     try {
-      const response = await api.get(`${API_BASE}/milestones`);
+      const params = new URLSearchParams();
+      if (filters?.responsible_user_id) params.append('responsible_user_id', filters.responsible_user_id);
+      if (filters?.project_id) params.append('project_id', filters.project_id);
+      if (filters?.status) params.append('status', filters.status);
+
+      const queryString = params.toString();
+      const endpoint = queryString ? `${API_BASE}/milestones?${queryString}` : `${API_BASE}/milestones`;
+
+      const response = await api.get<ProjectMilestonesResponse>(endpoint);
       return { 
         data: response.data.data || [], 
         success: true 

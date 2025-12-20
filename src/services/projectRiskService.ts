@@ -45,10 +45,13 @@ export const projectRiskService = {
   // Get risks assigned to a specific user (manager) - Updated to use projectId parameter
   getAssignedRisks: async (userId: string, projectId?: string): Promise<{ data: ProjectRisk[]; success: boolean; message?: string }> => {
     try {
-      let endpoint = `${API_BASE}/risks/assigned/${userId}`;
-      if (projectId) {
-        endpoint = `${API_BASE}/project/${projectId}/risks/assigned/${userId}`;
-      }
+      // Backend supports:
+      // - /project/:projectId/risks/assigned/:userId
+      // - /risks?owner_id=:userId (via getAllRisks filters)
+      const endpoint = projectId
+        ? `${API_BASE}/project/${projectId}/risks/assigned/${userId}`
+        : `${API_BASE}/risks?owner_id=${encodeURIComponent(userId)}`;
+
       const response = await api.get<ProjectRisksResponse>(endpoint);
       return { 
         data: response.data.data || [], 
@@ -224,10 +227,28 @@ export const projectRiskService = {
     }
   },
 
-  // Get all risks (for admin/manager overview)
-  getAllRisks: async (): Promise<{ data: ProjectRisk[]; success: boolean; message?: string }> => {
+  // Get all risks (optionally filtered)
+  getAllRisks: async (filters?: {
+    project_id?: string;
+    owner_id?: string;
+    risk_level?: string;
+    status?: string;
+    search?: string;
+    is_active?: string | boolean;
+  }): Promise<{ data: ProjectRisk[]; success: boolean; message?: string }> => {
     try {
-      const response = await api.get<ProjectRisksResponse>(`${API_BASE}/risks`);
+      const params = new URLSearchParams();
+      if (filters?.project_id) params.append('project_id', filters.project_id);
+      if (filters?.owner_id) params.append('owner_id', filters.owner_id);
+      if (filters?.risk_level) params.append('risk_level', filters.risk_level);
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.search) params.append('search', filters.search);
+      if (typeof filters?.is_active !== 'undefined') params.append('is_active', String(filters.is_active));
+
+      const queryString = params.toString();
+      const endpoint = queryString ? `${API_BASE}/risks?${queryString}` : `${API_BASE}/risks`;
+
+      const response = await api.get<ProjectRisksResponse>(endpoint);
       return { 
         data: response.data.data || [], 
         success: true 
