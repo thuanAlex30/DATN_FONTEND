@@ -23,8 +23,7 @@ import {
   Empty,
   Breadcrumb,
   Dropdown,
-  Tabs,
-  Badge
+  Tabs
 } from 'antd';
 import { 
   SafetyCertificateOutlined, 
@@ -48,6 +47,7 @@ import certificateService from '../../../services/certificateService';
 import CertificateFormModal from './components/CertificateFormModal';
 import RenewCertificateModal from './components/RenewCertificateModal';
 import ReminderSettingsModal from './components/ReminderSettingsModal';
+import AssignCertificateModal from './components/AssignCertificateModal';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store';
 
@@ -58,6 +58,68 @@ const { Option } = Select;
 // Helper functions
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('vi-VN');
+};
+
+// Calculate days until expiration
+const getDaysUntilExpiration = (expiryDate: string): number | null => {
+  if (!expiryDate) return null;
+  const expiry = new Date(expiryDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  expiry.setHours(0, 0, 0, 0);
+  const diffTime = expiry.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+};
+
+// Get renewal reminder status
+const getRenewalReminderStatus = (daysUntilExpiration: number | null): { 
+  show: boolean; 
+  color: string; 
+  text: string;
+  icon: React.ReactNode;
+} => {
+  if (daysUntilExpiration === null) {
+    return { show: false, color: '', text: '', icon: null };
+  }
+  
+  if (daysUntilExpiration < 0) {
+    return { 
+      show: true, 
+      color: 'red', 
+      text: 'Đã hết hạn', 
+      icon: <ExclamationCircleOutlined />
+    };
+  }
+  
+  if (daysUntilExpiration <= 30) {
+    return { 
+      show: true, 
+      color: 'red', 
+      text: `Còn ${daysUntilExpiration} ngày - Cần gia hạn ngay`, 
+      icon: <ExclamationCircleOutlined />
+    };
+  }
+  
+  if (daysUntilExpiration <= 60) {
+    return { 
+      show: true, 
+      color: 'orange', 
+      text: `Còn ${daysUntilExpiration} ngày - Cần gia hạn sớm`, 
+      icon: <WarningOutlined />
+    };
+  }
+  
+  if (daysUntilExpiration <= 90) {
+    return { 
+      show: true, 
+      color: 'gold', 
+      text: `Còn ${daysUntilExpiration} ngày - Nhắc nhở gia hạn`, 
+      icon: <ClockCircleOutlined />
+    };
+  }
+  
+  return { show: false, color: '', text: '', icon: null };
 };
 
 interface Certificate {
@@ -153,10 +215,25 @@ const CertificateManagement: React.FC = () => {
     limit: 10
   });
   
-  // Expiring certificates state
-  const [expiringCertificates, setExpiringCertificates] = useState<Certificate[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('all');
-  const [loadingExpiring, setLoadingExpiring] = useState(false);
+  // Active tab state
+  const [activeTab, setActiveTab] = useState<string>('templates');
+
+  // User certificates state (for Personal Certificates tab)
+  const [userCertificates, setUserCertificates] = useState<any[]>([]);
+  const [loadingUserCertificates, setLoadingUserCertificates] = useState(false);
+  const [userCertificatesPagination, setUserCertificatesPagination] = useState({
+    current: 1,
+    pages: 1,
+    total: 0,
+    limit: 10
+  });
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  
+  // User list state (for Personal Certificates tab)
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
 
   // Load statistics from API
   const loadStats = async () => {
@@ -365,56 +442,222 @@ const CertificateManagement: React.FC = () => {
     }
   };
 
-  // Load expiring certificates
-  const loadExpiringCertificates = async () => {
+
+  // Load users by department
+  const loadUsers = async () => {
+    const departmentId = getDepartmentId();
+    if (!departmentId) {
+      message.warning('Không tìm thấy thông tin phòng ban');
+      return;
+    }
+
     try {
-      setLoadingExpiring(true);
-      const expiring = await certificateService.getExpiringCertificates(30); // 30 days
-      const normalizedExpiring = expiring.map((cert: any) => ({
-        ...cert,
-        _id: cert._id || cert.id,
-        status: cert.status || 'ACTIVE',
-        priority: cert.priority || 'MEDIUM',
-        cost: cert.cost || 0,
-        currency: cert.currency || 'VND',
-        validityPeriod: cert.validityPeriod || 12,
-        validityPeriodUnit: cert.validityPeriodUnit || 'MONTHS',
-        renewalRequired: cert.renewalRequired !== undefined ? cert.renewalRequired : true,
-        tags: cert.tags || [],
-        reminderSettings: cert.reminderSettings || {
-          enabled: true,
-          reminderDays: [],
-          notificationMethods: [],
-          recipients: []
-        },
-        contactInfo: cert.contactInfo || {},
-        attachments: cert.attachments || []
-      }));
-      setExpiringCertificates(normalizedExpiring);
-    } catch (err) {
-      console.error('Error loading expiring certificates:', err);
-      message.error('Không thể tải chứng chỉ sắp hết hạn');
-      setExpiringCertificates([]);
+      setLoadingUsers(true);
+      console.log('🔍 Loading users for department:', departmentId);
+      const response = await certificateService.getUsersByDepartment(departmentId);
+
+      console.log('📦 Users response:', response);
+      
+      // Handle different response formats
+      let data: any[] = [];
+      
+      if (response.data) {
+        if (response.data.success && response.data.data) {
+          if (Array.isArray(response.data.data)) {
+            data = response.data.data;
+          }
+        } else if (Array.isArray(response.data)) {
+          data = response.data;
+        }
+      }
+      
+      console.log('✅ Parsed users:', data.length, 'items');
+      
+      // Sort users by role: Manager first, then Employee
+      const getRolePriority = (user: any): number => {
+        const roleName = (user.role_id?.role_name || user.role?.role_name || '').toLowerCase();
+        const roleCode = (user.role_id?.role_code || user.role?.role_code || '').toLowerCase();
+        
+        // Manager roles get priority 1 (higher priority)
+        if (roleName.includes('manager') || roleCode.includes('manager')) {
+          return 1;
+        }
+        // Employee roles get priority 2 (lower priority)
+        if (roleName.includes('employee') || roleCode.includes('employee')) {
+          return 2;
+        }
+        // Other roles get priority 3 (lowest priority)
+        return 3;
+      };
+      
+      const sortedData = [...data].sort((a, b) => {
+        const priorityA = getRolePriority(a);
+        const priorityB = getRolePriority(b);
+        return priorityA - priorityB;
+      });
+      
+      setUsers(sortedData);
+    } catch (error: any) {
+      console.error('Error loading users:', error);
+      message.error('Không thể tải danh sách người dùng');
+      setUsers([]);
     } finally {
-      setLoadingExpiring(false);
+      setLoadingUsers(false);
+    }
+  };
+
+  // Load user certificates by department (with optional userId filter)
+  const loadUserCertificates = async (userId?: string) => {
+    const departmentId = getDepartmentId();
+    if (!departmentId) {
+      message.warning('Không tìm thấy thông tin phòng ban');
+      return;
+    }
+
+    try {
+      setLoadingUserCertificates(true);
+      console.log('🔍 Loading user certificates for department:', departmentId, 'userId:', userId);
+      
+      const filters: any = {
+        page: userCertificatesPagination.current,
+        limit: userCertificatesPagination.limit
+      };
+      
+      if (userId) {
+        filters.userId = userId;
+      }
+      
+      const response = await certificateService.getUserCertificatesByDepartment(departmentId, filters);
+
+      console.log('📦 Full response:', response);
+      console.log('📦 response.data:', response.data);
+      
+      // Handle different response formats
+      let data: any[] = [];
+      let paginationData = userCertificatesPagination;
+      
+      if (response.data) {
+        if (response.data.success && response.data.data) {
+          // Format: { success: true, data: { data: [...], pagination: {...} } }
+          if (response.data.data.data && Array.isArray(response.data.data.data)) {
+            data = response.data.data.data;
+            paginationData = response.data.data.pagination || paginationData;
+          } else if (Array.isArray(response.data.data)) {
+            // Format: { success: true, data: [...] }
+            data = response.data.data;
+          }
+        } else if (Array.isArray(response.data)) {
+          data = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          data = response.data.data;
+          paginationData = response.data.pagination || paginationData;
+        }
+      }
+      
+      console.log('✅ Parsed data:', data.length, 'items');
+      console.log('✅ Pagination:', paginationData);
+      
+      setUserCertificates(data);
+      setUserCertificatesPagination(paginationData);
+    } catch (error: any) {
+      console.error('Error loading user certificates:', error);
+      message.error('Không thể tải danh sách chứng chỉ cá nhân');
+      setUserCertificates([]);
+    } finally {
+      setLoadingUserCertificates(false);
     }
   };
 
   // Load data on mount and when filters change
   useEffect(() => {
-    if (activeTab === 'all') {
+    if (activeTab === 'templates') {
       loadCertificates();
+    } else if (activeTab === 'personal') {
+      if (selectedUserId) {
+        // Load certificates for selected user
+        loadUserCertificates(selectedUserId);
+      } else {
+        // Load users list
+        loadUsers();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, categoryFilter, statusFilter, priorityFilter, currentPage, pageSize, activeTab]);
+  }, [searchTerm, categoryFilter, statusFilter, priorityFilter, currentPage, pageSize, activeTab, selectedUserId]);
 
-  // Load expiring certificates when expiring tab is active
+  // Reset selected user when switching tabs
   useEffect(() => {
-    if (activeTab === 'expiring') {
-      loadExpiringCertificates();
+    if (activeTab !== 'personal') {
+      setSelectedUserId(null);
+      setSelectedUser(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+
+  // Handle user click
+  const handleUserClick = (user: any) => {
+    const userId = user._id || user.id;
+    setSelectedUserId(userId);
+    setSelectedUser(user);
+    // Reset pagination when selecting a user
+    setUserCertificatesPagination({
+      current: 1,
+      pages: 1,
+      total: 0,
+      limit: 10
+    });
+  };
+
+  // Handle back to users list
+  const handleBackToUsers = () => {
+    setSelectedUserId(null);
+    setSelectedUser(null);
+    setUserCertificates([]);
+    setUserCertificatesPagination({
+      current: 1,
+      pages: 1,
+      total: 0,
+      limit: 10
+    });
+  };
+
+  // Handle assign certificate success
+  const handleAssignSuccess = () => {
+    if (selectedUserId) {
+      loadUserCertificates(selectedUserId);
+    } else {
+      loadUsers();
+    }
+    setAssignModalVisible(false);
+  };
+
+  // Get department ID from user (ensure it's always a string)
+  const getDepartmentId = (): string | null => {
+    if (!user?.department_id) {
+      console.warn('⚠️ User has no department_id');
+      return null;
+    }
+    
+    let deptId: string | null = null;
+    
+    if (typeof user.department_id === 'string') {
+      deptId = user.department_id;
+    } else if (user.department_id && typeof user.department_id === 'object') {
+      // Handle populated department object
+      deptId = (user.department_id as any)?._id || (user.department_id as any)?.id || null;
+      // Convert to string if it's an ObjectId
+      if (deptId && typeof deptId !== 'string') {
+        deptId = String(deptId);
+      }
+    }
+    
+    // Final validation
+    if (deptId && (deptId === '[object Object]' || deptId === 'null' || deptId === 'undefined')) {
+      console.error('❌ Invalid department ID:', deptId, 'from user.department_id:', user.department_id);
+      return null;
+    }
+    
+    console.log('✅ getDepartmentId result:', deptId, typeof deptId);
+    return deptId;
+  };
 
   // Use certificates directly from API (server-side filtered)
   // Keep filteredCertificates as fallback for client-side filtering if needed
@@ -494,6 +737,37 @@ const CertificateManagement: React.FC = () => {
       setModalVisible(true);
     } catch (err) {
       console.error('Error viewing certificate:', err);
+      message.error('Không thể xem chi tiết chứng chỉ');
+    }
+  };
+
+  // Handle view user certificate - display personal certificate info directly
+  const handleViewUserCertificate = async (userCertificate: any) => {
+    try {
+      // Personal certificates are independent - display their own info
+      const personalCert: Certificate = {
+        _id: userCertificate._id || userCertificate.id,
+        certificateName: userCertificate.certificateName || userCertificate.certificate_id?.certificateName || 'Chứng chỉ cá nhân',
+        certificateCode: userCertificate.certificateCode || userCertificate.certificate_id?.certificateCode || '',
+        category: userCertificate.category || userCertificate.certificate_id?.category || 'OTHER',
+        description: userCertificate.description || userCertificate.certificate_id?.description || '',
+        issuingAuthority: userCertificate.issuingAuthority || userCertificate.certificate_id?.issuingAuthority || '',
+        issueDate: userCertificate.issueDate || userCertificate.personalIssueDate || userCertificate.certificate_id?.issueDate,
+        expiryDate: userCertificate.expiryDate || userCertificate.personalExpiryDate || userCertificate.certificate_id?.expiryDate,
+        status: userCertificate.status || 'ACTIVE',
+        // Store level and duration in a way that can be displayed
+        level: userCertificate.level || '',
+        duration: userCertificate.duration || null,
+        // For compatibility with existing display code
+        priority: userCertificate.level ? 'MEDIUM' : 'MEDIUM', // Use level as priority display
+        validityPeriod: userCertificate.duration || 0,
+        validityPeriodUnit: 'MONTHS' as const,
+      } as Certificate & { level?: string; duration?: number | null };
+      
+      setSelectedCertificate(personalCert);
+      setModalVisible(true);
+    } catch (err) {
+      console.error('Error viewing user certificate:', err);
       message.error('Không thể xem chi tiết chứng chỉ');
     }
   };
@@ -1257,8 +1531,8 @@ const CertificateManagement: React.FC = () => {
             onChange={setActiveTab}
             items={[
               {
-                key: 'all',
-                label: `Tất cả (${stats.total || 0})`,
+                key: 'templates',
+                label: `Chứng chỉ chung (${stats.total || 0})`,
                 children: (
                   <Table
                     columns={columns}
@@ -1309,51 +1583,318 @@ const CertificateManagement: React.FC = () => {
                 )
               },
               {
-                key: 'expiring',
-                label: (
-                  <span>
-                    <WarningOutlined /> Sắp hết hạn
-                    {expiringCertificates.length > 0 && (
-                      <Badge count={expiringCertificates.length} style={{ marginLeft: 8 }} />
-                    )}
-                  </span>
-                ),
+                key: 'personal',
+                label: `Chứng chỉ cá nhân (${selectedUserId ? userCertificatesPagination.total : users.length})`,
                 children: (
-                  <Table
-                    columns={columns}
-                    dataSource={expiringCertificates}
-                    rowKey={(record) => {
-                      try {
-                        return record._id || (record as any).id || record.certificateCode || `cert-exp-${Math.random()}`;
-                      } catch {
-                        return `cert-exp-${Math.random()}`;
-                      }
-                    }}
-                    loading={loadingExpiring}
-                    pagination={{
-                      pageSize: 10,
-                      showSizeChanger: true,
-                      showTotal: (total, range) =>
-                        `${range[0]}-${range[1]} của ${total} chứng chỉ sắp hết hạn`,
-                      style: {
-                        marginTop: '24px',
-                        padding: '0 16px'
-                      }
-                    }}
-                    locale={{
-                      emptyText: (
-                        <Empty
-                          image={Empty.PRESENTED_IMAGE_SIMPLE}
-                          description="Không có chứng chỉ nào sắp hết hạn"
-                          style={{ padding: '60px 0' }}
+                  <div>
+                    {selectedUserId ? (
+                      // Show certificates for selected user
+                      <div>
+                        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Button
+                            icon={<ArrowLeftOutlined />}
+                            onClick={handleBackToUsers}
+                            style={{
+                              borderRadius: '10px',
+                              height: '40px',
+                              padding: '0 20px'
+                            }}
+                          >
+                            Quay lại danh sách người dùng
+                          </Button>
+                          {isDepartmentHeader && (
+                            <Button
+                              type="primary"
+                              icon={<PlusOutlined />}
+                              onClick={() => setAssignModalVisible(true)}
+                              style={{
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                                border: 'none',
+                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                                fontWeight: 600
+                              }}
+                            >
+                              Ghi nhận Chứng chỉ
+                            </Button>
+                          )}
+                        </div>
+                        {selectedUser && (
+                          <div style={{ 
+                            marginBottom: 16, 
+                            padding: '16px', 
+                            background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)',
+                            borderRadius: '12px',
+                            border: '1px solid #e2e8f0'
+                          }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '8px' }}>
+                              {selectedUser.full_name || '-'}
+                            </div>
+                            <div style={{ fontSize: '14px', color: '#666' }}>
+                              {selectedUser.email || '-'}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                              {selectedUser.role_id?.role_name || selectedUser.role?.role_name || '-'}
+                            </div>
+                          </div>
+                        )}
+                        <Table
+                          columns={[
+                            {
+                              title: 'Chứng chỉ',
+                              dataIndex: 'certificateName',
+                              key: 'certificate',
+                              width: 250,
+                              render: (_: any, record: any) => {
+                                // Personal certificates have direct fields, not certificate_id
+                                const certName = record.certificateName || record.certificate_id?.certificateName;
+                                const certCode = record.certificateCode || record.certificate_id?.certificateCode;
+                                const category = record.category || record.certificate_id?.category || 'OTHER';
+                                return certName ? (
+                                  <div>
+                                    <div style={{ fontWeight: 'bold' }}>{certName}</div>
+                                    {certCode && <div style={{ fontSize: '12px', color: '#666' }}>{certCode}</div>}
+                                    <Tag color="blue">{getCategoryLabel(category)}</Tag>
+                                  </div>
+                                ) : '-';
+                              }
+                            },
+                            {
+                              title: 'Ngày cấp',
+                              dataIndex: 'issueDate',
+                              key: 'issueDate',
+                              width: 120,
+                              render: (_: any, record: any) => {
+                                const date = record.issueDate || record.personalIssueDate;
+                                return date ? formatDate(date) : '-';
+                              }
+                            },
+                            {
+                              title: 'Ngày hết hạn',
+                              dataIndex: 'expiryDate',
+                              key: 'expiryDate',
+                              width: 200,
+                              render: (_: any, record: any) => {
+                                const date = record.expiryDate || record.personalExpiryDate;
+                                if (!date) return '-';
+                                
+                                const daysUntilExpiration = getDaysUntilExpiration(date);
+                                const reminderStatus = getRenewalReminderStatus(daysUntilExpiration);
+                                
+                                return (
+                                  <div>
+                                    <div>{formatDate(date)}</div>
+                                    {reminderStatus.show && (
+                                      <Tag 
+                                        color={reminderStatus.color} 
+                                        icon={reminderStatus.icon}
+                                        style={{ marginTop: '4px' }}
+                                      >
+                                        {reminderStatus.text}
+                                      </Tag>
+                                    )}
+                                  </div>
+                                );
+                              }
+                            },
+                            {
+                              title: 'Trạng thái',
+                              dataIndex: 'status',
+                              key: 'status',
+                              width: 120,
+                              render: (status: string) => {
+                                const safeStatus = status || 'ACTIVE';
+                                return (
+                                  <Tag color={getStatusColor(safeStatus)} icon={getStatusIcon(safeStatus)}>
+                                    {safeStatus}
+                                  </Tag>
+                                );
+                              }
+                            },
+                            {
+                              title: 'Thao tác',
+                              key: 'actions',
+                              width: 100,
+                              render: (_: any, record: any) => (
+                                <Space size="small">
+                                  <Tooltip title="Xem chi tiết">
+                                    <Button
+                                      type="text"
+                                      icon={<EyeOutlined />}
+                                      onClick={() => handleViewUserCertificate(record)}
+                                      style={{ color: '#3b82f6' }}
+                                    />
+                                  </Tooltip>
+                                  {isDepartmentHeader && (
+                                    <Popconfirm
+                                      title="Bạn có chắc chắn muốn xóa assignment này?"
+                                      onConfirm={async () => {
+                                        try {
+                                          await certificateService.deleteUserCertificate(record._id || record.id);
+                                          message.success('Xóa assignment thành công');
+                                          loadUserCertificates(selectedUserId);
+                                        } catch (error: any) {
+                                          message.error(error.response?.data?.message || 'Không thể xóa assignment');
+                                        }
+                                      }}
+                                      okText="Xóa"
+                                      cancelText="Hủy"
+                                    >
+                                      <Tooltip title="Xóa">
+                                        <Button
+                                          type="text"
+                                          danger
+                                          icon={<DeleteOutlined />}
+                                        />
+                                      </Tooltip>
+                                    </Popconfirm>
+                                  )}
+                                </Space>
+                              )
+                            }
+                          ]}
+                          dataSource={userCertificates}
+                          rowKey={(record) => record._id || record.id || `uc-${Math.random()}`}
+                          loading={loadingUserCertificates}
+                          pagination={{
+                            current: userCertificatesPagination.current,
+                            total: userCertificatesPagination.total,
+                            pageSize: userCertificatesPagination.limit,
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total, range) =>
+                              `${range[0]}-${range[1]} của ${total} chứng chỉ`,
+                            onChange: (page, size) => {
+                              setUserCertificatesPagination({
+                                ...userCertificatesPagination,
+                                current: page,
+                                limit: size
+                              });
+                            },
+                            onShowSizeChange: (_current, size) => {
+                              setUserCertificatesPagination({
+                                ...userCertificatesPagination,
+                                current: 1,
+                                limit: size
+                              });
+                            },
+                            style: {
+                              marginTop: '24px',
+                              padding: '0 16px'
+                            }
+                          }}
+                          locale={{
+                            emptyText: (
+                              <Empty
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                description="Người dùng này chưa có chứng chỉ nào"
+                                style={{ padding: '60px 0' }}
+                              />
+                            ),
+                          }}
+                          style={{
+                            borderRadius: '16px'
+                          }}
+                          rowClassName={() => 'certificate-table-row'}
                         />
-                      ),
-                    }}
-                    style={{
-                      borderRadius: '16px'
-                    }}
-                    rowClassName={() => 'certificate-table-row'}
-                  />
+                      </div>
+                    ) : (
+                      // Show users list
+                      <div>
+                        {isDepartmentHeader && (
+                          <div style={{ marginBottom: 16, textAlign: 'right' }}>
+                            <Button
+                              type="primary"
+                              icon={<PlusOutlined />}
+                              onClick={() => setAssignModalVisible(true)}
+                              style={{
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                                border: 'none',
+                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                                fontWeight: 600
+                              }}
+                            >
+                              Ghi nhận Chứng chỉ
+                            </Button>
+                          </div>
+                        )}
+                        <Table
+                          columns={[
+                            {
+                              title: 'Họ và tên',
+                              dataIndex: 'full_name',
+                              key: 'full_name',
+                              width: 200,
+                              render: (text: string) => (
+                                <div style={{ fontWeight: 'bold' }}>{text || '-'}</div>
+                              )
+                            },
+                            {
+                              title: 'Email',
+                              dataIndex: 'email',
+                              key: 'email',
+                              width: 200,
+                              render: (text: string) => (
+                                <div style={{ fontSize: '14px', color: '#666' }}>{text || '-'}</div>
+                              )
+                            },
+                            {
+                              title: 'Vai trò',
+                              dataIndex: ['role_id', 'role_name'],
+                              key: 'role',
+                              width: 150,
+                              render: (_: any, record: any) => {
+                                const roleName = record.role_id?.role_name || record.role?.role_name || '-';
+                                return (
+                                  <div style={{ fontSize: '14px', color: '#999' }}>{roleName}</div>
+                                );
+                              }
+                            },
+                            {
+                              title: 'Thao tác',
+                              key: 'actions',
+                              width: 100,
+                              render: (_: any, record: any) => (
+                                <Button
+                                  type="primary"
+                                  onClick={() => handleUserClick(record)}
+                                  style={{
+                                    borderRadius: '8px',
+                                    background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                                    border: 'none'
+                                  }}
+                                >
+                                  Xem chứng chỉ
+                                </Button>
+                              )
+                            }
+                          ]}
+                          dataSource={users}
+                          rowKey={(record) => record._id || record.id || `user-${Math.random()}`}
+                          loading={loadingUsers}
+                          pagination={false}
+                          locale={{
+                            emptyText: (
+                              <Empty
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                description="Không có người dùng nào trong phòng ban"
+                                style={{ padding: '60px 0' }}
+                              />
+                            ),
+                          }}
+                          style={{
+                            borderRadius: '16px'
+                          }}
+                          rowClassName={() => 'certificate-table-row'}
+                          onRow={(record) => ({
+                            onClick: () => handleUserClick(record),
+                            style: { cursor: 'pointer' }
+                          })}
+                        />
+                      </div>
+                    )}
+                  </div>
                 )
               }
             ]}
@@ -1438,17 +1979,29 @@ const CertificateManagement: React.FC = () => {
                 {selectedCertificate.issuingAuthority}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
-                <Tag color={getStatusColor(selectedCertificate.status)}>
-                  {selectedCertificate.status}
+                <Tag color={getStatusColor(selectedCertificate.status || 'ACTIVE')}>
+                  {selectedCertificate.status || 'ACTIVE'}
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Mức độ">
-                <Tag color={getPriorityColor(selectedCertificate.priority)}>
-                  {selectedCertificate.priority}
-                </Tag>
+                {(selectedCertificate as any).level ? (
+                  <Tag color="blue">{(selectedCertificate as any).level}</Tag>
+                ) : selectedCertificate.priority ? (
+                  <Tag color={getPriorityColor(selectedCertificate.priority)}>
+                    {selectedCertificate.priority}
+                  </Tag>
+                ) : (
+                  '-'
+                )}
               </Descriptions.Item>
               <Descriptions.Item label="Thời hạn">
-                {selectedCertificate.validityPeriod} {selectedCertificate.validityPeriodUnit}
+                {(selectedCertificate as any).duration ? (
+                  `${(selectedCertificate as any).duration} tháng`
+                ) : selectedCertificate.validityPeriod ? (
+                  `${selectedCertificate.validityPeriod} ${selectedCertificate.validityPeriodUnit || 'MONTHS'}`
+                ) : (
+                  '-'
+                )}
               </Descriptions.Item>
               <Descriptions.Item label="Ngày cấp">
                 {selectedCertificate.issueDate ? formatDate(selectedCertificate.issueDate) : '-'}
@@ -1526,6 +2079,18 @@ const CertificateManagement: React.FC = () => {
         onSuccess={handleModalSuccess}
         certificate={selectedCertificate}
       />
+
+      {/* Assign Certificate Modal */}
+      {isDepartmentHeader && getDepartmentId() && (
+        <AssignCertificateModal
+          key={assignModalVisible ? `assign-modal-open-${getDepartmentId()}-${selectedUserId || 'all'}` : `assign-modal-closed`} // Force remount when modal opens or userId changes
+          visible={assignModalVisible}
+          onCancel={() => setAssignModalVisible(false)}
+          onSuccess={handleAssignSuccess}
+          departmentId={getDepartmentId()!}
+          preSelectedUserId={selectedUserId || null} // Pass selectedUserId to pre-select in modal
+        />
+      )}
       
       {/* Custom Styles */}
       <style>{`

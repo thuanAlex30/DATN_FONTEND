@@ -289,6 +289,108 @@ export const certificateService = {
       console.error('Error fetching certificates by tags:', error);
       throw error;
     }
+  },
+
+  // ========== USER CERTIFICATE METHODS ==========
+
+  // Get user certificates by department
+  async getUserCertificatesByDepartment(departmentId: string, filters: any = {}) {
+    try {
+      // Ensure departmentId is a string
+      const deptId = typeof departmentId === 'string' ? departmentId : 
+                     (departmentId as any)?._id || (departmentId as any)?.id || String(departmentId);
+      
+      if (!deptId || deptId === '[object Object]' || deptId === 'null' || deptId === 'undefined') {
+        throw new Error('Department ID không hợp lệ');
+      }
+      
+      console.log('🔍 API call: getUserCertificatesByDepartment', { departmentId: deptId, filters });
+      const params: any = { ...filters };
+      const response = await api.get(`/certificates/user-certificates/department/${deptId}`, { params });
+      console.log('✅ API response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching user certificates by department:', error);
+      throw error;
+    }
+  },
+
+  // Get all user certificates
+  async getUserCertificates(filters: any = {}) {
+    try {
+      const params: any = { ...filters };
+      const response = await api.get('/certificates/user-certificates/list', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user certificates:', error);
+      throw error;
+    }
+  },
+
+  // Assign certificate to users
+  async assignCertificate(assignmentData: {
+    userIds: string[];
+    certificateInfo: {
+      certificateName: string;
+      certificateCode?: string;
+      description?: string;
+      category?: string;
+      issuingAuthority: string;
+      certificateNumber?: string;
+      issueDate?: string;
+      expiryDate?: string;
+    };
+  }): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const response = await api.post('/certificates/user-certificates/assign', assignmentData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error assigning certificate:', error);
+      throw error;
+    }
+  },
+
+  // Get users by department for assignment
+  async getUsersByDepartment(departmentId: string) {
+    try {
+      // Ensure departmentId is a string
+      const deptId = typeof departmentId === 'string' ? departmentId : 
+                     (departmentId as any)?._id || (departmentId as any)?.id || String(departmentId);
+      
+      if (!deptId || deptId === '[object Object]' || deptId === 'null' || deptId === 'undefined') {
+        throw new Error('Department ID không hợp lệ');
+      }
+      
+      console.log('🔍 API call: getUsersByDepartment', { departmentId: deptId });
+      const response = await api.get(`/certificates/users/department/${deptId}`);
+      console.log('✅ API response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching users by department:', error);
+      throw error;
+    }
+  },
+
+  // Update user certificate
+  async updateUserCertificate(id: string, updateData: any) {
+    try {
+      const response = await api.put(`/certificates/user-certificates/${id}`, updateData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating user certificate:', error);
+      throw error;
+    }
+  },
+
+  // Delete user certificate (unassign)
+  async deleteUserCertificate(id: string) {
+    try {
+      const response = await api.delete(`/certificates/user-certificates/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting user certificate:', error);
+      throw error;
+    }
   }
 };
 

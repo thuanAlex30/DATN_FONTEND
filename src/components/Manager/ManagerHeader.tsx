@@ -14,8 +14,8 @@ import type { RootState } from '../../store';
 import ProfileModal from '../ProfileModal/ProfileModal';
 import SettingsModal from '../SettingsModal/SettingsModal';
 import { WeatherWidget, EquipmentSuggestion } from '../Weather';
+import WebSocketStatus from '../WebSocketStatus';
 import styles from './ManagerHeader.module.css';
-
 const { Header } = Layout;
 const { Title } = Typography;
 
@@ -113,6 +113,7 @@ const ManagerHeader: React.FC<ManagerHeaderProps> = ({
         <div className={styles.headerRight}>
           {extra && <div className={styles.headerExtra}>{extra}</div>}
           
+          <WebSocketStatus />
           <WeatherWidget compact />
           <EquipmentSuggestion compact />
           

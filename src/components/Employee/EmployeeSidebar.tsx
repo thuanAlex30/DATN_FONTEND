@@ -55,7 +55,7 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
     {
       key: '/employee/certificates',
       icon: <SafetyCertificateOutlined />,
-      label: 'Chứng chỉ',
+      label: 'Chứng chỉ cá nhân',
     },
   ];
 

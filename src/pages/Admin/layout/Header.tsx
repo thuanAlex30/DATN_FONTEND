@@ -36,6 +36,7 @@ import {
 import type { NotificationData } from '../../../store/slices/websocketSlice';
 import NotificationService from '../../../services/notificationService';
 import { WeatherWidget, EquipmentSuggestion } from '../../../components/Weather';
+import WebSocketStatus from '../../../components/WebSocketStatus';
 import headerStyles from './Header.module.css';
 
 const { Header: AntHeader } = Layout;
@@ -685,6 +686,7 @@ const Header = React.memo(() => {
                     </Badge>
                 </Popover>
                 
+                <WebSocketStatus />
                 <WeatherWidget compact />
                 <EquipmentSuggestion compact />
                 
