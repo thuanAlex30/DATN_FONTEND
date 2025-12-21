@@ -7,25 +7,25 @@ import {
   Typography, 
   Spin,
   Tag,
-  Alert
+  Alert,
+  Table,
+  Modal,
+  List,
+  message
 } from 'antd';
 import styles from './SystemAdminHome.module.css';
 import {
   DatabaseOutlined,
   TeamOutlined,
-  ProjectOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
   ExclamationCircleOutlined,
   WarningOutlined,
   GlobalOutlined,
   UserOutlined,
-  FileTextOutlined,
-  SettingOutlined,
   BarChartOutlined,
   SecurityScanOutlined
 } from '@ant-design/icons';
 import adminService from '../../../services/adminService';
+import systemAdminService from '../../../services/systemAdminService';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store';
@@ -94,6 +94,17 @@ const SystemAdminHome: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<SystemDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tenantsModalVisible, setTenantsModalVisible] = useState(false);
+  const [tenantsList, setTenantsList] = useState<any[]>([]);
+  const [tenantsLoadingModal, setTenantsLoadingModal] = useState(false);
+  const [permissionModalVisible, setPermissionModalVisible] = useState(false);
+  const [permissionAlertsList, setPermissionAlertsList] = useState<any[]>([]);
+  const [permissionLoading, setPermissionLoading] = useState(false);
+  const [plansModalVisible, setPlansModalVisible] = useState(false);
+  const [plansList, setPlansList] = useState<any[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [backupModalVisible, setBackupModalVisible] = useState(false);
+  const [backupSubmitting, setBackupSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -122,6 +133,77 @@ const SystemAdminHome: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Modal data loaders
+  const loadTenantsModal = async () => {
+    try {
+      setTenantsLoadingModal(true);
+      const res: any = await systemAdminService.getTenants({ page: 1, limit: 50 });
+
+      // Normalize possible response shapes:
+      // - { data: Tenant[] }
+      // - { tenants: Tenant[], pagination: ... }
+      // - direct array Tenant[]
+      let tenantsArray: any[] = [];
+      if (Array.isArray(res?.data)) {
+        tenantsArray = res.data;
+      } else if (Array.isArray(res?.tenants)) {
+        tenantsArray = res.tenants;
+      } else if (Array.isArray(res)) {
+        tenantsArray = res;
+      } else if (Array.isArray(res?.data?.tenants)) {
+        tenantsArray = res.data.tenants;
+      }
+
+      setTenantsList(tenantsArray);
+    } catch (err: any) {
+      console.error('Error loading tenants for modal:', err);
+      message.error('Không thể tải tenants');
+    } finally {
+      setTenantsLoadingModal(false);
+    }
+  };
+
+  const loadPermissionAlerts = async () => {
+    try {
+      setPermissionLoading(true);
+      const res = await adminService.getPermissionAlerts({ type: 'all', limit: 50 });
+      // adminService returns { alerts, statistics } per implementation
+      setPermissionAlertsList(res.alerts || res.alerts || res.statistics ? res.alerts : (res.alerts || []));
+    } catch (err: any) {
+      console.error('Error loading permission alerts:', err);
+      message.error('Không thể tải cảnh báo quyền');
+    } finally {
+      setPermissionLoading(false);
+    }
+  };
+
+  const loadPlans = async () => {
+    try {
+      setPlansLoading(true);
+      const res = await systemAdminService.getSubscriptionPlans();
+      setPlansList(res || []);
+    } catch (err: any) {
+      console.error('Error loading plans:', err);
+      message.error('Không thể tải gói dịch vụ');
+    } finally {
+      setPlansLoading(false);
+    }
+  };
+
+  const handleStartBackup = async () => {
+    try {
+      setBackupSubmitting(true);
+      await systemAdminService.startBackup({ backup_type: 'FULL', storage_location: 'local', compress: false });
+      message.success('Backup đã được bắt đầu');
+      setBackupModalVisible(false);
+    } catch (err: any) {
+      console.error('Start backup error:', err);
+      message.error('Không thể bắt đầu backup');
+    } finally {
+      setBackupSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -157,7 +239,7 @@ const SystemAdminHome: React.FC = () => {
     return null;
   }
 
-  const { tenants, tasks, permission_alerts } = dashboardData;
+  const { tenants, permission_alerts } = dashboardData;
 
   // Safe defaults for all data fields
   const tenantsData = tenants || {
@@ -172,15 +254,7 @@ const SystemAdminHome: React.FC = () => {
     total_tasks: 0
   };
 
-  const tasksData = tasks || {
-    total: 0,
-    pending: 0,
-    in_progress: 0,
-    completed: 0,
-    on_hold: 0,
-    cancelled: 0,
-    overdue: 0
-  };
+  // tasks data intentionally not shown on this page
 
   const permissionAlerts = permission_alerts || {
     errors: [],
@@ -233,7 +307,11 @@ const SystemAdminHome: React.FC = () => {
       <div className={styles.statsSection}>
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} lg={6}>
-            <Card className={`${styles.statsCard} ${styles.primary}`}>
+            <Card
+              className={`${styles.statsCard} ${styles.primary}`}
+              onClick={() => navigate('/system-admin/customers')}
+              style={{ cursor: 'pointer' }}
+            >
               <div className={styles.statisticContent}>
                 <DatabaseOutlined className={styles.statisticIcon} style={{ color: '#1890ff' }} />
                 <div className={styles.statisticTitle}>Tổng số Tenants</div>
@@ -256,71 +334,11 @@ const SystemAdminHome: React.FC = () => {
               </div>
             </Card>
           </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card className={`${styles.statsCard} ${styles.warning}`}>
-              <div className={styles.statisticContent}>
-                <ProjectOutlined className={styles.statisticIcon} style={{ color: '#faad14' }} />
-                <div className={styles.statisticTitle}>Tổng số Dự án</div>
-                <div className={styles.statisticValue}>{tenantsData.total_projects}</div>
-                <div className={styles.statisticSuffix}>
-                  {tenantsData.total_departments} phòng ban
-                </div>
-              </div>
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card className={`${styles.statsCard} ${styles.info}`}>
-              <div className={styles.statisticContent}>
-                <FileTextOutlined className={styles.statisticIcon} style={{ color: '#722ed1' }} />
-                <div className={styles.statisticTitle}>Tổng số Task</div>
-                <div className={styles.statisticValue}>{tasksData.total}</div>
-                <div className={styles.statisticSuffix}>
-                  {tasksData.completed} đã hoàn thành
-                </div>
-              </div>
-            </Card>
-          </Col>
+          {/* Removed project and task overview cards per request */}
         </Row>
       </div>
 
-      {/* Task Statistics */}
-      <div className={styles.taskStatsSection}>
-        <Card className={styles.taskStatsCard}>
-          <Title level={4} className={styles.sectionTitle}>
-            <FileTextOutlined /> Thống kê Task
-          </Title>
-          <Row gutter={[16, 16]}>
-            <Col xs={12} sm={8} md={6}>
-              <div className={styles.taskStatItem}>
-                <ClockCircleOutlined className={styles.taskStatIcon} style={{ color: '#faad14' }} />
-                <div className={styles.taskStatValue}>{tasksData.pending}</div>
-                <div className={styles.taskStatLabel}>Đang chờ</div>
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className={styles.taskStatItem}>
-                <SettingOutlined className={styles.taskStatIcon} style={{ color: '#1890ff' }} />
-                <div className={styles.taskStatValue}>{tasksData.in_progress}</div>
-                <div className={styles.taskStatLabel}>Đang thực hiện</div>
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className={styles.taskStatItem}>
-                <CheckCircleOutlined className={styles.taskStatIcon} style={{ color: '#52c41a' }} />
-                <div className={styles.taskStatValue}>{tasksData.completed}</div>
-                <div className={styles.taskStatLabel}>Hoàn thành</div>
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className={styles.taskStatItem}>
-                <ExclamationCircleOutlined className={styles.taskStatIcon} style={{ color: '#f5222d' }} />
-                <div className={styles.taskStatValue}>{tasksData.overdue}</div>
-                <div className={styles.taskStatLabel}>Quá hạn</div>
-              </div>
-            </Col>
-          </Row>
-        </Card>
-      </div>
+      {/* Task statistics removed per request */}
 
       {/* Quick Actions */}
       <div className={styles.quickActionsSection}>
@@ -336,7 +354,7 @@ const SystemAdminHome: React.FC = () => {
                   size="large"
                   block
                   icon={<DatabaseOutlined />}
-                  onClick={() => navigate('/admin/user-management')}
+                  onClick={() => { setTenantsModalVisible(true); loadTenantsModal(); }}
                   className={styles.quickActionButton}
                 >
                   <DatabaseOutlined className={styles.quickActionIcon} />
@@ -368,7 +386,7 @@ const SystemAdminHome: React.FC = () => {
                   size="large"
                   block
                   icon={<SecurityScanOutlined />}
-                  onClick={() => navigate('/admin/system-settings')}
+                  onClick={() => { setPermissionModalVisible(true); loadPermissionAlerts(); }}
                   className={styles.quickActionButton}
                 >
                   <SecurityScanOutlined className={styles.quickActionIcon} />
@@ -384,7 +402,7 @@ const SystemAdminHome: React.FC = () => {
                   size="large"
                   block
                   icon={<BarChartOutlined />}
-                  onClick={() => navigate('/admin/system-settings')}
+                  onClick={() => { setPlansModalVisible(true); loadPlans(); }}
                   className={styles.quickActionButton}
                 >
                   <BarChartOutlined className={styles.quickActionIcon} />
@@ -480,6 +498,100 @@ const SystemAdminHome: React.FC = () => {
           </Row>
         </div>
       )}
+      {/* Tenants Modal */}
+      <Modal
+        title="Danh sách Tenants"
+        open={tenantsModalVisible}
+        onCancel={() => setTenantsModalVisible(false)}
+        footer={null}
+        width={900}
+      >
+        {tenantsLoadingModal ? (
+          <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
+        ) : (
+          <Table
+            dataSource={tenantsList}
+            rowKey={(r) => r._id || r.id}
+            pagination={{ pageSize: 10 }}
+            columns={[
+              { title: 'Tên', dataIndex: 'tenant_name', key: 'tenant_name' },
+              { title: 'Mã', dataIndex: 'tenant_code', key: 'tenant_code' },
+              { title: 'Email', key: 'contact_email', render: (_: any, rec: any) => rec.contact?.email || rec.contact_email || '-' },
+              { title: 'SĐT', key: 'contact_phone', render: (_: any, rec: any) => rec.contact?.phone || rec.contact_phone || '-' },
+              { title: 'Gói', key: 'plan', render: (_: any, rec: any) => rec.subscription?.plan || rec.subscription_plan || '-' },
+              { title: 'Hết hạn', key: 'expires_at', render: (_: any, rec: any) => (rec.subscription?.expires_at || rec.subscription_expires_at) ? formatDate(rec.subscription?.expires_at || rec.subscription_expires_at) : '-' },
+            ]}
+          />
+        )}
+      </Modal>
+
+      {/* Permission Alerts Modal */}
+      <Modal
+        title="Cảnh báo Quyền truy cập"
+        open={permissionModalVisible}
+        onCancel={() => setPermissionModalVisible(false)}
+        footer={null}
+        width={800}
+      >
+        {permissionLoading ? (
+          <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
+        ) : permissionAlertsList.length === 0 ? (
+          <div>Không có cảnh báo</div>
+        ) : (
+          <List
+            dataSource={permissionAlertsList}
+            renderItem={(alert: any) => (
+              <List.Item>
+                <List.Item.Meta
+                  title={<Text strong>{alert.message}</Text>}
+                  description={<div><div>{alert.user_id?.full_name || alert.user_id?.username}</div><div style={{ color: '#999' }}>{formatDate(alert.created_at)}</div></div>}
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Modal>
+
+      {/* Subscription Plans Modal */}
+      <Modal
+        title="Gói dịch vụ"
+        open={plansModalVisible}
+        onCancel={() => setPlansModalVisible(false)}
+        footer={null}
+        width={700}
+      >
+        {plansLoading ? (
+          <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
+        ) : plansList.length === 0 ? (
+          <div>Chưa có gói dịch vụ</div>
+        ) : (
+          <Table
+            dataSource={plansList}
+            rowKey={(r) => r._id || r.id}
+            pagination={{ pageSize: 10 }}
+            columns={[
+              { title: 'Tên gói', dataIndex: 'plan_name', key: 'plan_name' },
+              { title: 'Mô tả', dataIndex: 'description', key: 'description' },
+              { title: 'Giá', dataIndex: 'price', key: 'price', render: (p: number) => p?.toLocaleString('vi-VN') },
+              { title: 'Kỳ hạn (tháng)', dataIndex: 'duration_months', key: 'duration_months' }
+            ]}
+          />
+        )}
+      </Modal>
+
+      {/* Backup Modal */}
+      <Modal
+        title="Thực hiện Backup"
+        open={backupModalVisible}
+        onCancel={() => setBackupModalVisible(false)}
+        onOk={handleStartBackup}
+        okText="Bắt đầu"
+        confirmLoading={backupSubmitting}
+      >
+        <div>
+          <Text>Thực hiện backup toàn bộ hệ thống lên server cục bộ. (Mô phỏng)</Text>
+        </div>
+      </Modal>
     </div>
   );
 };

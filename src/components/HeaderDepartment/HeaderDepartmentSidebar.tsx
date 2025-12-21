@@ -66,11 +66,6 @@ const HeaderDepartmentSidebar: React.FC<HeaderDepartmentSidebarProps> = ({ onLog
       icon: <ExclamationCircleOutlined />,
       label: 'Quản lý sự cố',
     },
-    {
-      key: '/header-department/hikvision-events',
-      icon: <LockOutlined />,
-      label: 'Kiểm soát truy cập',
-    },
   ];
 
   const handleMenuClick = ({ key }: { key: string }) => {

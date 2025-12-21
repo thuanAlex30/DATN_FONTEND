@@ -52,11 +52,6 @@ const Sidebar = () => {
                     label: 'Dashboard',
                 },
                 {
-                    key: '/admin/department-management',
-                    icon: <BankOutlined />,
-                    label: 'Phòng ban & vị trí',
-                },
-                {
                     key: '/admin/system-logs',
                     icon: <FileTextOutlined />,
                     label: 'Nhật ký hệ thống',
@@ -104,7 +99,12 @@ const Sidebar = () => {
                 {
                     key: '/admin/department-management',
                     icon: <BankOutlined />,
-                    label: 'Phòng ban & vị trí',
+                    label: 'Phòng ban',
+                },
+                {
+                    key: '/admin/role-management',
+                    icon: <SafetyOutlined />,
+                    label: 'Vị trí',
                 },
                 {
                     key: '/admin/role-management',
