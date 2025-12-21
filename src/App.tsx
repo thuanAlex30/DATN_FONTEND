@@ -7,7 +7,6 @@ import type { AppDispatch } from './store'
 import { initializeAuth } from './store/slices/authSlice'
 import AppRoutes from './routes'
 import ErrorBoundary from './components/ErrorBoundary'
-import WebSocketStatus from './components/WebSocketStatus'
 import Chatbot from './components/Chatbot'
 
 function AppContent() {
@@ -65,22 +64,6 @@ function AppContent() {
             <AppRoutes />
           </Layout.Content>
         </Layout>
-        
-        {/* WebSocket Status */}
-        {isAuthenticated && (
-          <div style={{ 
-            position: 'fixed', 
-            top: 20, 
-            left: 20, 
-            zIndex: 9999,
-            background: 'rgba(255, 255, 255, 0.9)',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-          }}>
-            <WebSocketStatus />
-          </div>
-        )}
         
         {/* Chatbot - Hiển thị luôn (cả landing page) */}
         <Chatbot />

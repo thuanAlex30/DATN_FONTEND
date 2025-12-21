@@ -17,7 +17,8 @@ import {
   ProjectOutlined,
   LockOutlined,
   DashboardOutlined,
-  SearchOutlined
+  SearchOutlined,
+  SafetyCertificateOutlined
 } from '@ant-design/icons';
 import { logout } from '../../store/slices/authSlice';
 import styles from './ManagerSidebar.module.css';
@@ -78,6 +79,11 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
     key: '/manager/hikvision-events',
     icon: <LockOutlined />,
     label: 'Kiểm soát truy cập',
+  },
+  {
+    key: '/manager/certificates',
+    icon: <SafetyCertificateOutlined />,
+    label: 'Chứng chỉ cá nhân',
   },
 ];
 

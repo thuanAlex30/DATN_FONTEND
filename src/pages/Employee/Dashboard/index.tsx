@@ -9,8 +9,7 @@ import {
   WarningOutlined,
   StarOutlined,
   BookOutlined,
-  SafetyOutlined,
-  ExclamationCircleFilled
+  SafetyOutlined
 } from '@ant-design/icons';
 import type { RootState } from '../../../store';
 import { logout } from '../../../store/slices/authSlice';
@@ -261,28 +260,6 @@ const EmployeeDashboard: React.FC = () => {
                 Thao tác nhanh
               </Typography.Title>
               <Row gutter={[16, 16]}>
-                <Col xs={24} sm={8}>
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button
-                      type="primary"
-                      size="large"
-                      icon={<ExclamationCircleFilled />}
-                      onClick={() => navigate('/employee/incidents/report')}
-                      block
-                      style={{
-                        height: '64px',
-                        borderRadius: '12px',
-                        background: 'linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%)',
-                        border: 'none',
-                        fontWeight: 600,
-                        fontSize: '16px',
-                        boxShadow: '0 4px 12px rgba(255, 77, 79, 0.3)',
-                      }}
-                    >
-                      Báo cáo sự cố
-                    </Button>
-                  </motion.div>
-                </Col>
                 <Col xs={24} sm={8}>
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button

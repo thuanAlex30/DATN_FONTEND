@@ -10,9 +10,12 @@ import {
   EnvironmentOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { fetchWeather } from '../../store/slices/weatherSlice';
+import { fetchWeather, fetchAirQuality } from '../../store/slices/weatherSlice';
 import type { RootState } from '../../store';
 import ForecastView from './ForecastView';
+import HourlyForecastChart from './HourlyForecastChart';
+import UVIndexIndicator from './UVIndexIndicator';
+import AirQualityIndicator from './AirQualityIndicator';
 import styles from './WeatherWidget.module.css';
 
 const { Text } = Typography;
@@ -31,7 +34,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
   enableGeo = true,
 }) => {
   const dispatch = useDispatch();
-  const { data, status, error } = useSelector((state: RootState) => state.weather);
+  const { data, status, error, airQuality } = useSelector((state: RootState) => state.weather);
   const [coords, setCoords] = useState<{ latitude?: number; longitude?: number }>({
     latitude,
     longitude,
@@ -68,9 +71,11 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
     if (isGettingLocation) return;
     if (coords.latitude != null && coords.longitude != null) {
       dispatch(fetchWeather({ latitude: coords.latitude, longitude: coords.longitude }) as any);
+      dispatch(fetchAirQuality({ latitude: coords.latitude, longitude: coords.longitude }) as any);
     } else {
       // gửi không params để backend dùng default
       dispatch(fetchWeather({}) as any);
+      dispatch(fetchAirQuality({}) as any);
     }
   }, [dispatch, coords.latitude, coords.longitude, isGettingLocation]);
 
@@ -101,61 +106,6 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
     return <CloudOutlined className={styles.cloudIcon} />;
   };
 
-  // Map coordinates to city names in Vietnam
-  const getCityName = (lat?: number, lon?: number): string => {
-    if (!lat || !lon) return 'Vị trí mặc định';
-    
-    // Major cities in Vietnam with approximate coordinates and larger radius
-    const cities = [
-      { name: 'Hà Nội', lat: 21.0285, lon: 105.8542, radius: 1.0 },
-      { name: 'TP. Hồ Chí Minh', lat: 10.8231, lon: 106.6297, radius: 1.0 },
-      { name: 'Đà Nẵng', lat: 16.0471, lon: 108.2068, radius: 1.5 }, // Tăng radius cho Đà Nẵng
-      { name: 'Hải Phòng', lat: 20.8449, lon: 106.6881, radius: 0.8 },
-      { name: 'Cần Thơ', lat: 10.0452, lon: 105.7469, radius: 0.8 },
-      { name: 'Nha Trang', lat: 12.2388, lon: 109.1967, radius: 0.8 },
-      { name: 'Huế', lat: 16.4637, lon: 107.5909, radius: 0.8 },
-      { name: 'Vũng Tàu', lat: 10.3460, lon: 107.0843, radius: 0.5 },
-      { name: 'Quy Nhon', lat: 13.7765, lon: 109.2233, radius: 0.5 },
-      { name: 'Đà Lạt', lat: 11.9404, lon: 108.4583, radius: 0.5 },
-    ];
-
-    // Find closest city by distance
-    let closestCity = null;
-    let minDistance = Infinity;
-
-    for (const city of cities) {
-      const distance = Math.sqrt(
-        Math.pow(lat - city.lat, 2) + Math.pow(lon - city.lon, 2)
-      );
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestCity = city;
-      }
-    }
-
-    // Return city name if within radius, otherwise show coordinates
-    if (closestCity && minDistance <= closestCity.radius) {
-      return closestCity.name;
-    }
-
-    // If very close to Đà Nẵng area (within 2 degrees), assume Đà Nẵng
-    if (lat >= 14 && lat <= 17 && lon >= 107 && lon <= 109) {
-      return 'Đà Nẵng';
-    }
-
-    // If very close to Hà Nội area
-    if (lat >= 20 && lat <= 22 && lon >= 105 && lon <= 106) {
-      return 'Hà Nội';
-    }
-
-    // If very close to TP.HCM area
-    if (lat >= 10 && lat <= 11 && lon >= 106 && lon <= 107) {
-      return 'TP. Hồ Chí Minh';
-    }
-
-    // If no city matches, show coordinates
-    return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-  };
 
   const getWeatherDescription = (weatherCode: number): string => {
     const descriptions: Record<number, string> = {
@@ -251,9 +201,13 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
 
   const alerts: string[] = [];
   if (current.windspeed >= 30) alerts.push('Gió mạnh, hãy kiểm tra PPE chắn gió & mũ/kính');
+  if (current.windgusts_10m && current.windgusts_10m >= 40) alerts.push('Gió giật mạnh, cẩn thận khi làm việc trên cao');
   if ([61, 63, 65, 80, 81, 82].includes(current.weathercode)) alerts.push('Có mưa, chuẩn bị đồ chống nước');
   if (current.temperature >= 35) alerts.push('Nhiệt độ cao, lưu ý chống nắng & uống nước');
   if (current.temperature <= 15) alerts.push('Trời lạnh, chuẩn bị giữ ấm');
+  if (current.uv_index != null && current.uv_index >= 6) alerts.push(`UV cao (${current.uv_index.toFixed(1)}), cần kem chống nắng & mũ nón`);
+  if (current.visibility != null && current.visibility < 1) alerts.push(`Tầm nhìn kém (${current.visibility.toFixed(1)}km), cần áo phản quang`);
+  if (airQuality?.current?.us_aqi && airQuality.current.us_aqi > 150) alerts.push(`Chất lượng không khí kém (AQI: ${airQuality.current.us_aqi}), nên đeo khẩu trang N95`);
 
   if (compact) {
     const todayContent = (
@@ -267,16 +221,39 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
         <Text type="secondary" style={{ fontSize: '12px' }}>
           Gió: {windSpeed} km/h
         </Text>
+        {current.windgusts_10m != null && current.windgusts_10m > 30 && (
+          <Text type="secondary" style={{ fontSize: '12px', color: '#ff4d4f' }}>
+            Gió giật: {Math.round(current.windgusts_10m)} km/h
+          </Text>
+        )}
         {precipitation > 0 && (
           <Text type="secondary" style={{ fontSize: '12px' }}>
             Mưa: {precipitation.toFixed(1)} mm
           </Text>
         )}
-        {data.location && (
+        {current.apparent_temperature != null && Math.abs(current.apparent_temperature - current.temperature) > 2 && (
           <Text type="secondary" style={{ fontSize: '12px' }}>
-            {getCityName(data.location.latitude, data.location.longitude)}
+            Cảm nhận: {Math.round(current.apparent_temperature)}°C
           </Text>
         )}
+        {current.relativehumidity_2m != null && (
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            Độ ẩm: {Math.round(current.relativehumidity_2m)}%
+          </Text>
+        )}
+        <Space wrap size={[4, 4]}>
+          {current.uv_index != null && (
+            <UVIndexIndicator uvIndex={current.uv_index} size="small" />
+          )}
+          {airQuality?.current && (airQuality.current.us_aqi != null || airQuality.current.european_aqi != null) && (
+            <AirQualityIndicator airQuality={airQuality.current} size="small" showDetails={false} />
+          )}
+          {current.visibility != null && current.visibility < 5 && (
+            <Tag color="orange">
+              Tầm nhìn: {current.visibility.toFixed(1)}km
+            </Tag>
+          )}
+        </Space>
         {alerts.length > 0 && (
           <Alert
             type="warning"
@@ -322,6 +299,17 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
               key: 'today',
               label: 'Hôm nay',
               children: todayContent,
+            },
+            {
+              key: 'hourly',
+              label: '24h tới',
+              children: (
+                <HourlyForecastChart
+                  latitude={coords.latitude}
+                  longitude={coords.longitude}
+                  hours={24}
+                />
+              ),
             },
             {
               key: 'forecast',
@@ -391,31 +379,87 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
       title={
         <Space>
           {getWeatherIcon(current.weathercode)}
-          <span>Thời tiết</span>
+          <span style={{ fontWeight: 600 }}>Thời tiết</span>
         </Space>
       }
     >
-      <Space direction="vertical" size="small" style={{ width: '100%' }}>
-        <div>
-          <Text strong style={{ fontSize: '16px', color: getTemperatureColor(current.temperature) }}>
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+          <div className={styles.temperatureDisplay}>
             {temperature}°C
-          </Text>
-        </div>
-        <div>
-          <Tag color="blue">{getWeatherDescription(current.weathercode)}</Tag>
-        </div>
-        <div>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            Gió: {windSpeed} km/h
-          </Text>
-        </div>
-        {precipitation > 0 && (
-          <div>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              Mưa: {precipitation.toFixed(1)} mm
-            </Text>
           </div>
-        )}
+          <Tag 
+            color="blue" 
+            style={{ 
+              fontSize: '13px',
+              padding: '4px 12px',
+              borderRadius: '12px',
+              border: 'none',
+              fontWeight: 500,
+              marginTop: '8px'
+            }}
+          >
+            {getWeatherDescription(current.weathercode)}
+          </Tag>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div className={styles.weatherMetric}>
+            <Text type="secondary" style={{ fontSize: '13px', fontWeight: 500, minWidth: '80px' }}>
+              💨 Gió:
+            </Text>
+            <Text strong style={{ fontSize: '13px' }}>
+              {windSpeed} km/h
+            </Text>
+            {current.windgusts_10m != null && current.windgusts_10m > 30 && (
+              <Tag color="red" style={{ margin: 0, fontSize: '11px', padding: '2px 8px' }}>
+                Giật: {Math.round(current.windgusts_10m)} km/h
+              </Tag>
+            )}
+          </div>
+          {precipitation > 0 && (
+            <div className={styles.weatherMetric}>
+              <Text type="secondary" style={{ fontSize: '13px', fontWeight: 500, minWidth: '80px' }}>
+                💧 Mưa:
+              </Text>
+              <Text strong style={{ fontSize: '13px' }}>
+                {precipitation.toFixed(1)} mm
+              </Text>
+            </div>
+          )}
+          {current.apparent_temperature != null && Math.abs(current.apparent_temperature - current.temperature) > 2 && (
+            <div className={styles.weatherMetric}>
+              <Text type="secondary" style={{ fontSize: '13px', fontWeight: 500, minWidth: '80px' }}>
+                🌡️ Cảm nhận:
+              </Text>
+              <Text strong style={{ fontSize: '13px' }}>
+                {Math.round(current.apparent_temperature)}°C
+              </Text>
+            </div>
+          )}
+          {current.relativehumidity_2m != null && (
+            <div className={styles.weatherMetric}>
+              <Text type="secondary" style={{ fontSize: '13px', fontWeight: 500, minWidth: '80px' }}>
+                💧 Độ ẩm:
+              </Text>
+              <Text strong style={{ fontSize: '13px' }}>
+                {Math.round(current.relativehumidity_2m)}%
+              </Text>
+            </div>
+          )}
+        </div>
+        <div className={styles.indicatorGroup}>
+          {current.uv_index != null && (
+            <UVIndexIndicator uvIndex={current.uv_index} size="small" />
+          )}
+          {airQuality?.current && (airQuality.current.us_aqi != null || airQuality.current.european_aqi != null) && (
+            <AirQualityIndicator airQuality={airQuality.current} size="small" showDetails={false} />
+          )}
+          {current.visibility != null && current.visibility < 5 && (
+            <Tag color="orange" style={{ margin: 0, fontSize: '12px', padding: '4px 10px', borderRadius: '12px' }}>
+              👁️ Tầm nhìn: {current.visibility.toFixed(1)}km
+            </Tag>
+          )}
+        </div>
         <Space size="small">
           <Button
             size="small"
@@ -446,11 +490,6 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
             description={alerts.join('. ')}
             showIcon
           />
-        )}
-        {data.location && (
-          <Text type="secondary" style={{ fontSize: '10px' }}>
-            {getCityName(data.location.latitude, data.location.longitude)}
-          </Text>
         )}
       </Space>
     </Card>

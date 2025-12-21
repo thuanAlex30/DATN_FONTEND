@@ -1,0 +1,23 @@
+.hourlyChart {
+  width: 100%;
+  overflow: visible;
+}
+
+.tooltip {
+  background: white !important;
+  padding: 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  position: relative;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.tooltip div {
+  margin: 4px 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+

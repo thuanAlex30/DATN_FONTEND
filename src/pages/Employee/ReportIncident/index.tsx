@@ -8,11 +8,11 @@ import {
   Button,
   Upload,
   Image,
-  Space,
   Typography,
   message,
   Row,
-  Col
+  Col,
+  Space
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -22,8 +22,9 @@ import {
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 import userService from '../../../services/userService';
+import styles from './ReportIncident.module.css';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
@@ -96,12 +97,12 @@ const ReportIncident: React.FC = () => {
         location, 
         severity, 
         images,
-        affectedEmployeeId,
-        employeeStatus,
-        incidentType,
-        witnesses: witnesses ? witnesses.split(',').map(w => w.trim()) : [],
-        medicalReport
-      });
+        ...(affectedEmployeeId && { affectedEmployeeId }),
+        ...(employeeStatus && { employeeStatus }),
+        ...(incidentType && { incidentType }),
+        ...(witnesses && { witnesses: witnesses.split(',').map(w => w.trim()) }),
+        ...(medicalReport && { medicalReport })
+      } as any);
       message.success('Ghi nhận sự cố thành công!');
       // Reset form
       setTitle('');
@@ -122,72 +123,76 @@ const ReportIncident: React.FC = () => {
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-      padding: '24px' 
-    }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        {/* Header */}
-        <Card style={{ marginBottom: '24px' }}>
-          <Row justify="space-between" align="middle">
-            <Col>
-              <Title level={2} style={{ margin: 0, color: '#2c3e50' }}>
-                <ExclamationCircleOutlined style={{ color: '#e74c3c', marginRight: '10px' }} />
-                Ghi nhận sự cố
-              </Title>
-            </Col>
-            <Col>
-              <Button 
-                type="default"
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/home')}
-              >
-                Về trang Home
-              </Button>
-            </Col>
-          </Row>
-        </Card>
-
-        {/* Form */}
-        <Card>
-          <Form
-            layout="vertical"
-            onFinish={handleSubmit}
-          >
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={12}>
-                <Form.Item label="Tiêu đề" required>
-                  <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Nhập tiêu đề sự cố"
-                    required
-                  />
-                </Form.Item>
+    <div className={styles.container}>
+      <div className={styles.formWrapper}>
+        <Card className={styles.mainCard}>
+          <div className={styles.header}>
+            <Row justify="space-between" align="middle">
+              <Col>
+                <Title level={2} className={styles.title}>
+                  <ExclamationCircleOutlined className={styles.titleIcon} />
+                  Ghi nhận sự cố
+                </Title>
               </Col>
-              <Col xs={24} md={12}>
-                <Form.Item label="Vị trí">
-                  <Input
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Nhập vị trí xảy ra sự cố"
-                  />
-                </Form.Item>
+              <Col>
+                <Button 
+                  type="default"
+                  icon={<ArrowLeftOutlined />}
+                  onClick={() => navigate('/home')}
+                  size="large"
+                  style={{
+                    borderRadius: '8px',
+                    fontWeight: 500
+                  }}
+                >
+                  Về trang Home
+                </Button>
               </Col>
             </Row>
+          </div>
 
-            <Form.Item label="Mức độ nghiêm trọng" required>
-              <Select
-                value={severity}
-                onChange={(value) => setSeverity(value)}
-                style={{ width: '100%' }}
-              >
-                <Option value="nhẹ">Nhẹ</Option>
-                <Option value="nặng">Nặng</Option>
-                <Option value="rất nghiêm trọng">Rất nghiêm trọng</Option>
-              </Select>
-            </Form.Item>
+          <div className={styles.formContent}>
+            <Form
+              layout="vertical"
+              onFinish={handleSubmit}
+            >
+              <Row gutter={[16, 16]}>
+                <Col xs={24} md={12}>
+                  <Form.Item label="Tiêu đề" required className={styles.formItem}>
+                    <Input
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Nhập tiêu đề sự cố"
+                      required
+                      size="large"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item label="Vị trí" className={styles.formItem}>
+                    <Input
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="Nhập vị trí xảy ra sự cố"
+                      size="large"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item label="Mức độ nghiêm trọng" required className={styles.formItem}>
+                <Select
+                  value={severity}
+                  onChange={(value) => setSeverity(value)}
+                  style={{ width: '100%' }}
+                  size="large"
+                  className={styles.severitySelect}
+                >
+                  <Option value="nhẹ">Nhẹ</Option>
+                  <Option value="nặng">Nặng</Option>
+                  <Option value="rất nghiêm trọng">Rất nghiêm trọng</Option>
+                </Select>
+              </Form.Item>
 
             {/* Thêm các trường mới cho Update Employee Incident */}
             <Row gutter={[16, 16]}>
@@ -354,7 +359,8 @@ const ReportIncident: React.FC = () => {
                 </Button>
               </Space>
             </Form.Item>
-          </Form>
+            </Form>
+          </div>
         </Card>
       </div>
     </div>
