@@ -5,13 +5,14 @@
   left: 280px !important; /* Start after sidebar */
   right: 0 !important;
   bottom: 0 !important;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: transparent;
+  backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100 !important;
   animation: fadeIn 0.3s ease;
+  pointer-events: none;
 }
 
 /* Modal content - below header but above other content */
@@ -29,6 +30,7 @@
   margin: auto;
   display: flex;
   flex-direction: column;
+  pointer-events: auto;
 }
 
 .modalHeader {
@@ -645,10 +647,10 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .modalOverlay {
-    left: 0 !important;
-    top: 0 !important;
-    background: rgba(0, 0, 0, 0.6);
+    .modalOverlay {
+      left: 0 !important;
+      top: 0 !important;
+      background: transparent;
   }
 
   .modalContent {

@@ -39,6 +39,7 @@ const { TextArea } = Input;
 const ContactPage: React.FC = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const [loading, setLoading] = React.useState(false);
 
   const handleLogin = () => {
     navigate('/login');
@@ -48,10 +49,28 @@ const ContactPage: React.FC = () => {
     navigate('/');
   };
 
-  const handleContactSubmit = (values: any) => {
-    console.log('Contact form values:', values);
-    message.success('Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.');
-    form.resetFields();
+  const handleContactSubmit = async (values: any) => {
+    try {
+      setLoading(true);
+      const contactMessageService = (await import('../../services/contactMessageService')).default;
+      console.log('Submitting contact form:', values);
+      const result = await contactMessageService.createMessage({
+        name: values.name,
+        email: values.email,
+        subject: values.subject,
+        message: values.message
+      });
+      console.log('Contact message created:', result);
+      message.success('Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.');
+      form.resetFields();
+    } catch (error: any) {
+      console.error('Error submitting contact form:', error);
+      console.error('Error response:', error.response);
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.';
+      message.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -319,6 +338,7 @@ const ContactPage: React.FC = () => {
                       icon={<SendOutlined />}
                       className={styles.submitButton}
                       block
+                      loading={loading}
                     >
                       Gửi tin nhắn
                     </Button>

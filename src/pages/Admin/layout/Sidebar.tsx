@@ -13,7 +13,6 @@ import {
   DashboardOutlined,
   UserOutlined,
   SafetyOutlined,
-  BankOutlined,
   FileTextOutlined,
   LogoutOutlined,
   TeamOutlined,
@@ -50,11 +49,6 @@ const Sidebar = () => {
                     key: '/system-admin/home',
                     icon: <DashboardOutlined />,
                     label: 'Dashboard',
-                },
-                {
-                    key: '/admin/department-management',
-                    icon: <BankOutlined />,
-                    label: 'Phòng ban & vị trí',
                 },
                 {
                     key: '/admin/system-logs',
@@ -100,11 +94,6 @@ const Sidebar = () => {
                     key: '/admin/user-management',
                     icon: <UserOutlined />,
                     label: 'Quản lý người dùng',
-                },
-                {
-                    key: '/admin/department-management',
-                    icon: <BankOutlined />,
-                    label: 'Phòng ban & vị trí',
                 },
                 {
                     key: '/admin/role-management',

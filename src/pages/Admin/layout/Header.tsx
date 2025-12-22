@@ -23,6 +23,7 @@ import {
 import { logout } from '../../../store/slices/authSlice';
 import type { RootState } from '../../../store';
 import ProfileModal from '../../../components/ProfileModal/ProfileModal';
+import SettingsModal from '../../../components/SettingsModal/SettingsModal';
 import { useWebSocket } from '../../../hooks/useWebSocket';
 import websocketClient from '../../../services/websocketClient';
 import { ENV } from '../../../config/env';
@@ -49,6 +50,7 @@ const Header = React.memo(() => {
     const { user, token } = useSelector((state: RootState) => state.auth);
     const { notifications, unreadCount } = useSelector((state: RootState) => state.websocket);
     const [showProfileModal, setShowProfileModal] = useState(false);
+    const [showSettingsModal, setShowSettingsModal] = useState(false);
     
     // Remove duplicate headers on mount (StrictMode workaround)
     useEffect(() => {
@@ -73,11 +75,19 @@ const Header = React.memo(() => {
     };
 
     const handleProfileInfo = () => {
-        navigate('/profile');
+        setShowProfileModal(true);
     };
 
     const handleCloseProfileModal = () => {
         setShowProfileModal(false);
+    };
+
+    const handleSettings = () => {
+        setShowSettingsModal(true);
+    };
+
+    const handleCloseSettingsModal = () => {
+        setShowSettingsModal(false);
     };
 
     // Setup WebSocket event listeners
@@ -468,6 +478,7 @@ const Header = React.memo(() => {
             key: 'settings',
             icon: <SettingOutlined />,
             label: 'Cài đặt',
+            onClick: handleSettings,
         },
         {
             type: 'divider',
@@ -557,7 +568,7 @@ const Header = React.memo(() => {
                                         <p style={{ margin: 0 }}>Không có thông báo mới</p>
                                     </div>
                                 ) : (
-                                    notifications.map((notification) => (
+                                    notifications.map((notification: NotificationData) => (
                                         <div
                                             key={notification.id}
                                             onClick={() => handleNotificationItemClick(notification)}
@@ -724,6 +735,12 @@ const Header = React.memo(() => {
             <ProfileModal 
                 isOpen={showProfileModal} 
                 onClose={handleCloseProfileModal} 
+            />
+            
+            {/* Settings Modal */}
+            <SettingsModal 
+                isOpen={showSettingsModal} 
+                onClose={handleCloseSettingsModal} 
             />
         </AntHeader>
     );

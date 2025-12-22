@@ -3,12 +3,14 @@ import { Suspense, type ComponentType } from 'react';
 import AuthGuard from '../components/AuthGuard';
 import AdminLayout from '../pages/Admin/layout/AdminLayout';
 import LoginPage from '../pages/Login';
+import ForgotPasswordPage from '../pages/ForgotPassword';
 import UnauthorizedPage from '../pages/Unauthorized';
 import HomePage from '../pages/Home';
 import DashboardPage from '../pages/Admin/Dashboard';
 import DepartmentManagementPage from '../pages/Admin/DepartmentManagement';
 import SystemAdminHome from '../pages/Admin/SystemAdminHome';
 import CustomersPage from '../pages/Admin/Customers';
+import SupportMessagesPage from '../pages/system_admin/SupportMessages';
 import UserManagementPage from '../pages/Admin/UserManagement';
 import SystemLogsPage from '../pages/Admin/SystemSettings';
 import ProjectManagement from '../pages/header_department/ProjectManagement';
@@ -77,6 +79,7 @@ const AppRoutes = () => {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             
             {/* Home route for non-admin users */}
@@ -287,6 +290,18 @@ const AppRoutes = () => {
                     <AuthGuard minRoleLevel={100} tenantScope="global">
                         <AdminLayout>
                             <CustomersPage />
+                        </AdminLayout>
+                    </AuthGuard>
+                } 
+            />
+
+            {/* System Admin - Support Messages */}
+            <Route 
+                path="/system-admin/support-messages" 
+                element={
+                    <AuthGuard minRoleLevel={100} tenantScope="global">
+                        <AdminLayout>
+                            <SupportMessagesPage />
                         </AdminLayout>
                     </AuthGuard>
                 } 
