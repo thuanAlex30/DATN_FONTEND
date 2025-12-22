@@ -1,0 +1,156 @@
+.weatherWidget {
+  min-width: 150px;
+  max-width: 320px;
+  border-radius: 20px !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(245, 247, 255, 0.95)) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 
+    0 8px 32px rgba(24, 144, 255, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(24, 144, 255, 0.15) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  position: relative;
+}
+
+.weatherWidget::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #1890ff, #52c41a, #faad14);
+  opacity: 0.6;
+}
+
+.weatherWidget:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 40px rgba(24, 144, 255, 0.18),
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(24, 144, 255, 0.25) !important;
+}
+
+.weatherWidget :global(.ant-card-body) {
+  padding: 20px !important;
+}
+
+.weatherWidget :global(.ant-card-head) {
+  border-bottom: 1px solid rgba(24, 144, 255, 0.1) !important;
+  padding: 16px 20px 12px !important;
+  background: transparent !important;
+}
+
+.weatherWidget :global(.ant-card-head-title) {
+  font-weight: 600;
+  font-size: 16px;
+  color: #1890ff;
+}
+
+.weatherWidgetCompact {
+  min-width: 80px;
+  cursor: pointer;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(245, 247, 255, 0.95)) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 
+    0 4px 16px rgba(24, 144, 255, 0.1),
+    0 1px 4px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(24, 144, 255, 0.15) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.weatherWidgetCompact:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 6px 20px rgba(24, 144, 255, 0.15),
+    0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  border-color: rgba(24, 144, 255, 0.3) !important;
+}
+
+.weatherWidgetCompact :global(.ant-card-body) {
+  padding: 12px 16px !important;
+}
+
+.sunIcon {
+  color: #faad14;
+  font-size: 24px;
+  filter: drop-shadow(0 2px 4px rgba(250, 173, 20, 0.3));
+  transition: transform 0.3s ease;
+}
+
+.cloudIcon {
+  color: #1890ff;
+  font-size: 24px;
+  filter: drop-shadow(0 2px 4px rgba(24, 144, 255, 0.3));
+  transition: transform 0.3s ease;
+}
+
+.thunderIcon {
+  color: #722ed1;
+  font-size: 24px;
+  filter: drop-shadow(0 2px 4px rgba(114, 46, 209, 0.3));
+  transition: transform 0.3s ease;
+}
+
+.errorIcon {
+  color: #ff4d4f;
+}
+
+/* Weather metric styles */
+.weatherMetric {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(24, 144, 255, 0.05);
+  border-radius: 10px;
+  margin: 4px 0;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.weatherMetric:hover {
+  background: rgba(24, 144, 255, 0.1);
+  border-color: rgba(24, 144, 255, 0.2);
+  transform: translateX(2px);
+}
+
+.temperatureDisplay {
+  font-size: 32px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #1890ff, #52c41a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+  margin: 8px 0;
+}
+
+.indicatorGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  margin: 12px 0;
+  border: 1px solid rgba(24, 144, 255, 0.1);
+}
+
+.locationText {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.1), rgba(82, 196, 26, 0.1));
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1890ff;
+  margin-top: 8px;
+}
+

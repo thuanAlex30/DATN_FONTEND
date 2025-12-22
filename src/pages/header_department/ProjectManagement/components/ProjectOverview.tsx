@@ -579,7 +579,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
                     <TeamOutlined style={{ fontSize: '16px', color: '#16a34a' }} />
                   </div>
                   <span style={{ fontSize: '18px', fontWeight: 600, color: '#1e293b' }}>
-                    Thành viên dự án ({assignments.length})
+                    Công nhân làm việc trong dự án ({assignments.length})
                   </span>
                 </Space>
               }
@@ -615,7 +615,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projectId }) => {
                           </Text>
                           <br />
                           <Text type="secondary" style={{ fontSize: '12px' }}>
-                            {assignment.role_in_project || 'Thành viên'}
+                            {assignment.role_in_project || 'Công nhân'}
                           </Text>
                           <br />
                           <Tag 

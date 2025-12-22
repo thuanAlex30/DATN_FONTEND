@@ -20,7 +20,6 @@ import {
   Switch,
   DatePicker,
   Spin,
-  Alert,
 } from 'antd';
 import {
   DashboardOutlined,
@@ -34,11 +33,8 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  ReloadOutlined,
   ExportOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined,
-  ClockCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import systemAdminService from '../../services/systemAdminService';
@@ -87,8 +83,6 @@ const SystemAdmin: React.FC = () => {
   // Users state
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
-  const [userModalVisible, setUserModalVisible] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm] = Form.useForm();
 
   // Subscriptions state
@@ -101,9 +95,6 @@ const SystemAdmin: React.FC = () => {
   // Roles state
   const [roles, setRoles] = useState<Role[]>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
-  const [roleModalVisible, setRoleModalVisible] = useState(false);
-  const [editingRole, setEditingRole] = useState<Role | null>(null);
-  const [roleForm] = Form.useForm();
 
   // System Logs state
   const [logs, setLogs] = useState<SystemLog[]>([]);
@@ -115,14 +106,12 @@ const SystemAdmin: React.FC = () => {
   });
 
   // Settings state
-  const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsForm] = Form.useForm();
 
   // Backup state
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [backupsLoading, setBackupsLoading] = useState(false);
-  const [backupModalVisible, setBackupModalVisible] = useState(false);
   const [backupForm] = Form.useForm();
   const [submittingBackup, setSubmittingBackup] = useState(false);
   const [submittingTenant, setSubmittingTenant] = useState(false);
@@ -256,7 +245,6 @@ const SystemAdmin: React.FC = () => {
     try {
       setSettingsLoading(true);
       const data = await systemAdminService.getSystemSettings();
-      setSettings(data);
       settingsForm.setFieldsValue(data);
     } catch (error: any) {
       message.error('Không thể tải cấu hình: ' + (error.message || 'Lỗi không xác định'));
@@ -337,13 +325,11 @@ const SystemAdmin: React.FC = () => {
   // User handlers
   const showUserModal = (user?: User) => {
     if (user) {
-      setEditingUser(user);
       userForm.setFieldsValue(user);
     } else {
-      setEditingUser(null);
       userForm.resetFields();
     }
-    setUserModalVisible(true);
+    // TODO: Implement user modal
   };
 
   // Subscription handlers
@@ -392,12 +378,15 @@ const SystemAdmin: React.FC = () => {
 
   // Settings handlers
   const handleSaveSettings = async (values: SystemSettings) => {
+    setSubmittingSettings(true);
     try {
       await systemAdminService.updateSystemSettings(values);
       message.success('Lưu cấu hình thành công');
       loadSettings();
     } catch (error: any) {
       message.error('Không thể lưu cấu hình: ' + (error.message || 'Lỗi không xác định'));
+    } finally {
+      setSubmittingSettings(false);
     }
   };
 
@@ -407,7 +396,6 @@ const SystemAdmin: React.FC = () => {
     try {
       await systemAdminService.startBackup(values);
       message.success('Backup đã được bắt đầu');
-      setBackupModalVisible(false);
       backupForm.resetFields();
       loadBackups();
     } catch (error: any) {
@@ -686,34 +674,131 @@ const SystemAdmin: React.FC = () => {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider
-        collapsible
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
-        width={280}
-        style={{
-          overflow: 'auto',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-        }}
-      >
-        <div style={{ padding: '20px', color: 'white', fontSize: '20px', fontWeight: 'bold' }}>
-          {collapsed ? '⚙️' : '⚙️ System Admin'}
-        </div>
-        <Menu
-          theme="dark"
-          selectedKeys={[activeTab]}
-          mode="inline"
-          items={menuItems}
-          onClick={({ key }) => setActiveTab(key)}
+    <>
+      <style>{`
+        .system-admin-menu .ant-menu-item {
+          margin: 6px 12px !important;
+          border-radius: 12px !important;
+          height: 48px !important;
+          line-height: 48px !important;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          font-weight: 500 !important;
+          font-size: 14px !important;
+          position: relative !important;
+        }
+        .system-admin-menu .ant-menu-item:hover {
+          background: linear-gradient(135deg, rgba(15, 155, 77, 0.08) 0%, rgba(52, 211, 153, 0.08) 100%) !important;
+          color: #0f9b4d !important;
+          transform: translateX(4px);
+          box-shadow: 0 2px 8px rgba(15, 155, 77, 0.12) !important;
+        }
+        .system-admin-menu .ant-menu-item-selected {
+          background: linear-gradient(135deg, #0f9b4d 0%, #34d399 100%) !important;
+          color: white !important;
+          box-shadow: 0 4px 16px rgba(15, 155, 77, 0.35), 0 2px 4px rgba(15, 155, 77, 0.2) !important;
+          transform: translateX(0) !important;
+        }
+        .system-admin-menu .ant-menu-item-selected .ant-menu-item-icon {
+          color: white !important;
+        }
+        .system-admin-menu .ant-menu-item-icon {
+          font-size: 16px;
+          margin-right: 12px;
+        }
+      `}</style>
+      <Layout style={{ 
+        minHeight: '100vh',
+        background: 'linear-gradient(180deg, #f8fff9 0%, #ffffff 60%, #f0fdf4 100%)',
+        position: 'relative'
+      }}>
+        <div
+          style={{
+            position: 'fixed',
+            left: collapsed ? 80 : 280,
+            top: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: `
+              radial-gradient(circle at 15% 25%, rgba(163, 230, 53, 0.15), transparent 55%),
+              radial-gradient(circle at 85% 20%, rgba(52, 211, 153, 0.2), transparent 60%),
+              radial-gradient(circle at 60% 80%, rgba(16, 185, 129, 0.15), transparent 55%),
+              linear-gradient(120deg, rgba(255, 255, 255, 0.9), rgba(240, 253, 244, 0.8))
+            `,
+            backgroundPosition: '15% 25%, 85% 20%, 60% 80%, center',
+            backgroundSize: 'auto, auto, auto, cover',
+            backgroundRepeat: 'no-repeat',
+            zIndex: 0,
+            pointerEvents: 'none',
+            transition: 'left 0.2s'
+          }}
         />
+        <Sider
+          collapsible
+          collapsed={collapsed}
+          onCollapse={setCollapsed}
+          width={280}
+          style={{
+            overflow: 'auto',
+            height: '100vh',
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)',
+            borderRight: '1px solid rgba(226, 232, 240, 0.8)',
+            boxShadow: '4px 0 24px rgba(0, 0, 0, 0.08)',
+            zIndex: 1000,
+          }}
+        >
+          <div style={{ 
+            padding: '28px 20px 24px', 
+            borderBottom: '1px solid rgba(226, 232, 240, 0.6)',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%)',
+          }}>
+            <div style={{ 
+              color: '#0f9b4d', 
+              fontSize: '20px', 
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <SettingOutlined style={{ fontSize: '24px' }} />
+              {!collapsed && <span>System Admin</span>}
+            </div>
+          </div>
+          <Menu
+            theme="light"
+            selectedKeys={[activeTab]}
+            mode="inline"
+            items={menuItems}
+            onClick={({ key }) => setActiveTab(key)}
+            className="system-admin-menu"
+            style={{
+              border: 'none',
+              background: 'transparent',
+              padding: '16px 0',
+            }}
+          />
       </Sider>
-      <Layout style={{ marginLeft: collapsed ? 80 : 280 }}>
-        <Content style={{ margin: '24px', padding: '24px', background: '#fff', minHeight: 'calc(100vh - 48px)' }}>
+      <Layout style={{ 
+        marginLeft: collapsed ? 80 : 280,
+        position: 'relative',
+        zIndex: 1,
+        background: 'transparent',
+        transition: 'margin-left 0.2s'
+      }}>
+        <Content style={{ 
+          margin: '24px', 
+          padding: '24px', 
+          background: 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '16px',
+          minHeight: 'calc(100vh - 48px)',
+          position: 'relative',
+          zIndex: 1,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+        }}>
           {activeTab === 'dashboard' && (
             <div>
               <Title level={2}>Dashboard</Title>
@@ -1063,7 +1148,7 @@ const SystemAdmin: React.FC = () => {
           )}
         </Content>
       </Layout>
-
+      
       {/* Tenant Modal */}
       <Modal
         title={editingTenant ? 'Sửa công ty' : 'Thêm công ty'}
@@ -1079,7 +1164,13 @@ const SystemAdmin: React.FC = () => {
         <Form
           form={tenantForm}
           layout="vertical"
-          onFinish={editingTenant ? handleUpdateTenant : handleCreateTenant}
+          onFinish={async (values) => {
+            if (editingTenant) {
+              await handleUpdateTenant(values as TenantUpdate);
+            } else {
+              await handleCreateTenant(values as TenantCreate);
+            }
+          }}
         >
           <Form.Item
             name="tenant_name"
@@ -1195,7 +1286,8 @@ const SystemAdmin: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
-    </Layout>
+      </Layout>
+    </>
   );
 };
 

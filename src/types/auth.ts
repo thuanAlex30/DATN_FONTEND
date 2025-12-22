@@ -58,6 +58,11 @@ export interface UserProfile {
     id: string;
     department_name: string;
   };
+  // Hỗ trợ user thuộc nhiều phòng ban (multi-department)
+  department_ids?: {
+    id: string;
+    department_name: string;
+  }[];
   is_active: boolean;
   last_login: string;
 }

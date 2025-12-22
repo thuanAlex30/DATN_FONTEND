@@ -1,0 +1,267 @@
+.container {
+  padding: 24px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f8fff9 0%, #ffffff 60%, #f0fdf4 100%);
+  position: relative;
+}
+
+.container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 15% 25%, rgba(163, 230, 53, 0.15), transparent 55%),
+    radial-gradient(circle at 85% 20%, rgba(52, 211, 153, 0.2), transparent 60%),
+    radial-gradient(circle at 60% 80%, rgba(16, 185, 129, 0.15), transparent 55%);
+  background-position: 15% 25%, 85% 20%, 60% 80%;
+  background-size: auto, auto, auto;
+  background-repeat: no-repeat;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.formWrapper {
+  max-width: 900px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.mainCard {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mainCard:hover {
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.header {
+  padding: 32px 32px 24px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(220, 38, 38, 0.05) 100%);
+  border-bottom: 2px solid rgba(239, 68, 68, 0.1);
+  position: relative;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ef4444, #dc2626, #ef4444);
+  opacity: 0.6;
+}
+
+.title {
+  margin: 0 !important;
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.titleIcon {
+  font-size: 32px;
+  color: #ef4444;
+  filter: drop-shadow(0 2px 4px rgba(239, 68, 68, 0.3));
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.formContent {
+  padding: 32px;
+}
+
+.formItem :global(.ant-form-item-label > label) {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.formItem :global(.ant-input),
+.formItem :global(.ant-select-selector),
+.formItem :global(.ant-input-affix-wrapper) {
+  border-radius: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  transition: all 0.3s ease;
+}
+
+.formItem :global(.ant-input:hover),
+.formItem :global(.ant-select-selector:hover),
+.formItem :global(.ant-input-affix-wrapper:hover) {
+  border-color: #0f9b4d;
+  box-shadow: 0 0 0 2px rgba(15, 155, 77, 0.1);
+}
+
+.formItem :global(.ant-input:focus),
+.formItem :global(.ant-select-focused .ant-select-selector),
+.formItem :global(.ant-input-affix-wrapper-focused) {
+  border-color: #0f9b4d;
+  box-shadow: 0 0 0 3px rgba(15, 155, 77, 0.15);
+}
+
+.formItem :global(.ant-input::placeholder),
+.formItem :global(.ant-input-affix-wrapper input::placeholder) {
+  color: #94a3b8;
+}
+
+.textArea :global(.ant-input) {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.uploadButton {
+  border-radius: 8px;
+  border: 2px dashed rgba(15, 155, 77, 0.3);
+  background: linear-gradient(135deg, rgba(15, 155, 77, 0.05) 0%, rgba(52, 211, 153, 0.05) 100%);
+  transition: all 0.3s ease;
+  height: 48px;
+  font-weight: 500;
+}
+
+.uploadButton:hover {
+  border-color: #0f9b4d;
+  background: linear-gradient(135deg, rgba(15, 155, 77, 0.1) 0%, rgba(52, 211, 153, 0.1) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15, 155, 77, 0.2);
+}
+
+.imagePreview {
+  margin-top: 16px;
+}
+
+.imageItem {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.imageItem:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.imageItem :global(.ant-image) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.deleteButton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  transition: all 0.3s ease;
+}
+
+.deleteButton:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+}
+
+.actionButtons {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 2px solid rgba(226, 232, 240, 0.6);
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.submitButton {
+  background: linear-gradient(135deg, #0f9b4d 0%, #34d399 100%);
+  border: none;
+  border-radius: 10px;
+  height: 48px;
+  padding: 0 32px;
+  font-weight: 600;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(15, 155, 77, 0.3);
+  transition: all 0.3s ease;
+}
+
+.submitButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(15, 155, 77, 0.4);
+  background: linear-gradient(135deg, #0d8a45 0%, #2ec289 100%);
+}
+
+.clearButton {
+  border-radius: 10px;
+  height: 48px;
+  padding: 0 32px;
+  font-weight: 600;
+  font-size: 16px;
+  border: 2px solid rgba(226, 232, 240, 0.8);
+  transition: all 0.3s ease;
+}
+
+.clearButton:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.severitySelect :global(.ant-select-selector) {
+  border-radius: 8px;
+}
+
+.severitySelect :global(.ant-select-selection-item) {
+  font-weight: 500;
+}
+
+.severityTag {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.severityTag.nhe {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.1) 100%);
+  color: #16a34a;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.severityTag.nang {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%);
+  color: #f59e0b;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.severityTag.ratNghiemTrong {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+

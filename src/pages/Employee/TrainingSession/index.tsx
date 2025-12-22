@@ -33,23 +33,17 @@ interface Question {
 }
 
 interface TrainingData {
-  session: {
-    _id: string;
-    session_name: string;
-    start_time: string;
-    end_time: string;
-    location?: string;
-  };
   course: {
     _id: string;
     course_name: string;
     description: string;
-    duration_minutes: number;
+    duration_hours: number;
   };
   enrollment: {
     _id: string;
     status: string;
     enrolled_at: string;
+    started_at?: string;
   };
   questionBank: {
     _id: string;
@@ -76,7 +70,7 @@ const TrainingSession: React.FC = () => {
   useEffect(() => {
     console.log('TrainingData changed:', trainingData);
     if (trainingData) {
-      console.log('Session ID in trainingData:', trainingData.session?._id);
+      console.log('Course ID in trainingData:', trainingData.course?._id);
     }
   }, [trainingData]);
   
@@ -95,8 +89,8 @@ const TrainingSession: React.FC = () => {
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
-        // Check if the session ID is the old invalid one
-        if (parsedData.session?._id === '68d405b3f69efa8873b5c836') {
+        // Check if the course ID is the old invalid one (if needed)
+        if (parsedData.course?._id === '68d405b3f69efa8873b5c836') {
           console.log('Found old invalid session data, clearing localStorage');
           localStorage.removeItem('currentTrainingData');
         }
@@ -133,18 +127,18 @@ const TrainingSession: React.FC = () => {
     
     if (data && data.session?._id) {
       console.log('Training data received:', data);
-      console.log('Session ID from data:', data.session._id);
+      console.log('Course ID from data:', data.course?._id);
       
-      // Validate session data before using it
-      if (!data.session || !data.session._id || !data.session.end_time) {
-        console.error('Invalid session data:', data);
-        clearAndRedirect('Dữ liệu phiên học không hợp lệ');
+      // Validate course data before using it
+      if (!data.course || !data.course._id) {
+        console.error('Invalid course data:', data);
+        clearAndRedirect('Dữ liệu khóa học không hợp lệ');
         return;
       }
       
       // Only set trainingData if it's not already set or if it's different
       setTrainingData(prevData => {
-        if (!prevData || prevData.session?._id !== data.session._id) {
+        if (!prevData || prevData.course?._id !== data.course._id) {
           console.log('Setting new training data');
           return data;
         }
@@ -250,14 +244,14 @@ const TrainingSession: React.FC = () => {
     console.log('TrainingData type:', typeof currentTrainingData);
     console.log('TrainingData is null:', currentTrainingData === null);
     console.log('TrainingData is undefined:', currentTrainingData === undefined);
-    console.log('Session ID:', currentTrainingData?.session?._id);
-    console.log('Session:', currentTrainingData?.session);
+    console.log('Course ID:', currentTrainingData?.course?._id);
+    console.log('Course:', currentTrainingData?.course);
     console.log('Answers:', answers);
     console.log('Number of answered questions:', Object.keys(answers).length);
     console.log('===================');
     
-    if (!currentTrainingData?.session?._id) {
-      message.error('Không tìm thấy thông tin phiên học. Vui lòng thử lại.');
+    if (!currentTrainingData?.course?._id) {
+      message.error('Không tìm thấy thông tin khóa học. Vui lòng thử lại.');
       return;
     }
 
@@ -280,39 +274,28 @@ const TrainingSession: React.FC = () => {
     setIsSubmitted(true);
     
     try {
-
-      // Calculate score
-      let totalScore = 0;
-      let correctAnswers = 0;
-      
-      currentTrainingData?.questions.forEach(question => {
-        const userAnswer = answers[question._id];
-        if (userAnswer) {
-          // For now, we'll need to get the correct answer from the backend
-          // This is a simplified version - give full points for answered questions
-          const points = Number(question.points) || 1; // Default to 1 point if not specified
-          totalScore += points;
-          correctAnswers++;
-        }
-      });
-
-      // Ensure score is always a valid number
-      totalScore = Number(totalScore) || 0;
-
-      console.log('Calculated score:', totalScore, 'Type:', typeof totalScore);
-
-      // Submit answers to backend (lưu bài, chờ admin chấm)
-      const response = await api.post(`/training/sessions/${currentTrainingData.session._id}/submit`, {
-        answers: answers,
-        completionTime: new Date().toISOString()
+      // Submit answers to backend - backend will automatically calculate score
+      const courseId = currentTrainingData.course._id;
+      const response = await api.post(`/training/courses/${courseId}/submit`, {
+        answers: answers
       });
 
       if (response.data.success) {
-        // Bài đã được gửi, chờ admin chấm điểm
-        message.success(
-          `Bài làm của bạn đã được gửi thành công!\nVui lòng chờ admin chấm điểm. Bạn sẽ nhận được thông báo khi có kết quả.`,
-          5
-        );
+        // Backend automatically calculates score and updates status
+        const results = response.data.data.results;
+        const passed = results.passed;
+        
+        if (passed) {
+          message.success(
+            `Chúc mừng! Bạn đã hoàn thành khóa học với điểm số ${results.percentage}% (${results.score}/${results.totalPossibleScore} điểm).`,
+            5
+          );
+        } else {
+          message.warning(
+            `Bạn đã hoàn thành bài kiểm tra với điểm số ${results.percentage}% (${results.score}/${results.totalPossibleScore} điểm). Điểm đạt yêu cầu là ${results.passThreshold}%. Bạn có thể làm lại bài.`,
+            5
+          );
+        }
         
         localStorage.removeItem('currentTrainingData');
         
@@ -320,7 +303,7 @@ const TrainingSession: React.FC = () => {
         setTimeout(() => {
           // Force page reload to refresh all data
           window.location.href = '/employee/training';
-        }, 1500);
+        }, 2000);
       } else {
         message.error(`Lỗi: ${response.data.message}`);
       }
@@ -416,10 +399,10 @@ const TrainingSession: React.FC = () => {
                 </Button>
                 <div>
                   <Title level={3} style={{ margin: 0 }}>
-                    {trainingData.session?.session_name || 'Training Session'}
+                    {trainingData.course?.course_name || 'Course Quiz'}
                   </Title>
                   <Text type="secondary">
-                    {trainingData.course?.course_name || 'Course'}
+                    {trainingData.questionBank?.bank_name || 'Question Bank'}
                   </Text>
                 </div>
               </Space>

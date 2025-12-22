@@ -1,0 +1,24 @@
+.hourlyForecast {
+  max-width: 100%;
+}
+
+.sunIcon {
+  color: #faad14;
+  font-size: 18px;
+}
+
+.cloudIcon {
+  color: #8c8c8c;
+  font-size: 18px;
+}
+
+.thunderIcon {
+  color: #722ed1;
+  font-size: 18px;
+}
+
+.rainIcon {
+  color: #1890ff;
+  font-size: 18px;
+}
+

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Navigate, useLocation } from 'react-router-dom';
+import { Spin } from 'antd';
 import type { RootState } from '../../store';
 
 interface AuthGuardProps {
@@ -22,14 +23,41 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
 }) => {
   const { user, token, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const location = useLocation();
+  const [isChecking, setIsChecking] = useState(true);
+
+  // Give Redux state a moment to hydrate on navigation
+  useEffect(() => {
+    // Small delay to ensure Redux state is fully hydrated
+    // This prevents race conditions during navigation
+    const timer = setTimeout(() => {
+      setIsChecking(false);
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname]); // Re-check on location change
 
   console.log('🔍 AuthGuard check:', {
     user: user ? { id: user.id, username: user.username, role: user.role?.role_name } : null,
     token: token ? 'exists' : 'missing',
     isAuthenticated,
     requiredRole,
-    currentPath: location.pathname
+    currentPath: location.pathname,
+    isChecking
   });
+
+  // Show loading during state check
+  if (isChecking) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh' 
+      }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   // Check if user is authenticated - use isAuthenticated flag to avoid race conditions
   if (!isAuthenticated || !user || !token) {
@@ -352,12 +380,13 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   }
 
   console.log('✅ AuthGuard: Access granted');
-  // Add a small delay to prevent DOM issues
+  
+  // Render children with stable key to prevent unnecessary re-renders
   return (
-    <div key={`auth-guard-${user.id}`}>
+    <React.Fragment key={`auth-guard-${user.id}-${location.pathname}`}>
       {children}
-    </div>
+    </React.Fragment>
   );
 };
 
-export default AuthGuard; 
+export default AuthGuard;

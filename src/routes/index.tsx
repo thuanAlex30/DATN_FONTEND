@@ -28,7 +28,6 @@ import HeaderDepartmentDashboard from '../pages/header_department/Dashboard';
 import HeaderDepartmentHikvisionEventsPage from '../pages/header_department/HikvisionEvents';
 import HeaderDepartmentLayout from '../components/HeaderDepartment/HeaderDepartmentLayout';
 import { ManagerLayout } from '../components/Manager';
-import ReportIncident from '../pages/Employee/ReportIncident';
 import ManagerReportIncident from '../pages/Manager/ReportIncident';
 import AssignedIncidents from '../pages/Manager/IncidentHandling/AssignedIncidents';
 import EmployeeTraining from '../pages/Employee/Training';
@@ -41,6 +40,8 @@ import ManagerPPEManagement from '../pages/Manager/PPEManagement';
 import ManagerProjectManagement from '../pages/Manager/ProjectManagement';
 import ManagerTraining from '../pages/Manager/Training';
 import ManagerHikvisionEventsPage from '../pages/Manager/HikvisionEvents';
+import ManagerCertificates from '../pages/Manager/Certificates';
+import EmployeeCertificates from '../pages/Employee/Certificates';
 import WebSocketTest from '../pages/WebSocketTest';
 import LandingPage from '../pages/Landing';
 import PricingPage from '../pages/Pricing';
@@ -154,6 +155,14 @@ const AppRoutes = () => {
                 } 
             />
             <Route 
+                path="/manager/certificates" 
+                element={
+                    <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
+                        <ManagerCertificates />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
                 path="/manager/incidents/report" 
                 element={
                     <AuthGuard minRoleLevel={70} tenantScope="tenant" departmentScope="hierarchy">
@@ -214,14 +223,6 @@ const AppRoutes = () => {
 
             {/* Employee routes */}
             <Route 
-                path="/employee/incidents/report" 
-                element={
-                    <AuthGuard requiredRole="employee">
-                        <ReportIncident />
-                    </AuthGuard>
-                } 
-            />
-            <Route 
                 path="/employee/training" 
                 element={
                     <AuthGuard requiredRole="employee">
@@ -250,6 +251,14 @@ const AppRoutes = () => {
                 element={
                     <AuthGuard requiredRole={["manager", "leader"]}>
                         <EmployeeProjectManagement />
+                    </AuthGuard>
+                } 
+            />
+            <Route 
+                path="/employee/certificates" 
+                element={
+                    <AuthGuard requiredRole={["employee", "manager"]}>
+                        <EmployeeCertificates />
                     </AuthGuard>
                 } 
             />
@@ -348,9 +357,7 @@ const AppRoutes = () => {
                 path="/header-department/hikvision-events" 
                 element={
                     <AuthGuard requiredRole="header_department">
-                        <HeaderDepartmentLayout>
-                            <HeaderDepartmentHikvisionEventsPage />
-                        </HeaderDepartmentLayout>
+                        <HeaderDepartmentHikvisionEventsPage />
                     </AuthGuard>
                 } 
             />
@@ -414,11 +421,11 @@ const AppRoutes = () => {
                     </AuthGuard>
                 } 
             />
-            {/* Các route /admin dưới đây đã được chuyển cho Header Department nên tạm thời ẩn khỏi Admin:
-                - /admin/training-management
-                - /admin/certificate-management
-                - /admin/ppe-management
-                - /admin/incident-management
+            {/* Các route /admin dưới đây đã được chuyển hoàn toàn cho Header Department:
+                - /admin/training-management (đã chuyển sang /header-department/training-management)
+                - /admin/certificate-management (đã chuyển sang /header-department/certificate-management)
+                - /admin/ppe-management (đã chuyển sang /header-department/ppe-management)
+                - /admin/incident-management (đã chuyển sang /header-department/incident-management)
             */}
             {/* Header Department incident action routes */}
             <Route 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -35,17 +35,31 @@ import {
 } from '../../../store/slices/websocketSlice';
 import type { NotificationData } from '../../../store/slices/websocketSlice';
 import NotificationService from '../../../services/notificationService';
+import { WeatherWidget, EquipmentSuggestion } from '../../../components/Weather';
+import WebSocketStatus from '../../../components/WebSocketStatus';
+import headerStyles from './Header.module.css';
 
 const { Header: AntHeader } = Layout;
 const { Title, Text } = Typography;
 const { Search } = Input;
 
-const Header = () => {
+const Header = React.memo(() => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { user, token } = useSelector((state: RootState) => state.auth);
     const { notifications, unreadCount } = useSelector((state: RootState) => state.websocket);
     const [showProfileModal, setShowProfileModal] = useState(false);
+    
+    // Remove duplicate headers on mount (StrictMode workaround)
+    useEffect(() => {
+        const headers = document.querySelectorAll('[data-admin-header="true"]');
+        if (headers.length > 1) {
+            // Keep only the first header, remove others
+            for (let i = 1; i < headers.length; i++) {
+                headers[i].remove();
+            }
+        }
+    }, []);
     const [showNotifications, setShowNotifications] = useState(false);
     const [hasUserInteracted, setHasUserInteracted] = useState(false);
     const audioRef = useRef<HTMLAudioElement>(null);
@@ -469,6 +483,9 @@ const Header = () => {
 
     return (
         <AntHeader 
+            data-admin-header="true"
+            key="admin-header-component"
+            className={headerStyles.header}
             style={{
                 background: '#ffffff',
                 padding: '1.5rem 2rem',
@@ -669,6 +686,10 @@ const Header = () => {
                     </Badge>
                 </Popover>
                 
+                <WebSocketStatus />
+                <WeatherWidget compact />
+                <EquipmentSuggestion compact />
+                
                 <Dropdown
                     menu={{ items: profileMenuItems }}
                     placement="bottomRight"
@@ -706,6 +727,8 @@ const Header = () => {
             />
         </AntHeader>
     );
-};
+});
+
+Header.displayName = 'Header';
 
 export default Header;

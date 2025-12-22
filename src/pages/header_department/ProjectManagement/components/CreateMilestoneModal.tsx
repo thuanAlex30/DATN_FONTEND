@@ -16,6 +16,7 @@ import type { RootState, AppDispatch } from '../../../../store';
 import { useSelector, useDispatch } from 'react-redux';
 import { createMilestone, fetchProjectMilestones } from '../../../../store/slices/projectMilestoneSlice';
 import projectService from '../../../../services/projectService';
+import userService from '../../../../services/userService';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -52,31 +53,46 @@ const CreateMilestoneModal: React.FC<CreateMilestoneModalProps> = ({
   const loadManagers = useCallback(async () => {
     try {
       setLoadingManagers(true);
-      // Load available employees để chọn làm người phụ trách
-      const employeesResponse = await projectService.getAvailableEmployees();
+      // Load all users và lọc chỉ những user có role là manager
+      const allUsers = await userService.getAllUsers();
       
-      if (employeesResponse.success && employeesResponse.data) {
-        const employeesData = Array.isArray(employeesResponse.data) 
-          ? employeesResponse.data 
-          : (employeesResponse.data.data || []);
+      // Filter: chỉ hiển thị users có role là Manager
+      const filteredManagers = allUsers.filter((user: any) => {
+        const roleCode = user.role?.role_code?.toLowerCase();
+        const roleName = user.role?.role_name?.toLowerCase();
+        const userRoleLevel = user.role?.role_level;
         
-        if (Array.isArray(employeesData) && employeesData.length > 0) {
-          const mappedManagers = employeesData.map((employee: any) => ({
-            id: employee.id || employee._id,
-            name: employee.full_name || employee.name || employee.fullName || '',
-            email: employee.email || ''
-          }));
-          setManagers(mappedManagers);
-        } else {
-          setManagers([]);
+        // Kiểm tra role_code trước
+        if (roleCode) {
+          return roleCode === 'manager';
         }
+        
+        // Nếu không có role_code, kiểm tra role_name
+        if (roleName) {
+          return roleName.includes('manager') || roleName === 'department manager';
+        }
+        
+        // Nếu không có role_code và role_name, kiểm tra role_level (Manager: 70)
+        if (userRoleLevel !== undefined && userRoleLevel !== null) {
+          return userRoleLevel === 70;
+        }
+        
+        return false;
+      });
+      
+      if (Array.isArray(filteredManagers) && filteredManagers.length > 0) {
+        const mappedManagers = filteredManagers.map((manager: any) => ({
+          id: manager.id || manager._id,
+          name: manager.full_name || manager.name || manager.fullName || '',
+          email: manager.email || ''
+        }));
+        setManagers(mappedManagers);
       } else {
-        console.error('Failed to load employees:', employeesResponse.message);
         setManagers([]);
       }
     } catch (error) {
-      console.error('Error loading employees:', error);
-      message.error('Lỗi khi tải danh sách nhân viên');
+      console.error('Error loading managers:', error);
+      message.error('Lỗi khi tải danh sách manager');
       setManagers([]);
     } finally {
       setLoadingManagers(false);

@@ -115,17 +115,25 @@ const CourseAssignmentModal: React.FC<CourseAssignmentModalProps> = ({
       // Validate required fields
       if (!values.course_id) {
         message.error('Vui lòng chọn khóa học');
+        setLoading(false);
         return;
       }
       if (!values.department_id) {
         message.error('Vui lòng chọn phòng ban');
+        setLoading(false);
         return;
       }
+
+      console.log('Submitting assignment with values:', {
+        course_id: values.course_id,
+        department_id: values.department_id,
+        notes: values.notes
+      });
 
       await createAssignment({
         course_id: values.course_id,
         department_id: values.department_id,
-        notes: values.notes
+        notes: values.notes || undefined
       });
       
       message.success('Gán khóa học cho phòng ban thành công!');
@@ -133,7 +141,17 @@ const CourseAssignmentModal: React.FC<CourseAssignmentModalProps> = ({
       form.resetFields();
       setSelectedDepartment(null);
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Có lỗi xảy ra khi gán khóa học');
+      console.error('Error creating assignment:', error);
+      console.error('Error response:', error.response?.data);
+      
+      // Handle validation errors
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        const validationErrors = error.response.data.errors.map((err: any) => err.message).join(', ');
+        message.error(`Lỗi validation: ${validationErrors}`);
+      } else {
+        const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi gán khóa học';
+        message.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

@@ -26,7 +26,9 @@ import {
   CalendarOutlined,
   NumberOutlined,
   SendOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  CheckOutlined,
+  CloseOutlined
 } from '@ant-design/icons';
 import * as ppeService from '../../../services/ppeService';
 import departmentService from '../../../services/departmentService';
@@ -34,6 +36,8 @@ import userService from '../../../services/userService';
 import type { User } from '../../../types/user';
 import dayjs from 'dayjs';
 import { ENV } from '../../../config/env';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../store';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -71,6 +75,7 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
   onSuccess,
   managerId
 }) => {
+  const { user: currentUser } = useSelector((state: RootState) => state.auth);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<User[]>([]);
@@ -109,28 +114,88 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       // Validate managerId
       if (!managerId) {
         message.error('Manager ID không hợp lệ');
+        setEmployees([]);
         return;
       }
       
-      // Lấy thông tin manager để lấy department_id
-      const managerResponse = await userService.getUserById(managerId) as any;
+      let departmentId: string | null = null;
       
-      if (!managerResponse || !managerResponse.success || !managerResponse.data) {
-        message.error('Không tìm thấy thông tin Manager');
-        return;
+      // First, try to use current user's department if managerId matches current user
+      const currentUserId = currentUser?.id || (currentUser as any)?._id;
+      if (currentUserId && (currentUserId.toString() === managerId.toString())) {
+        // Use current user's department_id directly
+        departmentId = currentUser?.department?.id || 
+                      currentUser?.department?._id || 
+                      (currentUser as any)?.department_id?.id ||
+                      (currentUser as any)?.department_id?._id ||
+                      (currentUser as any)?.department_id;
+        
+        console.log('🔍 Using current user department:', {
+          currentUserId,
+          managerId,
+          departmentId,
+          department: currentUser?.department,
+          department_id: (currentUser as any)?.department_id
+        });
       }
       
-      const manager = managerResponse.data;
+      // If not found, get manager info from API
+      if (!departmentId) {
+        try {
+          const manager = await userService.getUserById(managerId);
+          
+          if (!manager) {
+            message.error('Không tìm thấy thông tin Manager');
+            setEmployees([]);
+            return;
+          }
+          
+          // Extract department_id with multiple fallbacks
+          departmentId = (manager as any).department?.id || 
+                        (manager as any).department?._id || 
+                        (manager as any).department_id?.id ||
+                        (manager as any).department_id?._id ||
+                        (manager as any).department_id;
+          
+          console.log('🔍 Got manager department from API:', {
+            managerId,
+            departmentId,
+            manager: {
+              id: (manager as any).id,
+              department: (manager as any).department,
+              department_id: (manager as any).department_id
+            }
+          });
+        } catch (error: any) {
+          console.error('Error fetching manager:', error);
+          message.error('Không thể lấy thông tin Manager: ' + (error.response?.data?.message || error.message));
+          setEmployees([]);
+          return;
+        }
+      }
       
-      // Check for department - could be id or _id depending on API response structure
-      const departmentId = manager.department?.id || manager.department?._id || manager.department_id;
-      
+      // Validate departmentId
       if (!departmentId) {
         message.error('Manager chưa được phân công phòng ban');
+        setEmployees([]);
         return;
       }
       
-      const response = await departmentService.getDepartmentEmployees(departmentId);
+      // Convert to string if it's an object
+      const deptIdString = typeof departmentId === 'string' 
+        ? departmentId 
+        : (departmentId.toString ? departmentId.toString() : String(departmentId));
+      
+      console.log('🔍 Fetching employees for department:', deptIdString);
+      
+      // Get employees from department
+      const response = await departmentService.getDepartmentEmployees(deptIdString);
+      
+      console.log('🔍 Department employees response:', {
+        success: response.success,
+        employeesCount: response.data?.employees?.length || 0,
+        data: response.data
+      });
       
       if (response.success && response.data?.employees) {
         // Map the response data to match User interface
@@ -156,12 +221,19 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
           created_at: emp.created_at
         }));
         
+        console.log('✅ Mapped employees:', mappedEmployees.length);
         setEmployees(mappedEmployees);
+        
+        if (mappedEmployees.length === 0) {
+          message.warning('Không có nhân viên nào trong phòng ban');
+        }
       } else {
-        message.error('Không thể tải danh sách nhân viên');
+        console.error('❌ Invalid response structure:', response);
+        message.error(response.message || 'Không thể tải danh sách nhân viên');
         setEmployees([]);
       }
     } catch (error: any) {
+      console.error('❌ Error loading employees:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Lỗi khi tải danh sách nhân viên';
       message.error(errorMessage);
       setEmployees([]);
@@ -245,6 +317,11 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
   };
 
   const handleSubmit = async (values: any) => {
+    // Ngăn chặn double submit
+    if (loading) {
+      return;
+    }
+
     // Kiểm tra số lượng PPE có đủ cho tất cả nhân viên không
     const totalPPENeeded = selectedEmployees.length; // Mỗi nhân viên cần 1 PPE
     if (totalPPENeeded > availableQuantity) {
@@ -252,12 +329,26 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       return;
     }
 
+    // Validate required fields
+    if (!values.item_id || !values.employee_id || selectedEmployees.length === 0) {
+      message.error('Vui lòng chọn đầy đủ thông tin');
+      return;
+    }
+
     setLoading(true);
     try {
       const userIds: string[] = Array.isArray(values.employee_id) ? values.employee_id : [values.employee_id];
       
+      // Loại bỏ duplicate userIds (nếu có)
+      const uniqueUserIds = [...new Set(userIds)];
+      
+      if (uniqueUserIds.length !== userIds.length) {
+        message.warning('Đã loại bỏ nhân viên trùng lặp');
+      }
+      
       // Phát PPE cho từng nhân viên - mỗi nhân viên nhận 1 PPE
-      const promises = userIds.map((userId: string) => {
+      // Sử dụng Promise.allSettled để xử lý từng request độc lập, tránh fail tất cả nếu 1 request fail
+      const promises = uniqueUserIds.map((userId: string) => {
         const issuanceData = {
           user_id: userId,
           item_id: values.item_id,
@@ -266,20 +357,38 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
           expected_return_date: values.expected_return_date.toISOString(),
           notes: values.notes || ''
         };
-        return ppeService.issueToEmployee(issuanceData);
+        return ppeService.issueToEmployee(issuanceData).catch(error => {
+          // Trả về error object để xử lý sau
+          return {
+            success: false,
+            message: error.response?.data?.message || error.message || 'Lỗi không xác định'
+          };
+        });
       });
       
       const responses = await Promise.all(promises);
       
       // Kiểm tra kết quả
-      const failedCount = responses.filter(response => !response.success).length;
-      const successCount = responses.length - failedCount;
+      const failedResponses = responses.filter(response => !response.success);
+      const successResponses = responses.filter(response => response.success);
+      const failedCount = failedResponses.length;
+      const successCount = successResponses.length;
+      
+      // Hiển thị thông báo lỗi chi tiết nếu có
+      if (failedCount > 0) {
+        const errorMessages = failedResponses.map(r => r.message).filter(Boolean);
+        const uniqueErrors = [...new Set(errorMessages)];
+        uniqueErrors.forEach(msg => {
+          if (msg.includes('đã tồn tại') || msg.includes('duplicate')) {
+            message.warning(msg);
+          } else {
+            message.error(msg);
+          }
+        });
+      }
       
       if (successCount > 0) {
         message.success(`Phát PPE thành công cho ${successCount} nhân viên! (Mỗi nhân viên nhận 1 PPE)`);
-        if (failedCount > 0) {
-          message.warning(`${failedCount} nhân viên phát thất bại`);
-        }
         form.resetFields();
         setSelectedItem(null);
         setSelectedEmployees([]);
@@ -288,8 +397,10 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       } else {
         message.error('Phát PPE cho tất cả nhân viên đều thất bại');
       }
-    } catch (error) {
-      message.error('Lỗi khi phát PPE cho Employee');
+    } catch (error: any) {
+      console.error('Error issuing PPE:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Lỗi khi phát PPE cho Employee';
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -420,23 +531,38 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
             }}
           >
             <Form.Item
-              label="Chọn Employee (cùng phòng ban)"
+              label={
+                <Space>
+                  <span>Chọn Employee (cùng phòng ban)</span>
+                  {selectedEmployees.length > 0 && (
+                    <Tag color="blue">
+                      Đã chọn: {selectedEmployees.length}/{employees.length}
+                    </Tag>
+                  )}
+                </Space>
+              }
               name="employee_id"
-              rules={[{ required: true, message: 'Vui lòng chọn Employee' }]}
+              rules={[{ required: true, message: 'Vui lòng chọn ít nhất 1 Employee' }]}
             >
               <div>
                 <Select
                   mode="multiple"
-                  placeholder={employees.length === 0 ? "Không có nhân viên nào trong phòng ban" : "Chọn Employee"}
+                  placeholder={loading ? "Đang tải..." : (employees.length === 0 ? "Không có nhân viên nào trong phòng ban" : "Chọn 1 hoặc nhiều Employee")}
                   showSearch
                   optionFilterProp="children"
                   onChange={handleEmployeeChange}
                   suffixIcon={<UserOutlined />}
-                  disabled={employees.length === 0}
+                  disabled={loading || employees.length === 0}
+                  loading={loading}
                   maxTagCount="responsive"
                   maxTagTextLength={20}
+                  value={selectedEmployees.map(e => e.id || (e as any)._id).filter(Boolean)}
                   notFoundContent={
-                    employees.length === 0 ? (
+                    loading ? (
+                      <div style={{ textAlign: 'center', padding: '20px' }}>
+                        <span>Đang tải danh sách nhân viên...</span>
+                      </div>
+                    ) : employees.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '20px' }}>
                         <UserOutlined style={{ fontSize: '24px', color: '#ccc' }} />
                         <div style={{ marginTop: '8px', color: '#999' }}>
@@ -469,32 +595,67 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                   }).filter(Boolean)}
                 </Select>
                 
-                {/* Nút chọn tất cả nhân viên */}
+                {/* Nút chọn tất cả / Bỏ chọn tất cả */}
                 {employees.length > 0 && (
-                  <div style={{ marginTop: '8px', textAlign: 'right' }}>
-                    <Button
-                      type="link"
-                      size="small"
-                      onClick={() => {
-                        const allEmployeeIds = employees
-                          .filter(employee => employee.id || (employee as any)._id)
-                          .map(employee => employee.id || (employee as any)._id);
-                        
-                        form.setFieldsValue({ employee_id: allEmployeeIds });
-                        handleEmployeeChange(allEmployeeIds);
-                        
-                        message.success(`Đã chọn tất cả ${allEmployeeIds.length} nhân viên (mỗi nhân viên sẽ nhận 1 PPE)`);
-                      }}
-                      style={{ 
-                        padding: '0',
-                        height: 'auto',
-                        fontSize: '12px',
-                        color: '#1890ff'
-                      }}
-                    >
-                      <UserOutlined style={{ marginRight: '4px' }} />
-                      Chọn tất cả nhân viên ({employees.length})
-                    </Button>
+                  <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      {selectedEmployees.length > 0 ? (
+                        <span>
+                          Đã chọn <strong>{selectedEmployees.length}</strong> nhân viên
+                          {selectedEmployees.length === employees.length && ' (Tất cả)'}
+                        </span>
+                      ) : (
+                        <span>Chưa chọn nhân viên nào</span>
+                      )}
+                    </div>
+                    <Space size="small">
+                      {selectedEmployees.length < employees.length ? (
+                        <Button
+                          type="link"
+                          size="small"
+                          icon={<CheckOutlined />}
+                          onClick={() => {
+                            const allEmployeeIds = employees
+                              .filter(employee => employee.id || (employee as any)._id)
+                              .map(employee => employee.id || (employee as any)._id)
+                              .filter(Boolean);
+                            
+                            form.setFieldsValue({ employee_id: allEmployeeIds });
+                            handleEmployeeChange(allEmployeeIds);
+                            
+                            message.success(`Đã chọn tất cả ${allEmployeeIds.length} nhân viên`);
+                          }}
+                          style={{ 
+                            padding: '0 4px',
+                            height: 'auto',
+                            fontSize: '12px',
+                            color: '#1890ff'
+                          }}
+                        >
+                          Chọn tất cả ({employees.length})
+                        </Button>
+                      ) : null}
+                      {selectedEmployees.length > 0 && (
+                        <Button
+                          type="link"
+                          size="small"
+                          icon={<CloseOutlined />}
+                          onClick={() => {
+                            form.setFieldsValue({ employee_id: [] });
+                            handleEmployeeChange([]);
+                            message.info('Đã bỏ chọn tất cả');
+                          }}
+                          style={{ 
+                            padding: '0 4px',
+                            height: 'auto',
+                            fontSize: '12px',
+                            color: '#ff4d4f'
+                          }}
+                        >
+                          Bỏ chọn tất cả
+                        </Button>
+                      )}
+                    </Space>
                   </div>
                 )}
               </div>
@@ -641,29 +802,63 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                 </Title>
                 
                 {selectedEmployees.length > 0 && (
-                  <Card size="small" title={`Thông tin Employee (${selectedEmployees.length} người)`} style={{ marginBottom: 8 }}>
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                      {selectedEmployees.map((employee, index) => (
-                        <div key={employee.id} style={{ 
+                  <Card 
+                    size="small" 
+                    title={
+                      <Space>
+                        <UserOutlined />
+                        <span>Thông tin Employee đã chọn</span>
+                        <Tag color={selectedEmployees.length === employees.length ? 'green' : 'blue'}>
+                          {selectedEmployees.length === employees.length ? 'Tất cả' : `${selectedEmployees.length}/${employees.length}`}
+                        </Tag>
+                      </Space>
+                    } 
+                    style={{ marginBottom: 8 }}
+                    extra={
+                      selectedEmployees.length > 5 ? (
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                          Hiển thị 5/{selectedEmployees.length} đầu tiên
+                        </Text>
+                      ) : null
+                    }
+                  >
+                    <Space direction="vertical" style={{ width: '100%' }} size="small">
+                      {selectedEmployees.slice(0, 5).map((employee, index) => (
+                        <div key={employee.id || (employee as any)._id} style={{ 
                           padding: '8px', 
                           border: '1px solid #f0f0f0', 
                           borderRadius: '4px',
-                          marginBottom: index < selectedEmployees.length - 1 ? '8px' : '0'
+                          backgroundColor: '#fafafa'
                         }}>
-                          <div>
-                            <Text strong>Tên: </Text>
-                            <Text>{employee.full_name}</Text>
-                          </div>
-                          <div>
-                            <Text strong>Email: </Text>
-                            <Text>{employee.email}</Text>
-                          </div>
-                          <div>
-                            <Text strong>Phòng ban: </Text>
-                            <Text>{employee.department?.department_name || 'N/A'}</Text>
-                          </div>
+                          <Space>
+                            <UserOutlined style={{ color: '#1890ff' }} />
+                            <div style={{ flex: 1 }}>
+                              <div>
+                                <Text strong>{employee.full_name}</Text>
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#666' }}>
+                                <Text type="secondary">{employee.email}</Text>
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#999' }}>
+                                <Text type="secondary">Phòng ban: {employee.department?.department_name || 'N/A'}</Text>
+                              </div>
+                            </div>
+                          </Space>
                         </div>
                       ))}
+                      {selectedEmployees.length > 5 && (
+                        <div style={{ 
+                          padding: '8px', 
+                          textAlign: 'center',
+                          border: '1px dashed #d9d9d9',
+                          borderRadius: '4px',
+                          backgroundColor: '#fafafa'
+                        }}>
+                          <Text type="secondary" style={{ fontSize: '12px' }}>
+                            ... và {selectedEmployees.length - 5} nhân viên khác
+                          </Text>
+                        </div>
+                      )}
                     </Space>
                   </Card>
                 )}
@@ -738,7 +933,7 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                   htmlType="submit"
                   loading={loading}
                   icon={<SendOutlined />}
-                  disabled={availableQuantity === 0 || (selectedEmployees.length > 0 && selectedEmployees.length > availableQuantity)}
+                  disabled={loading || availableQuantity === 0 || (selectedEmployees.length > 0 && selectedEmployees.length > availableQuantity) || selectedEmployees.length === 0}
                 >
                   Phát PPE cho Employee ({selectedEmployees.length} người)
                 </Button>

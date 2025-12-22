@@ -173,6 +173,29 @@ const hikvisionService = {
       minor: 38, // Chỉ lấy events vân tay
       maxResults: 100 // Use 100 like Python code to avoid "Invalid Content" errors
     });
+  },
+
+  /**
+   * Get Access Control Events filtered by Project
+   * @param projectId - Project ID
+   * @param params - Search parameters
+   * @returns Promise with filtered access control events
+   */
+  getAccessControlEventsByProject: (projectId: string, params?: AcsEventSearchParams & { getAll?: boolean }) => {
+    const queryParams = new URLSearchParams();
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    
+    const queryString = queryParams.toString();
+    const url = `/hikvision/events/project/${projectId}${queryString ? `?${queryString}` : ''}`;
+    
+    return api.get<HikvisionApiResponse>(url);
   }
 };
 

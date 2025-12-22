@@ -22,19 +22,22 @@ import {
   Form,
   Input,
   InputNumber,
-  message
+  message,
+  Upload,
+  Image
 } from 'antd';
 import {
   ProjectOutlined as ProjectIcon,
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
   FlagOutlined,
   ReloadOutlined,
   EyeOutlined,
   WarningOutlined,
   HistoryOutlined,
   ClockCircleOutlined,
-  UserOutlined
+  UserOutlined,
+  UploadOutlined,
+  DeleteOutlined
 } from '@ant-design/icons';
 import type { RootState } from '../../../store';
 import projectService from '../../../services/projectService';
@@ -108,18 +111,24 @@ const ManagerProjectManagement: React.FC = () => {
   const [taskReportLoading, setTaskReportLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [taskReportForm] = Form.useForm();
+  const [taskImages, setTaskImages] = useState<File[]>([]);
+  const [taskImageUrls, setTaskImageUrls] = useState<string[]>([]);
   const [taskConfirmLoading, setTaskConfirmLoading] = useState<string | null>(null);
   const [confirmedTaskIds, setConfirmedTaskIds] = useState<Set<string>>(new Set());
   const [riskReportModalOpen, setRiskReportModalOpen] = useState(false);
   const [riskReportLoading, setRiskReportLoading] = useState(false);
   const [selectedRisk, setSelectedRisk] = useState<Risk | null>(null);
   const [riskReportForm] = Form.useForm();
+  const [riskImages, setRiskImages] = useState<File[]>([]);
+  const [riskImageUrls, setRiskImageUrls] = useState<string[]>([]);
   const [riskConfirmLoading, setRiskConfirmLoading] = useState<string | null>(null);
   const [confirmedRiskIds, setConfirmedRiskIds] = useState<Set<string>>(new Set());
   const [milestoneReportModalOpen, setMilestoneReportModalOpen] = useState(false);
   const [milestoneReportLoading, setMilestoneReportLoading] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
   const [milestoneReportForm] = Form.useForm();
+  const [milestoneImages, setMilestoneImages] = useState<File[]>([]);
+  const [milestoneImageUrls, setMilestoneImageUrls] = useState<string[]>([]);
   const [milestoneConfirmLoading, setMilestoneConfirmLoading] = useState<string | null>(null);
   const [confirmedMilestoneIds, setConfirmedMilestoneIds] = useState<Set<string>>(new Set());
   
@@ -248,43 +257,53 @@ const ManagerProjectManagement: React.FC = () => {
 
   const loadAssignedTasks = async () => {
     try {
-      // Lấy tất cả tasks từ các projects được phân công
-      const allTasks: Task[] = [];
-      const currentProjects = assignedProjects.length > 0 ? assignedProjects : await getAssignedProjectsList();
-      
-      for (const project of currentProjects) {
-        const projectId = project.id || project._id;
-        if (!projectId) continue;
-        const response = await projectTaskService.getProjectTasks(projectId);
-        if (response.success && response.data) {
-          // Filter tasks được phân công cho Manager
-          const userId = String(user?.id || '');
-          const managerTasks = response.data.filter((task: Task) => {
-            let responsibleId: string | null = null;
-            if (typeof task.responsible_user_id === 'object' && task.responsible_user_id) {
-              responsibleId = String(task.responsible_user_id?.id || task.responsible_user_id?._id || '');
-            } else if (task.responsible_user_id) {
-              responsibleId = String(task.responsible_user_id);
-            }
-            
-            let assignedToId: string | null = null;
-            if (typeof task.assigned_to === 'object' && task.assigned_to) {
-              assignedToId = String(task.assigned_to?.id || task.assigned_to?._id || '');
-            } else if (task.assigned_to) {
-              assignedToId = String(task.assigned_to);
-            }
-            
-            return (responsibleId && responsibleId === userId) || (assignedToId && assignedToId === userId);
-          });
-          allTasks.push(...managerTasks);
+      if (!user?.id) return;
+      const currentUserId = String(user.id);
+
+      const isMine = (t: any) => {
+        const resp = t?.responsible_user_id;
+        const respId =
+          typeof resp === 'object' && resp ? String(resp.id || resp._id || '') : String(resp || '');
+
+        const assigned = t?.assigned_to;
+        const assignedId =
+          typeof assigned === 'object' && assigned ? String(assigned.id || assigned._id || '') : String(assigned || '');
+
+        return (respId && respId === currentUserId) || (assignedId && assignedId === currentUserId);
+      };
+
+      // Cách 1: query trực tiếp theo user_id (OR responsible/assigned) - không phụ thuộc assignedProjects
+      const allTasks: any[] = [];
+      const response = await projectTaskService.getAllTasks({ user_id: currentUserId });
+      if (response.success && response.data) {
+        allTasks.push(...(response.data as any[]));
+      }
+
+      // Fallback: nếu không có data, loop theo projectId assigned endpoint
+      if (allTasks.length === 0) {
+        const currentProjects = assignedProjects.length > 0 ? assignedProjects : await getAssignedProjectsList();
+        for (const project of currentProjects) {
+          const projectId = project.id || (project as any)._id;
+          if (!projectId) continue;
+          const r = await projectTaskService.getAssignedTasks(currentUserId, projectId);
+          if (r.success && r.data) allTasks.push(...(r.data as any[]));
         }
       }
-      
-      setAssignedTasks(allTasks);
+
+      // Filter safety + dedupe by id
+      const unique = new Map<string, any>();
+      for (const t of allTasks.filter(isMine)) {
+        const id = String(t.id || t._id || '');
+        if (!id) continue;
+        if (!unique.has(id)) unique.set(id, t);
+      }
+      const safeTasks = Array.from(unique.values());
+
+      setAssignedTasks(safeTasks as any);
       setStats(prev => ({
         ...prev,
-        totalTasks: allTasks.length,
-        pendingTasks: allTasks.filter(t => t.status === 'PENDING' || t.status === 'IN_PROGRESS').length
+        totalTasks: safeTasks.length,
+        pendingTasks: safeTasks.filter((t: any) => t.status === 'PENDING' || t.status === 'IN_PROGRESS').length
       }));
     } catch (error) {
       console.error('Error loading assigned tasks:', error);
@@ -347,37 +366,50 @@ const ManagerProjectManagement: React.FC = () => {
 
   const loadAssignedRisks = async () => {
     try {
-      // Lấy tất cả risks được phân công cho Manager
+      if (!user?.id) return;
+
+      const currentUserId = String(user.id);
+      const isMine = (r: any) => {
+        const owner = r?.owner_id;
+        const ownerId =
+          typeof owner === 'object' && owner
+            ? String(owner.id || owner._id || '')
+            : String(owner || '');
+        return ownerId && ownerId === currentUserId;
+      };
+
+      // Cách 1: Lấy tất cả risks theo owner_id (không cần projectId)
       const allRisks: Risk[] = [];
-      const currentProjects = assignedProjects.length > 0 ? assignedProjects : await getAssignedProjectsList();
-      
-      for (const project of currentProjects) {
-        const response = await projectRiskService.getAssignedRisks(user?.id || '', project.id);
-        if (response.success && response.data) {
-          // Log để debug
-          console.log('loadAssignedRisks - Response data:', response.data.map((r: any) => ({
-            id: r.id || r._id,
-            risk_name: r.risk_name,
-            progress: r.progress,
-            status: r.status
-          })));
-          allRisks.push(...response.data);
+      const response = await projectRiskService.getAllRisks({ owner_id: currentUserId });
+      if (response.success && response.data) {
+        allRisks.push(...(response.data as any[]));
+      }
+
+      // Fallback: nếu không có dữ liệu, loop theo projectId đúng (id || _id)
+      if (allRisks.length === 0) {
+        const currentProjects = assignedProjects.length > 0 ? assignedProjects : await getAssignedProjectsList();
+        for (const project of currentProjects) {
+          const projectId = project.id || (project as any)._id;
+          if (!projectId) continue;
+          const r = await projectRiskService.getAssignedRisks(currentUserId, projectId);
+          if (r.success && r.data) allRisks.push(...(r.data as any[]));
         }
       }
-      
-      // Log để debug
-      console.log('loadAssignedRisks - All risks before setState:', allRisks.map((r: any) => ({
-        id: r.id || r._id,
-        risk_name: r.risk_name,
-        progress: r.progress,
-        status: r.status
-      })));
-      
-      setAssignedRisks(allRisks);
+
+      // Filter safety + dedupe by id
+      const unique = new Map<string, any>();
+      for (const r of allRisks.filter(isMine)) {
+        const id = String(r.id || r._id || '');
+        if (!id) continue;
+        if (!unique.has(id)) unique.set(id, r);
+      }
+      const safeRisks = Array.from(unique.values());
+
+      setAssignedRisks(safeRisks as any);
       setStats(prev => ({
         ...prev,
-        totalRisks: allRisks.length,
-        highPriorityRisks: allRisks.filter(r => r.risk_score >= 15).length
+        totalRisks: safeRisks.length,
+        highPriorityRisks: safeRisks.filter((r: any) => (r.risk_score ?? 0) >= 15).length
       }));
     } catch (error) {
       console.error('Error loading assigned risks:', error);
@@ -386,41 +418,94 @@ const ManagerProjectManagement: React.FC = () => {
 
   const loadAssignedMilestones = async () => {
     try {
-      // Lấy tất cả milestones được phân công cho Manager
-      const allMilestones: Milestone[] = [];
-      const currentProjects = assignedProjects.length > 0 ? assignedProjects : await getAssignedProjectsList();
+      if (!user?.id) {
+        console.warn('User ID not available for loading milestones');
+        return;
+      }
+
+      const currentUserId = String(user.id);
+      let allMilestones: Milestone[] = [];
+
+      const isMine = (m: any) => {
+        const responsible = m?.responsible_user_id;
+        const responsibleId =
+          typeof responsible === 'object' && responsible
+            ? String(responsible.id || responsible._id || '')
+            : String(responsible || '');
+        return responsibleId && responsibleId === currentUserId;
+      };
       
-      for (const project of currentProjects) {
-        const response = await projectMilestoneService.getAssignedMilestones(user?.id || '', project.id);
-        if (response.success && response.data) {
-          // Log để debug
-          console.log('loadAssignedMilestones - Response data:', response.data.map((m: any) => ({
-            id: m.id || m._id,
-            milestone_name: m.milestone_name,
-            progress: m.progress,
-            status: m.status
-          })));
-          allMilestones.push(...response.data);
+      // Cách 1: Gọi API getAllMilestones với filter responsible_user_id (không cần projectId)
+      try {
+        const response = await projectMilestoneService.getAllMilestones({ responsible_user_id: currentUserId });
+        
+        if (response.success && response.data && response.data.length > 0) {
+          allMilestones = response.data
+            .filter(isMine) // extra safety: never show other users' milestones
+            .map((m: any) => ({
+              id: m.id || m._id || '',
+              milestone_name: m.milestone_name || '',
+              project_id: m.project_id,
+              status: m.status || 'PENDING',
+              planned_date: m.planned_date || '',
+              responsible_user_id: m.responsible_user_id,
+              progress: m.progress || 0
+            }));
         }
+      } catch (err) {
+        console.error('Error calling getAllMilestones:', err);
       }
       
-      // Log để debug
-      console.log('loadAssignedMilestones - All milestones before setState:', allMilestones.map((m: any) => ({
-        id: m.id || m._id,
-        milestone_name: m.milestone_name,
-        progress: m.progress,
-        status: m.status
-      })));
+      // Nếu cách 1 không có kết quả, thử cách 2: Lấy tất cả projects rồi loop
+      if (allMilestones.length === 0) {
+        const allProjectsResponse = await projectService.getAllProjects({});
+        
+        if (allProjectsResponse.success && allProjectsResponse.data) {
+          const allProjects = Array.isArray(allProjectsResponse.data) ? allProjectsResponse.data : [];
+          
+          // Loop qua tất cả projects để lấy milestones
+          for (const project of allProjects) {
+            const projectId = project.id || (project as any)._id;
+            if (!projectId) continue;
+            
+            try {
+              const milestoneResponse = await projectMilestoneService.getAssignedMilestones(user.id, projectId);
+              if (milestoneResponse.success && milestoneResponse.data && milestoneResponse.data.length > 0) {
+                const mappedMilestones = milestoneResponse.data.map((m: any) => ({
+                  id: m.id || m._id || '',
+                  milestone_name: m.milestone_name || '',
+                  project_id: m.project_id || project,
+                  status: m.status || 'PENDING',
+                  planned_date: m.planned_date || '',
+                  responsible_user_id: m.responsible_user_id,
+                  progress: m.progress || 0
+                }));
+                allMilestones.push(...mappedMilestones);
+              }
+            } catch (err) {
+              console.error(`Error loading milestones for project ${projectId}:`, err);
+            }
+          }
+        }
+      }
+
+      // Deduplicate + final safety filter
+      const unique = new Map<string, Milestone>();
+      for (const m of allMilestones.filter(isMine)) {
+        if (!m.id) continue;
+        if (!unique.has(m.id)) unique.set(m.id, m);
+      }
+      const safeMilestones = Array.from(unique.values());
       
-      setAssignedMilestones(allMilestones);
-      const overdue = allMilestones.filter(m => {
+      setAssignedMilestones(safeMilestones);
+      const overdue = safeMilestones.filter(m => {
         const plannedDate = dayjs(m.planned_date);
         return plannedDate.isBefore(dayjs()) && m.status !== 'COMPLETED';
       });
       
       setStats(prev => ({
         ...prev,
-        totalMilestones: allMilestones.length,
+        totalMilestones: safeMilestones.length,
         overdueMilestones: overdue.length
       }));
     } catch (error) {
@@ -429,12 +514,115 @@ const ManagerProjectManagement: React.FC = () => {
   };
 
 
+  // Helper function to upload images to backend
+  const uploadImages = async (files: File[]): Promise<string[]> => {
+    if (files.length === 0) return [];
+    
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('images', file);
+    });
+    
+    try {
+      const { api } = await import('../../../config/axios');
+      const response = await api.post('/upload/images', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      if (response.data.success && response.data.data) {
+        return Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+      }
+      return [];
+    } catch (error: any) {
+      console.error('Error uploading images:', error);
+      message.error('Không thể upload ảnh: ' + (error.response?.data?.message || error.message));
+      throw error;
+    }
+  };
+
+  // Handler for task image upload
+  const handleTaskImageUpload = (file: File) => {
+    if (taskImages.length >= 10) {
+      message.warning('Tối đa 10 hình ảnh');
+      return false;
+    }
+    setTaskImages([...taskImages, file]);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setTaskImageUrls([...taskImageUrls, e.target.result as string]);
+      }
+    };
+    reader.readAsDataURL(file);
+    return false; // Prevent auto upload
+  };
+
+  const handleRemoveTaskImage = (index: number) => {
+    setTaskImages(taskImages.filter((_, i) => i !== index));
+    setTaskImageUrls(taskImageUrls.filter((_, i) => i !== index));
+  };
+
+  // Handler for risk image upload
+  const handleRiskImageUpload = (file: File) => {
+    if (riskImages.length >= 10) {
+      message.warning('Tối đa 10 hình ảnh');
+      return false;
+    }
+    setRiskImages([...riskImages, file]);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setRiskImageUrls([...riskImageUrls, e.target.result as string]);
+      }
+    };
+    reader.readAsDataURL(file);
+    return false; // Prevent auto upload
+  };
+
+  const handleRemoveRiskImage = (index: number) => {
+    setRiskImages(riskImages.filter((_, i) => i !== index));
+    setRiskImageUrls(riskImageUrls.filter((_, i) => i !== index));
+  };
+
+  // Handler for milestone image upload
+  const handleMilestoneImageUpload = (file: File) => {
+    if (milestoneImages.length >= 10) {
+      message.warning('Tối đa 10 hình ảnh');
+      return false;
+    }
+    setMilestoneImages([...milestoneImages, file]);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setMilestoneImageUrls([...milestoneImageUrls, e.target.result as string]);
+      }
+    };
+    reader.readAsDataURL(file);
+    return false; // Prevent auto upload
+  };
+
+  const handleRemoveMilestoneImage = (index: number) => {
+    setMilestoneImages(milestoneImages.filter((_, i) => i !== index));
+    setMilestoneImageUrls(milestoneImageUrls.filter((_, i) => i !== index));
+  };
+
   const handleOpenTaskReport = (task: Task) => {
     if (task.status === 'PENDING') {
       message.warning('Vui lòng xác nhận nhận nhiệm vụ trước khi báo cáo.');
       return;
     }
+    // Kiểm tra nếu task đã được Header Department đóng (COMPLETED)
+    const status = String(task.status || '').toUpperCase();
+    if (status === 'COMPLETED' || status === 'HOÀN THÀNH' || status === 'HOAN THANH') {
+      message.warning('Nhiệm vụ đã được Header Department đóng. Bạn chỉ có thể xem lịch sử.');
+      return;
+    }
+    // Vẫn cho phép báo cáo dù progress = 100% (chờ xác nhận từ Header Department)
     setSelectedTask(task);
+    setTaskImages([]);
+    setTaskImageUrls([]);
     taskReportForm.setFieldsValue({
       progress: task.progress_percentage ?? task.progress ?? 0,
       notes: ''
@@ -446,7 +634,21 @@ const ManagerProjectManagement: React.FC = () => {
     if (!selectedTask) return;
     try {
       const values = await taskReportForm.validateFields();
+      
+      // Validate images: at least 5 images required
+      if (taskImages.length < 5) {
+        message.error('Vui lòng upload ít nhất 5 hình ảnh');
+        return;
+      }
+      
       setTaskReportLoading(true);
+      
+      // Upload images first
+      const uploadedImageUrls = await uploadImages(taskImages);
+      if (uploadedImageUrls.length === 0) {
+        message.error('Không thể upload ảnh. Vui lòng thử lại.');
+        return;
+      }
       
       // Lấy task ID (hỗ trợ cả id và _id)
       const taskId = selectedTask.id || selectedTask._id;
@@ -460,19 +662,22 @@ const ManagerProjectManagement: React.FC = () => {
       clearProjectTaskCache();
       // Cập nhật tiến độ
       await projectTaskService.updateTaskProgress(taskId, progressValue, values.notes);
-      // Thêm log tiến độ (gửi lại báo cáo cho Header Department)
+      // Thêm log tiến độ (gửi lại báo cáo cho Header Department) với image URLs
       await projectTaskService.addProgressLog(taskId, {
         task_id: taskId,
         progress_percentage: progressValue,
         hours_worked: 0,
         work_description: values.notes || 'Báo cáo tiến độ',
-        log_date: new Date().toISOString()
+        log_date: new Date().toISOString(),
+        images: uploadedImageUrls
       });
       // Clear cache sau khi cập nhật
       clearProjectTaskCache();
       message.success('Đã gửi báo cáo tiến độ');
       setTaskReportModalOpen(false);
       setSelectedTask(null);
+      setTaskImages([]);
+      setTaskImageUrls([]);
       taskReportForm.resetFields();
       // Đợi một chút để đảm bảo database đã được cập nhật
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -491,7 +696,16 @@ const ManagerProjectManagement: React.FC = () => {
       message.warning('Vui lòng xác nhận nhận rủi ro trước khi báo cáo.');
       return;
     }
+    // Kiểm tra nếu risk đã được Header Department đóng (RESOLVED)
+    const status = String(risk.status || '').toUpperCase();
+    if (status === 'RESOLVED' || status === 'ĐÃ GIẢI QUYẾT' || status === 'DA GIAI QUYET') {
+      message.warning('Rủi ro đã được Header Department đóng. Bạn chỉ có thể xem lịch sử.');
+      return;
+    }
+    // Vẫn cho phép báo cáo dù progress = 100% (chờ xác nhận từ Header Department)
     setSelectedRisk(risk);
+    setRiskImages([]);
+    setRiskImageUrls([]);
     riskReportForm.setFieldsValue({
       progress: risk.progress,
       notes: ''
@@ -503,7 +717,21 @@ const ManagerProjectManagement: React.FC = () => {
     if (!selectedRisk) return;
     try {
       const values = await riskReportForm.validateFields();
+      
+      // Validate images: at least 5 images required
+      if (riskImages.length < 5) {
+        message.error('Vui lòng upload ít nhất 5 hình ảnh');
+        return;
+      }
+      
       setRiskReportLoading(true);
+      
+      // Upload images first
+      const uploadedImageUrls = await uploadImages(riskImages);
+      if (uploadedImageUrls.length === 0) {
+        message.error('Không thể upload ảnh. Vui lòng thử lại.');
+        return;
+      }
       
       // Lấy risk ID (hỗ trợ cả id và _id)
       const riskId = (selectedRisk as any).id || selectedRisk._id;
@@ -517,19 +745,22 @@ const ManagerProjectManagement: React.FC = () => {
       clearProjectRiskCache();
       // Cập nhật tiến độ
       await projectRiskService.updateRiskProgress(riskId, String(progressValue));
-      // Thêm log tiến độ (gửi lại báo cáo cho Header Department)
+      // Thêm log tiến độ (gửi lại báo cáo cho Header Department) với image URLs
       await projectRiskService.addRiskProgressLog(riskId, {
         risk_id: riskId,
         progress_percentage: progressValue,
         hours_worked: 0,
         work_description: values.notes || 'Báo cáo tiến độ rủi ro',
-        log_date: new Date().toISOString()
+        log_date: new Date().toISOString(),
+        images: uploadedImageUrls
       });
       // Clear cache sau khi cập nhật
       clearProjectRiskCache();
       message.success('Đã gửi báo cáo rủi ro');
       setRiskReportModalOpen(false);
       setSelectedRisk(null);
+      setRiskImages([]);
+      setRiskImageUrls([]);
       riskReportForm.resetFields();
       // Đợi một chút để đảm bảo database đã được cập nhật
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -549,6 +780,8 @@ const ManagerProjectManagement: React.FC = () => {
       return;
     }
     setSelectedMilestone(milestone);
+    setMilestoneImages([]);
+    setMilestoneImageUrls([]);
     milestoneReportForm.setFieldsValue({
       progress: milestone.progress,
       notes: ''
@@ -560,26 +793,44 @@ const ManagerProjectManagement: React.FC = () => {
     if (!selectedMilestone) return;
     try {
       const values = await milestoneReportForm.validateFields();
+      
+      // Validate images: at least 5 images required
+      if (milestoneImages.length < 5) {
+        message.error('Vui lòng upload ít nhất 5 hình ảnh');
+        return;
+      }
+      
       setMilestoneReportLoading(true);
+      
+      // Upload images first
+      const uploadedImageUrls = await uploadImages(milestoneImages);
+      if (uploadedImageUrls.length === 0) {
+        message.error('Không thể upload ảnh. Vui lòng thử lại.');
+        return;
+      }
+      
       const progressValue = Number(values.progress) || 0;
       const milestoneId = selectedMilestone.id || (selectedMilestone as any)._id;
       // Clear cache trước khi cập nhật
       clearProjectMilestoneCache();
       // Cập nhật tiến độ
       await projectMilestoneService.updateMilestoneProgress(milestoneId, String(progressValue));
-      // Thêm log tiến độ (gửi lại báo cáo cho Header Department)
+      // Thêm log tiến độ (gửi lại báo cáo cho Header Department) với image URLs
       await projectMilestoneService.addMilestoneProgressLog(milestoneId, {
         milestone_id: milestoneId,
         progress_percentage: progressValue,
         hours_worked: 0,
         work_description: values.notes || 'Báo cáo tiến độ cột mốc',
-        log_date: new Date().toISOString()
+        log_date: new Date().toISOString(),
+        images: uploadedImageUrls
       });
       // Clear cache sau khi cập nhật
       clearProjectMilestoneCache();
       message.success('Đã gửi báo cáo cột mốc');
       setMilestoneReportModalOpen(false);
       setSelectedMilestone(null);
+      setMilestoneImages([]);
+      setMilestoneImageUrls([]);
       milestoneReportForm.resetFields();
       // Đợi một chút để đảm bảo database đã được cập nhật
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -794,11 +1045,26 @@ const ManagerProjectManagement: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {getStatusLabel(status)}
-        </Tag>
-      )
+      render: (status: string, record: Task) => {
+        const statusUpper = String(status || '').toUpperCase();
+        const isCompleted = statusUpper === 'COMPLETED' || statusUpper === 'HOÀN THÀNH' || statusUpper === 'HOAN THANH';
+        const progress = Number(record.progress_percentage || record.progress || 0);
+        
+        // Nếu progress = 100% nhưng chưa COMPLETED → hiển thị "Chờ xác nhận"
+        if (progress >= 100 && !isCompleted) {
+          return (
+            <Tag color="processing" icon={<ClockCircleOutlined />}>
+              Chờ xác nhận
+            </Tag>
+          );
+        }
+        
+        return (
+          <Tag color={getStatusColor(status)}>
+            {getStatusLabel(status)}
+          </Tag>
+        );
+      }
     },
     {
       title: 'Ưu tiên',
@@ -858,11 +1124,26 @@ const ManagerProjectManagement: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {getStatusLabel(status)}
-        </Tag>
-      )
+      render: (status: string, record: Task) => {
+        const statusUpper = String(status || '').toUpperCase();
+        const isCompleted = statusUpper === 'COMPLETED' || statusUpper === 'HOÀN THÀNH' || statusUpper === 'HOAN THANH';
+        const progress = Number(record.progress_percentage || record.progress || 0);
+        
+        // Nếu progress = 100% nhưng chưa COMPLETED → hiển thị "Chờ xác nhận"
+        if (progress >= 100 && !isCompleted) {
+          return (
+            <Tag color="processing" icon={<ClockCircleOutlined />}>
+              Chờ xác nhận
+            </Tag>
+          );
+        }
+        
+        return (
+          <Tag color={getStatusColor(status)}>
+            {getStatusLabel(status)}
+          </Tag>
+        );
+      }
     },
     {
       title: 'Tiến độ',
@@ -907,14 +1188,23 @@ const ManagerProjectManagement: React.FC = () => {
             </Button>
           ) : (
             <>
-              <Button
-                type="link"
-                shape="round"
-                onClick={() => handleOpenTaskReport(record)}
-                icon={<CheckCircleOutlined />}
-              >
-                Báo cáo tiến độ
-              </Button>
+              {(() => {
+                const status = String(record.status || '').toUpperCase();
+                const isCompleted = status === 'COMPLETED' || status === 'HOÀN THÀNH' || status === 'HOAN THANH';
+                
+                return (
+                  <Button
+                    type="link"
+                    shape="round"
+                    onClick={() => handleOpenTaskReport(record)}
+                    icon={<CheckCircleOutlined />}
+                    disabled={isCompleted}
+                    style={isCompleted ? { color: '#d9d9d9', cursor: 'not-allowed' } : {}}
+                  >
+                    Báo cáo tiến độ
+                  </Button>
+                );
+              })()}
               <Button
                 type="link"
                 shape="round"
@@ -962,11 +1252,26 @@ const ManagerProjectManagement: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {getStatusLabel(status)}
-        </Tag>
-      )
+      render: (status: string, record: Risk) => {
+        const statusUpper = String(status || '').toUpperCase();
+        const isResolved = statusUpper === 'RESOLVED' || statusUpper === 'ĐÃ GIẢI QUYẾT' || statusUpper === 'DA GIAI QUYET';
+        const progress = Number((record as any).progress || (record as any).progress_percentage || 0);
+        
+        // Nếu progress = 100% nhưng chưa RESOLVED → hiển thị "Chờ xác nhận"
+        if (progress >= 100 && !isResolved) {
+          return (
+            <Tag color="processing" icon={<ClockCircleOutlined />}>
+              Chờ xác nhận
+            </Tag>
+          );
+        }
+        
+        return (
+          <Tag color={getStatusColor(status)}>
+            {getStatusLabel(status)}
+          </Tag>
+        );
+      }
     },
     {
       title: 'Hạn giải quyết',
@@ -1027,14 +1332,23 @@ const ManagerProjectManagement: React.FC = () => {
             </Button>
           ) : (
             <>
-              <Button
-                type="link"
-                shape="round"
-                onClick={() => handleOpenRiskReport(record)}
-                icon={<WarningOutlined />}
-              >
-                Báo cáo rủi ro
-              </Button>
+              {(() => {
+                const status = String(record.status || '').toUpperCase();
+                const isResolved = status === 'RESOLVED' || status === 'ĐÃ GIẢI QUYẾT' || status === 'DA GIAI QUYET';
+                
+                return (
+                  <Button
+                    type="link"
+                    shape="round"
+                    onClick={() => handleOpenRiskReport(record)}
+                    icon={<WarningOutlined />}
+                    disabled={isResolved}
+                    style={isResolved ? { color: '#d9d9d9', cursor: 'not-allowed' } : {}}
+                  >
+                    Báo cáo rủi ro
+                  </Button>
+                );
+              })()}
               <Button
                 type="link"
                 shape="round"
@@ -1072,11 +1386,26 @@ const ManagerProjectManagement: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {getStatusLabel(status)}
-        </Tag>
-      )
+      render: (status: string, record: Task) => {
+        const statusUpper = String(status || '').toUpperCase();
+        const isCompleted = statusUpper === 'COMPLETED' || statusUpper === 'HOÀN THÀNH' || statusUpper === 'HOAN THANH';
+        const progress = Number(record.progress_percentage || record.progress || 0);
+        
+        // Nếu progress = 100% nhưng chưa COMPLETED → hiển thị "Chờ xác nhận"
+        if (progress >= 100 && !isCompleted) {
+          return (
+            <Tag color="processing" icon={<ClockCircleOutlined />}>
+              Chờ xác nhận
+            </Tag>
+          );
+        }
+        
+        return (
+          <Tag color={getStatusColor(status)}>
+            {getStatusLabel(status)}
+          </Tag>
+        );
+      }
     },
     {
       title: 'Ngày dự kiến',
@@ -1535,6 +1864,8 @@ const ManagerProjectManagement: React.FC = () => {
           onCancel={() => {
             setTaskReportModalOpen(false);
             setSelectedTask(null);
+            setTaskImages([]);
+            setTaskImageUrls([]);
             taskReportForm.resetFields();
           }}
           onOk={handleSubmitTaskReport}
@@ -1547,6 +1878,26 @@ const ManagerProjectManagement: React.FC = () => {
             layout="vertical"
             initialValues={{ progress: 0, notes: '' }}
           >
+            {(() => {
+              if (!selectedTask) return null;
+              const progress = Number(selectedTask.progress_percentage || selectedTask.progress || 0);
+              const status = String(selectedTask.status || '').toUpperCase();
+              const isCompleted = status === 'COMPLETED' || status === 'HOÀN THÀNH' || status === 'HOAN THANH';
+              
+              // Hiển thị Alert "Chờ xác nhận" nếu progress = 100% nhưng chưa được Header Department xác nhận
+              if (progress >= 100 && !isCompleted) {
+                return (
+                  <Alert
+                    message="Chờ xác nhận"
+                    description="Nhiệm vụ đã đạt 100% tiến độ. Đang chờ Header Department xác nhận hoàn thành. Bạn vẫn có thể gửi báo cáo bổ sung."
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: '16px' }}
+                  />
+                );
+              }
+              return null;
+            })()}
             <Form.Item
               label="Tiến độ (%)"
               name="progress"
@@ -1561,6 +1912,56 @@ const ManagerProjectManagement: React.FC = () => {
             >
               <Input.TextArea rows={4} placeholder="Nội dung báo cáo, vướng mắc, đề xuất..." />
             </Form.Item>
+            <Form.Item
+              label="Hình ảnh (tối thiểu 5 ảnh)"
+              required
+              help={taskImages.length < 5 ? `Cần thêm ${5 - taskImages.length} ảnh nữa` : ''}
+            >
+              <Upload
+                accept="image/*"
+                multiple
+                beforeUpload={handleTaskImageUpload}
+                showUploadList={false}
+              >
+                <Button icon={<UploadOutlined />}>Chọn hình ảnh</Button>
+              </Upload>
+              {taskImageUrls.length > 0 && (
+                <div style={{ marginTop: '16px' }}>
+                  <Row gutter={[8, 8]}>
+                    {taskImageUrls.map((url, idx) => (
+                      <Col key={idx} xs={12} sm={8} md={6}>
+                        <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
+                          <Image
+                            src={url}
+                            alt={`task-${idx}`}
+                            style={{ width: '100%', height: '100px', objectFit: 'cover' }}
+                            preview={false}
+                          />
+                          <Button
+                            type="primary"
+                            danger
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleRemoveTaskImage(idx)}
+                            style={{
+                              position: 'absolute',
+                              top: '4px',
+                              right: '4px',
+                              minWidth: '24px',
+                              height: '24px',
+                              padding: '0'
+                            }}
+                          />
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
+                  <Text type="secondary" style={{ fontSize: '12px', marginTop: '8px', display: 'block' }}>
+                    Đã chọn: {taskImages.length}/10 (tối thiểu 5)
+                  </Text>
+                </div>
+              )}
+            </Form.Item>
           </Form>
         </Modal>
         <Modal
@@ -1569,6 +1970,8 @@ const ManagerProjectManagement: React.FC = () => {
           onCancel={() => {
             setRiskReportModalOpen(false);
             setSelectedRisk(null);
+            setRiskImages([]);
+            setRiskImageUrls([]);
             riskReportForm.resetFields();
           }}
           onOk={handleSubmitRiskReport}
@@ -1581,6 +1984,26 @@ const ManagerProjectManagement: React.FC = () => {
             layout="vertical"
             initialValues={{ progress: 0, notes: '' }}
           >
+            {(() => {
+              if (!selectedRisk) return null;
+              const progress = Number((selectedRisk as any).progress || (selectedRisk as any).progress_percentage || 0);
+              const status = String(selectedRisk.status || '').toUpperCase();
+              const isResolved = status === 'RESOLVED' || status === 'ĐÃ GIẢI QUYẾT' || status === 'DA GIAI QUYET';
+              
+              // Hiển thị Alert "Chờ xác nhận" nếu progress = 100% nhưng chưa được Header Department xác nhận
+              if (progress >= 100 && !isResolved) {
+                return (
+                  <Alert
+                    message="Chờ xác nhận"
+                    description="Rủi ro đã đạt 100% tiến độ. Đang chờ Header Department xác nhận hoàn thành. Bạn vẫn có thể gửi báo cáo bổ sung."
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: '16px' }}
+                  />
+                );
+              }
+              return null;
+            })()}
             <Form.Item
               label="Tiến độ xử lý (%)"
               name="progress"
@@ -1595,6 +2018,56 @@ const ManagerProjectManagement: React.FC = () => {
             >
               <Input.TextArea rows={4} placeholder="Nội dung cập nhật, rủi ro còn tồn tại, đề xuất hỗ trợ..." />
             </Form.Item>
+            <Form.Item
+              label="Hình ảnh (tối thiểu 5 ảnh)"
+              required
+              help={riskImages.length < 5 ? `Cần thêm ${5 - riskImages.length} ảnh nữa` : ''}
+            >
+              <Upload
+                accept="image/*"
+                multiple
+                beforeUpload={handleRiskImageUpload}
+                showUploadList={false}
+              >
+                <Button icon={<UploadOutlined />}>Chọn hình ảnh</Button>
+              </Upload>
+              {riskImageUrls.length > 0 && (
+                <div style={{ marginTop: '16px' }}>
+                  <Row gutter={[8, 8]}>
+                    {riskImageUrls.map((url, idx) => (
+                      <Col key={idx} xs={12} sm={8} md={6}>
+                        <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
+                          <Image
+                            src={url}
+                            alt={`risk-${idx}`}
+                            style={{ width: '100%', height: '100px', objectFit: 'cover' }}
+                            preview={false}
+                          />
+                          <Button
+                            type="primary"
+                            danger
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleRemoveRiskImage(idx)}
+                            style={{
+                              position: 'absolute',
+                              top: '4px',
+                              right: '4px',
+                              minWidth: '24px',
+                              height: '24px',
+                              padding: '0'
+                            }}
+                          />
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
+                  <Text type="secondary" style={{ fontSize: '12px', marginTop: '8px', display: 'block' }}>
+                    Đã chọn: {riskImages.length}/10 (tối thiểu 5)
+                  </Text>
+                </div>
+              )}
+            </Form.Item>
           </Form>
         </Modal>
         <Modal
@@ -1603,6 +2076,8 @@ const ManagerProjectManagement: React.FC = () => {
           onCancel={() => {
             setMilestoneReportModalOpen(false);
             setSelectedMilestone(null);
+            setMilestoneImages([]);
+            setMilestoneImageUrls([]);
             milestoneReportForm.resetFields();
           }}
           onOk={handleSubmitMilestoneReport}
@@ -1628,6 +2103,56 @@ const ManagerProjectManagement: React.FC = () => {
               rules={[{ required: true, message: 'Nhập ghi chú' }]}
             >
               <Input.TextArea rows={4} placeholder="Nội dung cập nhật, vướng mắc, đề xuất hỗ trợ..." />
+            </Form.Item>
+            <Form.Item
+              label="Hình ảnh (tối thiểu 5 ảnh)"
+              required
+              help={milestoneImages.length < 5 ? `Cần thêm ${5 - milestoneImages.length} ảnh nữa` : ''}
+            >
+              <Upload
+                accept="image/*"
+                multiple
+                beforeUpload={handleMilestoneImageUpload}
+                showUploadList={false}
+              >
+                <Button icon={<UploadOutlined />}>Chọn hình ảnh</Button>
+              </Upload>
+              {milestoneImageUrls.length > 0 && (
+                <div style={{ marginTop: '16px' }}>
+                  <Row gutter={[8, 8]}>
+                    {milestoneImageUrls.map((url, idx) => (
+                      <Col key={idx} xs={12} sm={8} md={6}>
+                        <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
+                          <Image
+                            src={url}
+                            alt={`milestone-${idx}`}
+                            style={{ width: '100%', height: '100px', objectFit: 'cover' }}
+                            preview={false}
+                          />
+                          <Button
+                            type="primary"
+                            danger
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleRemoveMilestoneImage(idx)}
+                            style={{
+                              position: 'absolute',
+                              top: '4px',
+                              right: '4px',
+                              minWidth: '24px',
+                              height: '24px',
+                              padding: '0'
+                            }}
+                          />
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
+                  <Text type="secondary" style={{ fontSize: '12px', marginTop: '8px', display: 'block' }}>
+                    Đã chọn: {milestoneImages.length}/10 (tối thiểu 5)
+                  </Text>
+                </div>
+              )}
             </Form.Item>
           </Form>
         </Modal>
@@ -1698,6 +2223,27 @@ const ManagerProjectManagement: React.FC = () => {
                     {log.hours_worked > 0 && (
                       <div>
                         <Text type="secondary">Giờ làm việc: {log.hours_worked}h</Text>
+                      </div>
+                    )}
+                    {log.images && Array.isArray(log.images) && log.images.length > 0 && (
+                      <div style={{ marginTop: '12px' }}>
+                        <Text strong style={{ display: 'block', marginBottom: '8px', color: '#1890ff' }}>
+                          Hình ảnh báo cáo:
+                        </Text>
+                        <Row gutter={[8, 8]}>
+                          {log.images.map((imageUrl: string, imgIdx: number) => (
+                            <Col key={imgIdx} xs={12} sm={8} md={6}>
+                              <Image
+                                src={imageUrl}
+                                alt={`task-report-${index}-${imgIdx}`}
+                                style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '4px' }}
+                                preview={{
+                                  mask: 'Xem ảnh'
+                                }}
+                              />
+                            </Col>
+                          ))}
+                        </Row>
                       </div>
                     )}
                   </Space>
@@ -1775,6 +2321,27 @@ const ManagerProjectManagement: React.FC = () => {
                         <Text type="secondary">Giờ làm việc: {log.hours_worked}h</Text>
                       </div>
                     )}
+                    {log.images && Array.isArray(log.images) && log.images.length > 0 && (
+                      <div style={{ marginTop: '12px' }}>
+                        <Text strong style={{ display: 'block', marginBottom: '8px', color: '#1890ff' }}>
+                          Hình ảnh báo cáo:
+                        </Text>
+                        <Row gutter={[8, 8]}>
+                          {log.images.map((imageUrl: string, imgIdx: number) => (
+                            <Col key={imgIdx} xs={12} sm={8} md={6}>
+                              <Image
+                                src={imageUrl}
+                                alt={`risk-report-${index}-${imgIdx}`}
+                                style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '4px' }}
+                                preview={{
+                                  mask: 'Xem ảnh'
+                                }}
+                              />
+                            </Col>
+                          ))}
+                        </Row>
+                      </div>
+                    )}
                   </Space>
                 </Card>
               ))}
@@ -1848,6 +2415,27 @@ const ManagerProjectManagement: React.FC = () => {
                     {log.hours_worked > 0 && (
                       <div>
                         <Text type="secondary">Giờ làm việc: {log.hours_worked}h</Text>
+                      </div>
+                    )}
+                    {log.images && Array.isArray(log.images) && log.images.length > 0 && (
+                      <div style={{ marginTop: '12px' }}>
+                        <Text strong style={{ display: 'block', marginBottom: '8px', color: '#1890ff' }}>
+                          Hình ảnh báo cáo:
+                        </Text>
+                        <Row gutter={[8, 8]}>
+                          {log.images.map((imageUrl: string, imgIdx: number) => (
+                            <Col key={imgIdx} xs={12} sm={8} md={6}>
+                              <Image
+                                src={imageUrl}
+                                alt={`milestone-report-${index}-${imgIdx}`}
+                                style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '4px' }}
+                                preview={{
+                                  mask: 'Xem ảnh'
+                                }}
+                              />
+                            </Col>
+                          ))}
+                        </Row>
                       </div>
                     )}
                   </Space>

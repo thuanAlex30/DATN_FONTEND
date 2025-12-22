@@ -244,6 +244,22 @@ class UserService {
       throw error;
     }
   }
+
+  // Import users from Excel, optionally attach to a project
+  async importUsersFromExcel(file: File, projectId?: string) {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (projectId) {
+      formData.append('project_id', projectId);
+    }
+
+    return api.post('/users/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      timeout: 300000 // 5 minutes to match backend route timeout
+    });
+  }
 }
 
 export default new UserService();

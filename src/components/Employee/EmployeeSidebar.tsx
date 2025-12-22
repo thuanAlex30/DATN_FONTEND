@@ -11,15 +11,10 @@ import {
 import type { MenuProps } from 'antd';
 import type { RootState } from '../../store';
 import {
-  HomeOutlined,
-  UserOutlined,
-  ExclamationCircleOutlined,
   BookOutlined,
   SafetyOutlined,
   LogoutOutlined,
-  ProjectOutlined,
-  SafetyCertificateOutlined,
-  DashboardOutlined
+  SafetyCertificateOutlined
 } from '@ant-design/icons';
 import { logout } from '../../store/slices/authSlice';
 import styles from './EmployeeSidebar.module.css';
@@ -48,16 +43,6 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
 
   const menuItems: MenuProps['items'] = [
     {
-      key: '/home',
-      icon: <DashboardOutlined />,
-      label: 'Trang chủ',
-    },
-    {
-      key: '/employee/profile',
-      icon: <UserOutlined />,
-      label: 'Thông tin cá nhân',
-    },
-    {
       key: '/employee/training',
       icon: <BookOutlined />,
       label: 'Đào tạo',
@@ -68,14 +53,9 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
       label: 'PPE cá nhân',
     },
     {
-      key: '/employee/project-management',
-      icon: <ProjectOutlined />,
-      label: 'Quản lý dự án',
-    },
-    {
       key: '/employee/certificates',
       icon: <SafetyCertificateOutlined />,
-      label: 'Chứng chỉ',
+      label: 'Chứng chỉ cá nhân',
     },
   ];
 

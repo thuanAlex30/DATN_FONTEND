@@ -13,6 +13,8 @@ import { logout } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import ProfileModal from '../ProfileModal/ProfileModal';
 import SettingsModal from '../SettingsModal/SettingsModal';
+import { WeatherWidget, EquipmentSuggestion } from '../Weather';
+import WebSocketStatus from '../WebSocketStatus';
 import styles from './EmployeeHeader.module.css';
 
 const { Header } = Layout;
@@ -112,6 +114,10 @@ const EmployeeHeader: React.FC<EmployeeHeaderProps> = ({
 
         <div className={styles.headerRight}>
           {extra && <div className={styles.headerExtra}>{extra}</div>}
+          
+          <WebSocketStatus />
+          <WeatherWidget compact />
+          <EquipmentSuggestion compact />
           
           {showNotifications && (
             <Badge count={unreadCount} size="small">
