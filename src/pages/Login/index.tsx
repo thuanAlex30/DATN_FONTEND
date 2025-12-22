@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch } from '../../store';
 import { 
@@ -9,9 +9,10 @@ import {
   Typography, 
   Alert, 
   Space,
-  Layout
+  Layout,
+  Checkbox
 } from 'antd';
-import { UserOutlined, LockOutlined, SafetyOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { MailOutlined, LockOutlined, SafetyOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { login } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import type { LoginRequest } from '../../types/auth';
@@ -26,11 +27,25 @@ const LoginPage: React.FC = () => {
   const safeNavigate = useSafeNavigate();
   const { loading, error } = useSelector((state: RootState) => state.auth);
   const [form] = Form.useForm();
+  const [rememberMe, setRememberMe] = useState(false);
 
-  const handleSubmit = async (values: LoginRequest) => {
+  const handleSubmit = async (values: { email: string; password: string }) => {
     try {
       console.log('🚀 Starting login process...');
-      const resultAction = await dispatch(login(values));
+      // Convert email to username for backend (backend accepts both)
+      const loginData: LoginRequest = {
+        username: values.email, // Backend accepts email as username
+        password: values.password
+      };
+      
+      // Store remember me preference
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+      } else {
+        localStorage.removeItem('rememberMe');
+      }
+      
+      const resultAction = await dispatch(login(loginData));
       console.log('🔍 Login result action:', resultAction);
       
       if (login.fulfilled.match(resultAction)) {
@@ -244,7 +259,7 @@ const LoginPage: React.FC = () => {
                     Hệ Thống Quản Lý An Toàn
                   </Title>
                   <Text className={styles.loginSubtitle}>
-                    Đăng nhập quản trị viên
+                    Đăng nhập vào hệ thống
                   </Text>
                 </div>
 
@@ -258,17 +273,19 @@ const LoginPage: React.FC = () => {
                   className={styles.loginForm}
                 >
                   <Form.Item
-                    name="username"
-                    label="* Tên đăng nhập"
+                    name="email"
+                    label="* Địa chỉ Email"
                     className={styles.loginFormItem}
                     rules={[
-                      { required: true, message: 'Vui lòng nhập tên đăng nhập!' }
+                      { required: true, message: 'Vui lòng nhập địa chỉ email!' },
+                      { type: 'email', message: 'Vui lòng nhập địa chỉ email hợp lệ!' }
                     ]}
                   >
                     <Input
-                      prefix={<UserOutlined />}
-                      placeholder="Nhập tên đăng nhập"
-                      autoComplete="username"
+                      prefix={<MailOutlined />}
+                      placeholder="Nhập địa chỉ email"
+                      autoComplete="email"
+                      type="email"
                     />
                   </Form.Item>
 
@@ -287,9 +304,32 @@ const LoginPage: React.FC = () => {
                     />
                   </Form.Item>
 
+                  <Form.Item>
+                    <div className={styles.loginOptions}>
+                      <Checkbox 
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className={styles.rememberMe}
+                      >
+                        Ghi nhớ đăng nhập
+                      </Checkbox>
+                      <a 
+                        href="#" 
+                        className={styles.forgotPassword}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          // TODO: Navigate to forgot password page when implemented
+                          alert('Tính năng quên mật khẩu đang được phát triển');
+                        }}
+                      >
+                        Quên mật khẩu?
+                      </a>
+                    </div>
+                  </Form.Item>
+
                   {error && (
                     <Alert
-                      message={typeof error === 'string' ? error : 'Đăng nhập thất bại, vui lòng kiểm tra tên đăng nhập và mật khẩu'}
+                      message={typeof error === 'string' ? error : 'Đăng nhập thất bại, vui lòng kiểm tra email và mật khẩu'}
                       type="error"
                       showIcon
                       style={{ marginBottom: '16px' }}
