@@ -12,14 +12,12 @@ import {
   Col,
   Space,
   message,
-  Steps,
   Alert
 } from 'antd';
 import {
   SafetyOutlined,
   LoadingOutlined,
   ArrowLeftOutlined,
-  CheckCircleOutlined,
   LoginOutlined,
   PhoneOutlined,
   MailOutlined,
@@ -28,22 +26,19 @@ import {
   InstagramOutlined,
   TwitterOutlined
 } from '@ant-design/icons';
-import pricingService, { type CompanyInfo, type ContactPerson } from '../../services/pricingService';
+import { type CompanyInfo, type ContactPerson } from '../../services/pricingService';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import landingStyles from '../Landing/Landing.module.css';
-import pricingStyles from './Pricing.module.css';
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
-const { Step } = Steps;
 
 const OrderFormPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
   
   const planType = searchParams.get('plan') as 'monthly' | 'quarterly' | 'yearly' | null;
   const user = useSelector((state: RootState) => state.auth.user);
@@ -95,61 +90,32 @@ const OrderFormPage: React.FC = () => {
 
     try {
       setLoading(true);
-      setCurrentStep(1);
 
       const companyInfo: CompanyInfo = {
-        name: values.companyName,
-        address: values.companyAddress || '',
-        phone: values.companyPhone,
-        email: values.companyEmail,
-        taxCode: values.taxCode
+        name: values.companyName?.trim() || '',
+        address: values.companyAddress?.trim() || '',
+        phone: values.companyPhone?.trim() || '',
+        email: values.companyEmail?.trim() || '',
+        taxCode: values.taxCode?.trim() || undefined
       };
 
       const contactPerson: ContactPerson = {
-        name: values.contactName,
-        email: values.contactEmail,
-        phone: values.contactPhone,
-        position: values.contactPosition
+        name: values.contactName?.trim() || '',
+        email: values.contactEmail?.trim() || '',
+        phone: values.contactPhone?.trim() || '',
+        position: values.contactPosition?.trim() || undefined
       };
 
-      const orderData = {
-        planType,
-        userId: user?.id,
-        companyInfo,
-        contactPerson
-      };
-
-      const result = await pricingService.createOrder(orderData);
-      
-      // Lưu orderId vào localStorage để dùng khi redirect về
-      if (result.orderId) {
-        localStorage.setItem('pending_order_id', result.orderId);
-      }
-      
-      setCurrentStep(2);
-      message.success('Đơn hàng đã được tạo thành công! Đang chuyển đến trang thanh toán...');
-      
-      // Redirect đến PayOS payment URL sau 2 giây
-      setTimeout(() => {
-        if (result.paymentUrl) {
-          window.location.href = result.paymentUrl;
-        } else {
-          message.error('Không thể lấy link thanh toán');
-          setCurrentStep(0);
+      navigate('/pricing/contract-preview', {
+        state: {
+          planType,
+          companyInfo,
+          contactPerson
         }
-      }, 2000);
+      });
     } catch (error: any) {
-      console.error('Error creating order:', error);
-      console.error('Error response:', error.response?.data);
-      
-      // Hiển thị error message chi tiết hơn
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error ||
-                          error.message || 
-                          'Có lỗi xảy ra khi tạo đơn hàng';
-      
-      message.error(errorMessage);
-      setCurrentStep(0);
+      console.error('Error submitting form:', error);
+      message.error('Có lỗi xảy ra. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -160,13 +126,13 @@ const OrderFormPage: React.FC = () => {
   };
 
   return (
-    <Layout className={pricingStyles.layout}>
+    <Layout className={landingStyles.layout}>
       {/* Header with Navigation */}
-      <Header className={pricingStyles.header}>
-        <div className={pricingStyles.headerTop}>
-          <div className={pricingStyles.logo} onClick={() => navigate('/')}>
-            <SafetyOutlined className={pricingStyles.logoIcon} />
-            <Title level={4} className={pricingStyles.logoText}>
+      <Header className={landingStyles.header}>
+        <div className={landingStyles.headerTop}>
+          <div className={landingStyles.logo} onClick={() => navigate('/')}>
+            <SafetyOutlined className={landingStyles.logoIcon} />
+            <Title level={4} className={landingStyles.logoText}>
               Hệ Thống Quản Lý An Toàn Lao Động
             </Title>
           </div>
@@ -175,44 +141,44 @@ const OrderFormPage: React.FC = () => {
             size="large"
             icon={<LoginOutlined />}
             onClick={handleLogin}
-            className={pricingStyles.loginBtn}
+            className={landingStyles.loginBtn}
           >
             Đăng nhập
           </Button>
         </div>
-        <div className={pricingStyles.navBar}>
-          <Space size="large" className={pricingStyles.navLinks}>
+        <div className={landingStyles.navBar}>
+          <Space size="large" className={landingStyles.navLinks}>
             <Button
               type="link"
-              className={pricingStyles.navLink}
+              className={landingStyles.navLink}
               onClick={() => navigate('/')}
             >
               Trang chủ
             </Button>
             <Button
               type="link"
-              className={pricingStyles.navLink}
+              className={landingStyles.navLink}
               onClick={() => navigate('/about')}
             >
               Giới thiệu
             </Button>
             <Button
               type="link"
-              className={pricingStyles.navLink}
+              className={landingStyles.navLink}
               onClick={() => navigate('/contact')}
             >
               Liên Hệ
             </Button>
             <Button
               type="link"
-              className={pricingStyles.navLink}
+              className={landingStyles.navLink}
               onClick={() => navigate('/faq')}
             >
               FAQ
             </Button>
             <Button
               type="link"
-              className={pricingStyles.navLink}
+              className={landingStyles.navLink}
               onClick={() => navigate('/pricing')}
             >
               Bảng giá
@@ -221,47 +187,27 @@ const OrderFormPage: React.FC = () => {
         </div>
       </Header>
 
-      <Content className={pricingStyles.content} style={{ padding: '40px 20px' }}>
-        <div className={pricingStyles.pricingContainer} style={{ maxWidth: 960, margin: '0 auto', position: 'relative', zIndex: 3 }}>
+      <Content className={landingStyles.content} style={{ background: '#f0f2f5', padding: '40px 20px' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
           {/* Header */}
-          <div className={pricingStyles.orderHeader} style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ textAlign: 'center', marginBottom: 40 }}>
             <Button
               type="link"
               icon={<ArrowLeftOutlined />}
               onClick={handleBack}
-              style={{ marginBottom: 12, color: 'var(--primary-green)' }}
+              style={{ marginBottom: 20 }}
             >
               Quay lại trang bảng giá
             </Button>
-
-            <div className={pricingStyles.planHero} style={{ margin: '12px 0 20px' }}>
-              <Title level={2} className={pricingStyles.planHeroTitle}>{getPlanName()}</Title>
-              <div className={pricingStyles.planHeroPrice}>
-                <Text className={pricingStyles.currency}>đ</Text>
-                <Title level={1} className={pricingStyles.price}>{getPlanPrice()}</Title>
-                <Text className={pricingStyles.period}>/{planType === 'monthly' ? 'tháng' : planType === 'quarterly' ? 'quý' : 'năm'}</Text>
-              </div>
-              <div className={pricingStyles.planBadge} aria-hidden>
-                {planType === 'quarterly' ? 'Phổ biến nhất' : null}
-              </div>
-            </div>
-
+            <Title level={2}>Đăng ký {getPlanName()}</Title>
             <Text type="secondary">
               Vui lòng điền thông tin để hoàn tất đăng ký
             </Text>
           </div>
 
-          {/* Steps */}
-          <Steps current={currentStep} style={{ marginBottom: 40 }}>
-            <Step title="Thông tin đăng ký" />
-            <Step title="Xử lý đơn hàng" />
-            <Step title="Chuyển đến thanh toán" />
-          </Steps>
-
           {/* Form Card */}
-          <Card className={pricingStyles.pricingCard}>
-            {currentStep === 0 && (
-              <Form
+          <Card>
+            <Form
                 form={form}
                 layout="vertical"
                 onFinish={handleSubmitOrder}
@@ -377,42 +323,15 @@ const OrderFormPage: React.FC = () => {
                       size="large"
                       loading={loading}
                       icon={loading ? <LoadingOutlined /> : null}
-                      className={pricingStyles.selectButton}
-                      onClick={(e) => { (e.currentTarget as HTMLElement).blur(); }}
                     >
                       {loading ? 'Đang xử lý...' : 'Tiếp tục thanh toán'}
                     </Button>
-                    <Button onClick={handleBack} size="large" className={pricingStyles.selectButton}>
+                    <Button onClick={handleBack} size="large">
                       Hủy
                     </Button>
                   </Space>
                 </Form.Item>
               </Form>
-            )}
-
-            {currentStep === 1 && (
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <LoadingOutlined style={{ fontSize: 48, color: '#1890ff' }} />
-                <Title level={3} style={{ marginTop: 20 }}>
-                  Đang xử lý đơn hàng...
-                </Title>
-                <Text type="secondary">
-                  Vui lòng đợi trong giây lát
-                </Text>
-              </div>
-            )}
-
-            {currentStep === 2 && (
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <CheckCircleOutlined style={{ fontSize: 48, color: '#52c41a' }} />
-                <Title level={3} style={{ marginTop: 20, color: '#52c41a' }}>
-                  Đơn hàng đã được tạo thành công!
-                </Title>
-                <Text type="secondary">
-                  Đang chuyển đến trang thanh toán...
-                </Text>
-              </div>
-            )}
           </Card>
         </div>
       </Content>
