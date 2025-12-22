@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   Modal, 
   Input, 
   Table, 
@@ -14,15 +14,12 @@ import {
   Typography,
   Empty,
   Spin,
-  message,
-  Popconfirm
+  message
 } from 'antd';
 import { 
   UserOutlined, 
   SearchOutlined,
   TeamOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
   MailOutlined,
   CalendarOutlined,
   BookOutlined
@@ -51,9 +48,19 @@ interface Enrollment {
     email: string;
     department?: string;
   };
-  session_id: string;
-  enrollment_date: string;
-  status: string;
+  course_id?: {
+    _id: string;
+    course_name: string;
+  };
+  // Legacy field for session-based enrollments (optional)
+  session_id?: string | {
+    _id: string;
+    session_name: string;
+  };
+  enrolled_at: string;
+  status: 'enrolled' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+  score?: number;
+  passed?: boolean;
 }
 
 interface EnrollmentModalProps {
@@ -74,11 +81,18 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({ session, onClose }) =
 
   const fetchEnrollments = async () => {
     if (!session) return;
-    
+
+    // Hiện tại enrollment được gắn trực tiếp với khóa học, không còn theo session
+    const courseId = session.course_id?._id || session.course_id;
+    if (!courseId) return;
+
     setLoading(true);
     try {
-      const response = await api.get(`/training/enrollments/session/${session._id}`);
-      setEnrollments(response.data || []);
+      const response = await api.get(`/training/enrollments`, {
+        params: { courseId }
+      });
+      const data = response.data?.data || response.data || [];
+      setEnrollments(data);
     } catch (error) {
       console.error('Error fetching enrollments:', error);
       message.error('Không thể tải danh sách đăng ký');
@@ -87,18 +101,7 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({ session, onClose }) =
     }
   };
 
-  const handleStatusChange = async (enrollmentId: string, newStatus: string) => {
-    try {
-      await api.put(`/training/enrollments/${enrollmentId}`, {
-        status: newStatus
-      });
-      message.success('Cập nhật trạng thái thành công');
-      fetchEnrollments();
-    } catch (error) {
-      console.error('Error updating enrollment status:', error);
-      message.error('Không thể cập nhật trạng thái');
-    }
-  };
+  // Hiện trạng thái và điểm số được backend tự xử lý khi nộp bài, modal này chỉ dùng để xem
 
   const filteredEnrollments = enrollments.filter(enrollment =>
     enrollment.user_id.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -106,23 +109,37 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({ session, onClose }) =
   );
 
   const getStatusColor = (status: string): string => {
-    const colorMap: { [key: string]: string } = {
-      'pending': 'orange',
-      'approved': 'blue',
-      'rejected': 'red',
-      'completed': 'green'
-    };
-    return colorMap[status] || 'default';
+    switch (status) {
+      case 'enrolled':
+        return 'blue';
+      case 'in_progress':
+        return 'orange';
+      case 'completed':
+        return 'green';
+      case 'failed':
+        return 'red';
+      case 'cancelled':
+        return 'default';
+      default:
+        return 'default';
+    }
   };
 
   const getStatusLabel = (status: string): string => {
-    const labelMap: { [key: string]: string } = {
-      'pending': 'Chờ duyệt',
-      'approved': 'Đã duyệt',
-      'rejected': 'Từ chối',
-      'completed': 'Hoàn thành'
-    };
-    return labelMap[status] || status;
+    switch (status) {
+      case 'enrolled':
+        return 'Đã đăng ký';
+      case 'in_progress':
+        return 'Đang làm bài';
+      case 'completed':
+        return 'Hoàn thành';
+      case 'failed':
+        return 'Chưa đạt';
+      case 'cancelled':
+        return 'Đã hủy';
+      default:
+        return status;
+    }
   };
 
   if (!session) {
@@ -154,27 +171,13 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({ session, onClose }) =
       ),
     },
     {
-      title: 'Phòng ban',
-      dataIndex: ['user_id', 'department'],
-      key: 'department',
-      render: (department: string) => (
-        <Tag 
-          icon={<TeamOutlined />}
-          color="purple"
-          style={{ borderRadius: '6px', padding: '2px 8px' }}
-        >
-          {department || 'Chưa xác định'}
-        </Tag>
-      ),
-    },
-    {
       title: 'Ngày đăng ký',
-      dataIndex: 'enrollment_date',
-      key: 'enrollment_date',
+      dataIndex: 'enrolled_at',
+      key: 'enrolled_at',
       render: (date: string) => (
         <Space>
           <CalendarOutlined style={{ color: '#1890ff' }} />
-          <Text>{new Date(date).toLocaleDateString('vi-VN')}</Text>
+          <Text>{date ? new Date(date).toLocaleDateString('vi-VN') : '-'}</Text>
         </Space>
       ),
     },
@@ -194,84 +197,6 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({ session, onClose }) =
         >
           {getStatusLabel(status)}
         </Tag>
-      ),
-    },
-    {
-      title: 'Thao tác',
-      key: 'actions',
-      render: (_: any, record: Enrollment) => (
-        <Space>
-          {record.status === 'pending' && (
-            <>
-              <Popconfirm
-                title="Duyệt đăng ký"
-                description="Bạn có chắc chắn muốn duyệt đăng ký này?"
-                onConfirm={() => handleStatusChange(record._id, 'approved')}
-                okText="Duyệt"
-                cancelText="Hủy"
-              >
-                <Button 
-                  type="primary"
-                  size="small"
-                  icon={<CheckCircleOutlined />}
-                  style={{
-                    borderRadius: '6px',
-                    background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
-                    border: 'none',
-                    boxShadow: '0 2px 8px rgba(82, 196, 26, 0.3)'
-                  }}
-                >
-                  Duyệt
-                </Button>
-              </Popconfirm>
-              <Popconfirm
-                title="Từ chối đăng ký"
-                description="Bạn có chắc chắn muốn từ chối đăng ký này?"
-                onConfirm={() => handleStatusChange(record._id, 'rejected')}
-                okText="Từ chối"
-                cancelText="Hủy"
-                okButtonProps={{ danger: true }}
-              >
-                <Button 
-                  danger
-                  size="small"
-                  icon={<CloseCircleOutlined />}
-                  style={{ borderRadius: '6px' }}
-                >
-                  Từ chối
-                </Button>
-              </Popconfirm>
-            </>
-          )}
-          {record.status === 'approved' && (
-            <Popconfirm
-              title="Đánh dấu hoàn thành"
-              description="Bạn có chắc chắn muốn đánh dấu đăng ký này là hoàn thành?"
-              onConfirm={() => handleStatusChange(record._id, 'completed')}
-              okText="Hoàn thành"
-              cancelText="Hủy"
-            >
-              <Button 
-                type="primary"
-                size="small"
-                icon={<CheckCircleOutlined />}
-                style={{
-                  borderRadius: '6px',
-                  background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
-                  border: 'none',
-                  boxShadow: '0 2px 8px rgba(24, 144, 255, 0.3)'
-                }}
-              >
-                Hoàn thành
-              </Button>
-            </Popconfirm>
-          )}
-          {record.status === 'completed' && (
-            <Tag color="success" icon={<CheckCircleOutlined />}>
-              Đã hoàn thành
-            </Tag>
-          )}
-        </Space>
       ),
     },
   ];
