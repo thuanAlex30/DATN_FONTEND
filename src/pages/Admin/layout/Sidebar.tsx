@@ -13,7 +13,6 @@ import {
   DashboardOutlined,
   UserOutlined,
   SafetyOutlined,
-  BankOutlined,
   FileTextOutlined,
   LogoutOutlined,
   TeamOutlined,
@@ -97,6 +96,7 @@ const Sidebar = () => {
                     label: 'Quản lý người dùng',
                 },
                 {
+<<<<<<< HEAD
                     key: '/admin/department-management',
                     icon: <BankOutlined />,
                     label: 'Phòng ban',
@@ -107,6 +107,8 @@ const Sidebar = () => {
                     label: 'Vị trí',
                 },
                 {
+=======
+>>>>>>> 75b0c7f3540fc55a113be20c2b38c67849b8b407
                     key: '/admin/role-management',
                     icon: <SafetyOutlined />,
                     label: 'Vai trò & quyền hạn',

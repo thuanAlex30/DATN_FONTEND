@@ -13,13 +13,24 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Các endpoint public - KHÔNG gửi token (pricing routes)
+    // Các endpoint public - KHÔNG gửi token (pricing routes, forgot password)
+    // Note: /contact-messages POST is public, but GET requires auth
     const publicEndpoints = [
       '/pricing/orders',
       '/pricing/payment-return',
       '/pricing/payment-cancel',
-      '/pricing/payment-webhook'
+      '/pricing/payment-webhook',
+      '/auth/forgot-password',
+      '/auth/verify-otp',
+      '/auth/reset-password'
     ];
+    
+    // Check if this is a POST to /contact-messages (public) - exact match, not /contact-messages/.../reply
+    // URL might be '/contact-messages' or '/api/contact-messages' depending on baseURL
+    const isContactMessagePost = config.method?.toLowerCase() === 'post' && 
+                                  (config.url === '/contact-messages' || 
+                                   config.url?.endsWith('/contact-messages') && 
+                                   !config.url?.includes('/contact-messages/'));
     
     // Các endpoint optional auth - có thể gửi token nếu có (chatbot)
     const optionalAuthEndpoints = [
@@ -28,9 +39,22 @@ apiClient.interceptors.request.use(
       '/chatbot/ai-status'
     ];
     
-    const isPublicEndpoint = publicEndpoints.some(endpoint => 
-      config.url?.includes(endpoint)
-    );
+    // Check if URL matches any public endpoint (exact match or contains)
+    const url = config.url || '';
+    const fullUrl = url.startsWith('/') ? url : `/${url}`;
+    
+    // Check if URL matches any public endpoint
+    const isPublicEndpoint = publicEndpoints.some(endpoint => {
+      // Check exact match
+      if (url === endpoint || fullUrl === endpoint) {
+        return true;
+      }
+      // Check if URL contains the endpoint (for cases like /api/auth/forgot-password)
+      if (url.includes(endpoint) || fullUrl.includes(endpoint)) {
+        return true;
+      }
+      return false;
+    }) || isContactMessagePost; // POST to /contact-messages is public
     
     const isOptionalAuthEndpoint = optionalAuthEndpoints.some(endpoint => 
       config.url?.includes(endpoint)
@@ -38,36 +62,43 @@ apiClient.interceptors.request.use(
     
     const token = localStorage.getItem(ENV.JWT_STORAGE_KEY);
     
-    // Không thêm token cho public endpoints (pricing routes)
+    // QUAN TRỌNG: Xử lý public endpoints TRƯỚC - đảm bảo không gửi token
     if (isPublicEndpoint) {
-      // Xóa token nếu có trong header (đảm bảo không gửi token)
+      // Xóa token hoàn toàn - đảm bảo không gửi token cho public endpoints
       if (config.headers) {
         delete config.headers.Authorization;
+        // Set explicitly to undefined để đảm bảo không có giá trị
+        config.headers.Authorization = undefined;
       }
-      // Đảm bảo không có Authorization header
-      if (config.headers && config.headers.Authorization) {
-        delete config.headers.Authorization;
+      // Log để debug
+      console.log(`🔓 [PUBLIC ENDPOINT] ${config.method?.toUpperCase()} ${config.url} - Token removed, isPublicEndpoint: ${isPublicEndpoint}`);
+    } 
+    // Chỉ thêm token cho non-public endpoints
+    else if (token && config.headers && !isPublicEndpoint) {
+      // Thêm token cho các endpoint khác (không phải public)
+      if (!isOptionalAuthEndpoint || token) {
+        // Optional auth endpoints: vẫn thêm token nếu có
+        config.headers.Authorization = `Bearer ${token}`;
       }
-    } else if (token && config.headers && !isOptionalAuthEndpoint) {
-      // Thêm token cho các endpoint khác (không phải public, không phải optional auth)
-      config.headers.Authorization = `Bearer ${token}`;
-    } else if (token && config.headers && isOptionalAuthEndpoint) {
-      // Optional auth endpoints: vẫn thêm token nếu có (để lấy thông tin user nếu đã đăng nhập)
-      config.headers.Authorization = `Bearer ${token}`;
+    } 
+    // Nếu không có token và không phải public endpoint - xóa header nếu có
+    else if (!token && config.headers && !isPublicEndpoint) {
+      delete config.headers.Authorization;
     }
     
     // Add request timestamp for logging
-    if (ENV.IS_DEVELOPMENT) {
-      console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
-        data: config.data,
-        params: config.params,
-        isPublicEndpoint,
-        isOptionalAuth: isOptionalAuthEndpoint,
-        hasToken: !!token,
-        hasAuthHeader: !!config.headers?.Authorization,
-        timestamp: new Date().toISOString(),
-      });
-    }
+    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      isPublicEndpoint,
+      isOptionalAuth: isOptionalAuthEndpoint,
+      hasToken: !!token,
+      hasAuthHeader: !!config.headers?.Authorization,
+      publicEndpoints,
+      matchedEndpoint: publicEndpoints.find(ep => url.includes(ep)),
+      timestamp: new Date().toISOString(),
+    });
     
     return config;
   },
@@ -131,12 +162,23 @@ apiClient.interceptors.response.use(
       }
       
       // Các endpoint public - không redirect về login khi có 401
+      // Note: /contact-messages POST is public, but GET requires auth
       const publicEndpoints = [
         '/pricing/orders',
         '/pricing/payment-return',
         '/pricing/payment-cancel',
-        '/pricing/payment-webhook'
+        '/pricing/payment-webhook',
+        '/auth/forgot-password',
+        '/auth/verify-otp',
+        '/auth/reset-password'
       ];
+      
+      // Check if this is a POST to /contact-messages (public) - exact match, not /contact-messages/.../reply
+      // URL might be '/contact-messages' or '/api/contact-messages' depending on baseURL
+      const isContactMessagePost = originalRequest.method?.toLowerCase() === 'post' && 
+                                   (originalRequest.url === '/contact-messages' || 
+                                    originalRequest.url?.endsWith('/contact-messages') && 
+                                    !originalRequest.url?.includes('/contact-messages/'));
       
       // Các endpoint cho phép optional auth - không redirect về login
       const optionalAuthEndpoints = [
@@ -146,9 +188,21 @@ apiClient.interceptors.response.use(
         '/chatbot/history'
       ];
       
-      const isPublicEndpoint = publicEndpoints.some(endpoint => 
-        originalRequest.url?.includes(endpoint)
-      );
+      // Check if URL matches any public endpoint (same logic as request interceptor)
+      const errorUrl = originalRequest.url || '';
+      const errorFullUrl = errorUrl.startsWith('/') ? errorUrl : `/${errorUrl}`;
+      
+      const isPublicEndpoint = publicEndpoints.some(endpoint => {
+        // Check exact match
+        if (errorUrl === endpoint || errorFullUrl === endpoint) {
+          return true;
+        }
+        // Check if URL contains the endpoint
+        if (errorUrl.includes(endpoint) || errorFullUrl.includes(endpoint)) {
+          return true;
+        }
+        return false;
+      }) || isContactMessagePost;
       
       const isOptionalAuthEndpoint = optionalAuthEndpoints.some(endpoint => 
         originalRequest.url?.includes(endpoint)
