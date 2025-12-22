@@ -30,7 +30,7 @@ import {
 } from '@ant-design/icons';
 import type { RootState } from '../../../store';
 import { logout } from '../../../store/slices/authSlice';
-import { useCourses, useTrainingSessions, useTrainingEnrollments } from '../../../hooks/useTraining';
+import { useCourses, useAvailableTrainingSessions, useTrainingEnrollments } from '../../../hooks/useTraining';
 import { api } from '../../../services/api';
 import { EmployeeLayout } from '../../../components/Employee';
 
@@ -45,7 +45,7 @@ const EmployeeTraining: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'available' | 'enrolled' | 'completed'>('available');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCourseSet] = useState('');
+  useState('');
   const [isMandatory, setIsMandatory] = useState('');
   
 
@@ -56,7 +56,10 @@ const EmployeeTraining: React.FC = () => {
   });
   
   // Employee enrollments - now directly linked to courses, not sessions
-  const { enrollments, loading: enrollmentsLoading } = useTrainingEnrollments();
+  const { enrollments, loading: enrollmentsLoading, fetchEnrollments } = useTrainingEnrollments();
+  
+  // Training sessions (used for retake/start mapping) - use employee-specific available sessions
+  useAvailableTrainingSessions();
 
   // Filter courses based on search term
   const filteredCourses = courses.filter(course =>
@@ -95,6 +98,13 @@ const EmployeeTraining: React.FC = () => {
     .filter(Boolean);
 
   const handleEnroll = async (courseId: string) => {
+    // Debug: ensure handler invoked and user id present
+    console.log('handleEnroll clicked', { courseId, userId: user?.id });
+    if (!user?.id) {
+      message.error('Người dùng chưa đăng nhập hoặc thiếu thông tin người dùng.');
+      return;
+    }
+
     try {
       // Enroll directly into course (no session needed)
       const response = await api.post('/training/enrollments', {
@@ -103,9 +113,26 @@ const EmployeeTraining: React.FC = () => {
       });
 
       if (response.data.success) {
-        message.success('Đăng ký thành công!');
-        // Refresh the page or update state
-        window.location.reload();
+        // Backend may return an idempotent response with meta.existing = true
+        const payload = response.data.data;
+        const isExisting = payload?.meta?.existing === true || Boolean(payload?.enrollment && payload?.meta && payload.meta.existing);
+
+        // Refresh enrollments in local state to reflect change
+        try {
+          await fetchEnrollments();
+        } catch (e) {
+          // ignore - we'll still show message
+          console.warn('Failed to refresh enrollments after enroll:', e);
+        }
+
+        // Switch to enrolled tab so user sees the result
+        setActiveTab('enrolled');
+
+        if (isExisting) {
+          message.info('Bạn đã đăng ký khóa học này trước đó.');
+        } else {
+          message.success('Đăng ký thành công!');
+        }
       } else {
         message.error(`Lỗi đăng ký: ${response.data.message || 'Có lỗi xảy ra'}`);
       }
@@ -172,10 +199,10 @@ const EmployeeTraining: React.FC = () => {
 
   const handleRetakeTraining = async (courseId: string) => {
     try {
-      // Find the session for this course that user is enrolled in
-      const enrollment = userEnrollments.find(enrollment => {
-        const session = sessions.find(s => s._id === enrollment.session_id?._id);
-        return session?.course_id?._id === courseId;
+      // For course-based quizzes (new flow) we call the course retake endpoint.
+      const enrollment = userEnrollments.find(enrollmentItem => {
+        const enrolledCourseId = enrollmentItem.course_id?._id || enrollmentItem.course_id;
+        return enrolledCourseId === courseId;
       });
 
       if (!enrollment) {
@@ -183,36 +210,24 @@ const EmployeeTraining: React.FC = () => {
         return;
       }
 
-      const session = sessions.find(s => s._id === enrollment.session_id?._id);
-      if (!session) {
-        message.error('Không tìm thấy buổi đào tạo');
-        return;
-      }
-
-      // Confirm retake action
       const confirmed = window.confirm(
-        `Bạn có chắc chắn muốn làm lại bài "${session.session_name}"?\n\n` +
+        `Bạn có chắc chắn muốn làm lại bài cho khóa "${courseId}"?\n\n` +
         `Điểm trước đó: ${enrollment.score || 0}/100\n` +
         `Lưu ý: Kết quả cũ sẽ bị ghi đè và bạn sẽ phải làm lại từ đầu.`
       );
+      if (!confirmed) return;
 
-      if (!confirmed) {
-        return;
-      }
-
-      // Call retake training API
-      const response = await api.post(`/training/sessions/${session._id}/retake`);
+      // Call course retake endpoint (employee)
+      const response = await api.post(`/training/courses/${courseId}/retake`);
 
       if (response.data.success) {
         message.success('Đã khởi tạo làm lại bài thành công!');
-        // Navigate to training page with retake data
-        navigate('/training/session', { 
-          state: { 
+        navigate('/training/session', {
+          state: {
             trainingData: response.data.data,
-            sessionId: session._id,
-            courseId: courseId,
+            courseId,
             isRetake: true
-          } 
+          }
         });
       } else {
         message.error(`Lỗi: ${response.data.message || 'Không thể làm lại bài'}`);
@@ -295,45 +310,6 @@ const EmployeeTraining: React.FC = () => {
               </Space>
             )
           }
-          actions={[
-            showEnrollButton && enrollmentStatus === 'not_enrolled' && (
-              <Button 
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => handleEnroll(course._id)}
-              >
-                Đăng ký
-              </Button>
-            ),
-            (enrollmentStatus === 'enrolled' || enrollmentStatus === 'in_progress') && (
-              <Button 
-                type="primary"
-                icon={<PlayCircleOutlined />}
-                onClick={() => handleStartTraining(course._id)}
-              >
-                {enrollmentStatus === 'in_progress' ? 'Tiếp tục làm bài' : 'Làm bài kiểm tra'}
-              </Button>
-            ),
-            enrollmentStatus === 'completed' && (
-              <Button 
-                type="default"
-                icon={<CheckCircleOutlined />}
-                disabled
-              >
-                Đã hoàn thành
-              </Button>
-            ),
-            enrollmentStatus === 'failed' && (
-              <Button 
-                type="primary"
-                danger
-                icon={<RedoOutlined />}
-                onClick={() => handleRetakeTraining(course._id)}
-              >
-                Làm lại bài
-              </Button>
-            )
-          ].filter(Boolean)}
         >
           <Space direction="vertical" style={{ width: '100%' }}>
             <div>
@@ -347,6 +323,53 @@ const EmployeeTraining: React.FC = () => {
             <div>
               <GroupOutlined style={{ marginRight: '8px', color: '#3498db' }} />
               <Text>{course.course_set_id?.name || 'N/A'}</Text>
+            </div>
+
+            {/* Action buttons placed inside card content to ensure they are clickable */}
+            <div style={{ marginTop: 16, textAlign: 'right' }}>
+              {showEnrollButton && enrollmentStatus === 'not_enrolled' && (
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => handleEnroll(course._id)}
+                >
+                  Đăng ký
+                </Button>
+              )}
+
+              {(enrollmentStatus === 'enrolled' || enrollmentStatus === 'in_progress') && (
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  onClick={() => handleStartTraining(course._id)}
+                  style={{ marginLeft: 8 }}
+                >
+                  {enrollmentStatus === 'in_progress' ? 'Tiếp tục làm bài' : 'Làm bài kiểm tra'}
+                </Button>
+              )}
+
+              {enrollmentStatus === 'completed' && (
+                <Button
+                  type="default"
+                  icon={<CheckCircleOutlined />}
+                  disabled
+                  style={{ marginLeft: 8 }}
+                >
+                  Đã hoàn thành
+                </Button>
+              )}
+
+              {enrollmentStatus === 'failed' && (
+                <Button
+                  type="primary"
+                  danger
+                  icon={<RedoOutlined />}
+                  onClick={() => handleRetakeTraining(course._id)}
+                  style={{ marginLeft: 8 }}
+                >
+                  Làm lại bài
+                </Button>
+              )}
             </div>
           </Space>
         </Card>

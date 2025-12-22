@@ -547,7 +547,7 @@ export const useTrainingEnrollments = (filters?: EnrollmentFilters) => {
 };
 
 // Custom hook for Question Banks
-export const useQuestionBanks = (filters?: QuestionBankFilters) => {
+export const useQuestionBanks = (filters?: QuestionBankFilters, options?: { autoFetch?: boolean }) => {
   const [questionBanks, setQuestionBanks] = useState<QuestionBank[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -624,8 +624,10 @@ export const useQuestionBanks = (filters?: QuestionBankFilters) => {
   }, []);
 
   useEffect(() => {
+    // Auto-fetch by default; allow callers to pass options.autoFetch = false to lazy-load.
+    if (options?.autoFetch === false) return;
     fetchQuestionBanks();
-  }, [fetchQuestionBanks]);
+  }, [fetchQuestionBanks, options]);
 
   return {
     questionBanks,

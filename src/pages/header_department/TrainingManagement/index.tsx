@@ -157,9 +157,16 @@ const TrainingManagement: React.FC = () => {
     status: filters.statusCode || undefined,
   });
   const { enrollments } = useTrainingEnrollments();
-  const { questionBanks, loading: questionBanksLoading, createQuestionBank, updateQuestionBank, deleteQuestionBank } = useQuestionBanks({
+  const { questionBanks, loading: questionBanksLoading, fetchQuestionBanks, createQuestionBank, updateQuestionBank, deleteQuestionBank } = useQuestionBanks({
     courseId: filters.courseId || undefined,
-  });
+  }, { autoFetch: false });
+
+  // Lazy-load question banks when user navigates to question-banks view or opens related modal
+  useEffect(() => {
+    if (currentView === 'question-banks' || showModal === 'question-banks' || currentQuestionBankId) {
+      fetchQuestionBanks();
+    }
+  }, [currentView, showModal, currentQuestionBankId, fetchQuestionBanks]);
   const { questions, createQuestion, updateQuestion, deleteQuestion, importQuestionsFromExcel } = useQuestions();
 
   // Utility functions
