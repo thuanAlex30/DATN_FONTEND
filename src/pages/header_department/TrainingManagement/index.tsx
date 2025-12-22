@@ -56,6 +56,7 @@ import {
   useCourseSets,
   useTrainingAssignments,
 } from '../../../hooks/useTraining';
+import dayjs from 'dayjs';
 import ViewCourseModal from './components/ViewCourseModal';
 import QuestionBankModal from './components/QuestionBankModal';
 import ViewSessionModal from './components/ViewSessionModal';
@@ -1922,34 +1923,7 @@ const TrainingManagement: React.FC = () => {
                       </Select>
                     </Space>
                   </Col>
-                  <Col>
-                    <Button 
-                      type="primary" 
-                      icon={<DownloadOutlined />}
-                      onClick={() => openModal('exportReportModal')}
-                      style={{
-                        borderRadius: '10px',
-                        height: '44px',
-                        padding: '0 28px',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        border: 'none',
-                        boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)',
-                        fontWeight: 600,
-                        fontSize: '15px',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.5)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
-                      }}
-                    >
-                      Xuất báo cáo
-                    </Button>
-                  </Col>
+                  {/* Nút Xuất báo cáo đã được loại bỏ theo yêu cầu */}
                 </Row>
 
                 <Table
@@ -1990,16 +1964,16 @@ const TrainingManagement: React.FC = () => {
                       title: 'Khóa học',
                       key: 'course',
                       render: (_, record: any) => {
-                        const session = sessions.find(s => s._id === record.session_id._id);
-                        return session ? session.course_id.course_name : 'Không xác định';
-                      }
-                    },
-                    {
-                      title: 'Buổi đào tạo',
-                      key: 'session',
-                      render: (_, record: any) => {
-                        const session = sessions.find(s => s._id === record.session_id._id);
-                        return session ? session.session_name : 'Không xác định';
+                        const session = record?.session_id?._id
+                          ? sessions.find(s => s._id === record.session_id._id)
+                          : null;
+
+                        const courseName =
+                          session?.course_id?.course_name ||
+                          record?.course_id?.course_name ||
+                          'Không xác định';
+
+                        return courseName;
                       }
                     },
                     {
@@ -2052,24 +2026,6 @@ const TrainingManagement: React.FC = () => {
                           </Typography.Text>
                         );
                       }
-                    },
-                    {
-                      title: 'Thao tác',
-                      key: 'actions',
-                      render: (_, record: any) => (
-                        <Space>
-                          <Tooltip title="Chỉnh sửa">
-                            <Button 
-                              type="text" 
-                              icon={<EditOutlined />}
-                              onClick={() => {
-                                setEditingItem(record);
-                                openModal('editEnrollmentModal');
-                              }}
-                            />
-                          </Tooltip>
-                        </Space>
-                      )
                     }
                   ]}
                 />
@@ -2791,7 +2747,12 @@ const TrainingManagement: React.FC = () => {
         <Form
           layout="vertical"
           onFinish={handleSessionSubmit}
-          initialValues={sessionForm}
+          initialValues={{
+            ...sessionForm,
+            // Form needs dayjs objects for DatePicker to avoid isValid errors
+            start_time: sessionForm.start_time ? dayjs(sessionForm.start_time) : null,
+            end_time: sessionForm.end_time ? dayjs(sessionForm.end_time) : null,
+          }}
         >
           <Row gutter={16}>
             <Col span={12}>
@@ -2849,12 +2810,17 @@ const TrainingManagement: React.FC = () => {
                   format="YYYY-MM-DD HH:mm"
                   placeholder="Chọn ngày bắt đầu"
                   style={{ width: '100%' }}
-                  value={sessionForm.start_time ? new Date(sessionForm.start_time) : null}
+                  value={sessionForm.start_time ? dayjs(sessionForm.start_time) : null}
                   onChange={(date) => {
                     if (date) {
                       setSessionForm(prev => ({ 
                         ...prev, 
-                        start_time: date.toISOString().slice(0, 16)
+                        start_time: date.format('YYYY-MM-DD HH:mm')
+                      }));
+                    } else {
+                      setSessionForm(prev => ({ 
+                        ...prev, 
+                        start_time: ''
                       }));
                     }
                   }}
@@ -2872,12 +2838,17 @@ const TrainingManagement: React.FC = () => {
                   format="YYYY-MM-DD HH:mm"
                   placeholder="Chọn ngày kết thúc"
                   style={{ width: '100%' }}
-                  value={sessionForm.end_time ? new Date(sessionForm.end_time) : null}
+                  value={sessionForm.end_time ? dayjs(sessionForm.end_time) : null}
                   onChange={(date) => {
                     if (date) {
                       setSessionForm(prev => ({ 
                         ...prev, 
-                        end_time: date.toISOString().slice(0, 16)
+                        end_time: date.format('YYYY-MM-DD HH:mm')
+                      }));
+                    } else {
+                      setSessionForm(prev => ({ 
+                        ...prev, 
+                        end_time: ''
                       }));
                     }
                   }}

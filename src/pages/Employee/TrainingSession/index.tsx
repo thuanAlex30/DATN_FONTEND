@@ -125,7 +125,8 @@ const TrainingSession: React.FC = () => {
       localStorage.setItem('currentTrainingData', JSON.stringify(data));
     }
     
-    if (data && data.session?._id) {
+    // Accept course-based quiz payload (no session)
+    if (data && data.course?._id) {
       console.log('Training data received:', data);
       console.log('Course ID from data:', data.course?._id);
       
@@ -160,18 +161,11 @@ const TrainingSession: React.FC = () => {
         }, 500);
       }
       
-      // Calculate time left based on session end time
-      const endTime = new Date(data.session.end_time);
-      const now = new Date();
-      const timeDiff = endTime.getTime() - now.getTime();
-      
-      if (timeDiff > 0) {
-        setTimeLeft(Math.floor(timeDiff / 1000));
-      } else {
-        // If session has expired, set a reasonable time limit (e.g., 2 hours)
-        setTimeLeft(2 * 60 * 60); // 2 hours in seconds
-        console.log('Session has expired, setting 2-hour time limit for completion');
-      }
+      // Calculate time left: use course duration_hours as seconds, fallback 2h
+      const durationSeconds = data.course?.duration_hours
+        ? Math.max(1, data.course.duration_hours) * 3600
+        : 2 * 60 * 60;
+      setTimeLeft(durationSeconds);
     } else {
       console.log('No valid training data found, redirecting to training page');
       clearAndRedirect('Không tìm thấy dữ liệu phiên học');
