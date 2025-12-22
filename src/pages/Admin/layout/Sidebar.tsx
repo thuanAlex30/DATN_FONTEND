@@ -16,7 +16,8 @@ import {
   FileTextOutlined,
   LogoutOutlined,
   TeamOutlined,
-  MessageOutlined
+  MessageOutlined,
+  BankOutlined
 } from '@ant-design/icons';
 import styles from './Sidebar.module.css'; 
 
