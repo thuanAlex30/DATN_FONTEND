@@ -62,11 +62,11 @@ export interface TrainingSession {
 
 export interface TrainingEnrollment {
   _id: string;
-  session_id: {
+  course_id: {
     _id: string;
-    session_name: string;
-    start_time: string;
-    end_time: string;
+    course_name: string;
+    description?: string;
+    duration_hours?: number;
   };
   user_id: {
     _id: string;
@@ -177,7 +177,7 @@ export interface QuestionFormData {
 }
 
 export interface EnrollmentFormData {
-  session_id: string;
+  course_id: string;
   user_id: string;
 }
 
@@ -378,7 +378,7 @@ export const trainingEnrollmentApi = {
     return response.data.data;
   },
 
-  create: async (data: { session_id: string; user_id: string }): Promise<TrainingEnrollment> => {
+  create: async (data: { course_id: string; user_id: string }): Promise<TrainingEnrollment> => {
     const response = await api.post<ApiResponse<TrainingEnrollment>>('/training/enrollments', data);
     return response.data.data;
   },
