@@ -11,8 +11,12 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
+<<<<<<< HEAD
 import ProfileModal from '../ProfileModal/ProfileModal';
 import SettingsModal from '../SettingsModal/SettingsModal';
+=======
+import { WeatherWidget, EquipmentSuggestion } from '../Weather';
+>>>>>>> 96f4b44 (save)
 import styles from './EmployeeHeader.module.css';
 
 const { Header } = Layout;
@@ -112,6 +116,9 @@ const EmployeeHeader: React.FC<EmployeeHeaderProps> = ({
 
         <div className={styles.headerRight}>
           {extra && <div className={styles.headerExtra}>{extra}</div>}
+          
+          <WeatherWidget compact />
+          <EquipmentSuggestion compact />
           
           {showNotifications && (
             <Badge count={unreadCount} size="small">
