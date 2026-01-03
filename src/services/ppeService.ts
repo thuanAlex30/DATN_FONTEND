@@ -67,6 +67,9 @@ export interface PPEIssuance {
   reported_date?: string;
   confirmed_date?: string;
   confirmation_notes?: string;
+  // Individual serial number tracking
+  assigned_serial_numbers?: string[];
+  returned_serial_numbers?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -144,6 +147,20 @@ export interface UpdateIssuanceData {
   report_description?: string;
   report_severity?: 'low' | 'medium' | 'high';
   reported_date?: string;
+}
+
+export interface SerialNumbersResponse {
+  item_id: string;
+  available_serial_numbers: string[];
+  count: number;
+}
+
+export interface CreateIssuanceWithSerialsData extends CreateIssuanceData {
+  assigned_serial_numbers?: string[];
+}
+
+export interface ReturnPPEWithSerialsData extends ReturnPPEData {
+  returned_serial_numbers?: string[];
 }
 
 export interface ReturnPPEData {
@@ -313,8 +330,26 @@ export const returnPPEIssuance = async (id: string, data: ReturnPPEData): Promis
 
 // Employee-specific PPE return method
 export const returnPPEIssuanceEmployee = async (id: string, data: ReturnPPEData): Promise<PPEIssuance> => {
-  const response = await api.post(`/ppe/issuances/${id}/return-employee`, data);
-  return response.data.data;
+  try {
+    // Increase timeout for potentially long-running return operations
+    const response = await api.post(`/ppe/issuances/${id}/return-employee`, data, { timeout: 60000 });
+    return response.data.data;
+  } catch (error: any) {
+    // If request timed out, try to confirm the result by fetching the issuance
+    const isTimeout = error?.code === 'ECONNABORTED' || /timeout of \d+ms exceeded/.test(error?.message || '');
+    if (isTimeout) {
+      try {
+        const issuance = await getPPEIssuanceById(id);
+        // If backend already processed the return, treat as success
+        if (issuance && (issuance.status === 'returned' || issuance.actual_return_date)) {
+          return issuance;
+        }
+      } catch (innerErr) {
+        // ignore and rethrow original error below
+      }
+    }
+    throw error;
+  }
 };
 
 // Employee-specific PPE report method
@@ -587,7 +622,7 @@ export const issueToEmployee = async (issuanceData: {
   notes?: string;
 }) => {
   try {
-    const response = await api.post('/ppe/issuances/to-employee', issuanceData);
+    const response = await api.post('/ppe/issuances/to-employee', issuanceData, { timeout: 60000 });
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Lỗi khi phát PPE cho Employee');
@@ -952,6 +987,24 @@ export const getExpiryReport = async (params?: {
  */
 export const runDailyExpiryCheck = async (): Promise<any> => {
   const response = await api.post('/api/ppe-advanced/expiry/daily-check');
+  return response.data.data;
+};
+
+// ==================== SERIAL NUMBER MANAGEMENT ====================
+
+/**
+ * Get available serial numbers for manager to assign to employees
+ */
+export const getAvailableSerialNumbersForManager = async (itemId: string): Promise<SerialNumbersResponse> => {
+  const response = await api.get(`/ppe/serial-numbers/manager/${itemId}`);
+  return response.data.data;
+};
+
+/**
+ * Get available serial numbers for admin to assign to managers
+ */
+export const getAvailableSerialNumbersForAdmin = async (itemId: string): Promise<SerialNumbersResponse> => {
+  const response = await api.get(`/ppe/serial-numbers/admin/${itemId}`);
   return response.data.data;
 };
 

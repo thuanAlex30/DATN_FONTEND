@@ -104,19 +104,29 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
   const item = typeof issuance.item_id === 'object' && issuance.item_id ? issuance.item_id : null;
   const isOverdue = dayjs().isAfter(dayjs(issuance.expected_return_date));
   
-  // For manager returning to admin: use remaining_in_hand - total_issued_to_employees
-  // This is the actual quantity manager can return (excluding what's with employees)
-  const aggregatedInHand = (issuance as any).remaining_in_hand;
-  const totalIssuedToEmployees = (issuance as any).total_issued_to_employees;
-  
-  // Manager can only return what they have in hand (not with employees)
-  const availableToReturn = typeof aggregatedInHand === 'number' && typeof totalIssuedToEmployees === 'number'
-    ? Math.max(0, aggregatedInHand - totalIssuedToEmployees)
-    : (issuance.remaining_quantity !== undefined ? issuance.remaining_quantity : issuance.quantity);
-  
-  const remainingQuantity = userRole === 'manager' 
-    ? availableToReturn 
-    : (issuance.remaining_quantity || issuance.quantity);
+  // For manager returning to admin:
+  // normalize values from issuance shape (support different field names)
+  const aggregatedInHandRaw = (issuance as any).remaining_in_hand ?? (issuance as any).remaining ?? (issuance as any).remaining_quantity;
+  const totalIssuedToEmployeesRaw = (issuance as any).total_issued_to_employees ?? 0;
+  const totalReceivedRaw = (issuance as any).total_received ?? issuance.quantity ?? 0;
+
+  const aggregatedInHand = Number(aggregatedInHandRaw);
+  const totalIssuedToEmployees = Number(totalIssuedToEmployeesRaw) || 0;
+  const totalReceived = Number(totalReceivedRaw) || 0;
+
+  // If backend provides aggregatedInHand (manager's actual holding), use it directly.
+  // Otherwise compute from totalReceived - totalIssuedToEmployees.
+  let availableToReturn = 0;
+  if (aggregatedInHandRaw !== undefined && aggregatedInHandRaw !== null && !Number.isNaN(aggregatedInHand)) {
+    availableToReturn = Math.max(0, Math.floor(aggregatedInHand));
+  } else {
+    availableToReturn = Math.max(0, Math.floor(totalReceived - totalIssuedToEmployees));
+  }
+
+  // Display value used for both 'Còn giữ' and 'Có thể trả' for manager
+  const remainingQuantity = userRole === 'manager'
+    ? availableToReturn
+    : (issuance.remaining_quantity ?? issuance.quantity ?? 0);
 
   return (
     <Modal
@@ -185,14 +195,18 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
           <Space direction="vertical" size={0}>
             <Space>
               <Tag color="blue">Tổng nhận: {issuance.quantity}</Tag>
-              {userRole === 'manager' && typeof aggregatedInHand === 'number' && (
-                <Tag color="cyan">Còn giữ: {aggregatedInHand}</Tag>
+              {userRole === 'manager' && (
+                <Tag color="orange">Đã phát cho NV: {totalIssuedToEmployees}</Tag>
               )}
             </Space>
-            {userRole === 'manager' && typeof totalIssuedToEmployees === 'number' && (
+            {userRole === 'manager' ? (
               <Space>
-                <Tag color="orange">Đã phát cho NV: {totalIssuedToEmployees}</Tag>
+                <Tag color="cyan">Còn giữ: {remainingQuantity}</Tag>
                 <Tag color="green">Có thể trả: {remainingQuantity}</Tag>
+              </Space>
+            ) : (
+              <Space>
+                <Tag color="cyan">Còn giữ: {issuance.remaining_quantity ?? issuance.quantity}</Tag>
               </Space>
             )}
           </Space>

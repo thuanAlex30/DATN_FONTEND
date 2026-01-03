@@ -1,7 +1,9 @@
 import incidentService from './incidentService';
-import { getDashboardStats as getPPEDashboardStats } from './ppeService';
+import { getDashboardStats as getPPEDashboardStats, getDashboardData as getPPEDashboardData } from './ppeService';
 import { trainingStatsApi } from './trainingApi';
 import projectService from './projectService';
+import projectRiskService from './projectRiskService';
+import projectMilestoneService from './projectMilestoneService';
 import SystemLogService from './SystemLogService';
 
 export interface HeaderDepartmentDashboardStats {
@@ -23,6 +25,7 @@ export interface HeaderDepartmentDashboardStats {
     expiringSoon: number;
     issuedThisMonth: number;
     totalInUse: number;
+    pendingConfirmationCount?: number;
   };
   certificates: {
     expiringSoon: number;
@@ -64,11 +67,20 @@ class HeaderDepartmentDashboardService {
     try {
       // Fetch all stats in parallel
       // Use getIncidentStats endpoint instead of getIncidents to get properly filtered stats
-      const [incidentsStatsRes, trainingStats, ppeStats, projectStats] = await Promise.allSettled([
+      const [
+        incidentsStatsRes,
+        trainingStats,
+        ppeStats,
+        projectStats,
+        riskStatsRes,
+        milestonesRes
+      ] = await Promise.allSettled([
         incidentService.getIncidentStats(),
         trainingStatsApi.getDashboardStats(),
         getPPEDashboardStats(),
         projectService.getProjectStats(),
+        projectRiskService.getAllRisks({ risk_level: 'HIGH' }),
+        projectMilestoneService.getAllMilestones()
       ]);
 
       // Process incidents from stats endpoint
@@ -114,16 +126,57 @@ class HeaderDepartmentDashboardService {
         lowStock: 0,
         expiringSoon: 0,
         issuedThisMonth: 0,
-        totalInUse: 0,
+      totalInUse: 0,
+      pendingConfirmationCount: 0,
       };
 
       if (ppeStats.status === 'fulfilled') {
-        const ppeData = ppeStats.value;
+        const rawPpe = ppeStats.value;
+        // Support different response wrappers: { data: { data: {...} } }, { data: {...} }, or direct object
+        const ppeData: any = (rawPpe && (rawPpe.data?.data ?? rawPpe.data ?? rawPpe)) || {};
+
+        const pick = (obj: any, keys: string[]) => {
+          for (const k of keys) {
+            if (obj && typeof obj === 'object' && obj[k] !== undefined && obj[k] !== null) return obj[k];
+          }
+          return undefined;
+        };
+
+        let lowStock = pick(ppeData, ['low_stock_items', 'lowStock', 'lowStockItems', 'low_stock']);
+        let expiringSoon = pick(ppeData, ['expiring_soon', 'expiringSoon']);
+        let issuedThisMonth = pick(ppeData, ['issued_this_month', 'issuedThisMonth']);
+        let totalInUse = pick(ppeData, ['total_in_use', 'totalInUse', 'totalIssuances', 'total_issuances']);
+        let pendingConfirmationCount = pick(ppeData, ['pending_confirmation_count', 'pendingConfirmationCount']);
+
+        // If the primary stats endpoint didn't provide the expected fields, try the alternate dashboard endpoint
+        if (
+          (lowStock === undefined || lowStock === null) &&
+          (expiringSoon === undefined || expiringSoon === null) &&
+          (issuedThisMonth === undefined || issuedThisMonth === null) &&
+          (totalInUse === undefined || totalInUse === null) &&
+          (pendingConfirmationCount === undefined || pendingConfirmationCount === null)
+        ) {
+          try {
+            const fallback = await getPPEDashboardData();
+            const rawFb: any = fallback;
+            const fb: any = (rawFb && (rawFb.data?.data ?? rawFb.data ?? rawFb)) || {};
+            lowStock = lowStock ?? fb?.lowStockItems ?? fb?.low_stock_items ?? 0;
+            expiringSoon = expiringSoon ?? fb?.expiringSoon ?? fb?.expiring_soon ?? 0;
+            issuedThisMonth = issuedThisMonth ?? fb?.issuedThisMonth ?? fb?.issued_this_month ?? 0;
+            totalInUse = totalInUse ?? fb?.totalInUse ?? fb?.total_in_use ?? fb?.totalIssuances ?? fb?.total_issuances ?? 0;
+            pendingConfirmationCount = pendingConfirmationCount ?? fb?.pendingConfirmationCount ?? fb?.pending_confirmation_count ?? 0;
+          } catch (e) {
+            // Non-fatal: leave defaults
+            console.debug('Fallback PPE dashboard call failed:', e);
+          }
+        }
+
         ppe = {
-          lowStock: ppeData.low_stock_items || ppeData.lowStock || 0,
-          expiringSoon: ppeData.expiring_soon || ppeData.expiringSoon || 0,
-          issuedThisMonth: ppeData.issued_this_month || ppeData.issuedThisMonth || 0,
-          totalInUse: ppeData.total_in_use || ppeData.totalInUse || 0,
+          lowStock: Number(lowStock) || 0,
+          expiringSoon: Number(expiringSoon) || 0,
+          issuedThisMonth: Number(issuedThisMonth) || 0,
+          totalInUse: Number(totalInUse) || 0,
+          pendingConfirmationCount: Number(pendingConfirmationCount) || 0,
         };
       }
 
@@ -134,14 +187,76 @@ class HeaderDepartmentDashboardService {
         milestonesDueSoon: 0,
       };
 
-      if (projectStats.status === 'fulfilled' && projectStats.value.success) {
-        const projectData = projectStats.value.data as any; // Type assertion để tránh lỗi type checking
-        if (projectData) {
-          projects = {
-            active: projectData.active_projects || projectData.active || 0,
-            highRisk: projectData.high_risk_projects || projectData.highRisk || 0,
-            milestonesDueSoon: projectData.milestones_due_soon || projectData.milestonesDueSoon || 0,
-          };
+      if (projectStats.status === 'fulfilled') {
+        const rawProj: any = projectStats.value;
+        const projData: any = (rawProj && (rawProj.data?.data ?? rawProj.data ?? rawProj)) || {};
+
+        const pickProj = (obj: any, keys: string[]) => {
+          // Prefer a non-zero / meaningful value if multiple aliases exist.
+          // If only zero values are present, return the first zero found.
+          let firstZeroOrPresent: any = undefined;
+          for (const k of keys) {
+            if (!(obj && typeof obj === 'object')) continue;
+            const v = obj[k];
+            if (v === undefined || v === null) continue;
+            // treat numeric or numeric-strings
+            const numeric = Number(v);
+            if (!Number.isNaN(numeric) && numeric !== 0) return v;
+            // treat non-empty strings as meaningful
+            if (typeof v === 'string' && v.trim() !== '') return v;
+            // store first present (could be 0) to return if no non-zero found
+            if (firstZeroOrPresent === undefined) firstZeroOrPresent = v;
+          }
+          return firstZeroOrPresent;
+        };
+
+        const active = pickProj(projData, ['active_projects', 'activeProjects', 'active', 'ACTIVE', 'total', 'TOTAL']);
+        // highRisk and milestones may come from separate services; default undefined here
+        let highRisk = pickProj(projData, ['high_risk_projects', 'highRisk', 'high_risk']);
+        let milestonesDueSoon = pickProj(projData, ['milestones_due_soon', 'milestonesDueSoon', 'milestones_due']);
+
+        projects = {
+          active: Number(active) || 0,
+          highRisk: Number(highRisk) || 0,
+          milestonesDueSoon: Number(milestonesDueSoon) || 0,
+        };
+      }
+
+      // If risk stats endpoint returned data, use its high risk count
+      if (riskStatsRes && riskStatsRes.status === 'fulfilled') {
+        try {
+          const rawRisk = (riskStatsRes as any).value;
+          // projectRiskService.getAllRisks returns { data: ProjectRisk[], success: boolean }
+          const maybeArray = rawRisk && (rawRisk.data ?? rawRisk);
+          let highRiskCount = 0;
+          if (Array.isArray(maybeArray)) {
+            highRiskCount = maybeArray.length;
+          } else {
+            const riskData = (rawRisk && (rawRisk.data?.data ?? rawRisk.data ?? rawRisk)) || {};
+            highRiskCount = ((riskData.high_risk_count ?? riskData.highRiskCount ?? riskData.high_risk) as any) || 0;
+          }
+          projects.highRisk = Number(highRiskCount) || projects.highRisk || 0;
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // If milestones endpoint returned data, compute upcoming milestones within 30 days
+      if (milestonesRes && milestonesRes.status === 'fulfilled') {
+        try {
+          const rawMilestones = (milestonesRes as any).value;
+          const milestones = (rawMilestones && (rawMilestones.data?.data ?? rawMilestones.data ?? rawMilestones)) || [];
+          const now = new Date();
+          const in30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+          const upcomingCount = Array.isArray(milestones)
+            ? milestones.filter((m: any) => {
+                const planned = new Date(m.planned_date || m.plannedDate || m.plannedAt || m.planned_at);
+                return planned >= now && planned <= in30;
+              }).length
+            : 0;
+          projects.milestonesDueSoon = Number(upcomingCount) || projects.milestonesDueSoon || 0;
+        } catch (e) {
+          // ignore
         }
       }
 

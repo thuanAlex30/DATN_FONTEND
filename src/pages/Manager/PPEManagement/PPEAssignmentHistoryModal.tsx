@@ -60,6 +60,8 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
 }) => {
   const [history, setHistory] = useState<PPEHistory[]>([]);
   const [loading, setLoading] = useState(false);
+  const [serialsModalVisible, setSerialsModalVisible] = useState(false);
+  const [serialsToShow, setSerialsToShow] = useState<string[]>([]);
 
   // Helper function to resolve image URL
   const apiBaseForImages = useMemo(() => {
@@ -96,7 +98,8 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           },
           details: {
             quantity: issuance.quantity,
-            expected_return_date: issuance.expected_return_date
+            expected_return_date: issuance.expected_return_date,
+            serials: issuance.assigned_serial_numbers || []
           },
           notes: 'Phát PPE cho Manager'
         },
@@ -111,7 +114,8 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           },
           details: {
             distributed_to: 'Employee',
-            quantity: issuance.quantity
+            quantity: issuance.quantity,
+            serials: issuance.assigned_serial_numbers || []
           },
           notes: 'Phát PPE cho nhân viên'
         }
@@ -131,7 +135,8 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           details: {
             return_condition: issuance.return_condition,
             actual_return_date: issuance.actual_return_date,
-            quantity_returned: issuance.quantity
+            quantity_returned: issuance.quantity,
+            returned_serials: issuance.returned_serial_numbers || []
           },
           notes: issuance.return_notes || 'Trả PPE'
         });
@@ -152,6 +157,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
             actual_return_date: issuance.actual_return_date || dayjs().format('YYYY-MM-DD'),
             quantity_returned: returnedQuantity,
             quantity_remaining: issuance.remaining_quantity
+          , returned_serials: issuance.returned_serial_numbers || []
           },
           notes: issuance.return_notes || `Trả một phần: ${returnedQuantity}/${issuance.quantity}`
         });
@@ -250,6 +256,19 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
               <Text>Số lượng: {record.details.quantity}</Text>
               <br />
               <Text>Hạn trả: {dayjs(record.details.expected_return_date).format('DD/MM/YYYY')}</Text>
+              {record.details.serials && record.details.serials.length > 0 && (
+                <>
+                  <br />
+                  <div style={{ marginTop: 8 }}>
+                    <Text strong>Serial Numbers:</Text>
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {record.details.serials.map((s: string, i: number) => (
+                        <Tag key={i} color="blue" style={{ fontSize: 12 }}>{s}</Tag>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
           {record.action === 'distributed' && (
@@ -266,6 +285,19 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
               <Text>Ngày trả: {dayjs(record.details.actual_return_date).format('DD/MM/YYYY')}</Text>
               <br />
               <Text>Số lượng trả: {record.details.quantity_returned}</Text>
+              {record.details.returned_serials && record.details.returned_serials.length > 0 && (
+                <>
+                  <br />
+                  <div style={{ marginTop: 8 }}>
+                    <Text strong>Serial Numbers returned:</Text>
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {record.details.returned_serials.map((s: string, i: number) => (
+                        <Tag key={i} color="green" style={{ fontSize: 12 }}>{s}</Tag>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
           {record.action === 'partial_return' && (
@@ -294,6 +326,11 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
 
   const item = typeof issuance.item_id === 'object' && issuance.item_id ? issuance.item_id : null;
 
+  const openSerials = (serials: string[] = []) => {
+    setSerialsToShow(serials || []);
+    setSerialsModalVisible(true);
+  };
+
   return (
     <Modal
       title={
@@ -315,6 +352,22 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           column={2}
           size="small"
         >
+          {/* Serial numbers display */}
+          <Descriptions.Item label="Serial Numbers" span={2}>
+            {issuance.assigned_serial_numbers && issuance.assigned_serial_numbers.length > 0 ? (
+              <Space>
+                {/* show up to 3 */}
+                {issuance.assigned_serial_numbers.slice(0,3).map((s, i) => (
+                  <Tag key={i} color="blue">{s}</Tag>
+                ))}
+                {issuance.assigned_serial_numbers.length > 3 && (
+                  <Button type="link" onClick={() => openSerials(issuance.assigned_serial_numbers)}>Xem ({issuance.assigned_serial_numbers.length})</Button>
+                )}
+              </Space>
+            ) : (
+              <Text type="secondary">Không có</Text>
+            )}
+          </Descriptions.Item>
           <Descriptions.Item label="Thiết bị" span={2}>
             <Space>
               {(item as any)?.image_url ? (
@@ -438,6 +491,21 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           </Button>
         </Space>
       </div>
+
+      {/* Serials modal */}
+      <Modal
+        title="Serial Numbers"
+        open={serialsModalVisible}
+        onCancel={() => setSerialsModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <div style={{ maxHeight: 400, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {serialsToShow && serialsToShow.length > 0 ? serialsToShow.map((s, i) => (
+            <Tag key={i} color="blue">{s}</Tag>
+          )) : <Text type="secondary">No serials</Text>}
+        </div>
+      </Modal>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px' }}>

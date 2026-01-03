@@ -117,9 +117,11 @@ export const ppeAssignmentService = {
   },
 
   // Return PPE
-  returnPPE: async (id: string, condition: string, notes?: string) => {
+  returnPPE: async (id: string, condition: string, notes?: string, returned_serials?: string[]) => {
     try {
-      const response = await api.post(`${API_BASE}/${id}/return`, { condition, notes });
+      const body: any = { condition, notes };
+      if (returned_serials && returned_serials.length > 0) body.returned_serials = returned_serials;
+      const response = await api.post(`${API_BASE}/${id}/return`, body);
       return { data: response.data.data, success: true };
     } catch (error) {
       console.error('Error returning PPE:', error);

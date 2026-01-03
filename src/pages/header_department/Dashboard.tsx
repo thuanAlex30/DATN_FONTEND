@@ -582,6 +582,25 @@ const HeaderDepartmentDashboard: React.FC = () => {
                       />
                     </Card>
                   </Col>
+                  <Col xs={12}>
+                    <Card
+                      style={{
+                        ...statCardStyle,
+                        background: 'linear-gradient(135deg, rgba(250, 173, 20, 0.1) 0%, rgba(255, 255, 255, 0.9) 100%)',
+                        border: '1px solid rgba(250, 173, 20, 0.2)',
+                        margin: 0
+                      }}
+                      hoverable
+                      bodyStyle={{ padding: '16px' }}
+                    >
+                      <Statistic
+                        title={<span style={{ color: 'rgba(15, 29, 23, 0.65)', fontSize: '13px' }}>Chờ xác nhận</span>}
+                        value={stats?.ppe.pendingConfirmationCount || 0}
+                        prefix={<ClockCircleOutlined style={{ fontSize: '20px', color: '#faad14' }} />}
+                        valueStyle={{ color: '#faad14', fontSize: '24px', fontWeight: 700 }}
+                      />
+                    </Card>
+                  </Col>
                 </Row>
               </Card>
             </Col>

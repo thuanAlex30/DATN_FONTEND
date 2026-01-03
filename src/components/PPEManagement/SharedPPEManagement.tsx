@@ -63,6 +63,10 @@ const { TabPane } = Tabs;
 const { Option } = Select;
 const { TextArea } = Input;
 
+// Modal state for serials display
+// (shows serial numbers only when user requests)
+// Using local state in this component
+
 interface ManagerPPE {
   item: {
     id: string;
@@ -77,8 +81,19 @@ interface ManagerPPE {
   total_returned: number;
   remaining: number;
   remaining_in_hand?: number;
+  availableToReturn?: number;
+  employee_issuances?: any[];
+  employee_issuances_counts?: {
+    pending: number;
+    issued: number;
+    returned: number;
+    total: number;
+  };
+  currentlyHeldByEmployees?: number;
   issuances: PPEIssuance[];
 }
+
+// local state hook definitions (placed near component body)
 
 interface SharedPPEManagementProps {
   userRole: 'employee' | 'manager';
@@ -98,6 +113,9 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
   const [loading, setLoading] = useState(false);
   const [issueModalVisible, setIssueModalVisible] = useState(false);
   const [returnModalVisible, setReturnModalVisible] = useState(false);
+  const [returnPPEModalVisible, setReturnPPEModalVisible] = useState(false);
+  const [selectedIssuanceForReturn, setSelectedIssuanceForReturn] = useState<PPEIssuance | null>(null);
+  const [returnForm] = Form.useForm();
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
@@ -117,6 +135,21 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
   const [confirmForm] = Form.useForm();
 
   const isManager = userRole === 'manager';
+  // Serial modal state
+  const [serialsModalVisible, setSerialsModalVisible] = useState(false);
+  const [serialsModalData, setSerialsModalData] = useState<{ serials: string[]; title?: string }>({ serials: [], title: '' });
+
+  const openSerialsModal = (serials: string[], title?: string) => {
+    setSerialsModalData({ serials: serials || [], title: title || '' });
+    setSerialsModalVisible(true);
+  };
+  const closeSerialsModal = () => {
+    setSerialsModalVisible(false);
+    setSerialsModalData({ serials: [], title: '' });
+  };
+  // note: closeSerialsModal intentionally left for potential external use
+  // reference to avoid 'declared but not used' linter warning
+  void closeSerialsModal;
   
   // Helper function to resolve image URL
   const apiBaseForImages = useMemo(() => {
@@ -209,20 +242,48 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
   const loadManagerPPE = async () => {
     try {
       const response = await ppeService.getManagerPPE();
-      if (response.success) {
-        // Gán remaining_quantity, remaining_in_hand, total_issued_to_employees cho từng issuance từ ppe_summary
-        const ppeSummaryWithRemaining = response.data.ppe_summary.map((ppe: ManagerPPE) => ({
-          ...ppe,
-          issuances: ppe.issuances.map(issuance => ({
-            ...issuance,
-            remaining_quantity: ppe.remaining, // Gán remaining từ summary vào từng issuance
-            remaining_in_hand: ppe.remaining_in_hand, // Số PPE Manager đang giữ (sau khi trừ đã trả Admin)
-            total_issued_to_employees: ppe.total_issued_to_employees // Số PPE đã phát cho employee
-          }))
-        }));
-        setManagerPPE(ppeSummaryWithRemaining);
-        calculateStats(ppeSummaryWithRemaining);
+      // Debug log raw response shape to help diagnose mismatched counts
+      console.debug('loadManagerPPE raw response:', response);
+
+      // Normalize various possible response shapes:
+      // - { success: true, data: { ppe_summary: [...] } }
+      // - { data: { ppe_summary: [...] } }
+      // - { ppe_summary: [...] }
+      // - direct array [...]
+      const raw = response && (response.data?.ppe_summary ?? response.ppe_summary ?? response.data ?? response) || {};
+      let summaryArray: any[] = [];
+      if (Array.isArray(raw)) {
+        summaryArray = raw;
+      } else if (Array.isArray(raw.ppe_summary)) {
+        summaryArray = raw.ppe_summary;
+      } else if (Array.isArray(raw.ppeSummary)) {
+        summaryArray = raw.ppeSummary;
+      } else if (Array.isArray(response.data)) {
+        summaryArray = response.data;
       }
+
+      // Normalize numeric fields and ensure issuances exist
+      const ppeSummaryWithRemaining = summaryArray.map((ppe: any) => {
+        const normalizedIssuances = Array.isArray(ppe.issuances) ? ppe.issuances.map((issuance: any) => ({
+          ...issuance,
+          remaining_quantity: Number(ppe.remaining) || Number(ppe.remaining_quantity) || issuance.remaining_quantity || 0,
+          remaining_in_hand: Number(ppe.remaining_in_hand) || ppe.remaining_in_hand || 0,
+          total_issued_to_employees: Number(ppe.total_issued_to_employees) || ppe.total_issued_to_employees || 0
+        })) : [];
+
+        return {
+          ...ppe,
+          total_received: Number(ppe.total_received) || 0,
+          total_issued_to_employees: Number(ppe.total_issued_to_employees) || 0,
+          total_returned: Number(ppe.total_returned) || 0,
+          remaining: Number(ppe.remaining) || Number(ppe.remaining_quantity) || 0,
+          issuances: normalizedIssuances,
+          employee_issuances: ppe.employee_issuances || []
+        } as ManagerPPE;
+      });
+
+      setManagerPPE(ppeSummaryWithRemaining);
+      calculateStats(ppeSummaryWithRemaining);
     } catch (error) {
       console.error('Error loading manager PPE:', error);
       message.error('Lỗi khi tải PPE của Manager');
@@ -278,17 +339,19 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
   const calculateStats = (ppeData: ManagerPPE[]) => {
     const stats = ppeData.reduce((acc, ppe) => {
       acc.totalItems += 1;
-      acc.totalReceived += ppe.total_received;
-      acc.totalIssuedToEmployees += ppe.total_issued_to_employees || 0;
-      acc.totalReturned += ppe.total_returned;
-      acc.totalRemaining += ppe.remaining;
-      
-      // Đếm PPE chờ Employee xác nhận
-      const pendingConfirmations = ppe.issuances.filter(issuance => 
-        issuance.status === 'pending_confirmation'
+      acc.totalReceived += Number((ppe as any).total_received) || 0;
+      acc.totalIssuedToEmployees += Number((ppe as any).total_issued_to_employees) || 0;
+      acc.totalReturned += Number((ppe as any).total_returned) || 0;
+      acc.totalRemaining += Number((ppe as any).remaining) || 0;
+
+      // Đếm PPE chờ Employee xác nhận (safety: issuances may be undefined)
+      // pending confirmations should be counted from manager->employee issuances, not admin->manager sources
+      const employeeIssuances = Array.isArray((ppe as any).employee_issuances) ? (ppe as any).employee_issuances : [];
+      const pendingConfirmations = employeeIssuances.filter((issuance: any) =>
+        issuance && issuance.status === 'pending_confirmation'
       ).length;
       acc.pendingConfirmationCount += pendingConfirmations;
-      
+
       return acc;
     }, {
       totalItems: 0,
@@ -305,8 +368,42 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
   // Removed unused employee stats calculation
 
   const handleReturnToAdmin = (issuance: PPEIssuance) => {
-    setSelectedIssuance(issuance);
-    setReturnModalVisible(true);
+    // For employees, show return PPE modal with serial selection
+    if (!isManager && issuance.assigned_serial_numbers && issuance.assigned_serial_numbers.length > 0) {
+      setSelectedIssuanceForReturn(issuance);
+      setReturnPPEModalVisible(true);
+    } else {
+      // For managers, show existing return modal
+      setSelectedIssuance(issuance);
+      setReturnModalVisible(true);
+    }
+  };
+
+  const handleReturnPPE = async (values: any) => {
+    if (!selectedIssuanceForReturn) return;
+
+    setLoading(true);
+    try {
+      const returnData: any = {
+        actual_return_date: values.actual_return_date.toISOString(),
+        return_condition: values.return_condition,
+        returned_serial_numbers: values.returned_serial_numbers,
+        notes: values.notes || ''
+      };
+
+      await ppeService.returnPPEIssuanceEmployee(selectedIssuanceForReturn.id, returnData);
+      message.success('Đã trả PPE thành công, chờ Manager xác nhận');
+      setReturnPPEModalVisible(false);
+      setSelectedIssuanceForReturn(null);
+      returnForm.resetFields();
+      // Reload data
+      loadEmployeePPE();
+    } catch (error: any) {
+      console.error('Error returning PPE:', error);
+      message.error(error.response?.data?.message || 'Lỗi khi trả PPE');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleViewHistory = (issuance: PPEIssuance) => {
@@ -425,8 +522,16 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
         try {
           await ppeService.confirmEmployeeReturn(issuance.id);
           message.success('Xác nhận nhận PPE thành công!');
-          loadManagerPPE();
-          loadEmployeePPE();
+          // Immediately reload manager and department employee PPE data
+          // Run in parallel and don't block the UI on slow endpoints
+          Promise.allSettled([
+            loadManagerPPE(),
+            loadEmployeePPE(),
+            loadUserPPE(),
+            loadPPEHistory()
+          ]).then(results => {
+            console.debug('Post-confirm reload results:', results);
+          });
         } catch (error: any) {
           console.error('Error confirming employee return:', error);
           message.error(error.message || 'Có lỗi xảy ra khi xác nhận nhận PPE');
@@ -849,83 +954,98 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
           }}
           bodyStyle={{ padding: '20px' }}
         >
-          <Row gutter={[16, 16]}>
-            <Col xs={12} sm={12} md={6} lg={6} xl={6}>
-              <Card 
-                size="small"
-                style={{ 
-                  borderRadius: '6px',
-                  border: '1px solid #e8e8e8',
-                  height: '100%'
-                }}
-                bodyStyle={{ padding: '16px' }}
-              >
-                <Statistic
-                  title="Đang sử dụng"
-                  value={getActiveIssuances().length}
-                  prefix={<SafetyOutlined style={{ color: '#1890ff' }} />}
-                  valueStyle={{ color: '#1890ff', fontSize: '24px' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={12} md={6} lg={6} xl={6}>
-              <Card 
-                size="small"
-                style={{ 
-                  borderRadius: '6px',
-                  border: '1px solid #e8e8e8',
-                  height: '100%'
-                }}
-                bodyStyle={{ padding: '16px' }}
-              >
-                <Statistic
-                  title="Đã trả"
-                  value={getReturnedIssuances()}
-                  prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                  valueStyle={{ color: '#52c41a', fontSize: '24px' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={12} md={6} lg={6} xl={6}>
-              <Card 
-                size="small"
-                style={{ 
-                  borderRadius: '6px',
-                  border: '1px solid #e8e8e8',
-                  height: '100%'
-                }}
-                bodyStyle={{ padding: '16px' }}
-              >
-                <Statistic
-                  title="Quá hạn"
-                  value={ppeIssuances.filter(issuance => 
-                    issuance.status === 'overdue' || 
-                    isOverdue(issuance.expected_return_date)
-                  ).length}
-                  prefix={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
-                  valueStyle={{ color: '#ff4d4f', fontSize: '24px' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={12} sm={12} md={6} lg={6} xl={6}>
-              <Card 
-                size="small"
-                style={{ 
-                  borderRadius: '6px',
-                  border: '1px solid #e8e8e8',
-                  height: '100%'
-                }}
-                bodyStyle={{ padding: '16px' }}
-              >
-                <Statistic
-                  title="Tổng PPE"
-                  value={ppeIssuances.length}
-                  prefix={<InboxOutlined style={{ color: '#722ed1' }} />}
-                  valueStyle={{ color: '#722ed1', fontSize: '24px' }}
-                />
-              </Card>
-            </Col>
-          </Row>
+          {isManager ? (
+            <Row>
+              <Col span={24}>
+                <Card size="small" style={{ borderRadius: '6px', border: '1px solid #e8e8e8' }} bodyStyle={{ padding: '16px' }}>
+                  <Statistic
+                    title="Đã nhận từ Header Department"
+                    value={ppeStats.totalReceived}
+                    prefix={<InboxOutlined style={{ color: '#52c41a' }} />}
+                    valueStyle={{ color: '#52c41a', fontSize: '24px' }}
+                  />
+                </Card>
+              </Col>
+            </Row>
+          ) : (
+            <Row gutter={[16, 16]}>
+              <Col xs={12} sm={12} md={6} lg={6} xl={6}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    borderRadius: '6px',
+                    border: '1px solid #e8e8e8',
+                    height: '100%'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Statistic
+                    title="Đang sử dụng"
+                    value={getActiveIssuances().length}
+                    prefix={<SafetyOutlined style={{ color: '#1890ff' }} />}
+                    valueStyle={{ color: '#1890ff', fontSize: '24px' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} sm={12} md={6} lg={6} xl={6}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    borderRadius: '6px',
+                    border: '1px solid #e8e8e8',
+                    height: '100%'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Statistic
+                    title="Đã trả"
+                    value={getReturnedIssuances()}
+                    prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                    valueStyle={{ color: '#52c41a', fontSize: '24px' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} sm={12} md={6} lg={6} xl={6}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    borderRadius: '6px',
+                    border: '1px solid #e8e8e8',
+                    height: '100%'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Statistic
+                    title="Quá hạn"
+                    value={ppeIssuances.filter(issuance => 
+                      issuance.status === 'overdue' || 
+                      isOverdue(issuance.expected_return_date)
+                    ).length}
+                    prefix={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
+                    valueStyle={{ color: '#ff4d4f', fontSize: '24px' }}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} sm={12} md={6} lg={6} xl={6}>
+                <Card 
+                  size="small"
+                  style={{ 
+                    borderRadius: '6px',
+                    border: '1px solid #e8e8e8',
+                    height: '100%'
+                  }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Statistic
+                    title="Tổng PPE"
+                    value={ppeIssuances.length}
+                    prefix={<InboxOutlined style={{ color: '#722ed1' }} />}
+                    valueStyle={{ color: '#722ed1', fontSize: '24px' }}
+                  />
+                </Card>
+              </Col>
+            </Row>
+          )}
         </Card>
 
         {/* Employee-specific statistics */}
@@ -1154,19 +1274,36 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                       </div>
                     ) : (
                       <Row gutter={[16, 16]}>
-                        {getActiveIssuances().map(issuance => {
-                          const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
-                            issuance.item_id : null;
-                          const isOverdueItem = isOverdue(issuance.expected_return_date);
-                          const imageUrl = (item as any)?.image_url;
-                          
+                        { (isManager ? managerPPE.filter(p => ((p?.availableToReturn ?? p?.remaining ?? (p?.employee_issuances?.length ?? 0)) ?? 0) > 0) : getActiveIssuances()).map((issuanceOrItem: any) => {
+                          const isManagerViewItem = isManager && issuanceOrItem && issuanceOrItem.item;
+                          // For manager view, issuanceOrItem is a ManagerPPE summary for an item.
+                          // For employee view, issuanceOrItem is a PPEIssuance.
+                          let issuanceObj: any = null;
+                          let itemObj: any = null;
+                          if (isManagerViewItem) {
+                            issuanceObj = (issuanceOrItem.issuances && issuanceOrItem.issuances[0]) || null;
+                            itemObj = issuanceOrItem.item || (issuanceObj && issuanceObj.item_id) || null;
+                          } else {
+                            issuanceObj = issuanceOrItem;
+                            itemObj = (issuanceObj && typeof issuanceObj.item_id === 'object') ? issuanceObj.item_id : null;
+                          }
+                          const isOverdueFlag = isOverdue(issuanceObj?.expected_return_date);
+                          const imgUrl = (itemObj as any)?.image_url;
+                          const issuance = issuanceObj || issuanceOrItem;
+                          const remainingForCard = isManagerViewItem
+                            ? (issuanceOrItem.availableToReturn ?? issuanceOrItem.remaining ?? 0)
+                            : (issuance?.remaining_quantity ?? issuance?.quantity ?? 0);
+                          let displayStatus = issuance?.status || '';
+                          if (displayStatus === 'returned' && remainingForCard > 0) {
+                            displayStatus = 'issued';
+                          }
                           return (
                             <Col xs={24} sm={12} lg={8} xl={6} key={issuance.id}>
                               <Card
                                 hoverable
                                 style={{ 
                                   borderRadius: '8px',
-                                  border: `1px solid ${isOverdueItem ? '#ff4d4f' : '#e8e8e8'}`,
+                                  border: `1px solid ${isOverdueFlag ? '#ff4d4f' : '#e8e8e8'}`,
                                   boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
                                   height: '100%',
                                   transition: 'all 0.3s ease'
@@ -1174,9 +1311,9 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                 bodyStyle={{ padding: '16px' }}
                                 title={
                                   <Space style={{ width: '100%' }}>
-                                    {imageUrl ? (
+                                    {imgUrl ? (
                                       <Image
-                                        src={resolveImageUrl(imageUrl)}
+                                        src={resolveImageUrl(imgUrl)}
                                         width={32}
                                         height={32}
                                         style={{ objectFit: 'cover', borderRadius: 6 }}
@@ -1187,17 +1324,17 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                       <SafetyOutlined style={{ color: '#1890ff', fontSize: '18px' }} />
                                     )}
                                     <span style={{ fontWeight: 'bold', fontSize: '14px' }}>
-                                      {item?.item_name || 'Không xác định'}
+                                      {itemObj?.item_name || 'Không xác định'}
                                     </span>
                                   </Space>
                                 }
                                 extra={
                                   <Tag 
-                                    color={getStatusColor(issuance.status)} 
-                                    icon={getStatusIcon(issuance.status)}
+                                    color={getStatusColor(displayStatus)} 
+                                    icon={getStatusIcon(displayStatus)}
                                     style={{ margin: 0 }}
                                   >
-                                    {getStatusLabel(issuance.status)}
+                                    {getStatusLabel(displayStatus)}
                                   </Tag>
                                 }
                                 actions={[
@@ -1223,12 +1360,22 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                       />
                                     </Tooltip>
                                   ) : (
-                                    <Tooltip title={issuance.status === 'pending_manager_return' ? 'Đã trả, chờ Manager xác nhận' : issuance.status === 'returned' ? 'Đã trả' : isManager && issuance.issuance_level === 'admin_to_manager' ? 'Trả PPE về Header Department' : 'Trả PPE'} key="return">
-                                      <Button 
+                                    <Tooltip title={
+                                      displayStatus === 'pending_manager_return'
+                                        ? 'Đã trả, chờ Manager xác nhận'
+                                        : displayStatus === 'returned'
+                                        ? 'Đã trả'
+                                        : isManager && issuance.issuance_level === 'admin_to_manager'
+                                        ? 'Trả PPE về Header Department'
+                                        : !isManager && issuance.assigned_serial_numbers && issuance.assigned_serial_numbers.length > 0
+                                        ? 'Trả PPE với Serial Numbers'
+                                        : 'Trả PPE'
+                                    } key="return">
+                                      <Button
                                         type="primary"
                                         icon={<UndoOutlined />}
                                         onClick={() => handleReturnToAdmin(issuance)}
-                                        disabled={issuance.status === 'pending_manager_return' || issuance.status === 'returned'}
+                                        disabled={remainingForCard <= 0}
                                         style={{ borderRadius: '4px' }}
                                       />
                                     </Tooltip>
@@ -1249,35 +1396,48 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <BarcodeOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
                                     <Text strong style={{ fontSize: '13px' }}>Mã: </Text>
-                                    <Text style={{ fontSize: '13px' }}>{item?.item_code || 'N/A'}</Text>
+                                    <Text style={{ fontSize: '13px' }}>{itemObj?.item_code || 'N/A'}</Text>
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <NumberOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
                                     <Text strong style={{ fontSize: '13px' }}>Số lượng: </Text>
                                     <Badge 
-                                      count={issuance.quantity} 
+                                      count={isManagerViewItem ? (issuanceOrItem.availableToReturn ?? issuanceOrItem.remaining ?? 0) : (issuanceObj?.quantity ?? 0)} 
                                       style={{ backgroundColor: '#52c41a' }}
                                     overflowCount={Number.MAX_SAFE_INTEGER}
                                     />
                                   </div>
+                                  {/* Display assigned serial numbers for active PPE */}
+                                  { (isManagerViewItem ? (issuanceOrItem.employee_issuances_counts && issuanceOrItem.employee_issuances_counts.total > 0) : (issuanceObj?.assigned_serial_numbers && issuanceObj?.assigned_serial_numbers.length > 0 && issuanceObj?.status !== 'returned')) && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <BarcodeOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
+                                      <Text strong style={{ fontSize: '13px' }}>Serial Numbers: </Text>
+                                      <Button type="link" onClick={() => {
+                                        const serials = isManagerViewItem ? (issuanceOrItem.assigned_serial_numbers || []) : (issuanceObj?.assigned_serial_numbers || []);
+                                        openSerialsModal(serials as string[], `${itemObj?.item_name || itemObj?.item_code || ''}`);
+                                      }}>
+                                        Xem ({isManagerViewItem ? (issuanceOrItem.assigned_serial_numbers ? issuanceOrItem.assigned_serial_numbers.length : 0) : (issuanceObj?.assigned_serial_numbers?.length || 0)})
+                                      </Button>
+                                    </div>
+                                  )}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                     <CalendarOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
                                     <Text strong style={{ fontSize: '13px' }}>Ngày phát: </Text>
-                                    <Text style={{ fontSize: '13px' }}>{formatDateTime(issuance.issued_date)}</Text>
+                                    <Text style={{ fontSize: '13px' }}>{formatDateTime(issuanceObj?.issued_date || (isManagerViewItem ? issuanceOrItem.issuances?.[0]?.issued_date : ''))}</Text>
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                     <ClockCircleOutlined style={{ 
-                                      color: isOverdueItem ? '#ff4d4f' : '#1890ff',
+                                      color: isOverdueFlag ? '#ff4d4f' : '#1890ff',
                                       fontSize: '16px'
                                     }} />
                                     <Text strong style={{ fontSize: '13px' }}>Hạn trả: </Text>
                                     <Text style={{ 
-                                      color: isOverdueItem ? '#ff4d4f' : 'inherit',
+                                      color: isOverdueFlag ? '#ff4d4f' : 'inherit',
                                       fontSize: '13px'
                                     }}>
-                                      {formatDateTime(issuance.expected_return_date)}
+                                      {formatDateTime(issuanceObj?.expected_return_date || (isManagerViewItem ? issuanceOrItem.issuances?.[0]?.expected_return_date : ''))}
                                     </Text>
-                                    {isOverdueItem && (
+                                    {isOverdueFlag && (
                                       <Tag color="red" style={{ marginLeft: '4px', fontSize: '11px' }}>
                                         QUÁ HẠN
                                       </Tag>
@@ -1767,6 +1927,206 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
             </Form.Item>
           </Form>
         </Modal>
+
+        {/* Return PPE Modal for Employees */}
+        <Modal
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <UndoOutlined style={{ color: '#1890ff' }} />
+              <span>Trả PPE cho Manager</span>
+            </div>
+          }
+          open={returnPPEModalVisible}
+          onCancel={() => {
+            setReturnPPEModalVisible(false);
+            setSelectedIssuanceForReturn(null);
+            returnForm.resetFields();
+          }}
+          footer={null}
+          width={600}
+          destroyOnClose
+          maskClosable={false}
+        >
+          {selectedIssuanceForReturn && (
+            <Form
+              form={returnForm}
+              layout="vertical"
+              onFinish={handleReturnPPE}
+              initialValues={{
+                actual_return_date: dayjs(),
+                return_condition: 'good',
+                notes: ''
+              }}
+            >
+              {/* PPE Information */}
+              <Card
+                size="small"
+                title="Thông tin PPE"
+                style={{ marginBottom: 16 }}
+              >
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Text strong>Mã thiết bị: </Text>
+                    <Text>
+                      {typeof selectedIssuanceForReturn.item_id === 'object' && selectedIssuanceForReturn.item_id
+                        ? selectedIssuanceForReturn.item_id.item_code || 'N/A'
+                        : (selectedIssuanceForReturn.item_id ? String(selectedIssuanceForReturn.item_id) : 'N/A')}
+                    </Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>Tên thiết bị: </Text>
+                    <Text>
+                      {typeof selectedIssuanceForReturn.item_id === 'object' && selectedIssuanceForReturn.item_id
+                        ? selectedIssuanceForReturn.item_id.item_name || 'N/A'
+                        : (selectedIssuanceForReturn.item_id ? String(selectedIssuanceForReturn.item_id) : 'N/A')}
+                    </Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>Số lượng: </Text>
+                    <Text>{selectedIssuanceForReturn.quantity}</Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>Ngày phát: </Text>
+                    <Text>{formatDateTime(selectedIssuanceForReturn.issued_date)}</Text>
+                  </Col>
+                </Row>
+
+                {/* Display assigned serial numbers */}
+                {selectedIssuanceForReturn.assigned_serial_numbers && selectedIssuanceForReturn.assigned_serial_numbers.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <Text strong>Serial Numbers đã gán: </Text>
+                    <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {selectedIssuanceForReturn.assigned_serial_numbers.map((serial, index) => (
+                        <Tag key={index} color="blue" style={{ fontSize: '12px' }}>
+                          {serial}
+                        </Tag>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              <Alert
+                message="Vui lòng chọn Serial Numbers bạn muốn trả lại"
+                description="Bạn có thể trả lại một phần hoặc toàn bộ Serial Numbers đã được gán."
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+
+              <Form.Item
+                label="Serial Numbers cần trả"
+                name="returned_serial_numbers"
+                rules={[
+                  { required: true, message: 'Vui lòng chọn Serial Numbers cần trả' },
+                  {
+                    validator: (_, value) => {
+                      if (value && selectedIssuanceForReturn.assigned_serial_numbers) {
+                        const invalidSerials = value.filter((serial: string) =>
+                          !selectedIssuanceForReturn.assigned_serial_numbers!.includes(serial)
+                        );
+                        if (invalidSerials.length > 0) {
+                          return Promise.reject(`Serial numbers không hợp lệ: ${invalidSerials.join(', ')}`);
+                        }
+                      }
+                      return Promise.resolve();
+                    }
+                  }
+                ]}
+              >
+                <Select
+                  mode="multiple"
+                  placeholder="Chọn Serial Numbers cần trả lại"
+                  style={{ width: '100%' }}
+                  showSearch
+                  optionFilterProp="children"
+                  maxTagCount={5}
+                  maxTagTextLength={15}
+                >
+                  {selectedIssuanceForReturn.assigned_serial_numbers?.map((serial, index) => (
+                    <Option key={index} value={serial}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <BarcodeOutlined style={{ color: '#1890ff' }} />
+                        <span>{serial}</span>
+                      </div>
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                label="Ngày trả thực tế"
+                name="actual_return_date"
+                rules={[{ required: true, message: 'Vui lòng chọn ngày trả' }]}
+              >
+                <DatePicker
+                  style={{ width: '100%' }}
+                  format="DD/MM/YYYY"
+                  disabledDate={(current) => current && current > dayjs().endOf('day')}
+                />
+              </Form.Item>
+
+              <Form.Item
+                label="Tình trạng khi trả"
+                name="return_condition"
+                rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
+              >
+                <Select placeholder="Chọn tình trạng PPE khi trả">
+                  <Option value="good">Tốt</Option>
+                  <Option value="damaged">Hỏng</Option>
+                  <Option value="worn">Mòn</Option>
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                label="Ghi chú"
+                name="notes"
+              >
+                <TextArea
+                  rows={3}
+                  placeholder="Ghi chú về tình trạng PPE khi trả (tùy chọn)"
+                  maxLength={500}
+                  showCount
+                />
+              </Form.Item>
+
+              <Form.Item>
+                <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                  <Button onClick={() => {
+                    setReturnPPEModalVisible(false);
+                    setSelectedIssuanceForReturn(null);
+                    returnForm.resetFields();
+                  }}>
+                    Hủy
+                  </Button>
+                  <Button type="primary" htmlType="submit" loading={loading} danger>
+                    {loading ? 'Đang trả PPE...' : 'Trả PPE'}
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          )}
+        </Modal>
+
+        {/* Serial numbers modal (show on demand) */}
+        <Modal
+          title={serialsModalData.title ? `Serial Numbers - ${serialsModalData.title}` : 'Serial Numbers'}
+          open={serialsModalVisible}
+          onCancel={() => setSerialsModalVisible(false)}
+          footer={null}
+          width={600}
+        >
+          <div style={{ maxHeight: '400px', overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {serialsModalData.serials && serialsModalData.serials.length > 0 ? (
+              serialsModalData.serials.map((s, idx) => (
+                <Tag key={idx} color="blue" style={{ fontSize: 12 }}>{s}</Tag>
+              ))
+            ) : (
+              <Empty description="No serial numbers" />
+            )}
+          </div>
+        </Modal>
+
       </div>
     </LayoutComponent>
   );
