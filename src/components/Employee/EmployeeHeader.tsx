@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Layout, Typography, Badge, Button, Dropdown, Avatar } from 'antd';
 import {
   BellOutlined,
@@ -11,11 +11,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
-<<<<<<< HEAD
 import ProfileModal from '../ProfileModal/ProfileModal';
 import SettingsModal from '../SettingsModal/SettingsModal';
 import { WeatherWidget, EquipmentSuggestion } from '../Weather';
->>>>>>> 96f4b44 (save)
 import styles from './EmployeeHeader.module.css';
 
 const { Header } = Layout;
@@ -66,12 +64,12 @@ const EmployeeHeader: React.FC<EmployeeHeaderProps> = ({
     {
       key: 'profile',
       icon: <UserOutlined />,
-      label: 'Há»“ sÆ¡ cĂ¡ nhĂ¢n',
+      label: 'Hồ sơ cá nhân',
     },
     {
       key: 'settings',
       icon: <SettingOutlined />,
-      label: 'CĂ i Ä‘áº·t',
+      label: 'Cài đặt',
     },
     {
       type: 'divider' as const,
@@ -79,7 +77,7 @@ const EmployeeHeader: React.FC<EmployeeHeaderProps> = ({
     {
       key: 'logout',
       icon: <LogoutOutlined />,
-      label: 'ÄÄƒng xuáº¥t',
+      label: 'Đăng xuất',
       danger: true,
     },
   ];
