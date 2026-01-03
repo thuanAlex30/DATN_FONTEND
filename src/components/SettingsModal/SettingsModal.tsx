@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Tabs, Form, Input, Button, Switch, message, Space, Divider, Typography, Card } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { Modal, Tabs, Form, Input, Button, Switch, message, Space, Typography, Card } from 'antd';
 import {
   LockOutlined,
   BellOutlined,
   GlobalOutlined,
-  SaveOutlined,
-  CheckCircleOutlined
+  SaveOutlined
 } from '@ant-design/icons';
 import authService from '../../services/authService';
 import NotificationService from '../../services/notificationService';
 import type { NotificationSettings } from '../../services/notificationService';
+import { logout } from '../../store/slices/authSlice';
 import styles from './SettingsModal.module.css';
 
 const { TabPane } = Tabs;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Password } = Input;
 
 interface SettingsModalProps {
@@ -22,6 +24,8 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [passwordForm] = Form.useForm();
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
   const [loading, setLoading] = useState(false);
@@ -53,16 +57,61 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   }) => {
     try {
       setSaving(true);
-      await authService.changePassword({
-        currentPassword: values.currentPassword,
-        newPassword: values.newPassword
+      console.log('🔄 Changing password with values:', {
+        currentPassword: '***',
+        newPassword: '***',
+        confirmNewPassword: '***'
       });
-      message.success('Đổi mật khẩu thành công');
+      
+      const response = await authService.changePassword({
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword,
+        confirmNewPassword: values.confirmPassword
+      });
+      
+      console.log('✅ Password change response:', response);
+      
+      // Show success message
+      message.success({
+        content: 'Đổi mật khẩu thành công! Vui lòng đăng nhập lại với mật khẩu mới.',
+        duration: 3,
+      });
+      
+      // Reset form
       passwordForm.resetFields();
+      
+      // Close modal
+      onClose();
+      
+      // Wait a bit for the message to be visible, then logout and redirect
+      setTimeout(() => {
+        // Dispatch logout to clear Redux state and localStorage
+        dispatch(logout());
+        
+        // Navigate to login page
+        navigate('/login', { replace: true });
+      }, 1500);
     } catch (error: any) {
-      console.error('Error changing password:', error);
-      const errorMessage = error.response?.data?.message || 'Không thể đổi mật khẩu';
-      message.error(errorMessage);
+      console.error('❌ Error changing password:', error);
+      console.error('❌ Error response:', error.response?.data);
+      
+      // Handle validation errors
+      if (error.response?.status === 400) {
+        const errorData = error.response.data;
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          // Multiple validation errors
+          const errorMessages = errorData.errors.map((err: any) => err.message || err).join(', ');
+          message.error(`Lỗi validation: ${errorMessages}`);
+        } else {
+          // Single error message
+          const errorMessage = errorData.message || 'Lỗi validation';
+          message.error(errorMessage);
+        }
+      } else if (error.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else {
+        message.error('Không thể đổi mật khẩu. Vui lòng thử lại sau.');
+      }
     } finally {
       setSaving(false);
     }
@@ -108,10 +157,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     if (!notificationSettings) return;
 
     const updated = { ...notificationSettings };
-    updated[category] = {
-      ...updated[category],
-      [field]: value
-    };
+    if (category === 'auto_cleanup') {
+      updated.auto_cleanup = {
+        ...updated.auto_cleanup,
+        [field]: value
+      } as { enabled: boolean; days: number };
+    } else if (category === 'real_time') {
+      updated.real_time = {
+        ...updated.real_time,
+        [field]: value
+      } as { enabled: boolean; interval: number };
+    }
     setNotificationSettings(updated);
   };
 

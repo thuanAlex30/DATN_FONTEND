@@ -11,7 +11,7 @@ import {
   Space,
   Layout
 } from 'antd';
-import { UserOutlined, LockOutlined, SafetyOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, SafetyOutlined, ArrowLeftOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { login } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import type { LoginRequest } from '../../types/auth';
@@ -309,6 +309,23 @@ const LoginPage: React.FC = () => {
                     </Button>
                   </Form.Item>
                 </Form>
+
+                {/* Forgot Password Link */}
+                <div style={{ textAlign: 'center', marginTop: '-8px', marginBottom: '8px' }}>
+                  <Button
+                    type="link"
+                    onClick={() => safeNavigate('/forgot-password')}
+                    icon={<QuestionCircleOutlined />}
+                    style={{ 
+                      padding: 0,
+                      color: '#22c55e',
+                      fontWeight: 500
+                    }}
+                    className={styles.forgotPasswordLink}
+                  >
+                    Quên mật khẩu?
+                  </Button>
+                </div>
 
                 {/* Footer */}
                 <div className={styles.loginFooter}>

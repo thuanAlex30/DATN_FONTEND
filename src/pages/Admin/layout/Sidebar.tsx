@@ -13,7 +13,6 @@ import {
   DashboardOutlined,
   UserOutlined,
   SafetyOutlined,
-  BankOutlined,
   FileTextOutlined,
   LogoutOutlined,
   TeamOutlined,
@@ -100,11 +99,6 @@ const Sidebar = () => {
                     key: '/admin/department-management',
                     icon: <BankOutlined />,
                     label: 'Phòng ban',
-                },
-                {
-                    key: '/admin/role-management',
-                    icon: <SafetyOutlined />,
-                    label: 'Vị trí',
                 },
                 {
                     key: '/admin/role-management',

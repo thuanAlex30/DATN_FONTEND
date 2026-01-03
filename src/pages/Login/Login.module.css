@@ -263,6 +263,25 @@
   line-height: 1.6;
 }
 
+.forgotPasswordLink {
+  color: var(--primary) !important;
+  transition: all 0.3s ease;
+}
+
+.forgotPasswordLink:hover {
+  color: var(--primary-dark) !important;
+  transform: translateY(-1px);
+}
+
+.forgotPasswordLink :global(.anticon) {
+  color: var(--primary);
+  transition: color 0.3s ease;
+}
+
+.forgotPasswordLink:hover :global(.anticon) {
+  color: var(--primary-dark);
+}
+
 .backButton {
   position: absolute;
   top: 2rem;
