@@ -11,7 +11,7 @@ import {
   Space,
   Layout
 } from 'antd';
-import { UserOutlined, LockOutlined, SafetyOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, SafetyOutlined, ArrowLeftOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { login } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import type { LoginRequest } from '../../types/auth';
