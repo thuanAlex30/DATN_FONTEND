@@ -232,6 +232,9 @@ const PPEManagement: React.FC = () => {
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
+  // History tab specific search and status filter
+  const [historySearchTerm, setHistorySearchTerm] = useState('');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<string>('');
 
   // Load all data
   const loadAllData = useCallback(async () => {
@@ -403,6 +406,31 @@ const PPEManagement: React.FC = () => {
     
     return filtered;
   };
+
+// Get filtered issuances for "Lịch sử phát PPE"
+const getFilteredIssuances = () => {
+  if (!Array.isArray(ppeIssuances)) return [];
+  let filtered = ppeIssuances;
+
+  if (historySearchTerm) {
+    const s = historySearchTerm.toLowerCase();
+    filtered = filtered.filter((iss: any) => {
+      const user = iss.user_name || (iss.user_id && typeof iss.user_id === 'object' ? iss.user_id.full_name : '') || '';
+      const item = iss.item_name || (iss.item_id && typeof iss.item_id === 'object' ? iss.item_id.item_name : '') || '';
+      const itemCode = iss.item_code || (iss.item_id && typeof iss.item_id === 'object' ? iss.item_id.item_code : '') || '';
+      const dept = iss.department_name || (iss.user_id && iss.user_id.department_id && iss.user_id.department_id.department_name) || '';
+      const issuedDate = iss.issued_date ? new Date(iss.issued_date).toLocaleDateString('vi-VN') : '';
+      const haystack = `${user} ${item} ${itemCode} ${dept} ${issuedDate}`.toLowerCase();
+      return haystack.includes(s);
+    });
+  }
+
+  if (historyStatusFilter) {
+    filtered = filtered.filter((iss: any) => (iss.status || '').toString() === historyStatusFilter);
+  }
+
+  return filtered;
+};
 
   // Get category stats
   const getCategoryStats = (categoryId: string) => {
@@ -804,6 +832,55 @@ const PPEManagement: React.FC = () => {
     } catch (error) {
       console.error('Error downloading report:', error);
       message.error('Không thể tải báo cáo PDF');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  // Export history (usage) report for the filtered issuances table
+  const handleExportHistoryReport = async () => {
+    try {
+      setPdfLoading(true);
+
+      const assignments = getFilteredIssuances();
+
+      const totalAssignments = assignments.length;
+      const activeAssignments = assignments.filter((a: any) => {
+        const status = a.status || a.assignment_status || '';
+        return status === 'active' || status === 'assigned' || status === 'issued';
+      }).length;
+      const completedAssignments = assignments.filter((a: any) => {
+        const status = a.status || a.assignment_status || '';
+        return status === 'completed' || status === 'returned';
+      }).length;
+      const overdueAssignments = assignments.filter((a: any) => {
+        const endDate = a.expected_return_date || a.end_date || a.return_date;
+        if (!endDate) return false;
+        const status = a.status || a.assignment_status || '';
+        return new Date(endDate) < new Date() && (status === 'active' || status === 'assigned' || status === 'issued');
+      }).length;
+
+      const reportData = {
+        assignments,
+        total_assignments: totalAssignments,
+        active_assignments: activeAssignments,
+        completed_assignments: completedAssignments,
+        overdue_assignments: overdueAssignments,
+        generated_at: new Date().toISOString()
+      };
+
+      const filename = `bao_cao_lich_su_phat_${new Date().toISOString().split('T')[0]}.pdf`;
+
+      await generatePDF({
+        reportData,
+        reportType: 'usage',
+        filename
+      });
+
+      message.success('Đã xuất báo cáo lịch sử phát PPE');
+    } catch (err) {
+      console.error('Error exporting history report:', err);
+      message.error('Không thể xuất báo cáo lịch sử phát PPE');
     } finally {
       setPdfLoading(false);
     }
@@ -1347,6 +1424,35 @@ const PPEManagement: React.FC = () => {
       dataIndex: 'issued_date',
       key: 'issued_date',
       render: (date: string) => date ? new Date(date).toLocaleDateString('vi-VN') : '-',
+    },
+    {
+      title: 'Ngày trả dự kiến',
+      dataIndex: 'expected_return_date',
+      key: 'expected_return_date',
+      render: (date: string) => date ? new Date(date).toLocaleDateString('vi-VN') : '-',
+    },
+    {
+      title: 'Ngày trả thực tế',
+      dataIndex: 'actual_return_date',
+      key: 'actual_return_date',
+      render: (date: string) => date ? new Date(date).toLocaleDateString('vi-VN') : '-',
+    },
+    {
+      title: 'Báo cáo',
+      key: 'report',
+      render: (_: unknown, record: any) => {
+        const severity = record.report_severity || record.reportSeverity || '';
+        const desc = record.report_description || record.report_description || '';
+        const type = record.report_type || record.reportType || '';
+        if (!severity && !desc && !type) return <Text type="secondary">Không có</Text>;
+        return (
+          <Space direction="vertical" size="small" style={{ maxWidth: 240 }}>
+            {type && <Text><strong>Loại:</strong> {type}</Text>}
+            {severity && <Tag color={severity === 'high' ? 'red' : severity === 'medium' ? 'orange' : 'green'}>{severity}</Tag>}
+            {desc && <Text type="secondary" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }}>{desc}</Text>}
+          </Space>
+        );
+      }
     },
     {
       title: 'Trạng thái',
@@ -1933,6 +2039,9 @@ const PPEManagement: React.FC = () => {
                   <Search
                     placeholder="Tìm kiếm lịch sử..."
                     style={{ width: '100%' }}
+                    value={historySearchTerm}
+                    onChange={(e) => setHistorySearchTerm(e.target.value)}
+                    allowClear
                   />
                 </Col>
                 <Col xs={24} sm={8}>
@@ -1940,7 +2049,10 @@ const PPEManagement: React.FC = () => {
                     placeholder="Lọc theo trạng thái"
                     style={{ width: '100%' }}
                     allowClear
+                    value={historyStatusFilter}
+                    onChange={(value) => setHistoryStatusFilter(value || '')}
                   >
+                    <Select.Option value="pending_confirmation">Chờ xác nhận</Select.Option>
                     <Select.Option value="issued">Đang sử dụng</Select.Option>
                     <Select.Option value="returned">Đã trả</Select.Option>
                     <Select.Option value="overdue">Quá hạn</Select.Option>
@@ -1948,7 +2060,11 @@ const PPEManagement: React.FC = () => {
                 </Col>
                 <Col xs={24} sm={8}>
                   <Space>
-                    <Button icon={<DownloadOutlined />}>
+                    <Button 
+                      icon={<DownloadOutlined />}
+                      onClick={handleExportHistoryReport}
+                      loading={pdfLoading}
+                    >
                       Xuất báo cáo
                     </Button>
                   </Space>
@@ -1958,7 +2074,7 @@ const PPEManagement: React.FC = () => {
 
             <Table
               columns={assignmentColumns}
-              dataSource={ppeIssuances}
+              dataSource={getFilteredIssuances()}
               rowKey={(record) => record.id || (record as any)._id}
               pagination={{
                 pageSize: 10,

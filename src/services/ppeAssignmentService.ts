@@ -21,6 +21,19 @@ export interface PPEAssignment {
   manager_id?: string;
   created_at: string;
   updated_at: string;
+  // Additional fields returned by backend
+  assigned_serial_numbers?: string[];
+  returned_serial_numbers?: string[];
+  manager_remaining_quantity?: number;
+  report_description?: string;
+  report_type?: 'damage' | 'replacement' | 'lost' | string;
+  report_severity?: 'low' | 'medium' | 'high' | string;
+  reported_date?: string;
+  confirmed_date?: string;
+  confirmation_notes?: string;
+  tenant_id?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreatePPEAssignmentData {

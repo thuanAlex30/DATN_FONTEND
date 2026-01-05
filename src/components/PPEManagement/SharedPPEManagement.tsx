@@ -875,13 +875,6 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
               </Button>
             </Tooltip>
           )}
-          <Button
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewHistory(record)}
-          >
-            Chi tiết
-          </Button>
         </Space>
       )
     }

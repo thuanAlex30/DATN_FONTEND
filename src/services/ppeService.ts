@@ -67,11 +67,14 @@ export interface PPEIssuance {
   reported_date?: string;
   confirmed_date?: string;
   confirmation_notes?: string;
-  // Individual serial number tracking
+  manager_remaining_quantity?: number;
   assigned_serial_numbers?: string[];
   returned_serial_numbers?: string[];
+  notes?: string;
+  tenant_id?: string;
   createdAt?: string;
   updatedAt?: string;
+  // Individual serial number tracking (already included above)
 }
 
 export interface DashboardData {
