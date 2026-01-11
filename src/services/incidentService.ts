@@ -48,7 +48,10 @@ const incidentService = {
     api.put(`/incidents/classify/${id}`, data),
 
   // Admin - assign responsible user
-  assignIncident: (id: string, data: { assignedTo: string }) =>
+  assignIncident: (id: string, data: { 
+    assignedTo: string;
+    estimatedCompletionTime?: string | Date; // Optional: Thời gian dự kiến hoàn thành
+  }) =>
     api.put(`/incidents/assign/${id}`, data),
 
   // Admin - investigate and solve

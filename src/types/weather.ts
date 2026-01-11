@@ -137,3 +137,76 @@ export interface AirQualityResponse {
   error?: string;
 }
 
+// Weather Alert Types
+export type WeatherAlertType = 
+  | 'high_temperature'
+  | 'low_temperature'
+  | 'high_wind'
+  | 'heavy_rain'
+  | 'thunderstorm'
+  | 'high_uv'
+  | 'poor_air_quality'
+  | 'low_visibility'
+  | 'extreme_weather';
+
+export type WeatherAlertSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+export interface WeatherAlertLocation {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface WeatherAlertWeatherData {
+  temperature?: number;
+  windspeed?: number;
+  weathercode?: number;
+  uv_index?: number;
+  visibility?: number;
+  air_quality_aqi?: number;
+  precipitation?: number;
+  windgusts?: number;
+}
+
+export interface WeatherAlert {
+  _id: string;
+  tenant_id: string;
+  location: WeatherAlertLocation;
+  alert_type: WeatherAlertType;
+  severity: WeatherAlertSeverity;
+  title: string;
+  message: string;
+  weather_data?: WeatherAlertWeatherData;
+  is_active: boolean;
+  triggered_at: string;
+  resolved_at?: string | null;
+  notifications_sent?: number;
+  last_notification_sent_at?: string | null;
+  condition_hash?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface WeatherAlertsResponse {
+  alerts: WeatherAlert[];
+  pagination: {
+    current_page: number;
+    total_pages: number;
+    total_items: number;
+    items_per_page: number;
+  };
+}
+
+export interface WeatherAlertStatistics {
+  _id: WeatherAlertType;
+  count: number;
+  active: number;
+}
+
+export interface WeatherCheckResponse {
+  checked: boolean;
+  alerts_detected: number;
+  alerts_created: number;
+  created_alerts: WeatherAlert[];
+}
+
