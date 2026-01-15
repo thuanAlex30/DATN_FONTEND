@@ -2,7 +2,6 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { WeatherService } from '../../services/weatherService';
 import type { 
   WeatherResponse, 
-  EquipmentSuggestionsResponse, 
   WeatherForecastResponse,
   HourlyForecastResponse,
   AirQualityResponse
@@ -12,12 +11,6 @@ export const fetchWeather = createAsyncThunk(
   'weather/fetchCurrent',
   async (params?: { latitude?: number; longitude?: number; timezone?: string }) => 
     WeatherService.getCurrent(params)
-);
-
-export const fetchEquipmentSuggestions = createAsyncThunk(
-  'weather/fetchEquipmentSuggestions',
-  async (params?: { latitude?: number; longitude?: number; timezone?: string }) =>
-    WeatherService.getEquipmentSuggestions(params)
 );
 
 export const fetchForecast = createAsyncThunk(
@@ -40,17 +33,14 @@ export const fetchAirQuality = createAsyncThunk(
 
 interface WeatherState {
   data: WeatherResponse | null;
-  suggestions: EquipmentSuggestionsResponse | null;
   forecast: WeatherForecastResponse | null;
   hourly: HourlyForecastResponse | null;
   airQuality: AirQualityResponse | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
-  suggestionsStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
   forecastStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
   hourlyStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
   airQualityStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
   error?: string;
-  suggestionsError?: string;
   forecastError?: string;
   hourlyError?: string;
   airQualityError?: string;
@@ -58,12 +48,10 @@ interface WeatherState {
 
 const initialState: WeatherState = {
   data: null,
-  suggestions: null,
   forecast: null,
   hourly: null,
   airQuality: null,
   status: 'idle',
-  suggestionsStatus: 'idle',
   forecastStatus: 'idle',
   hourlyStatus: 'idle',
   airQualityStatus: 'idle',
@@ -77,11 +65,6 @@ const weatherSlice = createSlice({
       state.data = null;
       state.status = 'idle';
       state.error = undefined;
-    },
-    clearSuggestions: (state) => {
-      state.suggestions = null;
-      state.suggestionsStatus = 'idle';
-      state.suggestionsError = undefined;
     },
   },
   extraReducers: (builder) => {
@@ -98,19 +81,6 @@ const weatherSlice = createSlice({
       .addCase(fetchWeather.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message || 'Failed to fetch weather';
-      })
-      // Equipment suggestions
-      .addCase(fetchEquipmentSuggestions.pending, (state) => {
-        state.suggestionsStatus = 'loading';
-        state.suggestionsError = undefined;
-      })
-      .addCase(fetchEquipmentSuggestions.fulfilled, (state, action) => {
-        state.suggestionsStatus = 'succeeded';
-        state.suggestions = action.payload;
-      })
-      .addCase(fetchEquipmentSuggestions.rejected, (state, action) => {
-        state.suggestionsStatus = 'failed';
-        state.suggestionsError = action.error.message || 'Failed to fetch equipment suggestions';
       })
       // Forecast
       .addCase(fetchForecast.pending, (state) => {
@@ -154,6 +124,6 @@ const weatherSlice = createSlice({
   },
 });
 
-export const { clearWeather, clearSuggestions } = weatherSlice.actions;
+export const { clearWeather } = weatherSlice.actions;
 export default weatherSlice.reducer;
 

@@ -3,7 +3,6 @@ import { ENV } from '../config/env';
 import { apiCache } from '../utils/apiCache';
 import type { 
   WeatherResponse, 
-  EquipmentSuggestionsResponse, 
   WeatherForecastResponse,
   HourlyForecastResponse,
   AirQualityResponse,
@@ -25,19 +24,6 @@ export const WeatherService = {
 
     const res = await api.get<{ success: boolean; data: WeatherResponse; message: string }>(
       '/integrations/weather/current',
-      { params }
-    );
-    apiCache.set(cacheKey, res.data.data, CACHE_TTL_MS);
-    return res.data.data;
-  },
-
-  getEquipmentSuggestions: async (params?: { latitude?: number; longitude?: number; timezone?: string }) => {
-    const cacheKey = apiCache.generateKey('/integrations/weather/equipment-suggestions', params);
-    const cached = apiCache.get(cacheKey);
-    if (cached) return cached as EquipmentSuggestionsResponse;
-
-    const res = await api.get<{ success: boolean; data: EquipmentSuggestionsResponse; message: string }>(
-      '/integrations/weather/equipment-suggestions',
       { params }
     );
     apiCache.set(cacheKey, res.data.data, CACHE_TTL_MS);
