@@ -16,7 +16,9 @@ import {
   Avatar,
   Badge,
   List,
-  Tag
+  Tag,
+  Image,
+  Modal
 } from 'antd';
 import { 
   UserOutlined, 
@@ -26,7 +28,8 @@ import {
   FileTextOutlined,
   ClockCircleOutlined,
   WarningOutlined,
-  CloseCircleOutlined
+  CloseCircleOutlined,
+  EyeOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 import userService from '../../../services/userService';
@@ -44,6 +47,7 @@ const AssignIncident: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [form] = Form.useForm();
   const [incident, setIncident] = useState<any>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -292,6 +296,85 @@ const AssignIncident: React.FC = () => {
                   </div>
                 )}
               </Space>
+
+              {/* Hình ảnh đính kèm */}
+              {incident.images && incident.images.length > 0 && (
+                <div style={{ marginTop: 20, paddingTop: 20, borderTop: '2px solid #f0f0f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                    <EyeOutlined style={{ color: '#1677ff', fontSize: 16 }} />
+                    <Text strong style={{ fontSize: 15, color: '#262626' }}>Hình ảnh đính kèm</Text>
+                    <Badge count={incident.images.length} style={{ backgroundColor: '#1677ff' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    {incident.images.slice(0, 6).map((src: string, idx: number) => (
+                      <div
+                        key={idx}
+                        onClick={() => setPreviewImage(src)}
+                        style={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: 12,
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          border: '2px solid #e8e8e8',
+                          transition: 'all 0.3s ease',
+                          position: 'relative'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#1677ff';
+                          e.currentTarget.style.transform = 'scale(1.05)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(22, 119, 255, 0.3)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e8e8e8';
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <img
+                          src={src}
+                          alt={`incident-img-${idx}`}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                          loading="lazy"
+                        />
+                      </div>
+                    ))}
+                    {incident.images.length > 6 && (
+                      <div
+                        style={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: 12,
+                          border: '2px dashed #d9d9d9',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#fafafa',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onClick={() => setPreviewImage(incident.images[6])}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#1677ff';
+                          e.currentTarget.style.background = '#f0f7ff';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#d9d9d9';
+                          e.currentTarget.style.background = '#fafafa';
+                        }}
+                      >
+                        <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                          +{incident.images.length - 6}
+                        </Text>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </Card>
           </Col>
         )}
@@ -600,6 +683,24 @@ const AssignIncident: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Image Preview Modal */}
+      <Modal
+        open={!!previewImage}
+        footer={null}
+        onCancel={() => setPreviewImage(null)}
+        centered
+        width="auto"
+        style={{ maxWidth: '90vw' }}
+      >
+        {previewImage && (
+          <Image
+            src={previewImage}
+            alt="preview"
+            style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 8 }}
+          />
+        )}
+      </Modal>
     </div>
   );
 };
