@@ -107,9 +107,8 @@ const IncidentList: React.FC = () => {
       }
     };
     
-    timeoutId = setTimeout(() => {
-      fetchData();
-    }, 300);
+    // Bỏ delay 300ms - gọi API ngay lập tức
+    fetchData();
     
     return () => {
       isMounted = false;

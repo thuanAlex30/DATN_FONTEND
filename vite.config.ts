@@ -8,6 +8,16 @@ export default defineConfig({
   build: {
     outDir: 'dist', // Output folder
     emptyOutDir: true, // Xóa folder cũ trước khi build
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'antd-vendor': ['antd', '@ant-design/icons'],
+          'utils': ['axios'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000, // Tăng limit để giảm warning
   },
   server: {
     port: 5173,
