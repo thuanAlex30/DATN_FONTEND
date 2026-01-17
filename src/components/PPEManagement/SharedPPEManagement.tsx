@@ -120,6 +120,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [selectedIssuance, setSelectedIssuance] = useState<PPEIssuance | null>(null);
+  const [selectedManagerSummary, setSelectedManagerSummary] = useState<any | null>(null);
   const [ppeStats, setPpeStats] = useState({
     totalItems: 0,
     totalReceived: 0,
@@ -226,6 +227,8 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     }
   }, [isManager]);
 
+  // (listener moved below after loader function definitions)
+
   const loadUserPPE = async () => {
     try {
       setLoading(true);
@@ -266,8 +269,11 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       const ppeSummaryWithRemaining = summaryArray.map((ppe: any) => {
         const normalizedIssuances = Array.isArray(ppe.issuances) ? ppe.issuances.map((issuance: any) => ({
           ...issuance,
-          remaining_quantity: Number(ppe.remaining) || Number(ppe.remaining_quantity) || issuance.remaining_quantity || 0,
-          remaining_in_hand: Number(ppe.remaining_in_hand) || ppe.remaining_in_hand || 0,
+        // Keep per-issuance remaining_quantity if present; fall back to item-level remaining only when issuance value missing
+        remaining_quantity: (issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== null)
+          ? Number(issuance.remaining_quantity)
+          : (Number(ppe.remaining) || Number(ppe.remaining_quantity) || 0),
+        remaining_in_hand: Number(ppe.remaining_in_hand) || ppe.remaining_in_hand || 0,
           total_issued_to_employees: Number(ppe.total_issued_to_employees) || ppe.total_issued_to_employees || 0
         })) : [];
 
@@ -315,9 +321,36 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     
     try {
       const response = await ppeService.getManagerPPEHistory();
-      if (response.success) {
-        setPpeHistory(response.data.history);
+
+      // Normalize possible response shapes:
+      // - Array directly
+      // - { success, data: { history: [...] } }
+      // - { success, data: [...] }
+      // - { history: [...] }
+      // - { data: { data: [...] } } (nested)
+      let historyArr: any[] = [];
+
+      if (!response) {
+        historyArr = [];
+      } else if (Array.isArray(response)) {
+        historyArr = response as any[];
+      } else if (Array.isArray((response as any).history)) {
+        historyArr = (response as any).history;
+      } else if (Array.isArray((response as any).data) && !(response as any).data.history) {
+        historyArr = (response as any).data;
+      } else if (Array.isArray((response as any).data?.history)) {
+        historyArr = (response as any).data.history;
+      } else if (Array.isArray((response as any).data?.data)) {
+        historyArr = (response as any).data.data;
+      } else if ((response as any).success && Array.isArray((response as any).data?.issuances)) {
+        historyArr = (response as any).data.issuances;
+      } else {
+        // last resort: try to find any array-valued field
+        const maybeArray = Object.values(response).find(v => Array.isArray(v));
+        historyArr = Array.isArray(maybeArray) ? (maybeArray as any[]) : [];
       }
+
+      setPpeHistory(historyArr);
     } catch (error) {
       console.error('Error loading PPE history:', error);
       message.error('Lỗi khi tải lịch sử PPE');
@@ -341,8 +374,54 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       acc.totalItems += 1;
       acc.totalReceived += Number((ppe as any).total_received) || 0;
       acc.totalIssuedToEmployees += Number((ppe as any).total_issued_to_employees) || 0;
-      acc.totalReturned += Number((ppe as any).total_returned) || 0;
-      acc.totalRemaining += Number((ppe as any).remaining) || 0;
+
+      // Compute returned count from available issuance data (robust to backend fields)
+      let computedReturned = 0;
+      try {
+        const issuances = Array.isArray((ppe as any).issuances) ? (ppe as any).issuances : [];
+        for (const iss of issuances) {
+          const qty = Number(iss.quantity || 0);
+          const hasActualReturn = !!iss.actual_return_date;
+          const returnedSerials = Array.isArray(iss.returned_serial_numbers) ? iss.returned_serial_numbers.length : 0;
+          const remaining = (iss.remaining_quantity !== undefined && iss.remaining_quantity !== null) ? Number(iss.remaining_quantity) : undefined;
+
+          let returnedFromThis = 0;
+          if (hasActualReturn) {
+            returnedFromThis = qty;
+          } else if (returnedSerials > 0) {
+            returnedFromThis = Math.min(qty, returnedSerials);
+          } else if (remaining !== undefined) {
+            const calc = Math.max(0, qty - remaining);
+            returnedFromThis = Math.min(qty, calc);
+          } else if (iss.status === 'returned') {
+            returnedFromThis = qty;
+          } else {
+            returnedFromThis = 0;
+          }
+
+          computedReturned += returnedFromThis;
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Error computing returned for ppe summary', e);
+      }
+
+      // Fallback to server-provided total_returned if computed is zero
+      const serverReturned = Number((ppe as any).total_returned) || 0;
+      let usedReturned = Math.max(serverReturned, computedReturned);
+
+      // Heuristic: if item shows no remaining quantity, prefer total_received (manager received)
+      // This ensures aggregated "Đã trả" reflects full return when remaining <= 0.
+      const totalReceived = Number((ppe as any).total_received) || 0;
+      const remainingVal = Number((ppe as any).remaining) || 0;
+      if (totalReceived > 0 && remainingVal <= 0) {
+        usedReturned = Math.max(usedReturned, totalReceived);
+      }
+
+      acc.totalReturned += usedReturned;
+
+      // Clamp negative remaining to 0 for display correctness
+      acc.totalRemaining += Math.max(0, remainingVal);
 
       // Đếm PPE chờ Employee xác nhận (safety: issuances may be undefined)
       // pending confirmations should be counted from manager->employee issuances, not admin->manager sources
@@ -365,9 +444,24 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     setPpeStats(stats);
   };
 
+  // Listen for global PPE refresh events (dispatched after mutations)
+  useEffect(() => {
+    const handler = () => {
+      setLoading(true);
+      loadUserPPE();
+      if (isManager) {
+        Promise.allSettled([loadManagerPPE(), loadEmployeePPE(), loadPPEHistory()]).finally(() => setLoading(false));
+      } else {
+        loadEmployeePPEHistory().finally(() => setLoading(false));
+      }
+    };
+    window.addEventListener('ppe:refresh', handler);
+    return () => window.removeEventListener('ppe:refresh', handler);
+  }, [isManager, loadUserPPE, loadManagerPPE, loadEmployeePPE, loadPPEHistory, loadEmployeePPEHistory]);
+
   // Removed unused employee stats calculation
 
-  const handleReturnToAdmin = (issuance: PPEIssuance) => {
+  const handleReturnToAdmin = (issuance: any, managerSummary?: any) => {
     // For employees, show return PPE modal with serial selection
     if (!isManager && issuance.assigned_serial_numbers && issuance.assigned_serial_numbers.length > 0) {
       setSelectedIssuanceForReturn(issuance);
@@ -375,6 +469,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     } else {
       // For managers, show existing return modal
       setSelectedIssuance(issuance);
+      setSelectedManagerSummary(managerSummary || null);
       setReturnModalVisible(true);
     }
   };
@@ -585,7 +680,11 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       'replacement_needed': 'Cần thay thế',
       'pending_manager_return': 'Chờ Manager xác nhận'
     };
-    return labels[status] || 'Không xác định';
+    const label = labels[status] || (!status ? 'Không xác định' : status.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
+    // Debug: log mapping for troubleshooting
+    // eslint-disable-next-line no-console
+    console.debug('[getStatusLabel]', { status, label });
+    return label;
   };
 
   const getStatusColor = (status: string) => {
@@ -611,6 +710,78 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       'replacement_needed': <ToolOutlined />
     };
     return icons[status] || <InfoCircleOutlined />;
+  };
+
+  // If an issuance's assigned serial numbers appear in any returned history record,
+  // consider that issuance (or the matching serials) returned.
+  const issuanceHasReturnedSerials = (issuance: any): boolean => {
+    try {
+      const serials: string[] = issuance?.assigned_serial_numbers || [];
+      if (!serials || serials.length === 0) return false;
+      // ppeHistory contains past issuances/returns; look for returned entries with returned_serial_numbers
+      for (const hist of ppeHistory || []) {
+        if (!hist || !Array.isArray(hist.returned_serial_numbers) || hist.returned_serial_numbers.length === 0) continue;
+        const returnedSet = new Set(hist.returned_serial_numbers.map((s: any) => String(s)));
+        for (const s of serials) {
+          if (returnedSet.has(String(s))) return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('issuanceHasReturnedSerials error', e);
+      return false;
+    }
+  };
+
+  // Compute which issuance ids should be considered returned based on aggregated returns for the same item.
+  const computeReturnedIssuanceIdsForSummary = (summary: any): Set<string> => {
+    const result = new Set<string>();
+    try {
+      const itemId = (summary.item && (((summary.item as any).id) || ((summary.item as any)._id))) || summary.item_id;
+      if (!itemId) return result;
+
+      // Calculate total returned count for this item from history
+      let totalReturnedCount = 0;
+      for (const hist of ppeHistory || []) {
+        const histItemId = (hist.item_id && (((hist.item_id as any).id) || ((hist.item_id as any)._id))) || hist.item_id;
+        if (!histItemId) continue;
+        if (String(histItemId) !== String(itemId)) continue;
+        if (Array.isArray(hist.returned_serial_numbers) && hist.returned_serial_numbers.length > 0) {
+          totalReturnedCount += hist.returned_serial_numbers.length;
+        } else if (typeof hist.remaining_quantity === 'number') {
+          totalReturnedCount += Math.max(0, (hist.quantity || 0) - hist.remaining_quantity);
+        } else if (hist.status === 'returned') {
+          totalReturnedCount += (hist.quantity || 0);
+        }
+      }
+
+      if (totalReturnedCount <= 0) return result;
+
+      // Determine which issuance entries (from summary.issuances) are consumed by returned count.
+      const issuances = Array.isArray(summary.issuances) ? [...summary.issuances] : [];
+      // sort by issued_date ascending (oldest first)
+      issuances.sort((a: any, b: any) => new Date(a.issued_date).getTime() - new Date(b.issued_date).getTime());
+      let remainingToMark = totalReturnedCount;
+      for (const iss of issuances) {
+        const qty = Number(iss.quantity || 0);
+        if (remainingToMark <= 0) break;
+        if (qty <= remainingToMark) {
+          if (iss.id) result.add(iss.id);
+          remainingToMark -= qty;
+        } else {
+          // partial consumption: mark this issuance as partially returned if remainingToMark > 0
+          if (iss.id) result.add(iss.id);
+          remainingToMark = 0;
+          break;
+        }
+      }
+      return result;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('computeReturnedIssuanceIdsForSummary error', e);
+      return result;
+    }
   };
 
   const formatDateTime = (dateString: string): string => {
@@ -698,11 +869,12 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       key: 'usage_rate',
       render: (record: ManagerPPE) => {
         const rate = record.total_received > 0 ? (record.total_returned / record.total_received) * 100 : 0;
+        const percent = Math.min(100, Math.max(0, Math.round(rate)));
         return (
           <Progress
-            percent={Math.round(rate)}
+            percent={percent}
             size="small"
-            status={rate >= 80 ? 'success' : rate >= 50 ? 'normal' : 'exception'}
+            status={percent >= 80 ? 'success' : percent >= 50 ? 'normal' : 'exception'}
           />
         );
       }
@@ -1283,12 +1455,35 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                           const isOverdueFlag = isOverdue(issuanceObj?.expected_return_date);
                           const imgUrl = (itemObj as any)?.image_url;
                           const issuance = issuanceObj || issuanceOrItem;
+                          // If this is a manager summary, prefer the admin->manager issuance when returning to Admin
+                          const adminIssuance = isManagerViewItem && Array.isArray(issuanceOrItem.issuances)
+                            ? (issuanceOrItem.issuances.find((i: any) => {
+                                const lvl = i.issuance_level || i.level || i.issuanceLevel || '';
+                                const hasManagerId = !!(i.manager_id || i.managerId);
+                                return String(lvl).toLowerCase().includes('admin') || !hasManagerId;
+                              }) || issuanceOrItem.issuances[0])
+                            : null;
                           const remainingForCard = isManagerViewItem
                             ? (issuanceOrItem.availableToReturn ?? issuanceOrItem.remaining ?? 0)
                             : (issuance?.remaining_quantity ?? issuance?.quantity ?? 0);
-                          let displayStatus = issuance?.status || '';
-                          if (displayStatus === 'returned' && remainingForCard > 0) {
-                            displayStatus = 'issued';
+                          // Determine effective display status:
+                          // - If this is a manager summary, compute returned issuance ids by aggregation and prefer those as returned
+                          let displayStatus = (issuance?.status || '');
+                          if (isManagerViewItem && issuanceOrItem) {
+                            const returnedIds = computeReturnedIssuanceIdsForSummary(issuanceOrItem);
+                            if (issuance && issuance.id && returnedIds.has(issuance.id)) {
+                              displayStatus = 'returned';
+                            } else if (issuanceHasReturnedSerials(issuance) || issuance?.actual_return_date || (Number(issuance?.remaining_quantity) <= 0 && issuance?.remaining_quantity !== undefined)) {
+                              displayStatus = 'returned';
+                            } else if (displayStatus === 'returned' && remainingForCard > 0) {
+                              displayStatus = 'issued';
+                            }
+                          } else {
+                            if (issuanceHasReturnedSerials(issuance) || issuance?.actual_return_date || (Number(issuance?.remaining_quantity) <= 0 && issuance?.remaining_quantity !== undefined)) {
+                              displayStatus = 'returned';
+                            } else if (displayStatus === 'returned' && remainingForCard > 0) {
+                              displayStatus = 'issued';
+                            }
                           }
                           return (
                             <Col xs={24} sm={12} lg={8} xl={6} key={issuance.id}>
@@ -1367,22 +1562,24 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                       <Button
                                         type="primary"
                                         icon={<UndoOutlined />}
-                                        onClick={() => handleReturnToAdmin(issuance)}
+                                        onClick={() => handleReturnToAdmin(isManagerViewItem ? (adminIssuance || issuanceObj || issuanceOrItem) : issuance, isManagerViewItem ? issuanceOrItem : undefined)}
                                         disabled={remainingForCard <= 0}
                                         style={{ borderRadius: '4px' }}
                                       />
                                     </Tooltip>
                                   ),
-                                  <Tooltip title="Báo cáo sự cố" key="report">
-                                    <Button 
-                                      type="primary"
-                                      danger
-                                      icon={<ExclamationCircleOutlined />}
-                                      onClick={() => handleReportPPE(issuance)}
-                                      disabled={issuance.status === 'pending_confirmation'}
-                                      style={{ borderRadius: '4px' }}
-                                    />
-                                  </Tooltip>
+                                  isManager ? null : (
+                                    <Tooltip title="Báo cáo sự cố" key="report">
+                                      <Button 
+                                        type="primary"
+                                        danger
+                                        icon={<ExclamationCircleOutlined />}
+                                        onClick={() => handleReportPPE(issuance)}
+                                        disabled={issuance.status === 'pending_confirmation'}
+                                        style={{ borderRadius: '4px' }}
+                                      />
+                                    </Tooltip>
+                                  )
                                 ]}
                               >
                                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -1711,11 +1908,11 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                     {getReturnedIssuances() === 0 && (
                       <Col span={24}>
                         <Empty
-                          image={<HistoryOutlined style={{ fontSize: '64px', color: '#d9d9d9' }} />}
+                         
                           description={
                             <div>
-                              <Title level={4} style={{ color: '#8c8c8c' }}>Chưa có lịch sử</Title>
-                              <Text type="secondary">Bạn chưa trả PPE nào</Text>
+                             
+                              
                             </div>
                           }
                         />
@@ -1745,8 +1942,9 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
             setSelectedIssuance(null);
           }}
           onSuccess={handleReturnSuccess}
-          issuance={selectedIssuance}
-          userRole={userRole}
+        issuance={selectedIssuance}
+        managerSummary={selectedManagerSummary}
+        userRole={userRole}
         />
 
         <PPEAssignmentHistoryModal
