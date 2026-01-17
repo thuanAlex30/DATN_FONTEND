@@ -35,7 +35,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
   enableGeo = true,
 }) => {
   const dispatch = useDispatch();
-  const { data, status, error, airQuality } = useSelector((state: RootState) => state.weather);
+  const { data, status, error, airQuality, forecast } = useSelector((state: RootState) => state.weather);
   const { activeAlerts } = useSelector((state: RootState) => state.weatherAlerts);
   const [coords, setCoords] = useState<{ latitude?: number; longitude?: number }>({
     latitude,
@@ -215,7 +215,16 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
 
   const { current } = data;
   const temperature = Math.round(current.temperature);
-  const windSpeed = Math.round(current.windspeed);
+  
+  // Lấy gió tối đa trong ngày từ forecast nếu có, nếu không thì dùng gió hiện tại
+  let windSpeed = Math.round(current.windspeed);
+  if (forecast && forecast.daily && forecast.daily.length > 0) {
+    const today = forecast.daily[0]; // Ngày đầu tiên là hôm nay
+    if (today.windspeed_max != null) {
+      windSpeed = Math.round(today.windspeed_max);
+    }
+  }
+  
   const precipitation = current.precipitation ?? 0;
 
   const alerts: string[] = [];
