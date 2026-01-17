@@ -50,6 +50,7 @@ import type {
 import dayjs from 'dayjs';
 import { usePPEWebSocket } from '../../../hooks/usePPEWebSocket';
 import { ENV } from '../../../config/env';
+import useDebouncedValue from '../../../hooks/useDebouncedValue';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -89,6 +90,7 @@ const ConsolidatedPPEManagement: React.FC = () => {
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
 
   // Helper function to resolve image URL
   const apiBaseForImages = useMemo(() => {
@@ -119,20 +121,28 @@ const ConsolidatedPPEManagement: React.FC = () => {
         const userObj = typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id : null;
         const itemObj = typeof issuance.item_id === 'object' && issuance.item_id ? issuance.item_id : null;
 
+        // Normalize issuance_level (backend may use different keys/values)
+        const rawLevel = issuance.issuance_level || issuance.level || issuance.issuanceLevel || issuance.type || issuance.issuance_type || '';
+        const normalizedLevel = typeof rawLevel === 'string' ? rawLevel : String(rawLevel);
+
         return {
           ...issuance,
           user_name: userObj?.full_name || issuance.user_name || 'Không xác định',
           department_name: userObj?.department_id?.department_name || issuance.department_name,
           item_name: itemObj?.item_name || issuance.item_name,
           item_code: itemObj?.item_code || issuance.item_code,
+          issuance_level: normalizedLevel,
         };
       });
 
       setPpeIssuances(mappedHistory);
       
-      const adminToManagerPPE = allIssuances.filter(
-        (issuance: any) => issuance.issuance_level === 'admin_to_manager'
-      );
+      // Structural detection: missing manager_id => admin->manager issuance
+      const adminToManagerPPE = mappedHistory.filter((issuance: any) => {
+        const hasManagerId = issuance.manager_id || (issuance as any).managerId || false;
+        const hasUser = issuance.user_id || issuance.user_name;
+        return hasUser && !hasManagerId;
+      });
       setAdminIssuedPPE(adminToManagerPPE);
       
     } catch (err) {
@@ -151,9 +161,9 @@ const ConsolidatedPPEManagement: React.FC = () => {
   const getFilteredCategories = () => {
     let filtered = ppeCategories;
     
-    if (searchTerm) {
+    if (debouncedSearchTerm) {
       filtered = filtered.filter(category =>
-        category.category_name.toLowerCase().includes(searchTerm.toLowerCase())
+        category.category_name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
     }
     
@@ -164,10 +174,10 @@ const ConsolidatedPPEManagement: React.FC = () => {
   const getFilteredItems = () => {
     let filtered = ppeItems;
     
-    if (searchTerm) {
+    if (debouncedSearchTerm) {
       filtered = filtered.filter(item =>
-        item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.item_code.toLowerCase().includes(searchTerm.toLowerCase())
+        (item.item_name || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        (item.item_code || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
     }
     
@@ -350,7 +360,7 @@ const ConsolidatedPPEManagement: React.FC = () => {
                       {
                         title: 'Thao tác',
                         key: 'action',
-                        render: (_: unknown, record: any) => (
+                        render: (_: unknown) => (
                           <Space>
                             <Button type="link" icon={<EyeOutlined />}>Xem</Button>
                             <Button type="link" icon={<EditOutlined />}>Sửa</Button>
@@ -469,9 +479,9 @@ const ConsolidatedPPEManagement: React.FC = () => {
                         key: 'stock',
                         render: (_: unknown, record: any) => (
                           <Space direction="vertical" size="small">
-                            <div>Tổng: <Text strong>{record.quantity_available || 0}</Text></div>
+                            <div>Tổng: <Text strong>{record.total_quantity ?? ((record.quantity_available ?? 0) + (record.quantity_allocated ?? 0))}</Text></div>
                             <div>Còn lại: <Text strong style={{ color: '#52c41a' }}>{record.quantity_available || 0}</Text></div>
-                            <div>Đã phát: <Text strong style={{ color: '#1890ff' }}>{record.quantity_allocated || 0}</Text></div>
+                            <div>Đã phát: <Text strong style={{ color: '#1890ff' }}>{record.actual_allocated_quantity ?? record.quantity_allocated ?? 0}</Text></div>
                           </Space>
                         ),
                       },
@@ -494,7 +504,7 @@ const ConsolidatedPPEManagement: React.FC = () => {
                       {
                         title: 'Thao tác',
                         key: 'action',
-                        render: (_: unknown, record: any) => (
+                        render: (_: unknown) => (
                           <Space>
                             <Button type="link" icon={<EyeOutlined />}>Xem</Button>
                             <Button type="link" icon={<EditOutlined />}>Sửa</Button>
@@ -784,12 +794,17 @@ const ConsolidatedPPEManagement: React.FC = () => {
                         key: 'status',
                         render: (status: string) => {
                           const statusMap: { [key: string]: { color: string; text: string } } = {
+                            'pending_confirmation': { color: 'orange', text: 'Chờ xác nhận' },
                             'issued': { color: 'blue', text: 'Đã phát' },
                             'returned': { color: 'green', text: 'Đã trả' },
                             'overdue': { color: 'red', text: 'Quá hạn' },
                             'replacement_needed': { color: 'orange', text: 'Cần thay thế' }
                           };
-                          const statusInfo = statusMap[status] || { color: 'default', text: status };
+                          const textFallback = status ? status.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Không xác định';
+                          const statusInfo = statusMap[status] || { color: 'default', text: textFallback };
+                          // Debug mapping
+                          // eslint-disable-next-line no-console
+                          console.debug('[ConsolidatedPPE] status mapping', { status, text: statusInfo.text });
                           return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
                         },
                       },
@@ -905,7 +920,7 @@ const ConsolidatedPPEManagement: React.FC = () => {
                       {
                         title: 'Thao tác',
                         key: 'action',
-                        render: (_: unknown, record: any) => (
+                        render: (_: unknown) => (
                           <Space>
                             <Button type="link" icon={<EyeOutlined />}>Xem chi tiết</Button>
                             <Button type="link" icon={<EditOutlined />}>Sửa</Button>
@@ -1031,7 +1046,7 @@ const ConsolidatedPPEManagement: React.FC = () => {
                       {
                         title: 'Thao tác',
                         key: 'action',
-                        render: (_: unknown, record: any) => (
+                        render: (_: unknown) => (
                           <Space>
                             <Button type="link" icon={<EyeOutlined />}>Xem chi tiết</Button>
                           </Space>
@@ -1053,129 +1068,7 @@ const ConsolidatedPPEManagement: React.FC = () => {
             </Tabs>
           </TabPane>
 
-          {/* 3. BẢO TRÌ & QUẢN LÝ */}
-          <TabPane tab={<span><ToolOutlined />Bảo trì & Quản lý</span>} key="maintenance">
-            <Tabs activeKey={activeSubTab} onChange={setActiveSubTab} type="card">
-              
-              {/* Bảo Trì Sub-tab */}
-              <TabPane tab="Bảo Trì" key="maintenance">
-                <div style={{ marginBottom: '16px' }}>
-                  <Row gutter={[16, 16]} align="middle">
-                    <Col xs={24} sm={12}>
-                      <Search
-                        placeholder="Tìm kiếm bảo trì..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ width: '100%' }}
-                      />
-                    </Col>
-                    <Col xs={24} sm={12}>
-                      <Space>
-                        <Button 
-                          type="primary" 
-                          icon={<PlusOutlined />}
-                          onClick={() => {/* Handle create maintenance */}}
-                        >
-                          Tạo lịch bảo trì
-                        </Button>
-                      </Space>
-                    </Col>
-                  </Row>
-                </div>
-
-                {loading.maintenance ? (
-                  <div style={{ textAlign: 'center', padding: '40px' }}>
-                    <Spin size="large" />
-                  </div>
-                ) : (
-                  <Table
-                    columns={[
-                      {
-                        title: 'Thiết bị',
-                        dataIndex: 'item_name',
-                        key: 'item_name',
-                        render: (text: string, record: any) => (
-                          <Space>
-                            {record.image_url ? (
-                              <Image
-                                src={resolveImageUrl(record.image_url)}
-                                width={40}
-                                height={40}
-                                style={{ objectFit: 'cover', borderRadius: 8 }}
-                                preview={{ mask: 'Xem ảnh' }}
-                                fallback=""
-                              />
-                            ) : (
-                              <Avatar icon={<SafetyOutlined />} />
-                            )}
-                            <div>
-                              <div style={{ fontWeight: 'bold' }}>{text}</div>
-                              <div style={{ fontSize: '12px', color: '#666' }}>
-                                {record.item_code} - {record.brand}
-                              </div>
-                            </div>
-                          </Space>
-                        ),
-                      },
-                      {
-                        title: 'Loại bảo trì',
-                        dataIndex: 'maintenance_type',
-                        key: 'maintenance_type',
-                        render: (type: string) => {
-                          const typeMap: { [key: string]: { color: string; text: string } } = {
-                            'preventive': { color: 'blue', text: 'Phòng ngừa' },
-                            'corrective': { color: 'orange', text: 'Sửa chữa' },
-                            'emergency': { color: 'red', text: 'Khẩn cấp' }
-                          };
-                          const typeInfo = typeMap[type] || { color: 'default', text: type };
-                          return <Tag color={typeInfo.color}>{typeInfo.text}</Tag>;
-                        },
-                      },
-                      {
-                        title: 'Ngày bảo trì',
-                        dataIndex: 'maintenance_date',
-                        key: 'maintenance_date',
-                        render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
-                      },
-                      {
-                        title: 'Trạng thái',
-                        dataIndex: 'status',
-                        key: 'status',
-                        render: (status: string) => {
-                          const statusMap: { [key: string]: { color: string; text: string } } = {
-                            'scheduled': { color: 'blue', text: 'Đã lên lịch' },
-                            'in_progress': { color: 'orange', text: 'Đang thực hiện' },
-                            'completed': { color: 'green', text: 'Hoàn thành' },
-                            'cancelled': { color: 'red', text: 'Đã hủy' }
-                          };
-                          const statusInfo = statusMap[status] || { color: 'default', text: status };
-                          return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
-                        },
-                      },
-                      {
-                        title: 'Thao tác',
-                        key: 'action',
-                        render: (_: unknown, record: any) => (
-                          <Space>
-                            <Button type="link" icon={<EyeOutlined />}>Xem chi tiết</Button>
-                            <Button type="link" icon={<EditOutlined />}>Sửa</Button>
-                          </Space>
-                        ),
-                      },
-                    ]}
-                    dataSource={maintenance}
-                    rowKey={(record) => record.id || record._id}
-                    pagination={{
-                      pageSize: 10,
-                      showSizeChanger: true,
-                      showQuickJumper: true,
-                      showTotal: (total, range) => 
-                        `${range[0]}-${range[1]} của ${total} bảo trì`,
-                    }}
-                  />
-                )}
-              </TabPane>
-
+          
               {/* Quản lý nhân viên Sub-tab */}
               <TabPane tab="Quản lý nhân viên" key="employees">
                 <div style={{ marginBottom: '16px' }}>
@@ -1370,7 +1263,7 @@ const ConsolidatedPPEManagement: React.FC = () => {
                       {
                         title: 'Thao tác',
                         key: 'action',
-                        render: (_: unknown, record: any) => (
+                        render: (_: unknown) => (
                           <Space>
                             <Button type="link" icon={<EyeOutlined />}>Xem</Button>
                             <Button type="link" icon={<DownloadOutlined />}>Tải</Button>
