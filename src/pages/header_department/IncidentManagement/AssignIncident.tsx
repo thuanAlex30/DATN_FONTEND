@@ -15,7 +15,6 @@ import {
   Divider,
   Avatar,
   Badge,
-  DatePicker,
   List,
   Tag
 } from 'antd';
@@ -29,7 +28,6 @@ import {
   WarningOutlined,
   CloseCircleOutlined
 } from '@ant-design/icons';
-import dayjs, { Dayjs } from 'dayjs';
 import incidentService from '../../../services/incidentService';
 import userService from '../../../services/userService';
 import { LocationConflictError, ActiveIncidentError } from '../../../types/incident';
@@ -109,14 +107,9 @@ const AssignIncident: React.FC = () => {
       setConflictData(null);
       
       // Prepare assign data
-      const assignData: { assignedTo: string; estimatedCompletionTime?: string } = {
+      const assignData: { assignedTo: string } = {
         assignedTo: values.assignedTo
       };
-      
-      // Add estimatedCompletionTime if provided
-      if (values.estimatedCompletionTime) {
-        assignData.estimatedCompletionTime = values.estimatedCompletionTime.format('YYYY-MM-DDTHH:mm:ss[Z]');
-      }
       
       await incidentService.assignIncident(id, assignData);
       message.success('Phân công thành công');
@@ -413,43 +406,6 @@ const AssignIncident: React.FC = () => {
                     );
                   })}
                 </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="estimatedCompletionTime"
-                label={
-                  <Space>
-                    <ClockCircleOutlined style={{ color: '#1677ff' }} />
-                    <Text strong style={{ fontSize: 15, color: '#262626' }}>Thời gian dự kiến hoàn thành</Text>
-                    <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal' }}>(Tùy chọn)</Text>
-                  </Space>
-                }
-                style={{ marginBottom: 20 }}
-              >
-                <DatePicker
-                  showTime
-                  format="DD/MM/YYYY HH:mm"
-                  placeholder="Chọn thời gian dự kiến hoàn thành"
-                  style={{ width: '100%', borderRadius: 8 }}
-                  size="large"
-                  disabledDate={(current) => current && current < dayjs().startOf('day')}
-                  disabledTime={(current) => {
-                    if (!current) return {};
-                    const now = dayjs();
-                    if (current.isSame(now, 'day')) {
-                      return {
-                        disabledHours: () => Array.from({ length: now.hour() }, (_, i) => i),
-                        disabledMinutes: (selectedHour: number) => {
-                          if (selectedHour === now.hour()) {
-                            return Array.from({ length: now.minute() + 1 }, (_, i) => i);
-                          }
-                          return [];
-                        }
-                      };
-                    }
-                    return {};
-                  }}
-                />
               </Form.Item>
 
               <Divider style={{ margin: '24px 0' }} />

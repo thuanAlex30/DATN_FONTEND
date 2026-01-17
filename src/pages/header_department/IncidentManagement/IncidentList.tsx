@@ -70,7 +70,8 @@ const IncidentList: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        const res = await incidentService.getIncidents();
+        // Add pagination to limit initial load (20 items per page)
+        const res = await incidentService.getIncidents(undefined, undefined, { page: 1, limit: 20 });
         
         if (!isMounted) return;
         
@@ -107,7 +108,7 @@ const IncidentList: React.FC = () => {
       }
     };
     
-    // Bỏ delay 300ms - gọi API ngay lập tức
+    // Load data immediately
     fetchData();
     
     return () => {

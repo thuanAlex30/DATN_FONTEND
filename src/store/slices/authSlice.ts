@@ -45,18 +45,52 @@ export const login = createAsyncThunk<
   async (credentials, { rejectWithValue }) => {
     try {
       const response: AxiosResponse<LoginResponse> = await authService.login(credentials);
-      console.log('🔍 Login response:', response.data);
+      console.log('🔍 Login response:', response);
+      console.log('🔍 Login response.data:', response.data);
+      console.log('🔍 Login response.data.data:', response.data?.data);
       
-      // Handle nested response structure: response.data.data.data
-      const responseData = response.data.data;
-      console.log('🔍 Response data:', responseData);
+      // Check if response indicates failure
+      if (response.data && !response.data.success) {
+        const errorMessage = response.data.message || 'Sai thông tin tài khoản hoặc mật khẩu';
+        console.error('❌ Login failed in response:', errorMessage);
+        return rejectWithValue(errorMessage);
+      }
       
-      // Check if responseData has nested data structure
-      const actualData = responseData.data || responseData;
-      console.log('🔍 Actual data:', actualData);
+      // Handle nested response structure
+      // Backend structure: ApiResponse.success(res, result.data, ...)
+      // Where result.data = { user, tokens } from createResponse
+      // So: response.data.data = { user, tokens }
+      let responseData = response.data?.data;
+      console.log('🔍 Response data (first level):', responseData);
       
-      // Extract user and tokens from the correct nested structure
-      const { tokens, user } = actualData;
+      // Check if responseData has nested data structure (in case of double wrapping)
+      if (responseData && typeof responseData === 'object' && 'data' in responseData) {
+        responseData = responseData.data;
+        console.log('🔍 Response data (unwrapped):', responseData);
+      }
+      
+      if (!responseData) {
+        console.error('❌ No data in response. Full response:', response.data);
+        return rejectWithValue('Sai thông tin tài khoản hoặc mật khẩu');
+      }
+      
+      // Extract user and tokens from the response data
+      // Expected structure: { user: {...}, tokens: {...} }
+      const { tokens, user } = responseData;
+      
+      console.log('🔍 Extracted tokens:', tokens);
+      console.log('🔍 Extracted user:', user);
+      
+      // Validate tokens and user exist
+      if (!tokens || !user) {
+        console.error('❌ Missing tokens or user data:', { 
+          tokens: !!tokens, 
+          user: !!user,
+          responseDataKeys: Object.keys(responseData || {}),
+          responseData
+        });
+        return rejectWithValue('Sai thông tin tài khoản hoặc mật khẩu');
+      }
       console.log('🔍 Tokens:', tokens);
       console.log('🔍 User:', user);
       
@@ -125,7 +159,33 @@ export const login = createAsyncThunk<
       
       return { user: userData, token: tokens.accessToken, refreshToken: tokens.refreshToken };
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.response?.data || 'Login failed';
+      console.error('❌ Login error details:', {
+        error,
+        response: error.response,
+        data: error.response?.data,
+        message: error.response?.data?.message
+      });
+      
+      // Try to extract error message from various possible response structures
+      let errorMessage = 'Sai thông tin tài khoản hoặc mật khẩu';
+      
+      if (error.response?.data) {
+        // If data is a string, use it directly
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        }
+        // If data is an object with message property
+        else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+        // If data itself is an object, try to stringify or use default
+        else if (typeof error.response.data === 'object') {
+          errorMessage = error.response.data.message || 'Sai thông tin tài khoản hoặc mật khẩu';
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       return rejectWithValue(errorMessage);
     }
   }
