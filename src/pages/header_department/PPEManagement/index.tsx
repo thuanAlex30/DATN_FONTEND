@@ -62,6 +62,7 @@ import ImportCategoriesModal from './ImportCategoriesModal';
 import ImportItemsModal from './ImportItemsModal';
 import AssignPPEModal from './AssignPPEModal';
 import CreateAssignmentModal from './CreateAssignmentModal';
+import CreateMaintenanceModal from './CreateMaintenanceModal';
 import CreateReportModal from './CreateReportModal';
 import PPEEditModal from './PPEEditModal';
 import IssueToManagerModal from './IssueToManagerModal';
@@ -174,7 +175,7 @@ const PPEManagement: React.FC = () => {
   const [showImportItemsModal, setShowImportItemsModal] = useState(false);
   const [showAssignPPEModal, setShowAssignPPEModal] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
- 
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showDistributeModal, setShowDistributeModal] = useState(false);
   const [showIssuanceDetailModal, setShowIssuanceDetailModal] = useState(false);
@@ -314,37 +315,23 @@ const PPEManagement: React.FC = () => {
         const userObj = typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id : null;
         const itemObj = typeof issuance.item_id === 'object' && issuance.item_id ? issuance.item_id : null;
 
-        // Normalize issuance level field (backend may use different keys/values)
-        const rawLevel = issuance.issuance_level || issuance.level || issuance.issuanceLevel || issuance.type || issuance.issuance_type || '';
-        const normalizedLevel = typeof rawLevel === 'string' ? rawLevel : String(rawLevel);
-
         return {
           ...issuance,
           user_name: userObj?.full_name || issuance.user_name || 'Không xác định',
           department_name: userObj?.department_id?.department_name || issuance.department_name,
           item_name: itemObj?.item_name || issuance.item_name,
           item_code: itemObj?.item_code || issuance.item_code,
-          issuance_level: normalizedLevel,
         };
       });
 
       setPpeIssuances(mappedHistory); // For "Lịch sử phát PPE"
       
-      // Determine admin->manager issuances (accept several possible backend values)
-      const isAdminToManager = (value: any) => {
-        if (!value) return false;
-        const v = String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
-        return v === 'admin_to_manager' || v === 'admintomanager' || v === 'admin' || (v.includes('admin') && v.includes('manager'));
-      };
-
-      // Prefer structural detection: if `manager_id` exists then it's manager->employee; if absent, treat as admin->manager
-      const adminToManagerPPE = mappedHistory.filter((issuance: any) => {
-        const hasManagerId = issuance.manager_id || (issuance as any).managerId || false;
-        const hasUser = issuance.user_id || issuance.user_name;
-        return hasUser && !hasManagerId;
-      });
+      // Filter only Admin->Manager issuances for "Phát PPE" tab
+      const adminToManagerPPE = allIssuances.filter(
+        (issuance: any) => issuance.issuance_level === 'admin_to_manager'
+      );
       setAdminIssuedPPE(adminToManagerPPE);
-
+      
       console.log('[Admin PPE] Total issuances:', allIssuances.length);
       console.log('[Admin PPE] Admin->Manager issuances:', adminToManagerPPE.length);
     } catch (err: any) {
@@ -364,15 +351,6 @@ const PPEManagement: React.FC = () => {
 
   useEffect(() => {
     loadAllData();
-  }, [loadAllData]);
-
-  // Listen for global PPE refresh events (e.g., after return/issue) and reload all data
-  useEffect(() => {
-    const handler = () => {
-      loadAllData();
-    };
-    window.addEventListener('ppe:refresh', handler);
-    return () => window.removeEventListener('ppe:refresh', handler);
   }, [loadAllData]);
 
   useEffect(() => {
@@ -456,40 +434,12 @@ const getFilteredIssuances = () => {
 
   // Get category stats
   const getCategoryStats = (categoryId: string) => {
-    const categoryItems = ppeItems.filter(item => {
-      const itemCategoryId = typeof item.category_id === 'object' && item.category_id ? (item.category_id.id || item.category_id._id || String(item.category_id)) : item.category_id;
-      return String(itemCategoryId) === String(categoryId);
-    });
+    const categoryItems = ppeItems.filter(item => item.category_id === categoryId);
     const totalItems = categoryItems.length;
-    // Use canonical fields if present: total_quantity, actual_allocated_quantity, remaining_quantity
-    const totalQuantity = categoryItems.reduce((sum, item) => {
-      const itemTotal = Number.isFinite((item as any).total_quantity) ? Number((item as any).total_quantity) : ((item.quantity_available ?? 0) + (item.quantity_allocated ?? 0));
-      return sum + (itemTotal || 0);
-    }, 0);
-    const totalAllocated = categoryItems.reduce((sum, item) => {
-      const allocated = Number.isFinite((item as any).actual_allocated_quantity) ? Number((item as any).actual_allocated_quantity) : (item.quantity_allocated ?? 0);
-      return sum + (allocated || 0);
-    }, 0);
-    const totalRemaining = categoryItems.reduce((sum, item) => {
-      // Prefer computing remaining from canonical totals when possible:
-      // If both total_quantity and actual_allocated_quantity exist, use their difference.
-      if (Number.isFinite((item as any).total_quantity) && Number.isFinite((item as any).actual_allocated_quantity)) {
-        return sum + Math.max(0, Number((item as any).total_quantity) - Number((item as any).actual_allocated_quantity));
-      }
-      // Fallback to explicit remaining_quantity if provided
-      if (Number.isFinite((item as any).remaining_quantity)) {
-        return sum + Math.max(0, Number((item as any).remaining_quantity));
-      }
-      // Final fallback to available - allocated
-      const fallbackRemaining = (item.quantity_available ?? 0) - (item.quantity_allocated ?? 0);
-      return sum + Math.max(0, fallbackRemaining);
-    }, 0);
-    const lowStockItems = categoryItems.filter(item => {
-      const remaining = Number.isFinite((item as any).remaining_quantity)
-        ? Number((item as any).remaining_quantity)
-        : ( (Number.isFinite((item as any).total_quantity) ? Number((item as any).total_quantity) : ((item.quantity_available ?? 0) + (item.quantity_allocated ?? 0))) - (Number.isFinite((item as any).actual_allocated_quantity) ? Number((item as any).actual_allocated_quantity) : (item.quantity_allocated ?? 0)) );
-      return remaining <= (item.reorder_level || 0);
-    }).length;
+    const totalQuantity = categoryItems.reduce((sum, item) => sum + (item.quantity_available || 0), 0);
+    const totalAllocated = categoryItems.reduce((sum, item) => sum + (item.quantity_allocated || 0), 0);
+    const totalRemaining = totalQuantity - totalAllocated;
+    const lowStockItems = categoryItems.filter(item => (item.quantity_available || 0) <= (item.reorder_level || 0)).length;
     
     return {
       totalItems,
@@ -1202,9 +1152,9 @@ const getFilteredIssuances = () => {
       key: 'quantity',
       render: (_: unknown, record: PPEItem) => (
         <Space direction="vertical" size="small">
-            <div>Tổng: <Text strong>{record.total_quantity ?? ((record.quantity_available ?? 0) + (record.quantity_allocated ?? 0))}</Text></div>
-          <div>Còn lại: <Text strong style={{ color: '#52c41a' }}>{record.remaining_quantity ?? ( (Number.isFinite(record.total_quantity) ? Number(record.total_quantity) : ((record.quantity_available ?? 0) + (record.quantity_allocated ?? 0))) - (Number.isFinite((record as any).actual_allocated_quantity) ? Number((record as any).actual_allocated_quantity) : (record.quantity_allocated ?? 0)) )}</Text></div>
-                  <div>Đã phát: <Text strong style={{ color: '#1890ff' }}>{record.actual_allocated_quantity ?? record.quantity_allocated ?? 0}</Text></div>
+          <div>Tổng: <Text strong>{record.quantity_available || 0}</Text></div>
+          <div>Còn lại: <Text strong style={{ color: '#52c41a' }}>{(record.quantity_available || 0) - (record.quantity_allocated || 0)}</Text></div>
+          <div>Đã phát: <Text strong style={{ color: '#1890ff' }}>{record.quantity_allocated || 0}</Text></div>
         </Space>
       ),
     },
@@ -1331,16 +1281,9 @@ const getFilteredIssuances = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string, record: PPEIssuance) => {
-        // Determine effective status from record fields (prefer actual_return_date or remaining_quantity)
-        const effectiveStatus = (record as any).actual_return_date
-          ? 'returned'
-          : ((record as any).remaining_quantity !== undefined && Number((record as any).remaining_quantity) <= 0)
-            ? 'returned'
-            : status;
-
         // Helper function to get status configuration
         const getStatusConfig = (statusValue: string) => {
-        const statusMap: { [key: string]: { color: string; text: string; icon: React.ReactNode } } = {
+          const statusMap: { [key: string]: { color: string; text: string; icon: React.ReactNode } } = {
             'pending_confirmation': { 
               color: 'orange', 
               text: 'Chờ xác nhận', 
@@ -1378,16 +1321,15 @@ const getFilteredIssuances = () => {
             }
           };
           
-          if (statusMap[statusValue]) return statusMap[statusValue];
-          if (!statusValue) return { color: 'default', text: 'Không xác định', icon: <InfoCircleOutlined /> };
-          const friendly = statusValue.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          return { color: 'default', text: friendly, icon: <InfoCircleOutlined /> };
+          return statusMap[statusValue] || { 
+            color: 'default', 
+            text: statusValue || 'Không xác định', 
+            icon: <InfoCircleOutlined /> 
+          };
         };
         
-        const config = getStatusConfig(effectiveStatus);
-        // Debug mapping
-        // eslint-disable-next-line no-console
-        console.debug('[PPE Management index] status mapping', { status, text: config.text });
+        const config = getStatusConfig(status);
+        
         return (
           <Tag 
             color={config.color} 
@@ -2144,7 +2086,63 @@ const getFilteredIssuances = () => {
             />
           </TabPane>
 
-          
+          {/* Bảo Trì Tab */}
+          <TabPane tab={<span><ToolOutlined />Bảo Trì</span>} key="maintenance">
+            <div style={{ marginBottom: '16px' }}>
+              <Row gutter={[16, 16]} align="middle">
+                <Col xs={24} sm={8}>
+                  <Search
+                    placeholder="Tìm kiếm bảo trì..."
+                    style={{ width: '100%' }}
+                  />
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Select
+                    placeholder="Lọc theo loại"
+                    style={{ width: '100%' }}
+                    allowClear
+                  >
+                    <Select.Option value="preventive">Phòng ngừa</Select.Option>
+                    <Select.Option value="corrective">Sửa chữa</Select.Option>
+                    <Select.Option value="emergency">Khẩn cấp</Select.Option>
+                  </Select>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Space>
+                    <Button 
+                      type="primary" 
+                      icon={<PlusOutlined />}
+                      onClick={() => setShowMaintenanceModal(true)}
+                    >
+                      Tạo lịch bảo trì
+                    </Button>
+                    <Button icon={<DownloadOutlined />}>
+                      Xuất báo cáo
+                    </Button>
+                  </Space>
+                </Col>
+              </Row>
+            </div>
+
+            {loading.maintenance ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <Spin size="large" />
+              </div>
+            ) : (
+              <Table
+                columns={maintenanceColumns}
+                dataSource={maintenance}
+                rowKey={(record) => record.id || record._id}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) => 
+                    `${range[0]}-${range[1]} của ${total} bảo trì`,
+                }}
+              />
+            )}
+          </TabPane>
 
           {/* Báo Cáo Tab */}
           <TabPane tab={<span><BarChartOutlined />Báo Cáo</span>} key="reports">
@@ -2169,7 +2167,7 @@ const getFilteredIssuances = () => {
                   >
                     <Select.Option value="inventory">Tồn kho</Select.Option>
                     <Select.Option value="usage">Sử dụng</Select.Option>
-                    {/* maintenance option removed */}
+                    <Select.Option value="maintenance">Bảo trì</Select.Option>
                     <Select.Option value="compliance">Tuân thủ</Select.Option>
                   </Select>
                 </Col>
@@ -2308,7 +2306,14 @@ const getFilteredIssuances = () => {
         }}
       />
 
-      {/* CreateMaintenanceModal removed */}
+      <CreateMaintenanceModal
+        isOpen={showMaintenanceModal}
+        onClose={() => setShowMaintenanceModal(false)}
+        onSuccess={() => {
+          loadMaintenance();
+          setShowMaintenanceModal(false);
+        }}
+      />
 
       <CreateReportModal
         isOpen={showReportModal}

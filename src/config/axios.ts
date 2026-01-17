@@ -152,22 +152,6 @@ apiClient.interceptors.response.use(
     }
     
     // Handle 401 Unauthorized with token refresh
-    // Handle 429 Too Many Requests with simple retry + exponential backoff
-    if (error.response?.status === 429) {
-      const original = originalRequest as any;
-      original._retryCount = original._retryCount || 0;
-      const maxRetries = 3;
-      if (original._retryCount < maxRetries) {
-        original._retryCount += 1;
-        const delayMs = Math.pow(2, original._retryCount) * 300; // 300ms, 600ms, 1.2s ...
-        console.warn(`⚠️ Received 429, retrying request ${original.url} after ${delayMs}ms (attempt ${original._retryCount}/${maxRetries})`);
-        await new Promise(res => setTimeout(res, delayMs));
-        return apiClient(original);
-      }
-      console.error(`❌ Request ${original.url} failed with 429 after ${original._retryCount} retries`);
-      return Promise.reject(error);
-    }
-
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
@@ -299,27 +283,8 @@ export const api = {
   get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
     apiClient.get(url, config),
     
-  // Deduplicate identical non-file POST requests to avoid bursts (coalesce in-flight)
-  post: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> => {
-    // Do not coalesce FormData (file uploads) - they are handled by UI disabling
-    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
-    const key = isFormData ? null : `${url}::${JSON.stringify(data || {})}`;
-    if (key) {
-      const existing = (api as any)._inflightPosts?.get(key);
-      if (existing) return existing as Promise<AxiosResponse<T>>;
-    }
-
-    const p = apiClient.post(url, data, config);
-    if (key) {
-      (api as any)._inflightPosts = (api as any)._inflightPosts || new Map();
-      (api as any)._inflightPosts.set(key, p);
-      // ensure cleanup
-      p.finally(() => {
-        try { (api as any)._inflightPosts.delete(key); } catch (e) { /* ignore */ }
-      });
-    }
-    return p;
-  },
+  post: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
+    apiClient.post(url, data, config),
     
   put: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
     apiClient.put(url, data, config),

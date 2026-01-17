@@ -31,7 +31,6 @@ import {
 import type { PPEIssuance } from '../../../services/ppeService';
 import dayjs from 'dayjs';
 import { ENV } from '../../../config/env';
-import * as ppeService from '../../../services/ppeService';
 
 const { Title, Text } = Typography;
 
@@ -63,7 +62,6 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [serialsModalVisible, setSerialsModalVisible] = useState(false);
   const [serialsToShow, setSerialsToShow] = useState<string[]>([]);
-  const [aggregates, setAggregates] = useState<{ total_quantity: number; total_returned: number; total_remaining: number } | null>(null);
 
   // Helper function to resolve image URL
   const apiBaseForImages = useMemo(() => {
@@ -87,57 +85,85 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
 
     setLoading(true);
     try {
-      // Fetch manager history and aggregate entries for this item
-      const resp = await ppeService.getManagerPPEHistory();
-      const hist = (resp && resp.data && Array.isArray(resp.data.history)) ? resp.data.history : (Array.isArray(resp.history) ? resp.history : []);
-      const itemId = typeof issuance.item_id === 'object' && issuance.item_id._id ? String(issuance.item_id._id) : String(issuance.item_id);
-
-      // Filter entries for same item
-      const sameItemEntries = hist.filter((h: any) => {
-        const hid = h.item_id && (h.item_id._id || h.item_id) ? String(h.item_id._id || h.item_id) : null;
-        return hid === itemId;
-      });
-
-      // Build history rows mapping to existing PPEHistory type
-      const mapped: PPEHistory[] = sameItemEntries.map((h: any, idx: number) => ({
-        id: h.id || `h-${idx}`,
-        action: h.status === 'returned' ? 'returned' : 'issued',
-        action_date: h.createdAt || h.issued_date || new Date().toISOString(),
-        performed_by: {
-          id: (h.issued_by && (h.issued_by._id || h.issued_by.id)) || (h.user_id && (h.user_id._id || h.user_id.id)) || '',
-          full_name: (h.issued_by && (h.issued_by.full_name)) || (h.user_id && h.user_id.full_name) || '',
-          email: (h.issued_by && h.issued_by.email) || (h.user_id && h.user_id.email) || ''
+      // Mock data for now - replace with actual API call
+      const mockHistory: PPEHistory[] = [
+        {
+          id: '1',
+          action: 'issued',
+          action_date: issuance.issued_date,
+          performed_by: {
+            id: 'admin-1',
+            full_name: 'Admin User',
+            email: 'admin@company.com'
+          },
+          details: {
+            quantity: issuance.quantity,
+            expected_return_date: issuance.expected_return_date,
+            serials: issuance.assigned_serial_numbers || []
+          },
+          notes: 'Phát PPE cho Manager'
         },
-        details: {
-          quantity: h.quantity,
-          expected_return_date: h.expected_return_date,
-          serials: h.assigned_serial_numbers || [],
-          remaining_quantity: h.remaining_quantity
-        },
-        notes: h.notes || ''
-      }));
-
-      // Compute aggregated totals
-      const total_quantity = sameItemEntries.reduce((s: number, x: any) => s + (Number(x.quantity) || 0), 0);
-      // total returned = sum of (quantity - remaining_quantity) when remaining_quantity present, else 0
-      const total_returned = sameItemEntries.reduce((s: number, x: any) => {
-        if (x.remaining_quantity !== undefined && x.remaining_quantity !== null) {
-          return s + ((Number(x.quantity) || 0) - (Number(x.remaining_quantity) || 0));
+        {
+          id: '2',
+          action: 'distributed',
+          action_date: dayjs().subtract(1, 'day').format('YYYY-MM-DD'),
+          performed_by: {
+            id: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.id : 'manager-1',
+            full_name: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.full_name : 'Manager',
+            email: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.email : 'manager@company.com'
+          },
+          details: {
+            distributed_to: 'Employee',
+            quantity: issuance.quantity,
+            serials: issuance.assigned_serial_numbers || []
+          },
+          notes: 'Phát PPE cho nhân viên'
         }
-        return s;
-      }, 0);
-      const total_remaining = sameItemEntries.reduce((s: number, x: any) => s + (Number(x.remaining_quantity) || (Number(x.quantity) || 0)), 0);
+      ];
 
-      // Prepend an aggregated summary row (optional) or set stats to top of modal via setState
-      // We'll set history to mapped and add aggregated info into first item's details for display cards
-      // store aggregates separately for header cards
-      setAggregates({
-        total_quantity,
-        total_returned,
-        total_remaining
-      });
+      // Thêm lịch sử trả PPE (toàn bộ hoặc một phần)
+      if (issuance.status === 'returned' && issuance.actual_return_date) {
+        mockHistory.push({
+          id: '3',
+          action: 'returned',
+          action_date: issuance.actual_return_date,
+          performed_by: {
+            id: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.id : 'employee-1',
+            full_name: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.full_name : 'Employee',
+            email: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.email : 'employee@company.com'
+          },
+          details: {
+            return_condition: issuance.return_condition,
+            actual_return_date: issuance.actual_return_date,
+            quantity_returned: issuance.quantity,
+            returned_serials: issuance.returned_serial_numbers || []
+          },
+          notes: issuance.return_notes || 'Trả PPE'
+        });
+      } else if (issuance.remaining_quantity !== undefined && issuance.remaining_quantity < issuance.quantity) {
+        // Partial return - thêm lịch sử trả một phần
+        const returnedQuantity = issuance.quantity - issuance.remaining_quantity;
+        mockHistory.push({
+          id: '3',
+          action: 'partial_return',
+          action_date: issuance.actual_return_date || dayjs().format('YYYY-MM-DD'),
+          performed_by: {
+            id: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.id : 'manager-1',
+            full_name: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.full_name : 'Manager',
+            email: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.email : 'manager@company.com'
+          },
+          details: {
+            return_condition: issuance.return_condition || 'good',
+            actual_return_date: issuance.actual_return_date || dayjs().format('YYYY-MM-DD'),
+            quantity_returned: returnedQuantity,
+            quantity_remaining: issuance.remaining_quantity
+          , returned_serials: issuance.returned_serial_numbers || []
+          },
+          notes: issuance.return_notes || `Trả một phần: ${returnedQuantity}/${issuance.quantity}`
+        });
+      }
 
-      setHistory(mapped);
+      setHistory(mockHistory);
     } catch (error) {
       console.error('Error loading PPE history:', error);
       message.error('Không thể tải lịch sử PPE');
@@ -401,7 +427,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           <Card size="small">
             <Statistic
               title="Tổng số lượng"
-              value={aggregates ? aggregates.total_quantity : issuance.quantity}
+              value={issuance.quantity}
               prefix={<SafetyOutlined />}
               valueStyle={{ color: '#1890ff' }}
             />
@@ -411,9 +437,11 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           <Card size="small">
             <Statistic
               title="Đã trả"
-              value={aggregates ? aggregates.total_returned : (issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity 
-                ? issuance.quantity - issuance.remaining_quantity 
-                : issuance.status === 'returned' ? issuance.quantity : 0)}
+              value={
+                issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity 
+                  ? issuance.quantity - issuance.remaining_quantity 
+                  : issuance.status === 'returned' ? issuance.quantity : 0
+              }
               prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#52c41a' }}
             />
@@ -423,7 +451,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           <Card size="small">
             <Statistic
               title="Còn lại"
-              value={aggregates ? aggregates.total_remaining : (issuance.remaining_quantity !== undefined ? issuance.remaining_quantity : issuance.quantity)}
+              value={issuance.remaining_quantity !== undefined ? issuance.remaining_quantity : issuance.quantity}
               prefix={<ExclamationCircleOutlined />}
               valueStyle={{ 
                 color: issuance.remaining_quantity !== undefined && issuance.remaining_quantity > 0 ? '#faad14' : '#ff4d4f' 

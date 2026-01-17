@@ -54,42 +54,15 @@ const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
     return `${apiBaseForImages}${url}`;
   };
 
-  // Debug: log incoming props to help verify totals mapping
-  // eslint-disable-next-line no-console
-  console.debug('[CategoryDetailModal] props:', { category, items, isOpen });
-
   if (!isOpen || !category) return null;
 
-  // Calculate stats from items using canonical fields when present
+  // Calculate stats from items
   const totalItems = items.length;
-  const totalQuantity = items.reduce((sum, item) => {
-    const itemTotal = Number.isFinite(item.total_quantity) ? (item.total_quantity as number) : ((item.quantity_available ?? 0) + (item.quantity_allocated ?? 0));
-    return sum + (itemTotal || 0);
-  }, 0);
-
-  const totalAllocated = items.reduce((sum, item) => {
-    const allocated = Number.isFinite(item.actual_allocated_quantity) ? (item.actual_allocated_quantity as number) : (item.quantity_allocated ?? 0);
-    return sum + (allocated || 0);
-  }, 0);
-
-  const totalRemaining = items.reduce((sum, item) => {
-    // Prefer computing remaining from canonical totals when possible
-    if (Number.isFinite(item.total_quantity) && Number.isFinite(item.actual_allocated_quantity)) {
-      return sum + Math.max(0, Number(item.total_quantity) - Number(item.actual_allocated_quantity));
-    }
-    // fallback to remaining_quantity if provided
-    if (Number.isFinite(item.remaining_quantity)) {
-      return sum + Math.max(0, Number(item.remaining_quantity));
-    }
-    // final fallback to available - allocated
-    const fallbackRemaining = (item.quantity_available ?? 0) - (item.quantity_allocated ?? 0);
-    return sum + Math.max(0, fallbackRemaining);
-  }, 0);
-
+  const totalQuantity = items.reduce((sum, item) => sum + (item.quantity_available || 0), 0);
+  const totalAllocated = items.reduce((sum, item) => sum + (item.quantity_allocated || 0), 0);
+  const totalRemaining = totalQuantity - totalAllocated;
   const lowStockItems = items.filter(item => {
-    const remaining = Number.isFinite(item.remaining_quantity)
-      ? (item.remaining_quantity as number)
-      : ( (Number.isFinite(item.total_quantity) ? (item.total_quantity as number) : ((item.quantity_available ?? 0) + (item.quantity_allocated ?? 0))) - (Number.isFinite(item.actual_allocated_quantity) ? (item.actual_allocated_quantity as number) : (item.quantity_allocated ?? 0)) );
+    const remaining = (item.quantity_available || 0) - (item.quantity_allocated || 0);
     return remaining <= (item.reorder_level || 0);
   }).length;
 
@@ -127,9 +100,9 @@ const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({
       key: 'quantity',
       render: (_: unknown, record: PPEItem) => (
         <Space direction="vertical" size="small">
-          <div>Tổng: <Text strong>{record.total_quantity ?? ((record.quantity_available ?? 0) + (record.quantity_allocated ?? 0))}</Text></div>
-          <div>Còn lại: <Text strong style={{ color: '#52c41a' }}>{record.remaining_quantity ?? ((record.total_quantity ?? ((record.quantity_available ?? 0) + (record.quantity_allocated ?? 0))) - (record.actual_allocated_quantity ?? record.quantity_allocated ?? 0))}</Text></div>
-          <div>Đã phát: <Text strong style={{ color: '#1890ff' }}>{record.actual_allocated_quantity ?? record.quantity_allocated ?? 0}</Text></div>
+          <div>Tổng: <Text strong>{record.quantity_available || 0}</Text></div>
+          <div>Còn lại: <Text strong style={{ color: '#52c41a' }}>{(record.quantity_available || 0) - (record.quantity_allocated || 0)}</Text></div>
+          <div>Đã phát: <Text strong style={{ color: '#1890ff' }}>{record.quantity_allocated || 0}</Text></div>
         </Space>
       ),
     },
