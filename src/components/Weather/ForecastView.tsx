@@ -154,31 +154,6 @@ const ForecastView: React.FC<ForecastViewProps> = ({ latitude, longitude }) => {
     return descriptions[weatherCode] || 'Không xác định';
   };
 
-  const getDayAlerts = (day: DailyForecast): string[] => {
-    const alerts: string[] = [];
-    if (day.windspeed_max >= 30) {
-      alerts.push('Gió mạnh');
-    }
-    if (day.windgusts_max != null && day.windgusts_max >= 40) {
-      alerts.push(`Gió giật mạnh (${Math.round(day.windgusts_max)} km/h)`);
-    }
-    if (day.precipitation_sum > 5) {
-      alerts.push(`Mưa ${day.precipitation_sum.toFixed(1)}mm`);
-    }
-    if (day.temperature_max >= 35) {
-      alerts.push('Nhiệt độ cao');
-    }
-    if (day.temperature_min <= 15) {
-      alerts.push('Trời lạnh');
-    }
-    if (day.uv_index_max != null && day.uv_index_max >= 8) {
-      alerts.push(`UV rất cao (${day.uv_index_max.toFixed(1)})`);
-    }
-    if ([61, 63, 65, 80, 81, 82, 95, 96, 99].includes(day.weathercode)) {
-      alerts.push('Thời tiết xấu');
-    }
-    return alerts;
-  };
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -210,6 +185,32 @@ const ForecastView: React.FC<ForecastViewProps> = ({ latitude, longitude }) => {
     const directions = ['Bắc', 'Đông Bắc', 'Đông', 'Đông Nam', 'Nam', 'Tây Nam', 'Tây', 'Tây Bắc'];
     const index = Math.round(degrees / 45) % 8;
     return directions[index] || 'Không xác định';
+  };
+
+  const getDayAlerts = (day: DailyForecast): string[] => {
+    const alerts: string[] = [];
+    if (day.windspeed_max >= 30) {
+      alerts.push('Gió mạnh');
+    }
+    if (day.windgusts_max != null && day.windgusts_max >= 40) {
+      alerts.push(`Gió giật mạnh (${Math.round(day.windgusts_max)} km/h)`);
+    }
+    if (day.precipitation_sum > 5) {
+      alerts.push(`Mưa ${day.precipitation_sum.toFixed(1)}mm`);
+    }
+    if (day.temperature_max >= 35) {
+      alerts.push('Nhiệt độ cao');
+    }
+    if (day.temperature_min <= 15) {
+      alerts.push('Trời lạnh');
+    }
+    if (day.uv_index_max != null && day.uv_index_max >= 8) {
+      alerts.push(`UV rất cao (${day.uv_index_max.toFixed(1)})`);
+    }
+    if ([61, 63, 65, 80, 81, 82, 95, 96, 99].includes(day.weathercode)) {
+      alerts.push('Thời tiết xấu');
+    }
+    return alerts;
   };
 
   if (forecastStatus === 'loading') {

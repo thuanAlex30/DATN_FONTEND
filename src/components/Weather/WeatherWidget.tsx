@@ -17,7 +17,6 @@ import ForecastView from './ForecastView';
 import HourlyForecastChart from './HourlyForecastChart';
 import UVIndexIndicator from './UVIndexIndicator';
 import AirQualityIndicator from './AirQualityIndicator';
-import WeatherAlerts from './WeatherAlerts';
 import styles from './WeatherWidget.module.css';
 
 const { Text } = Typography;
@@ -341,17 +340,6 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
                 />
               ),
             },
-            {
-              key: 'alerts',
-              label: (
-                <Badge count={activeAlerts.length} size="small" offset={[8, -2]}>
-                  Cảnh báo
-                </Badge>
-              ),
-              children: (
-                <WeatherAlerts compact showOnlyActive />
-              ),
-            },
           ]}
         />
       </div>
@@ -513,14 +501,6 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
           <Text type="danger" style={{ fontSize: 12 }}>
             {geoError}
           </Text>
-        )}
-        {alerts.length > 0 && (
-          <Alert
-            type="warning"
-            message="Khuyến nghị an toàn"
-            description={alerts.join('. ')}
-            showIcon
-          />
         )}
       </Space>
     </Card>
