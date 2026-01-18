@@ -21,6 +21,7 @@ import siteReducer from './slices/siteSlice';
 import siteAreaReducer from './slices/siteAreaSlice';
 import workLocationReducer from './slices/workLocationSlice';
 import weatherReducer from './slices/weatherSlice';
+import weatherAlertsReducer from './slices/weatherAlertsSlice';
 
 // Gộp tất cả reducers
 const rootReducer = combineReducers({
@@ -43,6 +44,7 @@ const rootReducer = combineReducers({
   siteArea: siteAreaReducer,
   workLocation: workLocationReducer,
   weather: weatherReducer,
+  weatherAlerts: weatherAlertsReducer,
 });
 
 // Cấu hình redux-persist

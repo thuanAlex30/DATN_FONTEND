@@ -13,7 +13,7 @@ import { logout } from '../../store/slices/authSlice';
 import type { RootState } from '../../store';
 import ProfileModal from '../ProfileModal/ProfileModal';
 import SettingsModal from '../SettingsModal/SettingsModal';
-import { WeatherWidget, EquipmentSuggestion } from '../Weather';
+import { WeatherWidget } from '../Weather';
 import WebSocketStatus from '../WebSocketStatus';
 import styles from './ManagerHeader.module.css';
 const { Header } = Layout;
@@ -115,7 +115,6 @@ const ManagerHeader: React.FC<ManagerHeaderProps> = ({
           
           <WebSocketStatus />
           <WeatherWidget compact />
-          <EquipmentSuggestion compact />
           
           {showNotifications && (
             <Badge count={0} size="small">

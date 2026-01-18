@@ -11,6 +11,7 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { fetchWeather, fetchAirQuality } from '../../store/slices/weatherSlice';
+import { fetchActiveAlerts } from '../../store/slices/weatherAlertsSlice';
 import type { RootState } from '../../store';
 import ForecastView from './ForecastView';
 import HourlyForecastChart from './HourlyForecastChart';
@@ -34,7 +35,8 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
   enableGeo = true,
 }) => {
   const dispatch = useDispatch();
-  const { data, status, error, airQuality } = useSelector((state: RootState) => state.weather);
+  const { data, status, error, airQuality, forecast } = useSelector((state: RootState) => state.weather);
+  const { activeAlerts } = useSelector((state: RootState) => state.weatherAlerts);
   const [coords, setCoords] = useState<{ latitude?: number; longitude?: number }>({
     latitude,
     longitude,
@@ -69,15 +71,32 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
 
   useEffect(() => {
     if (isGettingLocation) return;
-    if (coords.latitude != null && coords.longitude != null) {
+    
+    // Validate coordinates before making API calls
+    const hasValidCoords = 
+      coords.latitude != null && 
+      coords.longitude != null && 
+      !isNaN(coords.latitude) && 
+      !isNaN(coords.longitude) &&
+      isFinite(coords.latitude) &&
+      isFinite(coords.longitude);
+    
+    if (hasValidCoords) {
       dispatch(fetchWeather({ latitude: coords.latitude, longitude: coords.longitude }) as any);
       dispatch(fetchAirQuality({ latitude: coords.latitude, longitude: coords.longitude }) as any);
     } else {
-      // gửi không params để backend dùng default
+      // Only fetch weather with default location, skip air quality if no valid coords
+      // Backend will use default location for weather
       dispatch(fetchWeather({}) as any);
-      dispatch(fetchAirQuality({}) as any);
+      // Don't fetch air quality if we don't have valid coordinates
+      // This prevents NaN:NaN cacheKey errors
     }
   }, [dispatch, coords.latitude, coords.longitude, isGettingLocation]);
+
+  // Fetch active alerts on mount and when location changes
+  useEffect(() => {
+    dispatch(fetchActiveAlerts() as any);
+  }, [dispatch]);
 
   const handleUseMyLocation = () => {
     if (!enableGeo || !navigator.geolocation) {
@@ -196,7 +215,16 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
 
   const { current } = data;
   const temperature = Math.round(current.temperature);
-  const windSpeed = Math.round(current.windspeed);
+  
+  // Lấy gió tối đa trong ngày từ forecast nếu có, nếu không thì dùng gió hiện tại
+  let windSpeed = Math.round(current.windspeed);
+  if (forecast && forecast.daily && forecast.daily.length > 0) {
+    const today = forecast.daily[0]; // Ngày đầu tiên là hôm nay
+    if (today.windspeed_max != null) {
+      windSpeed = Math.round(today.windspeed_max);
+    }
+  }
+  
   const precipitation = current.precipitation ?? 0;
 
   const alerts: string[] = [];
@@ -335,7 +363,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
         placement="bottomRight"
       >
         <Badge
-          count={alerts.length > 0 ? alerts.length : 0}
+          count={activeAlerts.length > 0 ? activeAlerts.length : (alerts.length > 0 ? alerts.length : 0)}
           size="small"
           offset={[8, 0]}
           style={{ cursor: 'pointer' }}
@@ -482,14 +510,6 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
           <Text type="danger" style={{ fontSize: 12 }}>
             {geoError}
           </Text>
-        )}
-        {alerts.length > 0 && (
-          <Alert
-            type="warning"
-            message="Khuyến nghị an toàn"
-            description={alerts.join('. ')}
-            showIcon
-          />
         )}
       </Space>
     </Card>

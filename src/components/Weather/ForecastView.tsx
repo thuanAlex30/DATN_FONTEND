@@ -21,6 +21,11 @@ interface ForecastViewProps {
   longitude?: number;
 }
 
+// Helper function to convert Celsius to Fahrenheit
+const celsiusToFahrenheit = (celsius: number): number => {
+  return Math.round((celsius * 9/5) + 32);
+};
+
 interface PPESuggestion {
   name: string;
   reason: string;
@@ -149,31 +154,6 @@ const ForecastView: React.FC<ForecastViewProps> = ({ latitude, longitude }) => {
     return descriptions[weatherCode] || 'Không xác định';
   };
 
-  const getDayAlerts = (day: DailyForecast): string[] => {
-    const alerts: string[] = [];
-    if (day.windspeed_max >= 30) {
-      alerts.push('Gió mạnh');
-    }
-    if (day.windgusts_max != null && day.windgusts_max >= 40) {
-      alerts.push(`Gió giật mạnh (${Math.round(day.windgusts_max)} km/h)`);
-    }
-    if (day.precipitation_sum > 5) {
-      alerts.push(`Mưa ${day.precipitation_sum.toFixed(1)}mm`);
-    }
-    if (day.temperature_max >= 35) {
-      alerts.push('Nhiệt độ cao');
-    }
-    if (day.temperature_min <= 15) {
-      alerts.push('Trời lạnh');
-    }
-    if (day.uv_index_max != null && day.uv_index_max >= 8) {
-      alerts.push(`UV rất cao (${day.uv_index_max.toFixed(1)})`);
-    }
-    if ([61, 63, 65, 80, 81, 82, 95, 96, 99].includes(day.weathercode)) {
-      alerts.push('Thời tiết xấu');
-    }
-    return alerts;
-  };
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -205,6 +185,32 @@ const ForecastView: React.FC<ForecastViewProps> = ({ latitude, longitude }) => {
     const directions = ['Bắc', 'Đông Bắc', 'Đông', 'Đông Nam', 'Nam', 'Tây Nam', 'Tây', 'Tây Bắc'];
     const index = Math.round(degrees / 45) % 8;
     return directions[index] || 'Không xác định';
+  };
+
+  const getDayAlerts = (day: DailyForecast): string[] => {
+    const alerts: string[] = [];
+    if (day.windspeed_max >= 30) {
+      alerts.push('Gió mạnh');
+    }
+    if (day.windgusts_max != null && day.windgusts_max >= 40) {
+      alerts.push(`Gió giật mạnh (${Math.round(day.windgusts_max)} km/h)`);
+    }
+    if (day.precipitation_sum > 5) {
+      alerts.push(`Mưa ${day.precipitation_sum.toFixed(1)}mm`);
+    }
+    if (day.temperature_max >= 35) {
+      alerts.push('Nhiệt độ cao');
+    }
+    if (day.temperature_min <= 15) {
+      alerts.push('Trời lạnh');
+    }
+    if (day.uv_index_max != null && day.uv_index_max >= 8) {
+      alerts.push(`UV rất cao (${day.uv_index_max.toFixed(1)})`);
+    }
+    if ([61, 63, 65, 80, 81, 82, 95, 96, 99].includes(day.weathercode)) {
+      alerts.push('Thời tiết xấu');
+    }
+    return alerts;
   };
 
   if (forecastStatus === 'loading') {
@@ -299,22 +305,32 @@ const ForecastView: React.FC<ForecastViewProps> = ({ latitude, longitude }) => {
                   <Col span={5}>
                     <Space direction="vertical" size={4} style={{ width: '100%' }}>
                       <div>
-                        <Text className={styles.temperatureText}>{Math.round(day.temperature_max)}°</Text>
-                        <Text type="secondary" style={{ fontSize: '13px', marginLeft: '4px' }}> / {Math.round(day.temperature_min)}°</Text>
+                        <Text className={styles.temperatureText}>
+                          {Math.round(day.temperature_max)}°C
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: '13px', marginLeft: '4px' }}>
+                          / {Math.round(day.temperature_min)}°C
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginTop: '2px' }}>
+                          (Cao / Thấp)
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: '11px' }}>
+                          {celsiusToFahrenheit(day.temperature_max)}°F / {celsiusToFahrenheit(day.temperature_min)}°F
+                        </Text>
                       </div>
                       <div>
                         <Text type="secondary" style={{ fontSize: '12px' }}>
                           💨 {Math.round(day.windspeed_max)} km/h
                           {day.windgusts_max != null && day.windgusts_max > 30 && (
                             <Tag color="red" style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 6px', height: '20px', lineHeight: '16px', borderRadius: '4px' }}>
-                              Giật: {Math.round(day.windgusts_max)}
+                              Giật: {Math.round(day.windgusts_max)} km/h
                             </Tag>
                           )}
                         </Text>
                       </div>
                       {day.apparent_temperature_max != null && (
                         <Text type="secondary" style={{ fontSize: '11px' }}>
-                          Cảm nhận: {Math.round(day.apparent_temperature_max)}°
+                          Cảm nhận: {Math.round(day.apparent_temperature_max)}°C ({celsiusToFahrenheit(day.apparent_temperature_max)}°F)
                         </Text>
                       )}
                     </Space>
@@ -382,13 +398,21 @@ const ForecastView: React.FC<ForecastViewProps> = ({ latitude, longitude }) => {
                       <Space direction="vertical" size={6} style={{ width: '100%' }}>
                         <div>
                           <Text type="secondary" style={{ fontSize: '12px' }}>Nhiệt độ:</Text>
-                          <Text strong style={{ marginLeft: '8px' }}>
-                            {Math.round(day.temperature_max)}° / {Math.round(day.temperature_min)}°
-                          </Text>
+                          <div style={{ marginTop: '4px' }}>
+                            <Text strong style={{ fontSize: '14px' }}>
+                              Cao: {Math.round(day.temperature_max)}°C ({celsiusToFahrenheit(day.temperature_max)}°F)
+                            </Text>
+                          </div>
+                          <div style={{ marginTop: '2px' }}>
+                            <Text strong style={{ fontSize: '14px' }}>
+                              Thấp: {Math.round(day.temperature_min)}°C ({celsiusToFahrenheit(day.temperature_min)}°F)
+                            </Text>
+                          </div>
                           {day.apparent_temperature_max != null && day.apparent_temperature_min != null && (
                             <div style={{ marginTop: '4px' }}>
                               <Text type="secondary" style={{ fontSize: '11px' }}>
-                                Cảm nhận: {Math.round(day.apparent_temperature_max)}° / {Math.round(day.apparent_temperature_min)}°
+                                Cảm nhận: {Math.round(day.apparent_temperature_max)}°C / {Math.round(day.apparent_temperature_min)}°C
+                                {' '}({celsiusToFahrenheit(day.apparent_temperature_max)}°F / {celsiusToFahrenheit(day.apparent_temperature_min)}°F)
                               </Text>
                             </div>
                           )}

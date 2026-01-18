@@ -30,10 +30,14 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({
   );
 
   useEffect(() => {
-    if (latitude != null && longitude != null) {
+    // Skip if coordinates are invalid
+    if (latitude == null || longitude == null || isNaN(latitude) || isNaN(longitude)) {
+      return;
+    }
+
+    // Only fetch if coordinates are valid numbers
+    if (isFinite(latitude) && isFinite(longitude)) {
       dispatch(fetchHourly({ latitude, longitude, hours }) as any);
-    } else {
-      dispatch(fetchHourly({ hours }) as any);
     }
   }, [dispatch, latitude, longitude, hours]);
 

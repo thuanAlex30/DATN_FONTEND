@@ -14,17 +14,26 @@ import {
   Col,
   Divider,
   Avatar,
-  Badge
+  Badge,
+  List,
+  Tag,
+  Image,
+  Modal
 } from 'antd';
 import { 
   UserOutlined, 
   ArrowLeftOutlined,
   CheckCircleOutlined,
   TeamOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  ClockCircleOutlined,
+  WarningOutlined,
+  CloseCircleOutlined,
+  EyeOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 import userService from '../../../services/userService';
+import { LocationConflictError, ActiveIncidentError } from '../../../types/incident';
 
 const { Title, Text } = Typography;
 
@@ -33,9 +42,12 @@ const AssignIncident: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflictData, setConflictData] = useState<LocationConflictError | null>(null);
+  const [activeIncidentData, setActiveIncidentData] = useState<ActiveIncidentError | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [form] = Form.useForm();
   const [incident, setIncident] = useState<any>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,12 +108,38 @@ const AssignIncident: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      await incidentService.assignIncident(id, { assignedTo: values.assignedTo });
+      setConflictData(null);
+      
+      // Prepare assign data
+      const assignData: { assignedTo: string } = {
+        assignedTo: values.assignedTo
+      };
+      
+      await incidentService.assignIncident(id, assignData);
       message.success('Phân công thành công');
       navigate('/header-department/incident-management');
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || 'Không thể phân công';
-      setError(errorMessage);
+      const errorResponse = err?.response?.data;
+      const errorMessage = errorResponse?.message || 'Không thể phân công';
+      
+      // Reset previous error states
+      setConflictData(null);
+      setActiveIncidentData(null);
+      
+      // Check if this is an active incident error (new rule: 1 manager chỉ được xử lý 1 sự cố)
+      if (errorResponse?.data?.hasActiveIncident) {
+        setActiveIncidentData(errorResponse.data);
+        setError(`❌ ${errorMessage}`);
+      } 
+      // Check if this is a location conflict error (backward compatibility)
+      else if (errorResponse?.data?.hasConflict) {
+        setConflictData(errorResponse.data);
+        setError(`❌ ${errorMessage}`);
+      } 
+      else {
+        setError(errorMessage);
+      }
+      
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -258,6 +296,85 @@ const AssignIncident: React.FC = () => {
                   </div>
                 )}
               </Space>
+
+              {/* Hình ảnh đính kèm */}
+              {incident.images && incident.images.length > 0 && (
+                <div style={{ marginTop: 20, paddingTop: 20, borderTop: '2px solid #f0f0f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                    <EyeOutlined style={{ color: '#1677ff', fontSize: 16 }} />
+                    <Text strong style={{ fontSize: 15, color: '#262626' }}>Hình ảnh đính kèm</Text>
+                    <Badge count={incident.images.length} style={{ backgroundColor: '#1677ff' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    {incident.images.slice(0, 6).map((src: string, idx: number) => (
+                      <div
+                        key={idx}
+                        onClick={() => setPreviewImage(src)}
+                        style={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: 12,
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          border: '2px solid #e8e8e8',
+                          transition: 'all 0.3s ease',
+                          position: 'relative'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#1677ff';
+                          e.currentTarget.style.transform = 'scale(1.05)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(22, 119, 255, 0.3)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#e8e8e8';
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <img
+                          src={src}
+                          alt={`incident-img-${idx}`}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                          loading="lazy"
+                        />
+                      </div>
+                    ))}
+                    {incident.images.length > 6 && (
+                      <div
+                        style={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: 12,
+                          border: '2px dashed #d9d9d9',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#fafafa',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onClick={() => setPreviewImage(incident.images[6])}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = '#1677ff';
+                          e.currentTarget.style.background = '#f0f7ff';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#d9d9d9';
+                          e.currentTarget.style.background = '#fafafa';
+                        }}
+                      >
+                        <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                          +{incident.images.length - 6}
+                        </Text>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </Card>
           </Col>
         )}
@@ -319,7 +436,7 @@ const AssignIncident: React.FC = () => {
                   </Space>
                 }
                 rules={[{ required: true, message: 'Vui lòng chọn người phụ trách!' }]}
-                style={{ marginBottom: 24 }}
+                style={{ marginBottom: 20 }}
               >
                 <Select
                   placeholder="Chọn người phụ trách..."
@@ -409,10 +526,102 @@ const AssignIncident: React.FC = () => {
 
               {error && (
                 <Alert
-                  message="Lỗi"
-                  description={error}
+                  message="Lỗi phân công"
+                  description={
+                    <div>
+                      <Text>{error}</Text>
+                      
+                      {/* Active Incident Error (New Rule: 1 manager chỉ được xử lý 1 sự cố) */}
+                      {activeIncidentData?.activeIncident && (
+                        <div style={{ marginTop: 16 }}>
+                          <Text strong style={{ display: 'block', marginBottom: 8, color: '#ff4d4f' }}>
+                            <WarningOutlined /> Sự cố đang được xử lý:
+                          </Text>
+                          <div
+                            style={{
+                              padding: '12px 16px',
+                              border: '1px solid #ffccc7',
+                              borderRadius: 8,
+                              background: '#fff1f0'
+                            }}
+                          >
+                            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                              <Space>
+                                <Tag color="red">#{activeIncidentData.activeIncident.incidentId || activeIncidentData.activeIncident._id.slice(-6)}</Tag>
+                                <Text strong style={{ fontSize: 14 }}>{activeIncidentData.activeIncident.title}</Text>
+                              </Space>
+                              <Space wrap>
+                                {activeIncidentData.activeIncident.location && (
+                                  <Space>
+                                    <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+                                    <Text type="secondary" style={{ fontSize: 13 }}>
+                                      Địa điểm: <Text strong>{activeIncidentData.activeIncident.location}</Text>
+                                    </Text>
+                                  </Space>
+                                )}
+                                <Tag color="processing">{activeIncidentData.activeIncident.status}</Tag>
+                                {activeIncidentData.activeIncident.actualStartTime && (
+                                  <Space>
+                                    <ClockCircleOutlined />
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                      Bắt đầu: {new Date(activeIncidentData.activeIncident.actualStartTime).toLocaleString('vi-VN')}
+                                    </Text>
+                                  </Space>
+                                )}
+                              </Space>
+                            </Space>
+                          </div>
+                          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 12 }}>
+                            💡 <Text strong>Lưu ý:</Text> Một người chỉ được quyền xử lý 1 sự cố tại một thời điểm. Vui lòng đợi sự cố hiện tại được đóng trước khi phân công sự cố mới cho người này.
+                          </Text>
+                        </div>
+                      )}
+
+                      {/* Location Conflict Error (Backward Compatibility) */}
+                      {conflictData?.conflictingIncidents && conflictData.conflictingIncidents.length > 0 && (
+                        <div style={{ marginTop: 16 }}>
+                          <Text strong style={{ display: 'block', marginBottom: 8, color: '#ff4d4f' }}>
+                            <WarningOutlined /> Các sự cố đang conflict:
+                          </Text>
+                          <List
+                            size="small"
+                            dataSource={conflictData.conflictingIncidents}
+                            renderItem={(conflictIncident) => (
+                              <List.Item
+                                style={{
+                                  padding: '8px 12px',
+                                  border: '1px solid #ffccc7',
+                                  borderRadius: 6,
+                                  marginBottom: 8,
+                                  background: '#fff1f0'
+                                }}
+                              >
+                                <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                                  <Space>
+                                    <Tag color="red">#{conflictIncident.incidentId || conflictIncident._id.slice(-6)}</Tag>
+                                    <Text strong>{conflictIncident.title}</Text>
+                                  </Space>
+                                  <Space>
+                                    <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                      Địa điểm: <Text strong>{conflictIncident.location}</Text>
+                                    </Text>
+                                    <Tag color="blue">{conflictIncident.status}</Tag>
+                                  </Space>
+                                </Space>
+                              </List.Item>
+                            )}
+                          />
+                          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
+                            💡 <Text strong>Gợi ý:</Text> Vui lòng hoàn thành hoặc hủy phân công các sự cố trên trước khi phân công sự cố mới cho người này.
+                          </Text>
+                        </div>
+                      )}
+                    </div>
+                  }
                   type="error"
                   showIcon
+                  icon={<WarningOutlined />}
                   style={{ 
                     marginBottom: 24,
                     borderRadius: 8,
@@ -474,6 +683,24 @@ const AssignIncident: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Image Preview Modal */}
+      <Modal
+        open={!!previewImage}
+        footer={null}
+        onCancel={() => setPreviewImage(null)}
+        centered
+        width="auto"
+        style={{ maxWidth: '90vw' }}
+      >
+        {previewImage && (
+          <Image
+            src={previewImage}
+            alt="preview"
+            style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 8 }}
+          />
+        )}
+      </Modal>
     </div>
   );
 };

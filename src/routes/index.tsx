@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Suspense, type ComponentType } from 'react';
+import { Suspense, lazy, type ComponentType } from 'react';
 import AuthGuard from '../components/AuthGuard';
 import AdminLayout from '../pages/Admin/layout/AdminLayout';
 import LoginPage from '../pages/Login';
@@ -23,7 +23,7 @@ import CloseIncident from '../pages/header_department/IncidentManagement/CloseIn
 import ProgressHistory from '../pages/header_department/IncidentManagement/ProgressHistory';
 import EscalateIncident from '../pages/header_department/IncidentManagement/EscalateIncident';
 import HeaderDepartmentCertificateManagementPage from '../pages/header_department/CertificateManagement';
-import HeaderDepartmentIncidentManagementPage from '../pages/header_department/IncidentManagement';
+const HeaderDepartmentIncidentManagementPage = lazy(() => import('../pages/header_department/IncidentManagement'));
 import HeaderDepartmentPPEManagementPage from '../pages/header_department/PPEManagement';
 import HeaderDepartmentTrainingManagementPage from '../pages/header_department/TrainingManagement';
 import HeaderDepartmentDashboard from '../pages/header_department/Dashboard';
@@ -363,7 +363,9 @@ const AppRoutes = () => {
                 element={
                     <AuthGuard requiredRole="header_department">
                         <HeaderDepartmentLayout>
-                            <HeaderDepartmentIncidentManagementPage />
+                            <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>Đang tải...</div>}>
+                                <HeaderDepartmentIncidentManagementPage />
+                            </Suspense>
                         </HeaderDepartmentLayout>
                     </AuthGuard>
                 } 
