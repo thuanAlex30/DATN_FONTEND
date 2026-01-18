@@ -19,7 +19,8 @@ import {
   BankOutlined
 } from '@ant-design/icons';
 import ppeAssignmentService from '../../../../services/ppeAssignmentService';
-import type { PPEAssignment, UpdatePPEAssignmentData } from '../../../../services/ppeAssignmentService';
+import type { PPEAssignment } from '../../../../services/ppeAssignmentService';
+import * as ppeService from '../../../../services/ppeService';
 import { ENV } from '../../../../config/env';
 
 const { TextArea } = Input;
@@ -44,6 +45,8 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
   const [updating, setUpdating] = useState(false);
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [form] = Form.useForm();
+  const [serialsModalVisible, setSerialsModalVisible] = useState(false);
+  const [serialsToShow, setSerialsToShow] = useState<string[]>([]);
 
   // Helper function to resolve image URL
   const apiBaseForImages = useMemo(() => {
@@ -70,6 +73,52 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
       const response = await ppeAssignmentService.getPPEAssignmentById(assignmentId);
       if (response.success) {
         setAssignment(response.data);
+        // If item has no image_url, try to fetch full item details as a fallback
+        try {
+          const itemObj = response.data.item_id;
+          const itemIdStr = typeof itemObj === 'object' ? (itemObj.id || (itemObj as any)._id || itemObj._id) : itemObj;
+          if (itemIdStr && (!itemObj || !(itemObj as any).image_url)) {
+            const itemDetails = await ppeService.getPPEItemById(itemIdStr);
+            if (itemDetails && (itemDetails as any).image_url) {
+              // merge image_url into assignment.item_id
+              const merged = {
+                ...response.data,
+                item_id: {
+                  ...(response.data.item_id || {}),
+                  image_url: (itemDetails as any).image_url
+                }
+              };
+              setAssignment(merged);
+            }
+          }
+        } catch (err) {
+          // ignore fallback errors
+        }
+        // If assignment doesn't include serials, try to find issuance serials for this user+item
+        const assignedSerials = (response.data as any).assigned_serial_numbers || (response.data as any).assigned_serials;
+        if (!assignedSerials || assignedSerials.length === 0) {
+          try {
+            // attempt to fetch issuances for the user and match by item_id
+            const userId = typeof response.data.user_id === 'object' ? response.data.user_id.id || response.data.user_id._id : response.data.user_id;
+            if (userId) {
+              const issuances = await ppeService.getPPEIssuancesByUser(userId);
+              if (Array.isArray(issuances) && issuances.length > 0) {
+                const match = issuances.find((iss: any) => {
+                  const issItemId = typeof iss.item_id === 'object' ? (iss.item_id.id || iss.item_id._id) : iss.item_id;
+                  const assignItemId = typeof response.data.item_id === 'object' ? (response.data.item_id.id || response.data.item_id._id) : response.data.item_id;
+                  return issItemId === assignItemId;
+                });
+                if (match && match.assigned_serial_numbers && match.assigned_serial_numbers.length > 0) {
+                  setSerialsToShow(match.assigned_serial_numbers);
+                }
+              }
+            }
+          } catch (err) {
+            // ignore
+          }
+        } else {
+          setSerialsToShow(assignedSerials);
+        }
         // Debug: Log image URL
         if (response.data?.item_id && typeof response.data.item_id === 'object') {
           console.log('Item image_url:', (response.data.item_id as any).image_url);
@@ -86,25 +135,7 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
     }
   };
 
-  const handleIssuePPE = async () => {
-    if (!assignmentId) return;
-    
-    setUpdating(true);
-    try {
-      const response = await ppeAssignmentService.issuePPE(assignmentId);
-      if (response.success) {
-        message.success('PPE đã được cấp phát thành công!');
-        fetchAssignmentDetails();
-        onUpdate();
-      } else {
-        message.error(response.message || 'Không thể cấp phát PPE');
-      }
-    } catch (error) {
-      message.error('Có lỗi xảy ra khi cấp phát PPE');
-    } finally {
-      setUpdating(false);
-    }
-  };
+  // handleIssuePPE removed - not used
 
   const handleReturnPPE = async (values: any) => {
     if (!assignmentId) return;
@@ -187,6 +218,7 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
   }
 
   return (
+    <>
     <Modal
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -198,7 +230,7 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
       onCancel={onCancel}
       width={800}
       footer={[
-        <Button key="close" onClick={onCancel}>
+        <Button key="close" onClick={onCancel} disabled={loading}>
           Đóng
         </Button>
       ]}
@@ -236,27 +268,13 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
               if (resolvedUrl) {
                 return (
                   <div style={{ textAlign: 'center' }}>
-                    <Image
-                      src={resolvedUrl}
-                      width={150}
-                      height={150}
-                      style={{ objectFit: 'cover', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                      preview={{ mask: 'Xem ảnh' }}
-                      fallback={
-                        <div style={{ 
-                          width: 150, 
-                          height: 150, 
-                          borderRadius: 12,
-                          backgroundColor: '#1890ff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                        }}>
-                          <SafetyOutlined style={{ fontSize: 60, color: 'white' }} />
-                        </div>
-                      }
-                    />
+                      <Image
+                        src={resolvedUrl}
+                        width={150}
+                        height={150}
+                        style={{ objectFit: 'cover', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        preview={{ mask: 'Xem ảnh' }}
+                      />
                   </div>
                 );
               } else {
@@ -330,20 +348,61 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
                 <Text>{assignment.user_id.email}</Text>
               </div>
             )}
-            {assignment.user_id.phone && (
+            {(assignment.user_id as any).phone && (
               <div>
                 <PhoneOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-                <Text>{assignment.user_id.phone}</Text>
+                <Text>{(assignment.user_id as any).phone}</Text>
               </div>
             )}
-            {assignment.user_id.department_id && (
+            {(assignment.user_id as any).department_id && (
               <div>
                 <BankOutlined style={{ marginRight: 8, color: '#1890ff' }} />
                 <Text>
-                  {typeof assignment.user_id.department_id === 'object' 
-                    ? assignment.user_id.department_id.department_name 
-                    : assignment.user_id.department_id}
+                  {typeof (assignment.user_id as any).department_id === 'object' 
+                    ? (assignment.user_id as any).department_id.department_name 
+                    : (assignment.user_id as any).department_id}
                 </Text>
+              </div>
+            )}
+          </Space>
+        </Card>
+      )}
+
+      {/* Report summary card (prominent) */}
+      {(assignment.report_description || assignment.report_type || assignment.report_severity || assignment.reported_date) && (
+        <Card
+          size="small"
+          title={
+            <Space>
+              <WarningOutlined style={{ color: '#fa8c16' }} />
+              <span style={{ fontWeight: 600 }}>Báo cáo / Sự cố</span>
+            </Space>
+          }
+          style={{ marginBottom: 20, borderRadius: 8, backgroundColor: '#fff7e6' }}
+        >
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <div>
+              {assignment.report_type && <Text strong>Loại: </Text>}
+              {assignment.report_type && <Text>{assignment.report_type}</Text>}
+            </div>
+            <div>
+              {assignment.report_severity && <Text strong>Mức độ: </Text>}
+              {assignment.report_severity && (
+                <Tag color={assignment.report_severity === 'high' ? 'red' : assignment.report_severity === 'medium' ? 'orange' : 'green'}>
+                  {assignment.report_severity}
+                </Tag>
+              )}
+            </div>
+            {assignment.report_description && (
+              <div style={{ whiteSpace: 'pre-wrap' }}>
+                <Text strong>Mô tả:</Text>
+                <div style={{ marginTop: 6 }}>{assignment.report_description}</div>
+              </div>
+            )}
+            {assignment.reported_date && (
+              <div>
+                <Text strong>Ngày báo cáo: </Text>
+                <Text>{new Date(assignment.reported_date).toLocaleString('vi-VN')}</Text>
               </div>
             )}
           </Space>
@@ -414,12 +473,17 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
             </Space>
           }
         >
-          <Tag 
-            color={getConditionColor(assignment.return_condition || assignment.condition)}
-            style={{ fontSize: 13, padding: '4px 12px' }}
-          >
-            {getConditionText(assignment.return_condition || assignment.condition)}
-          </Tag>
+          {(() => {
+            const cond = (assignment.return_condition || assignment.condition) || '';
+            return (
+              <Tag 
+                color={getConditionColor(cond)}
+                style={{ fontSize: 13, padding: '4px 12px' }}
+              >
+                {getConditionText(cond)}
+              </Tag>
+            );
+          })()}
         </Descriptions.Item>
         
         <Descriptions.Item 
@@ -510,6 +574,85 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
             </div>
           </Descriptions.Item>
         )}
+        {/* Report fields */}
+        {(assignment.report_description || assignment.report_type || assignment.report_severity) && (
+          <Descriptions.Item
+            label={
+              <Space>
+                <WarningOutlined />
+                <span>Báo cáo sự cố</span>
+              </Space>
+            }
+            span={2}
+          >
+            <div style={{ padding: '8px 12px', backgroundColor: '#fff7e6', borderRadius: 4 }}>
+              {assignment.report_type && (
+                <div><Text strong>Loại:</Text> <Text>{assignment.report_type}</Text></div>
+              )}
+              {assignment.report_severity && (
+                <div><Text strong>Mức độ:</Text> <Tag color={assignment.report_severity === 'high' ? 'red' : assignment.report_severity === 'medium' ? 'orange' : 'green'}>{assignment.report_severity}</Tag></div>
+              )}
+              {assignment.report_description && (
+                <div style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{assignment.report_description}</div>
+              )}
+            </div>
+          </Descriptions.Item>
+        )}
+
+        {/* Confirmation info */}
+        {(assignment.confirmed_date || assignment.confirmation_notes) && (
+          <Descriptions.Item
+            label={
+              <Space>
+                <CheckOutlined />
+                <span>Xác nhận</span>
+              </Space>
+            }
+            span={2}
+          >
+            <div>
+              {assignment.confirmed_date && <div><Text strong>Ngày xác nhận:</Text> <Text>{new Date(assignment.confirmed_date).toLocaleString('vi-VN')}</Text></div>}
+              {assignment.confirmation_notes && <div style={{ marginTop: 6 }}><Text strong>Ghi chú xác nhận:</Text> <div style={{ marginTop: 4 }}>{assignment.confirmation_notes}</div></div>}
+            </div>
+          </Descriptions.Item>
+        )}
+
+        {/* Manager remaining quantity */}
+        {assignment.manager_remaining_quantity !== undefined && (
+          <Descriptions.Item
+            label={
+              <Space>
+                <NumberOutlined />
+                <span>Còn lại của Manager</span>
+              </Space>
+            }
+          >
+            <Text>{assignment.manager_remaining_quantity}</Text>
+          </Descriptions.Item>
+        )}
+        {/* Serial numbers */}
+        <Descriptions.Item
+          label={
+            <Space>
+              <ToolOutlined />
+              <span>Serial Numbers</span>
+            </Space>
+          }
+          span={2}
+        >
+          { serialsToShow && serialsToShow.length > 0 ? (
+            <Space>
+              {serialsToShow.slice(0,3).map((s, i) => (
+                <Tag key={i} color="blue">{s}</Tag>
+              ))}
+              {serialsToShow.length > 3 && (
+                <Button type="link" onClick={() => setSerialsModalVisible(true)}>Xem ({serialsToShow.length})</Button>
+              )}
+            </Space>
+          ) : (
+            <Text type="secondary">Không có</Text>
+          )}
+        </Descriptions.Item>
       </Descriptions>
 
       {showReturnForm && (
@@ -565,6 +708,21 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
         </div>
       )}
     </Modal>
+    {/* serials modal */}
+    <Modal
+      title="Serial Numbers"
+      open={serialsModalVisible}
+      onCancel={() => setSerialsModalVisible(false)}
+      footer={null}
+      width={600}
+    >
+      <div style={{ maxHeight: 400, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {serialsToShow && serialsToShow.length > 0 ? serialsToShow.map((s, i) => (
+          <Tag key={i} color="blue">{s}</Tag>
+        )) : <Text type="secondary">No serials</Text>}
+      </div>
+    </Modal>
+    </>
   );
 };
 

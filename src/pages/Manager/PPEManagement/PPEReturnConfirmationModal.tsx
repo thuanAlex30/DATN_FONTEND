@@ -40,6 +40,7 @@ interface PPEReturnConfirmationModalProps {
   onSuccess: () => void;
   issuance: PPEIssuance | null;
   userRole?: 'employee' | 'manager'; // Add userRole prop
+  managerSummary?: any | null;
 }
 
 const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
@@ -47,7 +48,8 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
   onCancel,
   onSuccess,
   issuance,
-  userRole = 'manager' // Default to manager for backward compatibility
+  userRole = 'manager', // Default to manager for backward compatibility
+  managerSummary = null
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -86,6 +88,13 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
 
       form.resetFields();
       onSuccess();
+      // notify other parts of the app to refresh PPE data
+      try {
+        window.dispatchEvent(new CustomEvent('ppe:refresh'));
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Could not dispatch ppe:refresh event', e);
+      }
     } catch (error: any) {
       console.error('Error returning PPE:', error);
       message.error(error.response?.data?.message || 'Có lỗi xảy ra khi trả PPE');
@@ -101,22 +110,36 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
 
   if (!issuance) return null;
 
-  const item = typeof issuance.item_id === 'object' && issuance.item_id ? issuance.item_id : null;
+  // Support both issuance shapes:
+  // - PPEIssuance: has item_id (object or id) and quantity
+  // - ManagerPPE summary: has item (object) and aggregated totals (total_received, total_issued_to_employees, remaining_in_hand)
+  const item = (issuance as any).item || (typeof issuance.item_id === 'object' && issuance.item_id) || null;
   const isOverdue = dayjs().isAfter(dayjs(issuance.expected_return_date));
   
-  // For manager returning to admin: use remaining_in_hand - total_issued_to_employees
-  // This is the actual quantity manager can return (excluding what's with employees)
-  const aggregatedInHand = (issuance as any).remaining_in_hand;
-  const totalIssuedToEmployees = (issuance as any).total_issued_to_employees;
-  
-  // Manager can only return what they have in hand (not with employees)
-  const availableToReturn = typeof aggregatedInHand === 'number' && typeof totalIssuedToEmployees === 'number'
-    ? Math.max(0, aggregatedInHand - totalIssuedToEmployees)
-    : (issuance.remaining_quantity !== undefined ? issuance.remaining_quantity : issuance.quantity);
-  
-  const remainingQuantity = userRole === 'manager' 
-    ? availableToReturn 
-    : (issuance.remaining_quantity || issuance.quantity);
+  // For manager returning to admin:
+  // normalize values from issuance shape (support different field names)
+  const aggregatedInHandRaw = (issuance as any).remaining_in_hand ?? (issuance as any).remaining ?? (issuance as any).remaining_quantity;
+  const totalIssuedToEmployeesRaw = (issuance as any).total_issued_to_employees ?? 0;
+  // total received may be present on manager summary or on the issuance.quantity (single issuance)
+  const totalReceivedRaw = managerSummary?.total_received ?? (issuance as any).total_received ?? (issuance as any).totalReceived ?? issuance.quantity ?? 0;
+
+  const aggregatedInHand = Number(aggregatedInHandRaw);
+  const totalIssuedToEmployees = Number(totalIssuedToEmployeesRaw) || 0;
+  const totalReceived = Number(totalReceivedRaw) || 0;
+
+  // If backend provides aggregatedInHand (manager's actual holding), use it directly.
+  // Otherwise compute from totalReceived - totalIssuedToEmployees.
+  let availableToReturn = 0;
+  if (aggregatedInHandRaw !== undefined && aggregatedInHandRaw !== null && !Number.isNaN(aggregatedInHand)) {
+    availableToReturn = Math.max(0, Math.floor(aggregatedInHand));
+  } else {
+    availableToReturn = Math.max(0, Math.floor(totalReceived - totalIssuedToEmployees));
+  }
+
+  // Display value used for both 'Còn giữ' and 'Có thể trả' for manager
+  const remainingQuantity = userRole === 'manager'
+    ? availableToReturn
+    : (issuance.remaining_quantity ?? issuance.quantity ?? 0);
 
   return (
     <Modal
@@ -184,15 +207,19 @@ const PPEReturnConfirmationModal: React.FC<PPEReturnConfirmationModalProps> = ({
         <Descriptions.Item label="Số lượng">
           <Space direction="vertical" size={0}>
             <Space>
-              <Tag color="blue">Tổng nhận: {issuance.quantity}</Tag>
-              {userRole === 'manager' && typeof aggregatedInHand === 'number' && (
-                <Tag color="cyan">Còn giữ: {aggregatedInHand}</Tag>
+            <Tag color="blue">Tổng nhận: {managerSummary?.total_received ?? (issuance as any).total_received ?? (issuance as any).totalReceived ?? issuance.quantity}</Tag>
+              {userRole === 'manager' && (
+                <Tag color="orange">Đã phát cho NV: {totalIssuedToEmployees}</Tag>
               )}
             </Space>
-            {userRole === 'manager' && typeof totalIssuedToEmployees === 'number' && (
+            {userRole === 'manager' ? (
               <Space>
-                <Tag color="orange">Đã phát cho NV: {totalIssuedToEmployees}</Tag>
+                <Tag color="cyan">Còn giữ: {remainingQuantity}</Tag>
                 <Tag color="green">Có thể trả: {remainingQuantity}</Tag>
+              </Space>
+            ) : (
+              <Space>
+                <Tag color="cyan">Còn giữ: {issuance.remaining_quantity ?? issuance.quantity}</Tag>
               </Space>
             )}
           </Space>

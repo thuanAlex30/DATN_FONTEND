@@ -76,9 +76,9 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
     label: 'Quản lý dự án',
   },
   {
-    key: '/manager/hikvision-events',
-    icon: <LockOutlined />,
-    label: 'Kiểm soát truy cập',
+    key: '/manager/certificates',
+    icon: <SafetyCertificateOutlined />,
+    label: 'Chứng chỉ cá nhân',
   },
   {
     key: '/manager/certificates',

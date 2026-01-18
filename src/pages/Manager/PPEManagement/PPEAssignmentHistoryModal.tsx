@@ -31,6 +31,7 @@ import {
 import type { PPEIssuance } from '../../../services/ppeService';
 import dayjs from 'dayjs';
 import { ENV } from '../../../config/env';
+import * as ppeService from '../../../services/ppeService';
 
 const { Title, Text } = Typography;
 
@@ -60,6 +61,9 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
 }) => {
   const [history, setHistory] = useState<PPEHistory[]>([]);
   const [loading, setLoading] = useState(false);
+  const [serialsModalVisible, setSerialsModalVisible] = useState(false);
+  const [serialsToShow, setSerialsToShow] = useState<string[]>([]);
+  const [aggregates, setAggregates] = useState<{ total_quantity: number; total_returned: number; total_remaining: number } | null>(null);
 
   // Helper function to resolve image URL
   const apiBaseForImages = useMemo(() => {
@@ -83,81 +87,57 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
 
     setLoading(true);
     try {
-      // Mock data for now - replace with actual API call
-      const mockHistory: PPEHistory[] = [
-        {
-          id: '1',
-          action: 'issued',
-          action_date: issuance.issued_date,
-          performed_by: {
-            id: 'admin-1',
-            full_name: 'Admin User',
-            email: 'admin@company.com'
-          },
-          details: {
-            quantity: issuance.quantity,
-            expected_return_date: issuance.expected_return_date
-          },
-          notes: 'Phát PPE cho Manager'
+      // Fetch manager history and aggregate entries for this item
+      const resp = await ppeService.getManagerPPEHistory();
+      const hist = (resp && resp.data && Array.isArray(resp.data.history)) ? resp.data.history : (Array.isArray(resp.history) ? resp.history : []);
+      const itemId = typeof issuance.item_id === 'object' && issuance.item_id._id ? String(issuance.item_id._id) : String(issuance.item_id);
+
+      // Filter entries for same item
+      const sameItemEntries = hist.filter((h: any) => {
+        const hid = h.item_id && (h.item_id._id || h.item_id) ? String(h.item_id._id || h.item_id) : null;
+        return hid === itemId;
+      });
+
+      // Build history rows mapping to existing PPEHistory type
+      const mapped: PPEHistory[] = sameItemEntries.map((h: any, idx: number) => ({
+        id: h.id || `h-${idx}`,
+        action: h.status === 'returned' ? 'returned' : 'issued',
+        action_date: h.createdAt || h.issued_date || new Date().toISOString(),
+        performed_by: {
+          id: (h.issued_by && (h.issued_by._id || h.issued_by.id)) || (h.user_id && (h.user_id._id || h.user_id.id)) || '',
+          full_name: (h.issued_by && (h.issued_by.full_name)) || (h.user_id && h.user_id.full_name) || '',
+          email: (h.issued_by && h.issued_by.email) || (h.user_id && h.user_id.email) || ''
         },
-        {
-          id: '2',
-          action: 'distributed',
-          action_date: dayjs().subtract(1, 'day').format('YYYY-MM-DD'),
-          performed_by: {
-            id: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.id : 'manager-1',
-            full_name: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.full_name : 'Manager',
-            email: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.email : 'manager@company.com'
-          },
-          details: {
-            distributed_to: 'Employee',
-            quantity: issuance.quantity
-          },
-          notes: 'Phát PPE cho nhân viên'
+        details: {
+          quantity: h.quantity,
+          expected_return_date: h.expected_return_date,
+          serials: h.assigned_serial_numbers || [],
+          remaining_quantity: h.remaining_quantity
+        },
+        notes: h.notes || ''
+      }));
+
+      // Compute aggregated totals
+      const total_quantity = sameItemEntries.reduce((s: number, x: any) => s + (Number(x.quantity) || 0), 0);
+      // total returned = sum of (quantity - remaining_quantity) when remaining_quantity present, else 0
+      const total_returned = sameItemEntries.reduce((s: number, x: any) => {
+        if (x.remaining_quantity !== undefined && x.remaining_quantity !== null) {
+          return s + ((Number(x.quantity) || 0) - (Number(x.remaining_quantity) || 0));
         }
-      ];
+        return s;
+      }, 0);
+      const total_remaining = sameItemEntries.reduce((s: number, x: any) => s + (Number(x.remaining_quantity) || (Number(x.quantity) || 0)), 0);
 
-      // Thêm lịch sử trả PPE (toàn bộ hoặc một phần)
-      if (issuance.status === 'returned' && issuance.actual_return_date) {
-        mockHistory.push({
-          id: '3',
-          action: 'returned',
-          action_date: issuance.actual_return_date,
-          performed_by: {
-            id: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.id : 'employee-1',
-            full_name: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.full_name : 'Employee',
-            email: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.email : 'employee@company.com'
-          },
-          details: {
-            return_condition: issuance.return_condition,
-            actual_return_date: issuance.actual_return_date,
-            quantity_returned: issuance.quantity
-          },
-          notes: issuance.return_notes || 'Trả PPE'
-        });
-      } else if (issuance.remaining_quantity !== undefined && issuance.remaining_quantity < issuance.quantity) {
-        // Partial return - thêm lịch sử trả một phần
-        const returnedQuantity = issuance.quantity - issuance.remaining_quantity;
-        mockHistory.push({
-          id: '3',
-          action: 'partial_return',
-          action_date: issuance.actual_return_date || dayjs().format('YYYY-MM-DD'),
-          performed_by: {
-            id: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.id : 'manager-1',
-            full_name: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.full_name : 'Manager',
-            email: typeof issuance.user_id === 'object' && issuance.user_id ? issuance.user_id.email : 'manager@company.com'
-          },
-          details: {
-            return_condition: issuance.return_condition || 'good',
-            actual_return_date: issuance.actual_return_date || dayjs().format('YYYY-MM-DD'),
-            quantity_returned: returnedQuantity,
-            quantity_remaining: issuance.remaining_quantity
-          },
-          notes: issuance.return_notes || `Trả một phần: ${returnedQuantity}/${issuance.quantity}`
-        });
-      }
+      // Prepend an aggregated summary row (optional) or set stats to top of modal via setState
+      // We'll set history to mapped and add aggregated info into first item's details for display cards
+      // store aggregates separately for header cards
+      setAggregates({
+        total_quantity,
+        total_returned,
+        total_remaining
+      });
 
-      setHistory(mockHistory);
+      setHistory(mapped);
     } catch (error) {
       console.error('Error loading PPE history:', error);
       message.error('Không thể tải lịch sử PPE');
@@ -250,6 +230,19 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
               <Text>Số lượng: {record.details.quantity}</Text>
               <br />
               <Text>Hạn trả: {dayjs(record.details.expected_return_date).format('DD/MM/YYYY')}</Text>
+              {record.details.serials && record.details.serials.length > 0 && (
+                <>
+                  <br />
+                  <div style={{ marginTop: 8 }}>
+                    <Text strong>Serial Numbers:</Text>
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {record.details.serials.map((s: string, i: number) => (
+                        <Tag key={i} color="blue" style={{ fontSize: 12 }}>{s}</Tag>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
           {record.action === 'distributed' && (
@@ -266,6 +259,19 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
               <Text>Ngày trả: {dayjs(record.details.actual_return_date).format('DD/MM/YYYY')}</Text>
               <br />
               <Text>Số lượng trả: {record.details.quantity_returned}</Text>
+              {record.details.returned_serials && record.details.returned_serials.length > 0 && (
+                <>
+                  <br />
+                  <div style={{ marginTop: 8 }}>
+                    <Text strong>Serial Numbers returned:</Text>
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {record.details.returned_serials.map((s: string, i: number) => (
+                        <Tag key={i} color="green" style={{ fontSize: 12 }}>{s}</Tag>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
           {record.action === 'partial_return' && (
@@ -294,6 +300,11 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
 
   const item = typeof issuance.item_id === 'object' && issuance.item_id ? issuance.item_id : null;
 
+  const openSerials = (serials: string[] = []) => {
+    setSerialsToShow(serials || []);
+    setSerialsModalVisible(true);
+  };
+
   return (
     <Modal
       title={
@@ -315,6 +326,22 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           column={2}
           size="small"
         >
+          {/* Serial numbers display */}
+          <Descriptions.Item label="Serial Numbers" span={2}>
+            {issuance.assigned_serial_numbers && issuance.assigned_serial_numbers.length > 0 ? (
+              <Space>
+                {/* show up to 3 */}
+                {issuance.assigned_serial_numbers.slice(0,3).map((s, i) => (
+                  <Tag key={i} color="blue">{s}</Tag>
+                ))}
+                {issuance.assigned_serial_numbers.length > 3 && (
+                  <Button type="link" onClick={() => openSerials(issuance.assigned_serial_numbers)}>Xem ({issuance.assigned_serial_numbers.length})</Button>
+                )}
+              </Space>
+            ) : (
+              <Text type="secondary">Không có</Text>
+            )}
+          </Descriptions.Item>
           <Descriptions.Item label="Thiết bị" span={2}>
             <Space>
               {(item as any)?.image_url ? (
@@ -374,7 +401,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           <Card size="small">
             <Statistic
               title="Tổng số lượng"
-              value={issuance.quantity}
+              value={aggregates ? aggregates.total_quantity : issuance.quantity}
               prefix={<SafetyOutlined />}
               valueStyle={{ color: '#1890ff' }}
             />
@@ -384,11 +411,9 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           <Card size="small">
             <Statistic
               title="Đã trả"
-              value={
-                issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity 
-                  ? issuance.quantity - issuance.remaining_quantity 
-                  : issuance.status === 'returned' ? issuance.quantity : 0
-              }
+              value={aggregates ? aggregates.total_returned : (issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity 
+                ? issuance.quantity - issuance.remaining_quantity 
+                : issuance.status === 'returned' ? issuance.quantity : 0)}
               prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#52c41a' }}
             />
@@ -398,7 +423,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           <Card size="small">
             <Statistic
               title="Còn lại"
-              value={issuance.remaining_quantity !== undefined ? issuance.remaining_quantity : issuance.quantity}
+              value={aggregates ? aggregates.total_remaining : (issuance.remaining_quantity !== undefined ? issuance.remaining_quantity : issuance.quantity)}
               prefix={<ExclamationCircleOutlined />}
               valueStyle={{ 
                 color: issuance.remaining_quantity !== undefined && issuance.remaining_quantity > 0 ? '#faad14' : '#ff4d4f' 
@@ -438,6 +463,21 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           </Button>
         </Space>
       </div>
+
+      {/* Serials modal */}
+      <Modal
+        title="Serial Numbers"
+        open={serialsModalVisible}
+        onCancel={() => setSerialsModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <div style={{ maxHeight: 400, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {serialsToShow && serialsToShow.length > 0 ? serialsToShow.map((s, i) => (
+            <Tag key={i} color="blue">{s}</Tag>
+          )) : <Text type="secondary">No serials</Text>}
+        </div>
+      </Modal>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px' }}>

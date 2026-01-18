@@ -1,0 +1,11 @@
+.equipmentSuggestion {
+  min-width: 300px;
+  max-width: 500px;
+}
+
+.suggestionButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+

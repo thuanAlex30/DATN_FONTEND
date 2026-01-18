@@ -1,5 +1,35 @@
 import { api } from '../config/axios';
 
+// Lightweight in-memory request coalescer + short TTL cache to avoid duplicate bursts
+const inflightRequests: Map<string, Promise<any>> = new Map();
+const responseCache: Map<string, { ts: number; data: any }> = new Map();
+const DEFAULT_CACHE_TTL = 5 * 1000; // 5 seconds
+
+async function coalesceRequest<T>(key: string, ttl: number, fn: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const cached = responseCache.get(key);
+  if (cached && (now - cached.ts) < ttl) {
+    return cached.data as T;
+  }
+
+  if (inflightRequests.has(key)) {
+    return inflightRequests.get(key) as Promise<T>;
+  }
+
+  const p = (async () => {
+    try {
+      const result = await fn();
+      responseCache.set(key, { ts: Date.now(), data: result });
+      return result;
+    } finally {
+      inflightRequests.delete(key);
+    }
+  })();
+
+  inflightRequests.set(key, p);
+  return p;
+}
+
 // Types
 export interface PPECategory {
   id: string;
@@ -67,9 +97,33 @@ export interface PPEIssuance {
   reported_date?: string;
   confirmed_date?: string;
   confirmation_notes?: string;
+  manager_remaining_quantity?: number;
+  assigned_serial_numbers?: string[];
+  returned_serial_numbers?: string[];
+  notes?: string;
+  tenant_id?: string;
   createdAt?: string;
   updatedAt?: string;
+  // Individual serial number tracking (already included above)
 }
+
+// normalize issuance status based on actual_return_date / remaining_quantity / returned_serial_numbers
+const normalizeIssuanceStatus = (issuance: any): PPEIssuance => {
+  try {
+    const copy = { ...issuance } as any;
+    const hasReturnedSerials = Array.isArray(copy.returned_serial_numbers) && copy.returned_serial_numbers.length > 0;
+    const hasActualReturnDate = !!copy.actual_return_date;
+    const remainingQty = (copy.remaining_quantity !== undefined && copy.remaining_quantity !== null) ? Number(copy.remaining_quantity) : undefined;
+    if (hasActualReturnDate || hasReturnedSerials || (remainingQty !== undefined && remainingQty <= 0)) {
+      copy.status = 'returned';
+    }
+    return copy as PPEIssuance;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('normalizeIssuanceStatus error', e);
+    return issuance;
+  }
+};
 
 export interface DashboardData {
   totalItems: number;
@@ -146,6 +200,20 @@ export interface UpdateIssuanceData {
   reported_date?: string;
 }
 
+export interface SerialNumbersResponse {
+  item_id: string;
+  available_serial_numbers: string[];
+  count: number;
+}
+
+export interface CreateIssuanceWithSerialsData extends CreateIssuanceData {
+  assigned_serial_numbers?: string[];
+}
+
+export interface ReturnPPEWithSerialsData extends ReturnPPEData {
+  returned_serial_numbers?: string[];
+}
+
 export interface ReturnPPEData {
   actual_return_date: string;
   return_condition: 'good' | 'damaged' | 'worn';
@@ -161,8 +229,27 @@ export interface ReportPPEData {
 
 // PPE Categories API
 export const getPPECategories = async (): Promise<PPECategory[]> => {
-  const response = await api.get('/ppe/categories');
-  return response.data.data;
+  return coalesceRequest('ppe:categories', DEFAULT_CACHE_TTL, async () => {
+    try {
+      const response = await api.get('/ppe/categories');
+
+      // Normalize different possible response shapes
+      let categories: PPECategory[] = [];
+
+      if (Array.isArray(response.data)) {
+        categories = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        categories = Array.isArray(response.data.data) ? response.data.data : [];
+      } else if (response.data && Array.isArray((response.data as any).categories)) {
+        categories = Array.isArray((response.data as any).categories) ? (response.data as any).categories : [];
+      }
+
+      return categories;
+    } catch (error: any) {
+      console.error('Error fetching PPE categories:', error);
+      return [];
+    }
+  });
 };
 
 export const getPPECategoryById = async (id: string): Promise<PPECategory> => {
@@ -202,34 +289,32 @@ export const deletePPECategory = async (id: string): Promise<void> => {
 
 // PPE Items API
 export const getPPEItems = async (includeInactive: boolean = true): Promise<PPEItem[]> => {
-  try {
-    const params: any = {};
-    if (includeInactive) {
-      params.include_inactive = 'true';
+  return coalesceRequest(`ppe:items:${includeInactive ? '1' : '0'}`, DEFAULT_CACHE_TTL, async () => {
+    try {
+      const params: any = {};
+      if (includeInactive) {
+        params.include_inactive = 'true';
+      }
+      
+      const response = await api.get('/ppe/items', { params });
+      
+      // Handle different response formats
+      let items: PPEItem[] = [];
+      
+      if (Array.isArray(response.data)) {
+        items = response.data;
+      } else if (response.data && response.data.data) {
+        items = Array.isArray(response.data.data) ? response.data.data : [];
+      } else if (response.data && response.data.items) {
+        items = Array.isArray(response.data.items) ? response.data.items : [];
+      }
+      
+      return items;
+    } catch (error: any) {
+      console.error('Error fetching PPE items:', error);
+      return [];
     }
-    
-    const response = await api.get('/ppe/items', { params });
-    console.log('getPPEItems response:', response);
-    
-    // Handle different response formats
-    let items: PPEItem[] = [];
-    
-    if (Array.isArray(response.data)) {
-      items = response.data;
-    } else if (response.data && response.data.data) {
-      items = Array.isArray(response.data.data) ? response.data.data : [];
-    } else if (response.data && response.data.items) {
-      items = Array.isArray(response.data.items) ? response.data.items : [];
-    }
-    
-    console.log('getPPEItems parsed items:', items.length, 'items');
-    return items;
-  } catch (error: any) {
-    console.error('Error fetching PPE items:', error);
-    console.error('Error details:', error.response?.data || error.message);
-    // Return empty array on error instead of throwing
-    return [];
-  }
+  });
 };
 
 export const getPPEItemById = async (id: string): Promise<PPEItem> => {
@@ -287,8 +372,59 @@ export const updatePPEItemQuantity = async (id: string, data: UpdateItemQuantity
 
 // PPE Issuances API
 export const getPPEIssuances = async (): Promise<PPEIssuance[]> => {
-  const response = await api.get('/ppe/issuances');
-  return response.data.data;
+  return coalesceRequest('ppe:issuances', DEFAULT_CACHE_TTL, async () => {
+    try {
+      const response = await api.get('/ppe/issuances');
+
+      // Normalize different possible response shapes
+      let issuances: PPEIssuance[] = [];
+
+      if (Array.isArray(response.data)) {
+        issuances = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        issuances = response.data.data;
+      } else if (response.data && Array.isArray((response.data as any).issuances)) {
+        issuances = (response.data as any).issuances;
+      }
+      // Normalize statuses for display (treat actual_return_date / returned_serial_numbers / remaining_quantity <= 0 as returned)
+      issuances = issuances.map((iss: any) => normalizeIssuanceStatus(iss));
+
+      // Aggregate per-item returned counts and mark all issuances for an item as returned
+      try {
+        const byItem: Record<string, { totalQty: number; totalReturned: number }> = {};
+        for (const iss of issuances) {
+          const itemId = (iss.item_id && (iss.item_id.id || (iss.item_id as any)._id)) || iss.item_id;
+          if (!itemId) continue;
+          const qty = Number(iss.quantity || 0);
+          const returnedFromSerials = Array.isArray(iss.returned_serial_numbers) ? iss.returned_serial_numbers.length : 0;
+          const returnedFromActual = iss.actual_return_date ? qty : 0;
+          const returnedFromRemaining = (iss.remaining_quantity !== undefined && iss.remaining_quantity !== null) ? Math.max(0, qty - Number(iss.remaining_quantity)) : 0;
+          const returned = Math.max(returnedFromSerials, returnedFromActual, returnedFromRemaining);
+          if (!byItem[String(itemId)]) byItem[String(itemId)] = { totalQty: 0, totalReturned: 0 };
+          byItem[String(itemId)].totalQty += qty;
+          byItem[String(itemId)].totalReturned += returned;
+        }
+
+        // If totalReturned >= totalQty for an item, mark all its issuances as returned
+        for (const iss of issuances) {
+          const itemId = (iss.item_id && (iss.item_id.id || (iss.item_id as any)._id)) || iss.item_id;
+          if (!itemId) continue;
+          const agg = byItem[String(itemId)];
+          if (agg && agg.totalReturned >= agg.totalQty) {
+            (iss as any).status = 'returned';
+          }
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Error aggregating returned counts per item', e);
+      }
+
+      return issuances;
+    } catch (error: any) {
+      console.error('Error fetching PPE issuances:', error);
+      return [];
+    }
+  });
 };
 
 export const getPPEIssuanceById = async (id: string): Promise<PPEIssuance> => {
@@ -313,8 +449,26 @@ export const returnPPEIssuance = async (id: string, data: ReturnPPEData): Promis
 
 // Employee-specific PPE return method
 export const returnPPEIssuanceEmployee = async (id: string, data: ReturnPPEData): Promise<PPEIssuance> => {
-  const response = await api.post(`/ppe/issuances/${id}/return-employee`, data);
-  return response.data.data;
+  try {
+    // Increase timeout for potentially long-running return operations
+    const response = await api.post(`/ppe/issuances/${id}/return-employee`, data, { timeout: 60000 });
+    return response.data.data;
+  } catch (error: any) {
+    // If request timed out, try to confirm the result by fetching the issuance
+    const isTimeout = error?.code === 'ECONNABORTED' || /timeout of \d+ms exceeded/.test(error?.message || '');
+    if (isTimeout) {
+      try {
+        const issuance = await getPPEIssuanceById(id);
+        // If backend already processed the return, treat as success
+        if (issuance && (issuance.status === 'returned' || issuance.actual_return_date)) {
+          return issuance;
+        }
+      } catch (innerErr) {
+        // ignore and rethrow original error below
+      }
+    }
+    throw error;
+  }
 };
 
 // Employee-specific PPE report method
@@ -329,14 +483,20 @@ export const deletePPEIssuance = async (id: string): Promise<void> => {
 
 // Get PPE issuances for current user (employee)
 export const getMyPPEIssuances = async (): Promise<PPEIssuance[]> => {
-  const response = await api.get('/ppe/issuances/my');
-  return response.data.data;
+  return coalesceRequest('ppe:my-issuances', 2000, async () => {
+    const response = await api.get('/ppe/issuances/my');
+    const data = Array.isArray(response.data.data) ? response.data.data : [];
+    return data.map((iss: any) => normalizeIssuanceStatus(iss));
+  });
 };
 
 // Get PPE issuances for a specific user
 export const getPPEIssuancesByUser = async (userId: string): Promise<PPEIssuance[]> => {
-  const response = await api.get(`/ppe/issuances/user/${userId}`);
-  return response.data.data;
+  return coalesceRequest(`ppe:issuances:user:${userId}`, 2000, async () => {
+    const response = await api.get(`/ppe/issuances/user/${userId}`);
+    const data = Array.isArray(response.data.data) ? response.data.data : [];
+    return data.map((iss: any) => normalizeIssuanceStatus(iss));
+  });
 };
 
 // Get active PPE issuances (not returned)
@@ -587,7 +747,7 @@ export const issueToEmployee = async (issuanceData: {
   notes?: string;
 }) => {
   try {
-    const response = await api.post('/ppe/issuances/to-employee', issuanceData);
+    const response = await api.post('/ppe/issuances/to-employee', issuanceData, { timeout: 60000 });
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || 'Lỗi khi phát PPE cho Employee');
@@ -657,48 +817,113 @@ export const returnToAdmin = async (issuanceId: string, returnData: {
  * Lấy danh sách PPE của Manager
  */
 export const getManagerPPE = async () => {
-  try {
-    const response = await api.get('/ppe/issuances/manager-ppe');
-    return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || 'Lỗi khi lấy PPE của Manager');
-  }
+  return coalesceRequest('ppe:manager-ppe', 2000, async () => {
+    try {
+      const response = await api.get('/ppe/issuances/manager-ppe');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lỗi khi lấy PPE của Manager');
+    }
+  });
 };
 
 /**
  * Lấy danh sách PPE của Employee
  */
 export const getEmployeePPE = async () => {
-  try {
-    const response = await api.get('/ppe/issuances/employee-ppe');
-    return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || 'Lỗi khi lấy PPE của Employee');
-  }
+  return coalesceRequest('ppe:employee-ppe', 2000, async () => {
+    try {
+      const response = await api.get('/ppe/issuances/employee-ppe');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lỗi khi lấy PPE của Employee');
+    }
+  });
 };
 
 /**
  * Lấy danh sách PPE của Employees trong department (dành cho manager)
  */
 export const getDepartmentEmployeesPPE = async () => {
-  try {
-    const response = await api.get('/ppe/issuances/department-employees-ppe');
-    return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || 'Lỗi khi lấy PPE của Employees trong department');
-  }
+  return coalesceRequest('ppe:department-employees-ppe', 2000, async () => {
+    try {
+      const response = await api.get('/ppe/issuances/department-employees-ppe');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lỗi khi lấy PPE của Employees trong department');
+    }
+  });
 };
 
 /**
  * Lấy lịch sử PPE của Manager
  */
 export const getManagerPPEHistory = async () => {
-  try {
-    const response = await api.get('/ppe/issuances/manager-history');
-    return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || 'Lỗi khi lấy lịch sử PPE của Manager');
-  }
+  return coalesceRequest('ppe:manager-history', 2000, async () => {
+    try {
+      const response = await api.get('/ppe/issuances/manager-history');
+
+      // Normalize various shapes to an array of issuances
+      let issuances: any[] = [];
+      const res = response?.data;
+
+      if (!res) {
+        issuances = [];
+      } else if (Array.isArray(res)) {
+        issuances = res;
+      } else if (Array.isArray(res.data)) {
+        issuances = res.data;
+      } else if (Array.isArray(res.history)) {
+        issuances = res.history;
+      } else if (Array.isArray(res.data?.history)) {
+        issuances = res.data.history;
+      } else if (Array.isArray(res.data?.data)) {
+        issuances = res.data.data;
+      } else if (res.success && Array.isArray(res.data?.issuances)) {
+        issuances = res.data.issuances;
+      } else {
+        const maybeArray = Object.values(res).find((v: any) => Array.isArray(v));
+        issuances = Array.isArray(maybeArray) ? maybeArray as any[] : [];
+      }
+
+      // Apply normalization to each issuance (mark returned when appropriate)
+      const normalized = issuances.map((iss: any) => normalizeIssuanceStatus(iss));
+
+      // Aggregate per-item returned counts and mark all issuances for an item as returned
+      try {
+        const byItem: Record<string, { totalQty: number; totalReturned: number }> = {};
+        for (const iss of normalized) {
+          const itemId = (iss.item_id && (iss.item_id.id || (iss.item_id as any)._id)) || iss.item_id;
+          if (!itemId) continue;
+          const qty = Number(iss.quantity || 0);
+          const returnedFromSerials = Array.isArray(iss.returned_serial_numbers) ? iss.returned_serial_numbers.length : 0;
+          const returnedFromActual = iss.actual_return_date ? qty : 0;
+          const returnedFromRemaining = (iss.remaining_quantity !== undefined && iss.remaining_quantity !== null) ? Math.max(0, qty - Number(iss.remaining_quantity)) : 0;
+          const returned = Math.max(returnedFromSerials, returnedFromActual, returnedFromRemaining);
+          if (!byItem[String(itemId)]) byItem[String(itemId)] = { totalQty: 0, totalReturned: 0 };
+          byItem[String(itemId)].totalQty += qty;
+          byItem[String(itemId)].totalReturned += returned;
+        }
+
+        // If totalReturned >= totalQty for an item, mark all its issuances as returned
+        for (const iss of normalized) {
+          const itemId = (iss.item_id && (iss.item_id.id || (iss.item_id as any)._id)) || iss.item_id;
+          if (!itemId) continue;
+          const agg = byItem[String(itemId)];
+          if (agg && agg.totalQty > 0 && agg.totalReturned >= agg.totalQty) {
+            (iss as any).status = 'returned';
+          }
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Error aggregating returned counts per item (manager history)', e);
+      }
+
+      return normalized;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Lỗi khi lấy lịch sử PPE của Manager');
+    }
+  });
 };
 
 // ==================== PPE ADVANCED FEATURES ====================
@@ -952,6 +1177,24 @@ export const getExpiryReport = async (params?: {
  */
 export const runDailyExpiryCheck = async (): Promise<any> => {
   const response = await api.post('/api/ppe-advanced/expiry/daily-check');
+  return response.data.data;
+};
+
+// ==================== SERIAL NUMBER MANAGEMENT ====================
+
+/**
+ * Get available serial numbers for manager to assign to employees
+ */
+export const getAvailableSerialNumbersForManager = async (itemId: string): Promise<SerialNumbersResponse> => {
+  const response = await api.get(`/ppe/serial-numbers/manager/${itemId}`);
+  return response.data.data;
+};
+
+/**
+ * Get available serial numbers for admin to assign to managers
+ */
+export const getAvailableSerialNumbersForAdmin = async (itemId: string): Promise<SerialNumbersResponse> => {
+  const response = await api.get(`/ppe/serial-numbers/admin/${itemId}`);
   return response.data.data;
 };
 

@@ -21,6 +21,19 @@ export interface PPEAssignment {
   manager_id?: string;
   created_at: string;
   updated_at: string;
+  // Additional fields returned by backend
+  assigned_serial_numbers?: string[];
+  returned_serial_numbers?: string[];
+  manager_remaining_quantity?: number;
+  report_description?: string;
+  report_type?: 'damage' | 'replacement' | 'lost' | string;
+  report_severity?: 'low' | 'medium' | 'high' | string;
+  reported_date?: string;
+  confirmed_date?: string;
+  confirmation_notes?: string;
+  tenant_id?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreatePPEAssignmentData {
@@ -117,9 +130,11 @@ export const ppeAssignmentService = {
   },
 
   // Return PPE
-  returnPPE: async (id: string, condition: string, notes?: string) => {
+  returnPPE: async (id: string, condition: string, notes?: string, returned_serials?: string[]) => {
     try {
-      const response = await api.post(`${API_BASE}/${id}/return`, { condition, notes });
+      const body: any = { condition, notes };
+      if (returned_serials && returned_serials.length > 0) body.returned_serials = returned_serials;
+      const response = await api.post(`${API_BASE}/${id}/return`, body);
       return { data: response.data.data, success: true };
     } catch (error) {
       console.error('Error returning PPE:', error);

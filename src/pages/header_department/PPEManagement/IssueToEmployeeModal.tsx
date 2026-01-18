@@ -56,6 +56,7 @@ interface PPEItem {
   item_code: string;
   brand?: string;
   model?: string;
+  status?: 'active' | 'inactive' | string;
   quantity_available: number;
   quantity_allocated: number;
   image_url?: string;
@@ -83,6 +84,9 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
   const [selectedItem, setSelectedItem] = useState<PPEItem | null>(null);
   const [selectedEmployees, setSelectedEmployees] = useState<User[]>([]);
   const [availableQuantity, setAvailableQuantity] = useState(0);
+  const [availableSerialNumbers, setAvailableSerialNumbers] = useState<string[]>([]);
+  const [selectedSerialNumbers, setSelectedSerialNumbers] = useState<string[]>([]);
+  const [itemHasSerialNumbers, setItemHasSerialNumbers] = useState<boolean>(false);
 
   // Helper function to resolve image URL
   const apiBaseForImages = useMemo(() => {
@@ -104,6 +108,9 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       setSelectedItem(null);
       setSelectedEmployees([]);
       setAvailableQuantity(0);
+      setAvailableSerialNumbers([]);
+      setSelectedSerialNumbers([]);
+      setItemHasSerialNumbers(false);
     }
   }, [visible, managerId]);
 
@@ -125,7 +132,7 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       if (currentUserId && (currentUserId.toString() === managerId.toString())) {
         // Use current user's department_id directly
         departmentId = currentUser?.department?.id || 
-                      currentUser?.department?._id || 
+                      (currentUser?.department as any)?._id || 
                       (currentUser as any)?.department_id?.id ||
                       (currentUser as any)?.department_id?._id ||
                       (currentUser as any)?.department_id;
@@ -182,9 +189,9 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       }
       
       // Convert to string if it's an object
-      const deptIdString = typeof departmentId === 'string' 
-        ? departmentId 
-        : (departmentId.toString ? departmentId.toString() : String(departmentId));
+      const deptIdString = typeof departmentId === 'string'
+        ? departmentId
+        : ((departmentId as any)?.toString?.() ?? String(departmentId));
       
       console.log('🔍 Fetching employees for department:', deptIdString);
       
@@ -287,9 +294,29 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       
       setSelectedItem(ppeData.item);
       setAvailableQuantity(ppeData.remaining);
+
+      // Load available serial numbers for this item
+      loadAvailableSerialNumbers(itemId);
     } else {
       setSelectedItem(null);
       setAvailableQuantity(0);
+      setAvailableSerialNumbers([]);
+      setSelectedSerialNumbers([]);
+      setItemHasSerialNumbers(false);
+    }
+  };
+
+  const loadAvailableSerialNumbers = async (itemId: string) => {
+    try {
+      const response = await ppeService.getAvailableSerialNumbersForManager(itemId);
+      setAvailableSerialNumbers(response.available_serial_numbers);
+      setItemHasSerialNumbers(response.available_serial_numbers.length > 0);
+      setSelectedSerialNumbers([]); // Reset selected serials
+    } catch (error) {
+      console.error('Error loading available serial numbers:', error);
+      setAvailableSerialNumbers([]);
+      setItemHasSerialNumbers(false);
+      message.error('Không thể tải danh sách serial numbers khả dụng');
     }
   };
 
@@ -348,8 +375,8 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       
       // Phát PPE cho từng nhân viên - mỗi nhân viên nhận 1 PPE
       // Sử dụng Promise.allSettled để xử lý từng request độc lập, tránh fail tất cả nếu 1 request fail
-      const promises = uniqueUserIds.map((userId: string) => {
-        const issuanceData = {
+      const promises = uniqueUserIds.map((userId: string, index: number) => {
+        const issuanceData: any = {
           user_id: userId,
           item_id: values.item_id,
           quantity: 1, // Mỗi nhân viên chỉ nhận 1 PPE
@@ -357,6 +384,12 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
           expected_return_date: values.expected_return_date.toISOString(),
           notes: values.notes || ''
         };
+
+        // Assign specific serial number if selected
+        if (values.assigned_serial_numbers && values.assigned_serial_numbers.length > index) {
+          issuanceData.assigned_serial_numbers = [values.assigned_serial_numbers[index]];
+        }
+
         return ppeService.issueToEmployee(issuanceData).catch(error => {
           // Trả về error object để xử lý sau
           return {
@@ -729,6 +762,43 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                 value={selectedEmployees.length > 0 ? selectedEmployees.length : undefined}
               />
             </Form.Item>
+
+            {itemHasSerialNumbers && (
+              <Form.Item
+                label="Chọn Serial Numbers (tùy chọn - nếu không chọn sẽ tự động gán)"
+                name="assigned_serial_numbers"
+                rules={[
+                  {
+                    validator: (_, value) => {
+                      if (value && value.length > 0 && value.length !== selectedEmployees.length) {
+                        return Promise.reject(`Số serial numbers phải bằng số nhân viên được chọn (${selectedEmployees.length})`);
+                      }
+                      return Promise.resolve();
+                    }
+                  }
+                ]}
+              >
+                <Select
+                  mode="multiple"
+                  placeholder="Chọn serial numbers cụ thể cho từng nhân viên"
+                  style={{ width: '100%' }}
+                  showSearch
+                  optionFilterProp="children"
+                  onChange={(values: string[]) => setSelectedSerialNumbers(values)}
+                  maxTagCount={3}
+                  maxTagTextLength={10}
+                >
+                  {availableSerialNumbers.map(serial => (
+                    <Option key={serial} value={serial}>
+                      {serial}
+                    </Option>
+                  ))}
+                </Select>
+                <Text type="secondary" style={{ fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                  Có {availableSerialNumbers.length} serial numbers khả dụng. Nếu không chọn, hệ thống sẽ tự động gán.
+                </Text>
+              </Form.Item>
+            )}
 
             <Row gutter={8}>
               <Col span={12}>
