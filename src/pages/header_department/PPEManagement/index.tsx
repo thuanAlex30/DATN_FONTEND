@@ -255,6 +255,19 @@ const PPEManagement: React.FC = () => {
         categories = Array.isArray((categoriesRes as any).data) ? (categoriesRes as any).data : [];
       }
       
+      // Debug: Log first category to check image_url
+      if (categories.length > 0) {
+        console.log('[PPE Management] First category sample:', {
+          id: categories[0].id || (categories[0] as any)._id,
+          category_name: categories[0].category_name,
+          image_url: categories[0].image_url,
+          image_url_type: typeof categories[0].image_url,
+          image_url_truthy: !!categories[0].image_url,
+          image_url_trimmed: categories[0].image_url ? categories[0].image_url.trim() : '',
+          full_record: categories[0]
+        });
+      }
+      
       if (Array.isArray(itemsRes)) {
         items = itemsRes;
       } else if (itemsRes && typeof itemsRes === 'object') {
@@ -1069,26 +1082,60 @@ const getFilteredIssuances = () => {
       title: 'Tên danh mục',
       dataIndex: 'category_name',
       key: 'category_name',
-      render: (text: string, record: PPECategory) => (
-        <Space>
-          {record.image_url ? (
-            <Image
-              src={resolveImageUrl(record.image_url)}
-              width={40}
-              height={40}
-              style={{ objectFit: 'cover', borderRadius: 8 }}
-              preview={{ mask: 'Xem ảnh' }}
-              fallback=""
-            />
-          ) : (
-            <Avatar icon={<SafetyOutlined />} />
-          )}
-          <div>
-            <div style={{ fontWeight: 'bold' }}>{text}</div>
-            <div style={{ fontSize: '12px', color: '#666' }}>{record.description}</div>
-          </div>
-        </Space>
-      ),
+      render: (text: string, record: PPECategory) => {
+        // More robust image URL checking
+        const imageUrl = record.image_url;
+        const hasValidImageUrl = imageUrl && 
+                                 typeof imageUrl === 'string' && 
+                                 imageUrl.trim().length > 0 && 
+                                 imageUrl !== 'undefined' && 
+                                 imageUrl !== 'null';
+        
+        const resolvedUrl = hasValidImageUrl ? resolveImageUrl(imageUrl.trim()) : undefined;
+        
+        // Debug log for first category only (will log once)
+        if (ppeCategories.length > 0 && record.category_name === ppeCategories[0]?.category_name) {
+          console.log('[PPE Management] Rendering category image (first category):', {
+            category_name: record.category_name,
+            image_url: imageUrl,
+            image_url_type: typeof imageUrl,
+            image_url_length: imageUrl ? imageUrl.length : 0,
+            hasValidImageUrl,
+            resolvedUrl,
+            apiBaseForImages,
+            fullRecord: record
+          });
+        }
+        
+        return (
+          <Space>
+            {hasValidImageUrl && resolvedUrl ? (
+              <Image
+                src={resolvedUrl}
+                width={40}
+                height={40}
+                style={{ objectFit: 'cover', borderRadius: 8 }}
+                preview={{ mask: 'Xem ảnh' }}
+                fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect fill='%23ddd' width='40' height='40'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='12'%3ENo Image%3C/text%3E%3C/svg%3E"
+                onError={(e) => {
+                  console.error('[PPE Management] Image load error:', {
+                    category_name: record.category_name,
+                    src: resolvedUrl,
+                    original_url: imageUrl,
+                    error: e
+                  });
+                }}
+              />
+            ) : (
+              <Avatar icon={<SafetyOutlined />} />
+            )}
+            <div>
+              <div style={{ fontWeight: 'bold' }}>{text}</div>
+              <div style={{ fontSize: '12px', color: '#666' }}>{record.description}</div>
+            </div>
+          </Space>
+        );
+      },
     },
     {
       title: 'Tuổi thọ (tháng)',

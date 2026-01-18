@@ -31,6 +31,28 @@ export interface WeatherResponse {
   current: CurrentWeather;
 }
 
+export interface EquipmentSuggestion {
+  id: string;
+  item_code: string;
+  item_name: string;
+  category: string;
+  reason: string;
+  priority: number;
+  quantity_available: number;
+}
+
+export interface EquipmentSuggestionsResponse {
+  weather: WeatherResponse;
+  suggestions: EquipmentSuggestion[];
+  message: string;
+  conditions: string[];
+  weatherSummary: {
+    temperature: string;
+    windSpeed: string;
+    weatherCode: number;
+  };
+}
+
 export interface DailyForecast {
   date: string;
   weathercode: number;

@@ -69,6 +69,10 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
     }
   }, [enableGeo]); // Chỉ chạy một lần khi mount
 
+  // Use useRef to track if we've already fetched to prevent duplicate calls
+  const hasFetchedRef = React.useRef(false);
+  const lastFetchCoordsRef = React.useRef<{ lat?: number; lon?: number } | null>(null);
+
   useEffect(() => {
     if (isGettingLocation) return;
     
@@ -80,6 +84,32 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({
       !isNaN(coords.longitude) &&
       isFinite(coords.latitude) &&
       isFinite(coords.longitude);
+    
+    // Check if coordinates have changed
+    const coordsChanged = 
+      lastFetchCoordsRef.current?.lat !== coords.latitude ||
+      lastFetchCoordsRef.current?.lon !== coords.longitude;
+    
+    // Don't fetch if:
+    // 1. Already loading
+    // 2. Has data and succeeded AND coordinates haven't changed
+    // 3. Already fetched with same coordinates
+    if (status === 'loading') {
+      return;
+    }
+    
+    if (data && status === 'succeeded' && !coordsChanged && hasFetchedRef.current) {
+      return;
+    }
+    
+    // Only fetch if status is idle or failed, or if coordinates changed
+    if (status !== 'idle' && status !== 'failed' && !coordsChanged && hasFetchedRef.current) {
+      return;
+    }
+    
+    // Update refs
+    hasFetchedRef.current = true;
+    lastFetchCoordsRef.current = { lat: coords.latitude, lon: coords.longitude };
     
     if (hasValidCoords) {
       dispatch(fetchWeather({ latitude: coords.latitude, longitude: coords.longitude }) as any);

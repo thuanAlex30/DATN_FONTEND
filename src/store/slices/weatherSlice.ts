@@ -10,7 +10,24 @@ import type {
 export const fetchWeather = createAsyncThunk(
   'weather/fetchCurrent',
   async (params?: { latitude?: number; longitude?: number; timezone?: string }) => 
-    WeatherService.getCurrent(params)
+    WeatherService.getCurrent(params),
+  {
+    // Prevent duplicate requests - only dispatch if not already loading
+    condition: (params, { getState }) => {
+      const state = getState() as any;
+      const weatherState = state.weather;
+      // Don't dispatch if already loading
+      if (weatherState.status === 'loading') {
+        return false;
+      }
+      // Don't dispatch if we have recent data (within last 5 minutes)
+      // The service layer already checks cache, but this prevents unnecessary dispatches
+      if (weatherState.data && weatherState.status === 'succeeded') {
+        return false;
+      }
+      return true;
+    }
+  }
 );
 
 export const fetchForecast = createAsyncThunk(

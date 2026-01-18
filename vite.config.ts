@@ -8,13 +8,18 @@ export default defineConfig({
   build: {
     outDir: 'dist', // Output folder
     emptyOutDir: true, // Xóa folder cũ trước khi build
+    assetsDir: 'assets', // Đảm bảo assets trong folder assets/
     rollupOptions: {
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'antd-vendor': ['antd', '@ant-design/icons'],
           'utils': ['axios'],
-        }
+        },
+        // Đảm bảo chunk files có hash để cache busting
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
       }
     },
     chunkSizeWarningLimit: 1000, // Tăng limit để giảm warning

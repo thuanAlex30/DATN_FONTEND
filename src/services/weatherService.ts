@@ -3,6 +3,7 @@ import { ENV } from '../config/env';
 import { apiCache } from '../utils/apiCache';
 import type { 
   WeatherResponse, 
+  EquipmentSuggestionsResponse, 
   WeatherForecastResponse,
   HourlyForecastResponse,
   AirQualityResponse,
@@ -14,7 +15,9 @@ import type {
   WeatherAlertSeverity
 } from '../types/weather';
 
-const CACHE_TTL_MS = (ENV.WEATHER_REFRESH_SECONDS || 600) * 1000;
+// Increase cache TTL to 30 minutes (1800s) to match backend and reduce API calls
+// Backend cache is 30 minutes, so frontend should match to avoid unnecessary requests
+const CACHE_TTL_MS = (ENV.WEATHER_REFRESH_SECONDS || 1800) * 1000;
 
 export const WeatherService = {
   getCurrent: async (params?: { latitude?: number; longitude?: number; timezone?: string }) => {
@@ -24,6 +27,19 @@ export const WeatherService = {
 
     const res = await api.get<{ success: boolean; data: WeatherResponse; message: string }>(
       '/integrations/weather/current',
+      { params }
+    );
+    apiCache.set(cacheKey, res.data.data, CACHE_TTL_MS);
+    return res.data.data;
+  },
+
+  getEquipmentSuggestions: async (params?: { latitude?: number; longitude?: number; timezone?: string }) => {
+    const cacheKey = apiCache.generateKey('/integrations/weather/equipment-suggestions', params);
+    const cached = apiCache.get(cacheKey);
+    if (cached) return cached as EquipmentSuggestionsResponse;
+
+    const res = await api.get<{ success: boolean; data: EquipmentSuggestionsResponse; message: string }>(
+      '/integrations/weather/equipment-suggestions',
       { params }
     );
     apiCache.set(cacheKey, res.data.data, CACHE_TTL_MS);

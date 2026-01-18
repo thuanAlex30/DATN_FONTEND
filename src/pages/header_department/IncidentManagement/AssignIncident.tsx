@@ -526,7 +526,7 @@ const AssignIncident: React.FC = () => {
 
               {error && (
                 <Alert
-                  message="Lỗi phân công"
+                  message="Không thể phân công sự cố"
                   description={
                     <div>
                       <Text>{error}</Text>
