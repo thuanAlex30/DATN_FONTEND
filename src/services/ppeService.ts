@@ -393,7 +393,9 @@ export const getPPEIssuances = async (): Promise<PPEIssuance[]> => {
       try {
         const byItem: Record<string, { totalQty: number; totalReturned: number }> = {};
         for (const iss of issuances) {
-          const itemId = (iss.item_id && (iss.item_id.id || (iss.item_id as any)._id)) || iss.item_id;
+          const itemId = typeof iss.item_id === 'object' && iss.item_id !== null 
+            ? (iss.item_id.id || (iss.item_id as any)._id) 
+            : iss.item_id;
           if (!itemId) continue;
           const qty = Number(iss.quantity || 0);
           const returnedFromSerials = Array.isArray(iss.returned_serial_numbers) ? iss.returned_serial_numbers.length : 0;
@@ -407,7 +409,9 @@ export const getPPEIssuances = async (): Promise<PPEIssuance[]> => {
 
         // If totalReturned >= totalQty for an item, mark all its issuances as returned
         for (const iss of issuances) {
-          const itemId = (iss.item_id && (iss.item_id.id || (iss.item_id as any)._id)) || iss.item_id;
+          const itemId = typeof iss.item_id === 'object' && iss.item_id !== null 
+            ? (iss.item_id.id || (iss.item_id as any)._id) 
+            : iss.item_id;
           if (!itemId) continue;
           const agg = byItem[String(itemId)];
           if (agg && agg.totalReturned >= agg.totalQty) {
@@ -893,7 +897,9 @@ export const getManagerPPEHistory = async () => {
       try {
         const byItem: Record<string, { totalQty: number; totalReturned: number }> = {};
         for (const iss of normalized) {
-          const itemId = (iss.item_id && (iss.item_id.id || (iss.item_id as any)._id)) || iss.item_id;
+          const itemId = typeof iss.item_id === 'object' && iss.item_id !== null 
+            ? (iss.item_id.id || (iss.item_id as any)._id) 
+            : iss.item_id;
           if (!itemId) continue;
           const qty = Number(iss.quantity || 0);
           const returnedFromSerials = Array.isArray(iss.returned_serial_numbers) ? iss.returned_serial_numbers.length : 0;
@@ -907,7 +913,9 @@ export const getManagerPPEHistory = async () => {
 
         // If totalReturned >= totalQty for an item, mark all its issuances as returned
         for (const iss of normalized) {
-          const itemId = (iss.item_id && (iss.item_id.id || (iss.item_id as any)._id)) || iss.item_id;
+          const itemId = typeof iss.item_id === 'object' && iss.item_id !== null 
+            ? (iss.item_id.id || (iss.item_id as any)._id) 
+            : iss.item_id;
           if (!itemId) continue;
           const agg = byItem[String(itemId)];
           if (agg && agg.totalQty > 0 && agg.totalReturned >= agg.totalQty) {
