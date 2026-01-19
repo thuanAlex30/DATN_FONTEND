@@ -85,6 +85,11 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
     icon: <SafetyCertificateOutlined />,
     label: 'Chứng chỉ cá nhân',
   },
+  {
+    key: '/manager/certificates',
+    icon: <SafetyCertificateOutlined />,
+    label: 'Chứng chỉ cá nhân',
+  },
 ];
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {

@@ -2,10 +2,12 @@ import { api } from '../config/axios';
 
 const incidentService = {
   // List incidents
-  getIncidents: (project_id?: string, assignedTo?: string) => {
+  getIncidents: (project_id?: string, assignedTo?: string, pagination?: { page?: number; limit?: number }) => {
     const params: any = {};
     if (project_id) params.project_id = project_id;
     if (assignedTo) params.assignedTo = assignedTo;
+    if (pagination?.page) params.page = pagination.page;
+    if (pagination?.limit) params.limit = pagination.limit;
     return api.get('/incidents', { params });
   },
 
@@ -48,7 +50,10 @@ const incidentService = {
     api.put(`/incidents/classify/${id}`, data),
 
   // Admin - assign responsible user
-  assignIncident: (id: string, data: { assignedTo: string }) =>
+  assignIncident: (id: string, data: { 
+    assignedTo: string;
+    estimatedCompletionTime?: string | Date; // Optional: Thời gian dự kiến hoàn thành
+  }) =>
     api.put(`/incidents/assign/${id}`, data),
 
   // Admin - investigate and solve

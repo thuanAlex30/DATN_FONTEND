@@ -34,7 +34,15 @@ const LoginPage: React.FC = () => {
       console.log('🔍 Login result action:', resultAction);
       
       if (login.fulfilled.match(resultAction)) {
-        const user = resultAction.payload.user;
+        const user = resultAction.payload?.user;
+        
+        // Validate user object exists
+        if (!user) {
+          console.error('❌ Login successful but user data is missing');
+          message.error('Đăng nhập thành công nhưng thiếu thông tin người dùng. Vui lòng thử lại.');
+          return;
+        }
+        
         console.log('✅ Login successful, user:', user);
         console.log('🔍 User role object:', user.role);
         console.log('🔍 User role name:', user.role?.role_name);
@@ -45,9 +53,9 @@ const LoginPage: React.FC = () => {
         setTimeout(() => {
           // Check user role and redirect accordingly
           // Priority: role_code > role_name > role_level
-          const roleCode = user.role?.role_code;
-          const roleName = user.role?.role_name;
-          const roleLevel = user.role?.role_level;
+          const roleCode = user?.role?.role_code;
+          const roleName = user?.role?.role_name;
+          const roleLevel = user?.role?.role_level;
           console.log('🔍 Final role check:', { roleCode, roleName, roleLevel, role: user.role });
           
           // Map role_code to dashboard routes
@@ -183,11 +191,11 @@ const LoginPage: React.FC = () => {
             }
           } else {
             // Last resort: try username-based fallback
-            console.error('❌ No role information found:', { roleCode, roleName, roleLevel, role: user.role });
-            if (user.username?.toLowerCase().includes('admin')) {
+            console.error('❌ No role information found:', { roleCode, roleName, roleLevel, role: user?.role });
+            if (user?.username?.toLowerCase().includes('admin')) {
               redirectPath = '/admin/dashboard';
               console.log('🔀 Fallback: Redirecting to admin dashboard based on username');
-            } else if (user.username?.toLowerCase().includes('manager')) {
+            } else if (user?.username?.toLowerCase().includes('manager')) {
               redirectPath = '/manager/dashboard';
               console.log('🔀 Fallback: Redirecting to manager dashboard based on username');
             } else {
@@ -289,7 +297,7 @@ const LoginPage: React.FC = () => {
 
                   {error && (
                     <Alert
-                      message={typeof error === 'string' ? error : 'Đăng nhập thất bại, vui lòng kiểm tra tên đăng nhập và mật khẩu'}
+                      message={typeof error === 'string' ? error : 'Sai thông tin tài khoản hoặc mật khẩu'}
                       type="error"
                       showIcon
                       style={{ marginBottom: '16px' }}

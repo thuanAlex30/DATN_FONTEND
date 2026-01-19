@@ -103,6 +103,7 @@ const IncidentManagement: React.FC = () => {
       }
     };
     
+    // Load stats in background, don't block UI
     loadData();
     
     return () => {
@@ -110,13 +111,7 @@ const IncidentManagement: React.FC = () => {
     };
   }, []);
 
-  if (loading && stats.total === 0 && stats.inProgress === 0 && stats.resolved === 0 && stats.critical === 0) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
+  // Don't block UI - show page immediately, stats will load in background
 
   if (error) {
     return (
