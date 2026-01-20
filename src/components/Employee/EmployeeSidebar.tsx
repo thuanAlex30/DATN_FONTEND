@@ -14,7 +14,7 @@ import {
   BookOutlined,
   SafetyOutlined,
   LogoutOutlined,
-  SafetyCertificateOutlined
+  IdcardOutlined
 } from '@ant-design/icons';
 import { logout } from '../../store/slices/authSlice';
 import styles from './EmployeeSidebar.module.css';
@@ -54,7 +54,7 @@ const EmployeeSidebar: React.FC<EmployeeSidebarProps> = ({ onLogout }) => {
     },
     {
       key: '/employee/certificates',
-      icon: <SafetyCertificateOutlined />,
+      icon: <IdcardOutlined />,
       label: 'Chứng chỉ cá nhân',
     },
   ];

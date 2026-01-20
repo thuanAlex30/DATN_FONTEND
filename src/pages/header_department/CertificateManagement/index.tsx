@@ -26,7 +26,7 @@ import {
   Tabs
 } from 'antd';
 import { 
-  SafetyCertificateOutlined, 
+  IdcardOutlined, 
   CheckCircleOutlined,
   WarningOutlined,
   ExclamationCircleOutlined,
@@ -1100,7 +1100,7 @@ const CertificateManagement: React.FC = () => {
                     fontSize: '28px'
                   }}
                 >
-                  <SafetyCertificateOutlined style={{ 
+                  <IdcardOutlined style={{ 
                     color: '#3b82f6',
                     fontSize: '32px',
                     filter: 'drop-shadow(0 2px 4px rgba(59, 130, 246, 0.3))'
@@ -1192,7 +1192,7 @@ const CertificateManagement: React.FC = () => {
                     fontSize: '32px',
                     fontWeight: 700
                   }}
-                  prefix={<SafetyCertificateOutlined style={{ 
+                  prefix={<IdcardOutlined style={{ 
                     color: '#3b82f6',
                     fontSize: '24px',
                     marginRight: '8px'
@@ -1937,7 +1937,7 @@ const CertificateManagement: React.FC = () => {
             fontSize: '20px',
             fontWeight: 600
           }}>
-            <SafetyCertificateOutlined style={{ color: '#3b82f6', fontSize: '24px' }} />
+            <IdcardOutlined style={{ color: '#3b82f6', fontSize: '24px' }} />
             Chi tiết chứng chỉ
           </div>
         }

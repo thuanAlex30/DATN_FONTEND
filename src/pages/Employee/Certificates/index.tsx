@@ -14,7 +14,7 @@ import {
 } from 'antd';
 import styles from './Certificates.module.css';
 import {
-  SafetyCertificateOutlined,
+  IdcardOutlined,
   CheckCircleOutlined,
   WarningOutlined,
   ExclamationCircleOutlined,
@@ -324,13 +324,13 @@ const EmployeeCertificates: React.FC = () => {
   return (
     <EmployeeLayout 
       title="Chứng chỉ cá nhân"
-      icon={<SafetyCertificateOutlined />}
+      icon={<IdcardOutlined />}
     >
       <div className={styles.container}>
         <Card className={styles.mainCard}>
           <div className={styles.header}>
             <Typography.Title level={2} className={styles.title}>
-              <SafetyCertificateOutlined className={styles.titleIcon} />
+              <IdcardOutlined className={styles.titleIcon} />
               Chứng chỉ cá nhân
             </Typography.Title>
           </div>

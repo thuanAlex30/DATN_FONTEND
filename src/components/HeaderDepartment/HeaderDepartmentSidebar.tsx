@@ -5,7 +5,7 @@ import { useDispatch } from 'react-redux';
 import {
   DashboardOutlined,
   SafetyOutlined,
-  SafetyCertificateOutlined,
+  IdcardOutlined,
   ExclamationCircleOutlined,
   LogoutOutlined,
   BookOutlined,
@@ -53,7 +53,7 @@ const HeaderDepartmentSidebar: React.FC<HeaderDepartmentSidebarProps> = ({ onLog
     },
     {
       key: '/header-department/certificate-management',
-      icon: <SafetyCertificateOutlined />,
+      icon: <IdcardOutlined />,
       label: 'Quản lý chứng chỉ',
     },
     {

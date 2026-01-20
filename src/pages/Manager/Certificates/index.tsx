@@ -13,7 +13,7 @@ import {
   Button
 } from 'antd';
 import {
-  SafetyCertificateOutlined,
+  IdcardOutlined,
   CheckCircleOutlined,
   WarningOutlined,
   ExclamationCircleOutlined,
@@ -327,7 +327,7 @@ const ManagerCertificates: React.FC = () => {
         <Card className={styles.mainCard}>
           <div className={styles.header}>
             <Title level={2} className={styles.title}>
-              <SafetyCertificateOutlined className={styles.titleIcon} />
+              <IdcardOutlined className={styles.titleIcon} />
               Chứng chỉ cá nhân
             </Title>
           </div>

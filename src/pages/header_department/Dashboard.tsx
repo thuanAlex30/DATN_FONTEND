@@ -18,7 +18,7 @@ import {
 } from 'antd';
 import {
   TeamOutlined,
-  SafetyCertificateOutlined,
+  IdcardOutlined,
   SafetyOutlined,
   ExclamationCircleOutlined,
   BookOutlined,
@@ -487,7 +487,7 @@ const HeaderDepartmentDashboard: React.FC = () => {
                       <Statistic
                         title={<span style={{ color: 'rgba(15, 29, 23, 0.65)', fontSize: '13px' }}>Chứng chỉ hết hạn</span>}
                         value={stats?.certificates.expiringSoon || 0}
-                        prefix={<SafetyCertificateOutlined style={{ fontSize: '20px', color: '#faad14' }} />}
+                        prefix={<IdcardOutlined style={{ fontSize: '20px', color: '#faad14' }} />}
                         valueStyle={{ color: '#faad14', fontSize: '24px', fontWeight: 700 }}
                       />
                     </Card>

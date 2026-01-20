@@ -15,10 +15,9 @@ import {
   SafetyOutlined,
   LogoutOutlined,
   ProjectOutlined,
-  LockOutlined,
   DashboardOutlined,
   SearchOutlined,
-  SafetyCertificateOutlined
+  IdcardOutlined
 } from '@ant-design/icons';
 import { logout } from '../../store/slices/authSlice';
 import styles from './ManagerSidebar.module.css';
@@ -77,12 +76,7 @@ const ManagerSidebar: React.FC<ManagerSidebarProps> = ({ onLogout }) => {
   },
   {
     key: '/manager/certificates',
-    icon: <SafetyCertificateOutlined />,
-    label: 'Chứng chỉ cá nhân',
-  },
-  {
-    key: '/manager/certificates',
-    icon: <SafetyCertificateOutlined />,
+    icon: <IdcardOutlined />,
     label: 'Chứng chỉ cá nhân',
   },
 ];

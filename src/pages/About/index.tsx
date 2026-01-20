@@ -30,7 +30,7 @@ import {
   HeartOutlined,
   BarChartOutlined,
   UserOutlined,
-  SafetyCertificateOutlined,
+  IdcardOutlined,
   ToolOutlined,
   BuildOutlined,
   SecurityScanOutlined,
@@ -337,7 +337,7 @@ const AboutPage: React.FC = () => {
                       </div>
                       <div className={styles.iconItem}>
                         <div className={styles.iconWrapper}>
-                          <SafetyCertificateOutlined className={styles.safetyIcon} />
+                          <IdcardOutlined className={styles.safetyIcon} />
                         </div>
                         <span className={styles.iconLabel}>Chứng Chỉ</span>
                       </div>

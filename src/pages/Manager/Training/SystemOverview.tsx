@@ -22,7 +22,7 @@ import {
   TeamOutlined,
   BarChartOutlined,
   PlayCircleOutlined,
-  SafetyCertificateOutlined,
+  IdcardOutlined,
   ArrowRightOutlined
 } from '@ant-design/icons';
 
