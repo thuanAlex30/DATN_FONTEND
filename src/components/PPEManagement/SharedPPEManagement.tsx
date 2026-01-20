@@ -118,6 +118,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
   const [returnForm] = Form.useForm();
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [viewReportModalVisible, setViewReportModalVisible] = useState(false);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [selectedIssuance, setSelectedIssuance] = useState<PPEIssuance | null>(null);
   const [selectedManagerSummary, setSelectedManagerSummary] = useState<any | null>(null);
@@ -533,6 +534,32 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       reported_date: dayjs()
     });
     setReportModalVisible(true);
+  };
+
+  // Xem báo cáo hư hỏng đã tạo
+  const handleViewDamageReport = (issuance: PPEIssuance) => {
+    setSelectedIssuance(issuance);
+    setViewReportModalVisible(true);
+  };
+
+  // Helper để hiển thị loại báo cáo
+  const getReportTypeLabel = (type?: string) => {
+    switch (type) {
+      case 'damage': return 'Hư hại';
+      case 'replacement': return 'Cần thay thế';
+      case 'lost': return 'Mất';
+      default: return 'Không xác định';
+    }
+  };
+
+  // Helper để hiển thị mức độ nghiêm trọng
+  const getSeverityLabel = (severity?: string) => {
+    switch (severity) {
+      case 'low': return { label: 'Thấp', color: 'green' };
+      case 'medium': return { label: 'Trung bình', color: 'orange' };
+      case 'high': return { label: 'Cao', color: 'red' };
+      default: return { label: 'Không xác định', color: 'default' };
+    }
   };
 
   const handleReportSubmit = async (values: any) => {
@@ -1590,16 +1617,29 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                     </Tooltip>
                                   ),
                                   isManager ? null : (
-                                    <Tooltip title="Báo cáo sự cố" key="report">
-                                      <Button 
-                                        type="primary"
-                                        danger
-                                        icon={<ExclamationCircleOutlined />}
-                                        onClick={() => handleReportPPE(issuance)}
-                                        disabled={issuance.status === 'pending_confirmation'}
-                                        style={{ borderRadius: '4px' }}
-                                      />
-                                    </Tooltip>
+                                    // Nếu đã báo cáo hư hỏng -> hiện nút "Xem báo cáo"
+                                    // Nếu chưa -> hiện nút "Báo cáo sự cố"
+                                    (displayStatus === 'damaged' || displayStatus === 'replacement_needed') ? (
+                                      <Tooltip title="Xem báo cáo hư hỏng" key="view-report">
+                                        <Button 
+                                          type="primary"
+                                          icon={<EyeOutlined />}
+                                          onClick={() => handleViewDamageReport(issuance)}
+                                          style={{ borderRadius: '4px' }}
+                                        />
+                                      </Tooltip>
+                                    ) : (
+                                      <Tooltip title="Báo cáo sự cố" key="report">
+                                        <Button 
+                                          type="primary"
+                                          danger
+                                          icon={<ExclamationCircleOutlined />}
+                                          onClick={() => handleReportPPE(issuance)}
+                                          disabled={issuance.status === 'pending_confirmation'}
+                                          style={{ borderRadius: '4px' }}
+                                        />
+                                      </Tooltip>
+                                    )
                                   )
                                 ]}
                               >
@@ -2078,6 +2118,113 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
               </Space>
             </Form.Item>
           </Form>
+        </Modal>
+
+        {/* Modal xem báo cáo hư hỏng đã tạo */}
+        <Modal
+          title={
+            <Space>
+              <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
+              <span>Chi tiết báo cáo hư hỏng</span>
+            </Space>
+          }
+          open={viewReportModalVisible}
+          onCancel={() => {
+            setViewReportModalVisible(false);
+            setSelectedIssuance(null);
+          }}
+          footer={[
+            <Button 
+              key="close" 
+              type="primary"
+              onClick={() => {
+                setViewReportModalVisible(false);
+                setSelectedIssuance(null);
+              }}
+            >
+              Đóng
+            </Button>
+          ]}
+          width={500}
+        >
+          {selectedIssuance && (
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              {/* Thông tin thiết bị */}
+              <Card size="small" title="Thông tin thiết bị">
+                <Row gutter={[16, 8]}>
+                  <Col span={8}><Text type="secondary">Thiết bị:</Text></Col>
+                  <Col span={16}>
+                    <Text strong>
+                      {typeof selectedIssuance.item_id === 'object' && selectedIssuance.item_id 
+                        ? selectedIssuance.item_id.item_name 
+                        : 'Không xác định'}
+                    </Text>
+                  </Col>
+                  <Col span={8}><Text type="secondary">Mã:</Text></Col>
+                  <Col span={16}>
+                    <Text>
+                      {typeof selectedIssuance.item_id === 'object' && selectedIssuance.item_id 
+                        ? selectedIssuance.item_id.item_code 
+                        : 'N/A'}
+                    </Text>
+                  </Col>
+                  <Col span={8}><Text type="secondary">Trạng thái:</Text></Col>
+                  <Col span={16}>
+                    <Tag color={getStatusColor(selectedIssuance.status)}>
+                      {getStatusLabel(selectedIssuance.status)}
+                    </Tag>
+                  </Col>
+                  {/* Serial Numbers */}
+                  {selectedIssuance.assigned_serial_numbers && selectedIssuance.assigned_serial_numbers.length > 0 && (
+                    <>
+                      <Col span={8}><Text type="secondary">Serial Numbers:</Text></Col>
+                      <Col span={16}>
+                        <Space wrap size={[4, 4]}>
+                          {selectedIssuance.assigned_serial_numbers.map((serial: string, index: number) => (
+                            <Tag key={index} color="blue">
+                              {serial}
+                            </Tag>
+                          ))}
+                        </Space>
+                      </Col>
+                    </>
+                  )}
+                </Row>
+              </Card>
+
+              {/* Chi tiết báo cáo */}
+              <Card size="small" title="Chi tiết báo cáo">
+                <Row gutter={[16, 8]}>
+                  <Col span={8}><Text type="secondary">Loại báo cáo:</Text></Col>
+                  <Col span={16}>
+                    <Tag color="red">
+                      {getReportTypeLabel(selectedIssuance.report_type)}
+                    </Tag>
+                  </Col>
+                  <Col span={8}><Text type="secondary">Mức độ:</Text></Col>
+                  <Col span={16}>
+                    <Tag color={getSeverityLabel(selectedIssuance.report_severity).color}>
+                      {getSeverityLabel(selectedIssuance.report_severity).label}
+                    </Tag>
+                  </Col>
+                  <Col span={8}><Text type="secondary">Mô tả:</Text></Col>
+                  <Col span={16}>
+                    <Text>
+                      {selectedIssuance.report_description || 'Không có mô tả chi tiết'}
+                    </Text>
+                  </Col>
+                </Row>
+              </Card>
+
+              {/* Thông báo trạng thái */}
+              <Alert
+                message="Báo cáo đã được gửi"
+                description="Manager đã nhận được báo cáo của bạn."
+                type="info"
+                showIcon
+              />
+            </Space>
+          )}
         </Modal>
 
         {/* Confirm PPE Modal */}

@@ -160,13 +160,14 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
             employee_email: (h.user_id && h.user_id.email) || '',
             quantity: baseQuantity,
             expected_return_date: h.expected_return_date,
-            serials: h.assigned_serial_numbers || [],
+            // Lấy serial numbers từ nhiều nguồn có thể, fallback về issuance prop
+            serials: h.assigned_serial_numbers || h.serial_numbers || h.serials || issuance?.assigned_serial_numbers || [],
             remaining_quantity: quantityRemaining,
             return_condition: h.return_condition,
             actual_return_date: h.actual_return_date,
             quantity_returned: quantityReturned,
             quantity_remaining: quantityRemaining,
-            returned_serials: h.returned_serial_numbers || []
+            returned_serials: h.returned_serial_numbers || h.serial_numbers || issuance?.returned_serial_numbers || []
           },
           notes: h.notes || ''
         };
@@ -328,28 +329,31 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
                 </>
               )}
               <Text>
-                Tình trạng:{' '}
-                {record.details.return_condition || '-'}
+                Số lượng:{' '}
+                <strong>{record.details.quantity || 0}</strong>
               </Text>
               <br />
               <Text>
                 Ngày trả:{' '}
-                {record.details.actual_return_date
-                  ? dayjs(record.details.actual_return_date).format('DD/MM/YYYY')
-                  : '-'}
+                <strong>
+                  {record.details.actual_return_date
+                    ? dayjs(record.details.actual_return_date).format('DD/MM/YYYY HH:mm')
+                    : record.action_date 
+                      ? dayjs(record.action_date).format('DD/MM/YYYY HH:mm')
+                      : '-'}
+                </strong>
               </Text>
               <br />
               <Text>
-                Số lượng trả:{' '}
-                {record.details.quantity_returned !== undefined && record.details.quantity_returned !== null
-                  ? record.details.quantity_returned
-                  : 0}
+                Tình trạng:{' '}
+                <Tag color="green">Đã trả</Tag>
               </Text>
+              {/* Chỉ hiển thị Serial Numbers đã trả */}
               {record.details.returned_serials && record.details.returned_serials.length > 0 && (
                 <>
                   <br />
                   <div style={{ marginTop: 8 }}>
-                    <Text strong>Serial Numbers returned:</Text>
+                    <Text strong>Serial Numbers đã trả:</Text>
                     <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {record.details.returned_serials.map((s: string, i: number) => (
                         <Tag key={i} color="green" style={{ fontSize: 12 }}>{s}</Tag>
@@ -373,25 +377,41 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
                 </>
               )}
               <Text>
-                Tình trạng:{' '}
-                {record.details.return_condition || '-'}
+                Số lượng:{' '}
+                <strong>{record.details.quantity || 0}</strong>
               </Text>
+              <br />
+              <Text>Còn lại: <strong>{record.details.quantity_remaining}</strong></Text>
               <br />
               <Text>
                 Ngày trả:{' '}
-                {record.details.actual_return_date
-                  ? dayjs(record.details.actual_return_date).format('DD/MM/YYYY')
-                  : '-'}
+                <strong>
+                  {record.details.actual_return_date
+                    ? dayjs(record.details.actual_return_date).format('DD/MM/YYYY HH:mm')
+                    : record.action_date 
+                      ? dayjs(record.action_date).format('DD/MM/YYYY HH:mm')
+                      : '-'}
+                </strong>
               </Text>
               <br />
               <Text>
-                Số lượng trả:{' '}
-                {record.details.quantity_returned !== undefined && record.details.quantity_returned !== null
-                  ? record.details.quantity_returned
-                  : 0}
+                Tình trạng:{' '}
+                <Tag color="gold">Đã trả một phần</Tag>
               </Text>
-              <br />
-              <Text>Còn lại: {record.details.quantity_remaining}</Text>
+              {/* Chỉ hiển thị Serial Numbers đã trả */}
+              {record.details.returned_serials && record.details.returned_serials.length > 0 && (
+                <>
+                  <br />
+                  <div style={{ marginTop: 8 }}>
+                    <Text strong>Serial Numbers đã trả:</Text>
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {record.details.returned_serials.map((s: string, i: number) => (
+                        <Tag key={i} color="green" style={{ fontSize: 12 }}>{s}</Tag>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
