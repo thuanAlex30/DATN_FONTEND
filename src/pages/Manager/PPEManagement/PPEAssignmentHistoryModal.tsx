@@ -136,9 +136,17 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
             ? remainingQty
             : Math.max(0, baseQuantity - quantityReturned);
 
+        // Xác định action dựa vào status
+        let action = 'issued';
+        if (h.status === 'returned' || h.status === 'pending_manager_return') {
+          action = 'returned';
+        } else if (h.status === 'damaged' || h.status === 'replacement_needed' || h.report_type) {
+          action = 'reported';
+        }
+
         return {
           id: h.id || h._id || `h-${idx}`,
-          action: h.status === 'returned' ? 'returned' : 'issued',
+          action,
           action_date: h.createdAt || h.issued_date || new Date().toISOString(),
           performed_by: {
             id:
@@ -167,7 +175,17 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
             actual_return_date: h.actual_return_date,
             quantity_returned: quantityReturned,
             quantity_remaining: quantityRemaining,
-            returned_serials: h.returned_serial_numbers || h.serial_numbers || issuance?.returned_serial_numbers || []
+            // Cho returned items: nếu returned_serial_numbers trống thì fallback về assigned_serial_numbers (vì đã trả hết)
+            returned_serials: (h.returned_serial_numbers && h.returned_serial_numbers.length > 0) 
+              ? h.returned_serial_numbers 
+              : ((h.status === 'returned' || h.status === 'pending_manager_return') && h.assigned_serial_numbers && h.assigned_serial_numbers.length > 0)
+                ? h.assigned_serial_numbers
+                : (issuance?.returned_serial_numbers || issuance?.assigned_serial_numbers || []),
+            // Thông tin báo cáo hư hại
+            report_type: h.report_type,
+            report_description: h.report_description,
+            report_severity: h.report_severity,
+            reported_date: h.reported_date
           },
           notes: h.notes || ''
         };
@@ -407,6 +425,78 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
                     <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {record.details.returned_serials.map((s: string, i: number) => (
                         <Tag key={i} color="green" style={{ fontSize: 12 }}>{s}</Tag>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          {record.action === 'reported' && (
+            <div>
+              {record.details.employee_full_name && (
+                <>
+                  <Text>
+                    Báo cáo bởi:{' '}
+                    <strong>{record.details.employee_full_name}</strong>
+                    {record.details.employee_email ? ` (${record.details.employee_email})` : ''}
+                  </Text>
+                  <br />
+                </>
+              )}
+              <Text>
+                Số lượng:{' '}
+                <strong>{record.details.quantity || 0}</strong>
+              </Text>
+              <br />
+              {record.details.report_type && (
+                <>
+                  <Text>
+                    Loại báo cáo:{' '}
+                    <Tag color={record.details.report_type === 'damage' ? 'red' : record.details.report_type === 'lost' ? 'volcano' : 'orange'}>
+                      {record.details.report_type === 'damage' ? 'Hư hại' : record.details.report_type === 'lost' ? 'Mất' : 'Cần thay thế'}
+                    </Tag>
+                  </Text>
+                  <br />
+                </>
+              )}
+              {record.details.report_severity && (
+                <>
+                  <Text>
+                    Mức độ:{' '}
+                    <Tag color={record.details.report_severity === 'high' ? 'red' : record.details.report_severity === 'medium' ? 'orange' : 'green'}>
+                      {record.details.report_severity === 'high' ? 'Nghiêm trọng' : record.details.report_severity === 'medium' ? 'Trung bình' : 'Nhẹ'}
+                    </Tag>
+                  </Text>
+                  <br />
+                </>
+              )}
+              {record.details.reported_date && (
+                <>
+                  <Text>
+                    Ngày báo cáo:{' '}
+                    <strong>{dayjs(record.details.reported_date).format('DD/MM/YYYY HH:mm')}</strong>
+                  </Text>
+                  <br />
+                </>
+              )}
+              {record.details.report_description && (
+                <>
+                  <Text>
+                    Mô tả:{' '}
+                    <Text type="secondary">{record.details.report_description}</Text>
+                  </Text>
+                  <br />
+                </>
+              )}
+              {/* Hiển thị Serial Numbers liên quan đến báo cáo */}
+              {record.details.serials && record.details.serials.length > 0 && (
+                <>
+                  <div style={{ marginTop: 8 }}>
+                    <Text strong>Serial Numbers:</Text>
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {record.details.serials.map((s: string, i: number) => (
+                        <Tag key={i} color="red" style={{ fontSize: 12 }}>{s}</Tag>
                       ))}
                     </div>
                   </div>

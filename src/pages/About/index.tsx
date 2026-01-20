@@ -35,7 +35,8 @@ import {
   BuildOutlined,
   SecurityScanOutlined,
   WarningOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
+  SafetyCertificateOutlined
 } from '@ant-design/icons';
 import styles from './About.module.css';
 
