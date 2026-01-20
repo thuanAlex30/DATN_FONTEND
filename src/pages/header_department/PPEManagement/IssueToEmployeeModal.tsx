@@ -293,7 +293,17 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       }
       
       setSelectedItem(ppeData.item);
-      setAvailableQuantity(ppeData.remaining);
+
+      // Tính lại số lượng có thể phát dựa trên thống kê chuẩn:
+      // available = total_received - (total_issued_to_employees - total_returned_by_employees) - total_returned
+      const totalReceived = Number((ppeData as any).total_received) || 0;
+      const totalIssued = Number((ppeData as any).total_issued_to_employees) || 0;
+      const totalReturnedByEmployees = Number((ppeData as any).total_returned_by_employees) || 0;
+      const totalReturnedToHeader = Number((ppeData as any).total_returned) || 0;
+      const netIssued = Math.max(0, totalIssued - totalReturnedByEmployees);
+      const available = Math.max(0, totalReceived - netIssued - totalReturnedToHeader);
+
+      setAvailableQuantity(available);
 
       // Load available serial numbers for this item
       loadAvailableSerialNumbers(itemId);
@@ -468,27 +478,52 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       title: 'Đã nhận',
       dataIndex: 'total_received',
       key: 'total_received',
-      render: (value: number) => (
-        <Tag color="blue">{value}</Tag>
-      )
+      render: (_: number, record: ManagerPPE) => {
+        const totalReceived = Number((record as any).total_received) || 0;
+        return <Tag color="blue">{totalReceived}</Tag>;
+      }
+    },
+    {
+      title: 'Đã phát cho Employee',
+      dataIndex: 'total_issued_to_employees',
+      key: 'total_issued_to_employees',
+      render: (_: number, record: ManagerPPE) => {
+        const totalIssued = Number((record as any).total_issued_to_employees) || 0;
+        const totalReturnedByEmployees = Number((record as any).total_returned_by_employees) || 0;
+        const netIssued = Math.max(0, totalIssued - totalReturnedByEmployees);
+        return (
+          <Tag color="purple">
+            {netIssued}
+          </Tag>
+        );
+      }
     },
     {
       title: 'Đã trả',
       dataIndex: 'total_returned',
       key: 'total_returned',
-      render: (value: number) => (
-        <Tag color="green">{value}</Tag>
-      )
+      render: (_: number, record: ManagerPPE) => {
+        const totalReturnedToHeader = Number((record as any).total_returned) || 0;
+        return <Tag color="green">{totalReturnedToHeader}</Tag>;
+      }
     },
     {
       title: 'Còn lại',
       dataIndex: 'remaining',
       key: 'remaining',
-      render: (value: number) => (
-        <Tag color={value > 0 ? 'green' : 'red'}>
-          {value}
-        </Tag>
-      )
+      render: (_: number, record: ManagerPPE) => {
+        const totalReceived = Number((record as any).total_received) || 0;
+        const totalIssued = Number((record as any).total_issued_to_employees) || 0;
+        const totalReturnedByEmployees = Number((record as any).total_returned_by_employees) || 0;
+        const totalReturnedToHeader = Number((record as any).total_returned) || 0;
+        const netIssued = Math.max(0, totalIssued - totalReturnedByEmployees);
+        const remaining = Math.max(0, totalReceived - netIssued - totalReturnedToHeader);
+        return (
+          <Tag color={remaining > 0 ? 'green' : 'red'}>
+            {remaining}
+          </Tag>
+        );
+      }
     },
     {
       title: 'Thao tác',
@@ -496,6 +531,12 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
       render: (record: ManagerPPE) => {
         // Lấy item ID với nhiều cách khác nhau
         const itemId = record.item?.id || record.item?._id || (typeof record.item === 'string' ? record.item : null);
+        const totalReceived = Number((record as any).total_received) || 0;
+        const totalIssued = Number((record as any).total_issued_to_employees) || 0;
+        const totalReturnedByEmployees = Number((record as any).total_returned_by_employees) || 0;
+        const totalReturnedToHeader = Number((record as any).total_returned) || 0;
+        const netIssued = Math.max(0, totalIssued - totalReturnedByEmployees);
+        const remaining = Math.max(0, totalReceived - netIssued - totalReturnedToHeader);
         
         return (
           <Button
@@ -507,7 +548,7 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                 handleItemChange(itemId);
               }
             }}
-            disabled={record.remaining === 0}
+            disabled={remaining === 0}
           >
             Chọn
           </Button>
@@ -706,30 +747,49 @@ const IssueToEmployeeModal: React.FC<IssueToEmployeeModalProps> = ({
                 onChange={handleItemChange}
                 suffixIcon={<SafetyOutlined />}
               >
-                {managerPPE.filter(ppe => {
-                  // Chỉ hiển thị PPE đã xác nhận nhận từ Header Department
-                  const hasUnconfirmedPPE = ppe.issuances?.some((issuance: any) => 
-                    issuance.status === 'pending_confirmation' && issuance.issuance_level === 'admin_to_manager'
-                  );
-                  const itemId = ppe.item?.id || ppe.item?._id || (typeof ppe.item === 'string' ? ppe.item : null);
-                  return ppe.remaining > 0 && !hasUnconfirmedPPE && itemId !== null && itemId !== undefined;
-                }).map(ppe => {
-                  const itemId = ppe.item?.id || ppe.item?._id || (typeof ppe.item === 'string' ? ppe.item : null);
-                  if (!itemId) return null;
-                  const inactive = ppe.item?.status === 'inactive';
-                  return (
-                    <Option key={itemId} value={itemId} disabled={inactive}>
-                      <Space>
-                        <SafetyOutlined />
-                        <span>
-                          {ppe.item.item_name}{' '}
-                          {inactive && <Text type="danger">(Inactive)</Text>}
-                        </span>
-                        <Text type="secondary">(Còn: {ppe.remaining})</Text>
-                      </Space>
-                    </Option>
-                  );
-                }).filter(Boolean)}
+                {managerPPE
+                  .filter(ppe => {
+                    // Chỉ hiển thị PPE đã xác nhận nhận từ Header Department
+                    const hasUnconfirmedPPE = ppe.issuances?.some((issuance: any) =>
+                      issuance.status === 'pending_confirmation' && issuance.issuance_level === 'admin_to_manager'
+                    );
+                    const itemId = ppe.item?.id || ppe.item?._id || (typeof ppe.item === 'string' ? ppe.item : null);
+
+                    const totalReceived = Number((ppe as any).total_received) || 0;
+                    const totalIssued = Number((ppe as any).total_issued_to_employees) || 0;
+                    const totalReturnedByEmployees = Number((ppe as any).total_returned_by_employees) || 0;
+                    const totalReturnedToHeader = Number((ppe as any).total_returned) || 0;
+                    const netIssued = Math.max(0, totalIssued - totalReturnedByEmployees);
+                    const remaining = Math.max(0, totalReceived - netIssued - totalReturnedToHeader);
+
+                    return remaining > 0 && !hasUnconfirmedPPE && itemId !== null && itemId !== undefined;
+                  })
+                  .map(ppe => {
+                    const itemId = ppe.item?.id || ppe.item?._id || (typeof ppe.item === 'string' ? ppe.item : null);
+                    if (!itemId) return null;
+                    const inactive = ppe.item?.status === 'inactive';
+
+                    const totalReceived = Number((ppe as any).total_received) || 0;
+                    const totalIssued = Number((ppe as any).total_issued_to_employees) || 0;
+                    const totalReturnedByEmployees = Number((ppe as any).total_returned_by_employees) || 0;
+                    const totalReturnedToHeader = Number((ppe as any).total_returned) || 0;
+                    const netIssued = Math.max(0, totalIssued - totalReturnedByEmployees);
+                    const remaining = Math.max(0, totalReceived - netIssued - totalReturnedToHeader);
+
+                    return (
+                      <Option key={itemId} value={itemId} disabled={inactive}>
+                        <Space>
+                          <SafetyOutlined />
+                          <span>
+                            {ppe.item.item_name}{' '}
+                            {inactive && <Text type="danger">(Inactive)</Text>}
+                          </span>
+                          <Text type="secondary">(Còn: {remaining})</Text>
+                        </Space>
+                      </Option>
+                    );
+                  })
+                  .filter(Boolean)}
               </Select>
             </Form.Item>
 

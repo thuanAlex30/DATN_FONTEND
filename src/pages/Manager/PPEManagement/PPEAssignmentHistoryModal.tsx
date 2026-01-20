@@ -89,52 +89,100 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
     try {
       // Fetch manager history and aggregate entries for this item
       const resp = await ppeService.getManagerPPEHistory();
-      const hist = (resp && resp.data && Array.isArray(resp.data.history)) ? resp.data.history : (Array.isArray(resp.history) ? resp.history : []);
-      const itemId = typeof issuance.item_id === 'object' && issuance.item_id._id ? String(issuance.item_id._id) : String(issuance.item_id);
+      // Service already returns an array of history/issuances after normalization
+      const hist: any[] = Array.isArray(resp)
+        ? resp
+        : (resp && Array.isArray((resp as any).history))
+          ? (resp as any).history
+          : [];
+      const itemId = typeof issuance.item_id === 'object'
+        ? String((issuance.item_id as any)._id || (issuance.item_id as any).id)
+        : String(issuance.item_id);
 
-      // Filter entries for same item
+      // Filter entries for same item (support both populated objects and raw ids)
       const sameItemEntries = hist.filter((h: any) => {
-        const hid = h.item_id && (h.item_id._id || h.item_id) ? String(h.item_id._id || h.item_id) : null;
-        return hid === itemId;
+        if (!h || !h.item_id) return false;
+        const item = h.item_id;
+        const rawId =
+          typeof item === 'object'
+            ? (item.id || (item as any)._id)
+            : item;
+        if (!rawId) return false;
+        return String(rawId) === itemId;
       });
 
       // Build history rows mapping to existing PPEHistory type
-      const mapped: PPEHistory[] = sameItemEntries.map((h: any, idx: number) => ({
-        id: h.id || `h-${idx}`,
-        action: h.status === 'returned' ? 'returned' : 'issued',
-        action_date: h.createdAt || h.issued_date || new Date().toISOString(),
-        performed_by: {
-          id: (h.issued_by && (h.issued_by._id || h.issued_by.id)) || (h.user_id && (h.user_id._id || h.user_id.id)) || '',
-          full_name: (h.issued_by && (h.issued_by.full_name)) || (h.user_id && h.user_id.full_name) || '',
-          email: (h.issued_by && h.issued_by.email) || (h.user_id && h.user_id.email) || ''
-        },
-        details: {
-          quantity: h.quantity,
-          expected_return_date: h.expected_return_date,
-          serials: h.assigned_serial_numbers || [],
-          remaining_quantity: h.remaining_quantity
-        },
-        notes: h.notes || ''
-      }));
+      const mapped: PPEHistory[] = sameItemEntries.map((h: any, idx: number) => {
+        const baseQuantity = Number(h.quantity || 0);
+        const remainingQty =
+          h.remaining_quantity !== undefined && h.remaining_quantity !== null
+            ? Number(h.remaining_quantity || 0)
+            : undefined;
 
-      // Compute aggregated totals
-      const total_quantity = sameItemEntries.reduce((s: number, x: any) => s + (Number(x.quantity) || 0), 0);
-      // total returned = sum of (quantity - remaining_quantity) when remaining_quantity present, else 0
-      const total_returned = sameItemEntries.reduce((s: number, x: any) => {
-        if (x.remaining_quantity !== undefined && x.remaining_quantity !== null) {
-          return s + ((Number(x.quantity) || 0) - (Number(x.remaining_quantity) || 0));
+        // Ưu tiên dùng quantity_returned từ backend nếu có, sau đó mới fallback theo remaining_quantity / returned_serial_numbers
+        let quantityReturned: number;
+        if (h.quantity_returned !== undefined && h.quantity_returned !== null) {
+          quantityReturned = Number(h.quantity_returned) || 0;
+        } else if (Array.isArray(h.returned_serial_numbers) && h.returned_serial_numbers.length > 0) {
+          quantityReturned = h.returned_serial_numbers.length;
+        } else if (remainingQty !== undefined) {
+          quantityReturned = Math.max(0, baseQuantity - remainingQty);
+        } else {
+          quantityReturned = 0;
         }
-        return s;
-      }, 0);
-      const total_remaining = sameItemEntries.reduce((s: number, x: any) => s + (Number(x.remaining_quantity) || (Number(x.quantity) || 0)), 0);
 
-      // Prepend an aggregated summary row (optional) or set stats to top of modal via setState
-      // We'll set history to mapped and add aggregated info into first item's details for display cards
-      // store aggregates separately for header cards
+        const quantityRemaining =
+          remainingQty !== undefined
+            ? remainingQty
+            : Math.max(0, baseQuantity - quantityReturned);
+
+        return {
+          id: h.id || h._id || `h-${idx}`,
+          action: h.status === 'returned' ? 'returned' : 'issued',
+          action_date: h.createdAt || h.issued_date || new Date().toISOString(),
+          performed_by: {
+            id:
+              (h.issued_by && (h.issued_by._id || h.issued_by.id)) ||
+              (h.user_id && (h.user_id._id || h.user_id.id)) ||
+              '',
+            full_name:
+              (h.issued_by && h.issued_by.full_name) ||
+              (h.user_id && h.user_id.full_name) ||
+              '',
+            email:
+              (h.issued_by && h.issued_by.email) ||
+              (h.user_id && h.user_id.email) ||
+              ''
+          },
+          details: {
+            // Thông tin người nhận / người trả (employee)
+            employee_full_name: (h.user_id && h.user_id.full_name) || '',
+            employee_email: (h.user_id && h.user_id.email) || '',
+            quantity: baseQuantity,
+            expected_return_date: h.expected_return_date,
+            serials: h.assigned_serial_numbers || [],
+            remaining_quantity: quantityRemaining,
+            return_condition: h.return_condition,
+            actual_return_date: h.actual_return_date,
+            quantity_returned: quantityReturned,
+            quantity_remaining: quantityRemaining,
+            returned_serials: h.returned_serial_numbers || []
+          },
+          notes: h.notes || ''
+        };
+      });
+
+      // Aggregate totals cho đúng với bản ghi hiện tại (không cộng dồn nhiều lần phát)
+      const qty = Number(issuance.quantity || 0);
+      const remaining = issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== null
+        ? Number(issuance.remaining_quantity)
+        : qty;
+      const distributed = Math.max(0, qty - remaining);
+
       setAggregates({
-        total_quantity,
-        total_returned,
-        total_remaining
+        total_quantity: qty,
+        total_returned: distributed,
+        total_remaining: remaining
       });
 
       setHistory(mapped);
@@ -227,9 +275,24 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
         <div>
           {record.action === 'issued' && (
             <div>
+              {record.details.employee_full_name && (
+                <>
+                  <Text>
+                    Đã phát cho:{' '}
+                    <strong>{record.details.employee_full_name}</strong>
+                    {record.details.employee_email ? ` (${record.details.employee_email})` : ''}
+                  </Text>
+                  <br />
+                </>
+              )}
               <Text>Số lượng: {record.details.quantity}</Text>
               <br />
-              <Text>Hạn trả: {dayjs(record.details.expected_return_date).format('DD/MM/YYYY')}</Text>
+              <Text>
+                Hạn trả:{' '}
+                {record.details.expected_return_date
+                  ? dayjs(record.details.expected_return_date).format('DD/MM/YYYY')
+                  : '-'}
+              </Text>
               {record.details.serials && record.details.serials.length > 0 && (
                 <>
                   <br />
@@ -254,11 +317,34 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           )}
           {record.action === 'returned' && (
             <div>
-              <Text>Tình trạng: {record.details.return_condition}</Text>
+              {record.details.employee_full_name && (
+                <>
+                  <Text>
+                    Đã trả bởi:{' '}
+                    <strong>{record.details.employee_full_name}</strong>
+                    {record.details.employee_email ? ` (${record.details.employee_email})` : ''}
+                  </Text>
+                  <br />
+                </>
+              )}
+              <Text>
+                Tình trạng:{' '}
+                {record.details.return_condition || '-'}
+              </Text>
               <br />
-              <Text>Ngày trả: {dayjs(record.details.actual_return_date).format('DD/MM/YYYY')}</Text>
+              <Text>
+                Ngày trả:{' '}
+                {record.details.actual_return_date
+                  ? dayjs(record.details.actual_return_date).format('DD/MM/YYYY')
+                  : '-'}
+              </Text>
               <br />
-              <Text>Số lượng trả: {record.details.quantity_returned}</Text>
+              <Text>
+                Số lượng trả:{' '}
+                {record.details.quantity_returned !== undefined && record.details.quantity_returned !== null
+                  ? record.details.quantity_returned
+                  : 0}
+              </Text>
               {record.details.returned_serials && record.details.returned_serials.length > 0 && (
                 <>
                   <br />
@@ -276,11 +362,34 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
           )}
           {record.action === 'partial_return' && (
             <div>
-              <Text>Tình trạng: {record.details.return_condition}</Text>
+              {record.details.employee_full_name && (
+                <>
+                  <Text>
+                    Đã trả một phần bởi:{' '}
+                    <strong>{record.details.employee_full_name}</strong>
+                    {record.details.employee_email ? ` (${record.details.employee_email})` : ''}
+                  </Text>
+                  <br />
+                </>
+              )}
+              <Text>
+                Tình trạng:{' '}
+                {record.details.return_condition || '-'}
+              </Text>
               <br />
-              <Text>Ngày trả: {dayjs(record.details.actual_return_date).format('DD/MM/YYYY')}</Text>
+              <Text>
+                Ngày trả:{' '}
+                {record.details.actual_return_date
+                  ? dayjs(record.details.actual_return_date).format('DD/MM/YYYY')
+                  : '-'}
+              </Text>
               <br />
-              <Text>Số lượng trả: {record.details.quantity_returned}</Text>
+              <Text>
+                Số lượng trả:{' '}
+                {record.details.quantity_returned !== undefined && record.details.quantity_returned !== null
+                  ? record.details.quantity_returned
+                  : 0}
+              </Text>
               <br />
               <Text>Còn lại: {record.details.quantity_remaining}</Text>
             </div>
@@ -370,7 +479,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
                 <Tag color="blue">Tổng: {issuance.quantity}</Tag>
                 {issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity && (
                   <>
-                    <Tag color="orange">Đã trả: {issuance.quantity - issuance.remaining_quantity}</Tag>
+                    <Tag color="orange">Đã phát: {issuance.quantity - issuance.remaining_quantity}</Tag>
                     <Tag color={issuance.remaining_quantity > 0 ? 'green' : 'red'}>
                       Còn: {issuance.remaining_quantity}
                     </Tag>
@@ -379,7 +488,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
               </Space>
               {issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity && (
                 <div style={{ fontSize: '12px', color: '#666' }}>
-                  Tỷ lệ trả: {Math.round(((issuance.quantity - issuance.remaining_quantity) / issuance.quantity) * 100)}%
+                  Tỷ lệ phát: {Math.round(((issuance.quantity - issuance.remaining_quantity) / issuance.quantity) * 100)}%
                 </div>
               )}
             </Space>
@@ -389,8 +498,11 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
               issuance.status === 'returned' ? 'green' : 
               issuance.remaining_quantity !== undefined && issuance.remaining_quantity < issuance.quantity ? 'orange' : 'blue'
             }>
-              {issuance.status === 'returned' ? 'Đã trả' : 
-               issuance.remaining_quantity !== undefined && issuance.remaining_quantity < issuance.quantity ? 'Đã trả một phần' : 'Đang sử dụng'}
+              {issuance.status === 'returned'
+                ? 'Đã trả'
+                : issuance.remaining_quantity !== undefined && issuance.remaining_quantity < issuance.quantity
+                  ? 'Đã phát một phần'
+                  : 'Đang sử dụng'}
             </Tag>
           </Descriptions.Item>
         </Descriptions>
@@ -410,7 +522,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
         <Col span={6}>
           <Card size="small">
             <Statistic
-              title="Đã trả"
+              title="Đã phát"
               value={aggregates ? aggregates.total_returned : (issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity 
                 ? issuance.quantity - issuance.remaining_quantity 
                 : issuance.status === 'returned' ? issuance.quantity : 0)}
@@ -434,7 +546,7 @@ const PPEAssignmentHistoryModal: React.FC<PPEAssignmentHistoryModalProps> = ({
         <Col span={6}>
           <Card size="small">
             <Statistic
-              title="Tỷ lệ trả"
+              title="Tỷ lệ phát"
               value={
                 issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== issuance.quantity 
                   ? `${Math.round(((issuance.quantity - issuance.remaining_quantity) / issuance.quantity) * 100)}%`

@@ -475,6 +475,17 @@ const PPEAssignmentDetailsModal: React.FC<PPEAssignmentDetailsModalProps> = ({
         >
           {(() => {
             const cond = (assignment.return_condition || assignment.condition) || '';
+            // Nếu chưa có thông tin tình trạng, hiển thị trạng thái thân thiện hơn thay vì rỗng
+            if (!cond) {
+              return (
+                <Tag
+                  color="default"
+                  style={{ fontSize: 13, padding: '4px 12px' }}
+                >
+                  {assignment.status === 'returned' ? 'Chưa ghi nhận tình trạng khi trả' : 'Chưa cập nhật'}
+                </Tag>
+              );
+            }
             return (
               <Tag 
                 color={getConditionColor(cond)}

@@ -340,8 +340,6 @@ const PPEManagement: React.FC = () => {
           issuance_level: normalizedLevel,
         };
       });
-
-      setPpeIssuances(mappedHistory); // For "Lịch sử phát PPE"
       
       // Determine admin->manager issuances (accept several possible backend values)
       const isAdminToManager = (value: any) => {
@@ -357,6 +355,10 @@ const PPEManagement: React.FC = () => {
         return hasUser && !hasManagerId;
       });
       setAdminIssuedPPE(adminToManagerPPE);
+
+      // Lịch sử phát PPE của Department Header CHỈ hiển thị các lượt phát từ Header → Manager.
+      // Các lượt Manager → Employee sẽ hiển thị ở màn hình Manager, không xuất hiện tại đây để tránh double-count.
+      setPpeIssuances(adminToManagerPPE);
 
       console.log('[Admin PPE] Total issuances:', allIssuances.length);
       console.log('[Admin PPE] Admin->Manager issuances:', adminToManagerPPE.length);

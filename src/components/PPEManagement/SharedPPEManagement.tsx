@@ -269,20 +269,38 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       const ppeSummaryWithRemaining = summaryArray.map((ppe: any) => {
         const normalizedIssuances = Array.isArray(ppe.issuances) ? ppe.issuances.map((issuance: any) => ({
           ...issuance,
-        // Keep per-issuance remaining_quantity if present; fall back to item-level remaining only when issuance value missing
-        remaining_quantity: (issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== null)
-          ? Number(issuance.remaining_quantity)
-          : (Number(ppe.remaining) || Number(ppe.remaining_quantity) || 0),
-        remaining_in_hand: Number(ppe.remaining_in_hand) || ppe.remaining_in_hand || 0,
+          // Giữ remaining_quantity từng lần phát nếu có; fallback về item-level nếu thiếu
+          remaining_quantity: (issuance.remaining_quantity !== undefined && issuance.remaining_quantity !== null)
+            ? Number(issuance.remaining_quantity)
+            : (Number(ppe.remaining_in_hand) || Number(ppe.remaining) || Number(ppe.remaining_quantity) || 0),
+          remaining_in_hand: Number(ppe.remaining_in_hand) || ppe.remaining_in_hand || 0,
           total_issued_to_employees: Number(ppe.total_issued_to_employees) || ppe.total_issued_to_employees || 0
         })) : [];
+
+        // Tính lại số còn lại ở Manager dựa trên các issuance Admin → Manager
+        const adminIssuances = normalizedIssuances.filter((iss: any) => {
+          const lvl = (iss.issuance_level || iss.level || iss.issuanceLevel || '').toString().toLowerCase();
+          return lvl.includes('admin');
+        });
+        let remainingAtManager = 0;
+        for (const iss of adminIssuances) {
+          const qty = Number(iss.quantity || 0);
+          const rem = (iss.remaining_quantity !== undefined && iss.remaining_quantity !== null)
+            ? Number(iss.remaining_quantity)
+            : qty;
+          remainingAtManager += rem;
+        }
+        if (!adminIssuances.length) {
+          remainingAtManager = Number(ppe.remaining_in_hand) || Number(ppe.remaining) || Number(ppe.remaining_quantity) || 0;
+        }
 
         return {
           ...ppe,
           total_received: Number(ppe.total_received) || 0,
           total_issued_to_employees: Number(ppe.total_issued_to_employees) || 0,
           total_returned: Number(ppe.total_returned) || 0,
-          remaining: Number(ppe.remaining) || Number(ppe.remaining_quantity) || 0,
+          // Cột "Còn lại" trong bảng Manager = số PPE còn tại Manager (không tính số đang ở Employee).
+          remaining: remainingAtManager,
           issuances: normalizedIssuances,
           employee_issuances: ppe.employee_issuances || []
         } as ManagerPPE;
@@ -350,7 +368,26 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
         historyArr = Array.isArray(maybeArray) ? (maybeArray as any[]) : [];
       }
 
-      setPpeHistory(historyArr);
+      // Manager history tab chỉ hiển thị các lượt phát Manager → Employee,
+      // KHÔNG hiển thị các lượt Admin → Manager để tránh nhầm với cấp phát của Header.
+      const managerToEmployeeHistory = historyArr.filter((iss: any) => {
+        if (!iss) return false;
+        const rawLevel = iss.issuance_level || iss.level || iss.issuanceLevel || iss.type || iss.issuance_type || '';
+        const v = String(rawLevel).toLowerCase().replace(/[^a-z0-9]/g, '');
+        const hasManagerId = iss.manager_id || iss.managerId;
+
+        if (v) {
+          if (v === 'manager_to_employee' || v === 'managertoemployee') return true;
+          if (v.includes('manager') && v.includes('employee')) return true;
+          // Nếu level rõ ràng là admin_to_manager thì loại bỏ
+          if (v === 'admin_to_manager' || v === 'admintomanager' || (v.includes('admin') && v.includes('manager'))) return false;
+        }
+
+        // Fallback cấu trúc: có manager_id thì coi là manager → employee
+        return !!hasManagerId;
+      });
+
+      setPpeHistory(managerToEmployeeHistory);
     } catch (error) {
       console.error('Error loading PPE history:', error);
       message.error('Lỗi khi tải lịch sử PPE');
@@ -371,65 +408,44 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
 
   const calculateStats = (ppeData: ManagerPPE[]) => {
     const stats = ppeData.reduce((acc, ppe) => {
-      acc.totalItems += 1;
-      acc.totalReceived += Number((ppe as any).total_received) || 0;
-      acc.totalIssuedToEmployees += Number((ppe as any).total_issued_to_employees) || 0;
+      // Tính toán lại tổng nhận & còn lại dựa trên các issuance Admin → Manager,
+      // nhưng giữ nguyên total_returned từ backend (chỉ đếm các lần thực sự trả về Header).
+      const adminIssuances = Array.isArray((ppe as any).issuances) ? (ppe as any).issuances : [];
+      let totalReceived = 0;
+      let remainingAtManager = 0;
 
-      // Compute returned count from available issuance data (robust to backend fields)
-      let computedReturned = 0;
-      try {
-        const issuances = Array.isArray((ppe as any).issuances) ? (ppe as any).issuances : [];
-        for (const iss of issuances) {
-          const qty = Number(iss.quantity || 0);
-          const hasActualReturn = !!iss.actual_return_date;
-          const returnedSerials = Array.isArray(iss.returned_serial_numbers) ? iss.returned_serial_numbers.length : 0;
-          const remaining = (iss.remaining_quantity !== undefined && iss.remaining_quantity !== null) ? Number(iss.remaining_quantity) : undefined;
+      for (const iss of adminIssuances) {
+        const qty = Number(iss.quantity || 0);
+        const remaining =
+          iss.remaining_quantity !== undefined && iss.remaining_quantity !== null
+            ? Number(iss.remaining_quantity)
+            : qty;
 
-          let returnedFromThis = 0;
-          if (hasActualReturn) {
-            returnedFromThis = qty;
-          } else if (returnedSerials > 0) {
-            returnedFromThis = Math.min(qty, returnedSerials);
-          } else if (remaining !== undefined) {
-            const calc = Math.max(0, qty - remaining);
-            returnedFromThis = Math.min(qty, calc);
-          } else if (iss.status === 'returned') {
-            returnedFromThis = qty;
-          } else {
-            returnedFromThis = 0;
-          }
-
-          computedReturned += returnedFromThis;
-        }
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('Error computing returned for ppe summary', e);
+        totalReceived += qty;
+        remainingAtManager += remaining;
       }
 
-      // Fallback to server-provided total_returned if computed is zero
-      const serverReturned = Number((ppe as any).total_returned) || 0;
-      let usedReturned = Math.max(serverReturned, computedReturned);
-
-      // Heuristic: if item shows no remaining quantity, prefer total_received (manager received)
-      // This ensures aggregated "Đã trả" reflects full return when remaining <= 0.
-      const totalReceived = Number((ppe as any).total_received) || 0;
-      const remainingVal = Number((ppe as any).remaining) || 0;
-      if (totalReceived > 0 && remainingVal <= 0) {
-        usedReturned = Math.max(usedReturned, totalReceived);
+      // Fallback: nếu backend đã tính sẵn total_received nhưng không có issuances (trường hợp bất thường)
+      if (!adminIssuances.length) {
+        totalReceived = Number((ppe as any).total_received) || 0;
+        remainingAtManager = Number((ppe as any).remaining_in_hand) || Number((ppe as any).remaining) || 0;
       }
 
-      acc.totalReturned += usedReturned;
+      const totalIssuedToEmployees = Number((ppe as any).total_issued_to_employees) || 0;
+      const totalReturnedToHeader = Number((ppe as any).total_returned) || 0;
+      const totalReturnedByEmployees = Number((ppe as any).total_returned_by_employees) || 0;
 
-      // Clamp negative remaining to 0 for display correctness
-      acc.totalRemaining += Math.max(0, remainingVal);
+      // Đã phát cho Employee (hiển thị trong thống kê) = tổng đã phát - tổng Employee đã trả
+      const netIssuedToEmployees = Math.max(0, totalIssuedToEmployees - totalReturnedByEmployees);
 
-      // Đếm PPE chờ Employee xác nhận (safety: issuances may be undefined)
-      // pending confirmations should be counted from manager->employee issuances, not admin->manager sources
-      const employeeIssuances = Array.isArray((ppe as any).employee_issuances) ? (ppe as any).employee_issuances : [];
-      const pendingConfirmations = employeeIssuances.filter((issuance: any) =>
-        issuance && issuance.status === 'pending_confirmation'
-      ).length;
-      acc.pendingConfirmationCount += pendingConfirmations;
+      if (totalReceived > 0) {
+        acc.totalItems += 1;
+      }
+
+      acc.totalReceived += totalReceived;
+      acc.totalIssuedToEmployees += netIssuedToEmployees;
+      acc.totalReturned += totalReturnedToHeader;
+      acc.totalRemaining += Math.max(0, remainingAtManager);
 
       return acc;
     }, {
@@ -441,6 +457,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       overdueCount: 0,
       pendingConfirmationCount: 0
     });
+
     setPpeStats(stats);
   };
 
@@ -481,7 +498,8 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
     try {
       const returnData: any = {
         actual_return_date: values.actual_return_date.toISOString(),
-        return_condition: values.return_condition,
+        // Employee không cần chọn tình trạng, mặc định là 'good' khi trả
+        return_condition: 'good',
         returned_serial_numbers: values.returned_serial_numbers,
         notes: values.notes || ''
       };
@@ -838,11 +856,16 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
       title: 'Đã phát cho Employee',
       dataIndex: 'total_issued_to_employees',
       key: 'total_issued_to_employees',
-      render: (value: number) => (
-        <Tag color="purple" icon={<SendOutlined />}>
-          {value}
-        </Tag>
-      )
+      render: (_: number, record: ManagerPPE) => {
+        const totalIssued = Number((record as any).total_issued_to_employees) || 0;
+        const totalReturnedByEmployees = Number((record as any).total_returned_by_employees) || 0;
+        const netIssued = Math.max(0, totalIssued - totalReturnedByEmployees);
+        return (
+          <Tag color="purple" icon={<SendOutlined />}>
+            {netIssued}
+          </Tag>
+        );
+      }
     },
     {
       title: 'Đã trả cho Header Department',
@@ -1202,8 +1225,8 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                   bodyStyle={{ padding: '16px' }}
                 >
                   <Statistic
-                    title="Tổng PPE"
-                    value={ppeIssuances.length}
+                    title="Tổng PPE đang giữ"
+                    value={getActiveIssuances().length}
                     prefix={<InboxOutlined style={{ color: '#722ed1' }} />}
                     valueStyle={{ color: '#722ed1', fontSize: '24px' }}
                   />
@@ -1351,42 +1374,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                   />
                 </Card>
               </Col>
-              <Col xs={12} sm={12} md={8} lg={6} xl={4}>
-                <Card 
-                  size="small"
-                  style={{ 
-                    borderRadius: '6px',
-                    border: '1px solid #e8e8e8',
-                    height: '100%'
-                  }}
-                  bodyStyle={{ padding: '16px' }}
-                >
-                  <Statistic
-                    title={<span style={{ fontSize: '13px' }}>Chờ Employee xác nhận</span>}
-                    value={ppeStats.pendingConfirmationCount}
-                    prefix={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
-                    valueStyle={{ color: '#fa8c16', fontSize: '22px' }}
-                  />
-                </Card>
-              </Col>
-              <Col xs={12} sm={12} md={8} lg={6} xl={4}>
-                <Card 
-                  size="small"
-                  style={{ 
-                    borderRadius: '6px',
-                    border: '1px solid #e8e8e8',
-                    height: '100%'
-                  }}
-                  bodyStyle={{ padding: '16px' }}
-                >
-                  <Statistic
-                    title={<span style={{ fontSize: '13px' }}>Chờ xác nhận</span>}
-                    value={employeePPE.filter((issuance: PPEIssuance) => issuance.status === 'pending_manager_return').length}
-                    prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
-                    valueStyle={{ color: '#faad14', fontSize: '22px' }}
-                  />
-                </Card>
-              </Col>
+              {/* Các thống kê chờ xác nhận được ẩn theo yêu cầu */}
             </Row>
           </Card>
         )}
@@ -1466,6 +1454,17 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                           const remainingForCard = isManagerViewItem
                             ? (issuanceOrItem.availableToReturn ?? issuanceOrItem.remaining ?? 0)
                             : (issuance?.remaining_quantity ?? issuance?.quantity ?? 0);
+
+                          // Manager cần kiểm soát cả PPE đang ở Employee.
+                          // currentlyHeldByEmployees được backend trả về trong summary.
+                          const currentlyHeldByEmployeesForCard = isManagerViewItem
+                            ? (issuanceOrItem.currentlyHeldByEmployees ?? 0)
+                            : 0;
+
+                          // Tổng số PPE đang lưu hành (Manager + Employee)
+                          const totalQuantityForCard = isManagerViewItem
+                            ? remainingForCard + currentlyHeldByEmployeesForCard
+                            : (issuanceObj?.quantity ?? 0);
                           // Determine effective display status:
                           // - If this is a manager summary, compute returned issuance ids by aggregation and prefer those as returned
                           let displayStatus = (issuance?.status || '');
@@ -1485,6 +1484,22 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                               displayStatus = 'issued';
                             }
                           }
+
+                          // Chuẩn bị danh sách serial numbers để Manager có thể xem đầy đủ
+                          let serialsForCard: string[] = [];
+                          if (isManagerViewItem) {
+                            const adminSerials = Array.isArray(issuanceOrItem.issuances)
+                              ? (issuanceOrItem.issuances as any[]).flatMap((i: any) => i.assigned_serial_numbers || [])
+                              : [];
+                            const employeeSerials = Array.isArray(issuanceOrItem.employee_issuances)
+                              ? (issuanceOrItem.employee_issuances as any[]).flatMap((i: any) => i.assigned_serial_numbers || [])
+                              : [];
+                            serialsForCard = Array.from(new Set([...adminSerials, ...employeeSerials].map((s) => String(s))));
+                          } else {
+                            serialsForCard = (issuanceObj?.assigned_serial_numbers as string[]) || [];
+                          }
+                          const activeSerialCountForCard = serialsForCard.length;
+
                           return (
                             <Col xs={24} sm={12} lg={8} xl={6} key={issuance.id}>
                               <Card
@@ -1516,24 +1531,17 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                     </span>
                                   </Space>
                                 }
-                                extra={
-                                  <Tag 
-                                    color={getStatusColor(displayStatus)} 
-                                    icon={getStatusIcon(displayStatus)}
-                                    style={{ margin: 0 }}
-                                  >
-                                    {getStatusLabel(displayStatus)}
-                                  </Tag>
-                                }
                                 actions={[
-                                  <Tooltip title="Xem chi tiết" key="view">
-                                    <Button 
-                                      type="text"
-                                      icon={<EyeOutlined />}
-                                      onClick={() => handleViewHistory(issuance)}
-                                      style={{ border: 'none' }}
-                                    />
-                                  </Tooltip>,
+                                  isManager ? (
+                                    <Tooltip title="Xem chi tiết" key="view">
+                                      <Button 
+                                        type="text"
+                                        icon={<EyeOutlined />}
+                                        onClick={() => handleViewHistory(issuance)}
+                                        style={{ border: 'none' }}
+                                      />
+                                    </Tooltip>
+                                  ) : null,
                                   issuance.status === 'pending_confirmation' ? (
                                     <Tooltip title={isManager && issuance.issuance_level === 'admin_to_manager' ? 'Xác nhận nhận PPE từ Header Department' : 'Xác nhận nhận PPE'} key="confirm">
                                       <Button 
@@ -1548,22 +1556,35 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                       />
                                     </Tooltip>
                                   ) : (
-                                    <Tooltip title={
-                                      displayStatus === 'pending_manager_return'
-                                        ? 'Đã trả, chờ Manager xác nhận'
-                                        : displayStatus === 'returned'
-                                        ? 'Đã trả'
-                                        : isManager && issuance.issuance_level === 'admin_to_manager'
-                                        ? 'Trả PPE về Header Department'
-                                        : !isManager && issuance.assigned_serial_numbers && issuance.assigned_serial_numbers.length > 0
-                                        ? 'Trả PPE với Serial Numbers'
-                                        : 'Trả PPE'
-                                    } key="return">
+                                    <Tooltip
+                                      title={
+                                        displayStatus === 'pending_manager_return'
+                                          ? 'Đã trả, chờ Manager xác nhận'
+                                          : displayStatus === 'returned'
+                                          ? 'Đã trả'
+                                          : !isManager && (displayStatus === 'damaged' || displayStatus === 'replacement_needed')
+                                          ? 'Đã báo cáo hư hại, không thể trả PPE'
+                                          : isManager && issuance.issuance_level === 'admin_to_manager'
+                                          ? 'Trả PPE về Header Department'
+                                          : !isManager && issuance.assigned_serial_numbers && issuance.assigned_serial_numbers.length > 0
+                                          ? 'Trả PPE với Serial Numbers'
+                                          : 'Trả PPE'
+                                      }
+                                      key="return"
+                                    >
                                       <Button
                                         type="primary"
                                         icon={<UndoOutlined />}
-                                        onClick={() => handleReturnToAdmin(isManagerViewItem ? (adminIssuance || issuanceObj || issuanceOrItem) : issuance, isManagerViewItem ? issuanceOrItem : undefined)}
-                                        disabled={remainingForCard <= 0}
+                                        onClick={() =>
+                                          handleReturnToAdmin(
+                                            isManagerViewItem ? (adminIssuance || issuanceObj || issuanceOrItem) : issuance,
+                                            isManagerViewItem ? issuanceOrItem : undefined
+                                          )
+                                        }
+                                        disabled={
+                                          remainingForCard <= 0 ||
+                                          (!isManager && (displayStatus === 'damaged' || displayStatus === 'replacement_needed'))
+                                        }
                                         style={{ borderRadius: '4px' }}
                                       />
                                     </Tooltip>
@@ -1583,6 +1604,16 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                 ]}
                               >
                                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                                  {/* Trạng thái hiển thị riêng, không đè lên tiêu đề */}
+                                  <div>
+                                    <Tag 
+                                      color={getStatusColor(displayStatus)} 
+                                      icon={getStatusIcon(displayStatus)}
+                                      style={{ margin: 0 }}
+                                    >
+                                      {getStatusLabel(displayStatus)}
+                                    </Tag>
+                                  </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <BarcodeOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
                                     <Text strong style={{ fontSize: '13px' }}>Mã: </Text>
@@ -1592,21 +1623,26 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                     <NumberOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
                                     <Text strong style={{ fontSize: '13px' }}>Số lượng: </Text>
                                     <Badge 
-                                      count={isManagerViewItem ? (issuanceOrItem.availableToReturn ?? issuanceOrItem.remaining ?? 0) : (issuanceObj?.quantity ?? 0)} 
+                                      count={totalQuantityForCard}
                                       style={{ backgroundColor: '#52c41a' }}
-                                    overflowCount={Number.MAX_SAFE_INTEGER}
+                                      overflowCount={Number.MAX_SAFE_INTEGER}
                                     />
                                   </div>
-                                  {/* Display assigned serial numbers for active PPE */}
-                                  { (isManagerViewItem ? (issuanceOrItem.employee_issuances_counts && issuanceOrItem.employee_issuances_counts.total > 0) : (issuanceObj?.assigned_serial_numbers && issuanceObj?.assigned_serial_numbers.length > 0 && issuanceObj?.status !== 'returned')) && (
+                                  {/* Hiển thị Serial Numbers cho toàn bộ PPE (Manager + Employee) */}
+                                  {activeSerialCountForCard > 0 && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       <BarcodeOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
                                       <Text strong style={{ fontSize: '13px' }}>Serial Numbers: </Text>
-                                      <Button type="link" onClick={() => {
-                                        const serials = isManagerViewItem ? (issuanceOrItem.assigned_serial_numbers || []) : (issuanceObj?.assigned_serial_numbers || []);
-                                        openSerialsModal(serials as string[], `${itemObj?.item_name || itemObj?.item_code || ''}`);
-                                      }}>
-                                        Xem ({isManagerViewItem ? (issuanceOrItem.assigned_serial_numbers ? issuanceOrItem.assigned_serial_numbers.length : 0) : (issuanceObj?.assigned_serial_numbers?.length || 0)})
+                                      <Button
+                                        type="link"
+                                        onClick={() =>
+                                          openSerialsModal(
+                                            serialsForCard,
+                                            `${itemObj?.item_name || itemObj?.item_code || ''}`
+                                          )
+                                        }
+                                      >
+                                        Xem ({activeSerialCountForCard})
                                       </Button>
                                     </div>
                                   )}
@@ -1761,6 +1797,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
               </TabPane>
             )}
 
+            {isManager && (
             <TabPane
               tab={
                 <span>
@@ -1789,6 +1826,9 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                     {ppeHistory.map((issuance, index) => {
                       const item = typeof issuance.item_id === 'object' && issuance.item_id ? 
                         issuance.item_id : null;
+                      const employee = typeof issuance.user_id === 'object' && issuance.user_id
+                        ? issuance.user_id
+                        : null;
                       const imageUrl = (item as any)?.image_url;
                       
                       return (
@@ -1814,30 +1854,6 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                 </span>
                               </Space>
                             }
-                            extra={
-                              <Tag 
-                                color={
-                                  issuance.status === 'returned' ? 'green' :
-                                  issuance.status === 'issued' ? 'blue' :
-                                  issuance.status === 'overdue' ? 'red' :
-                                  issuance.status === 'damaged' ? 'orange' :
-                                  issuance.status === 'pending_manager_return' ? 'gold' : 'default'
-                                }
-                                icon={
-                                  issuance.status === 'returned' ? <CheckCircleOutlined /> :
-                                  issuance.status === 'issued' ? <ClockCircleOutlined /> :
-                                  issuance.status === 'overdue' ? <ExclamationCircleOutlined /> :
-                                  issuance.status === 'damaged' ? <WarningOutlined /> :
-                                  issuance.status === 'pending_manager_return' ? <ClockCircleOutlined /> : <InfoCircleOutlined />
-                                }
-                              >
-                                {issuance.status === 'returned' ? 'Đã trả' :
-                                 issuance.status === 'issued' ? 'Đang sử dụng' :
-                                 issuance.status === 'overdue' ? 'Quá hạn' :
-                                 issuance.status === 'damaged' ? 'Hỏng' :
-                                 issuance.status === 'pending_manager_return' ? 'Chờ Manager xác nhận' : issuance.status}
-                              </Tag>
-                            }
                             actions={[
                               <Tooltip title="Xem chi tiết">
                                 <Button 
@@ -1849,6 +1865,16 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                             ]}
                           >
                             <Space direction="vertical" style={{ width: '100%' }}>
+                              {/* Trạng thái hiển thị riêng, không đè lên tiêu đề */}
+                              <div>
+                                <Tag
+                                  color={getStatusColor(issuance.status)}
+                                  icon={getStatusIcon(issuance.status)}
+                                  style={{ margin: 0 }}
+                                >
+                                  {getStatusLabel(issuance.status)}
+                                </Tag>
+                              </div>
                               <div>
                                 <BarcodeOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
                                 <Text strong>Mã: </Text>
@@ -1872,7 +1898,9 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                               <div>
                                 <ClockCircleOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
                                 <Text strong>Ngày trả dự kiến: </Text>
-                                <Text>{formatDateTime(issuance.expected_return_date)}</Text>
+                                <Text>
+                                  {issuance.expected_return_date ? formatDateTime(issuance.expected_return_date) : '-'}
+                                </Text>
                               </div>
                               {issuance.actual_return_date && (
                                 <div>
@@ -1886,6 +1914,16 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                                 <Text strong>Cấp độ: </Text>
                                 <Text>{(issuance as any).issuance_level === 'admin_to_manager' ? 'Admin → Manager' : 'Manager → Employee'}</Text>
                               </div>
+                              {employee && (issuance as any).issuance_level === 'manager_to_employee' && (
+                                <div>
+                                  <UserOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
+                                  <Text strong>Nhân viên: </Text>
+                                  <Text>
+                                    {(employee as any).full_name || 'Không xác định'}
+                                    {(employee as any).email ? ` (${(employee as any).email})` : ''}
+                                  </Text>
+                                </div>
+                              )}
                               {issuance.return_condition && (
                                 <div>
                                   <CheckCircleOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
@@ -1922,6 +1960,7 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                 )}
               </div>
             </TabPane>
+            )}
           </Tabs>
         </Card>
 
@@ -2255,18 +2294,6 @@ const SharedPPEManagement: React.FC<SharedPPEManagementProps> = ({
                   format="DD/MM/YYYY"
                   disabledDate={(current) => current && current > dayjs().endOf('day')}
                 />
-              </Form.Item>
-
-              <Form.Item
-                label="Tình trạng khi trả"
-                name="return_condition"
-                rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
-              >
-                <Select placeholder="Chọn tình trạng PPE khi trả">
-                  <Option value="good">Tốt</Option>
-                  <Option value="damaged">Hỏng</Option>
-                  <Option value="worn">Mòn</Option>
-                </Select>
               </Form.Item>
 
               <Form.Item
