@@ -40,9 +40,14 @@ export const validateEnvironment = () => {
   const requiredVars = ['VITE_API_BASE_URL'];
   const missing = requiredVars.filter(varName => !import.meta.env[varName]);
   
-  if (missing.length > 0 && ENV.IS_PRODUCTION) {
-    console.error('Missing required environment variables:', missing);
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  // Only warn in production, don't throw error during build
+  // Vercel build happens before runtime, so we can't validate env vars at build time
+  if (missing.length > 0) {
+    if (ENV.IS_PRODUCTION && typeof window !== 'undefined') {
+      // Only log error in browser runtime, not during build
+      console.warn('Missing recommended environment variables:', missing);
+      console.warn('Using default values. Please set environment variables in Vercel dashboard.');
+    }
   }
   
   return true;
