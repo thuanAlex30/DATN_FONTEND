@@ -1,8 +1,6 @@
 import React from 'react';
-import { Tag, Tooltip, Typography } from 'antd';
+import { Tag, Tooltip } from 'antd';
 import { SunOutlined } from '@ant-design/icons';
-
-const { Text } = Typography;
 
 interface UVIndexIndicatorProps {
   uvIndex: number | null | undefined;

@@ -122,9 +122,16 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
     humidity: hour.relativehumidity_2m != null && !isNaN(hour.relativehumidity_2m)
       ? hour.relativehumidity_2m
       : null,
-    visibility: hour.visibility != null && hour.visibility < 100 ? Math.round(hour.visibility * 10) / 10 : null,
+    // Visibility từ Open-Meteo API (đơn vị: mét), chuyển về km
+    visibility: hour.visibility != null && !isNaN(hour.visibility) 
+      ? Math.round((hour.visibility / 1000) * 10) / 10  // mét → km, làm tròn 1 chữ số thập phân
+      : null,
     cloudcover: hour.cloudcover,
     isDay: hour.is_day,
+    // Điểm sương (Dew Point) - quan trọng để xác định nguy cơ sương mù
+    dewpoint: hour.dewpoint_2m != null && !isNaN(hour.dewpoint_2m)
+      ? Math.round(hour.dewpoint_2m * 10) / 10
+      : null,
   }));
 
   // Custom tooltip
@@ -162,6 +169,23 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
             {data.cloudcover != null && (
               <div>☁️ Mây: <strong>{data.cloudcover}%</strong></div>
             )}
+            {data.dewpoint != null && (
+              <div>🌫️ Điểm sương: <strong>{data.dewpoint}°C</strong></div>
+            )}
+            {data.temperature != null && data.dewpoint != null && (
+              <div style={{ 
+                marginTop: '4px', 
+                padding: '4px 8px', 
+                borderRadius: '4px',
+                backgroundColor: (data.temperature - data.dewpoint) < 2.5 ? '#fff2f0' : '#f6ffed',
+                color: (data.temperature - data.dewpoint) < 2.5 ? '#ff4d4f' : '#52c41a',
+                fontSize: '11px'
+              }}>
+                {(data.temperature - data.dewpoint) < 2.5 
+                  ? '⚠️ Nguy cơ sương mù cao!' 
+                  : '✅ Không có sương mù'}
+              </div>
+            )}
           </div>
         </div>
       );
@@ -170,8 +194,22 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
   };
 
   // Temperature chart
-  const TemperatureChart = () => (
-    <ResponsiveContainer width="100%" height={350}>
+  const TemperatureChart = () => {
+    // Tính domain để luôn hiển thị cả 2 đường tham chiếu (Nóng: 30, Lạnh: 15)
+    const tempValues = chartData
+      .flatMap(d => [d.temperature, d.apparentTemperature])
+      .filter(v => v != null) as number[];
+    const minTemp = tempValues.length > 0 ? Math.min(...tempValues) : 15;
+    const maxTemp = tempValues.length > 0 ? Math.max(...tempValues) : 30;
+    // Domain: min(dữ liệu, 15) - 5 đến max(dữ liệu, 30) + 5
+    const tempDomain = [Math.min(minTemp, 15) - 5, Math.max(maxTemp, 30) + 5];
+
+    return (
+    <div>
+      <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#f5f5f5', borderRadius: '6px', fontSize: '12px' }}>
+        💡 Đường <span style={{ color: '#ff4d4f' }}>đỏ</span> = Nhiệt độ thực, đường <span style={{ color: '#faad14' }}>vàng nét đứt</span> = Nhiệt độ cảm nhận. Cột <span style={{ color: '#1890ff' }}>xanh</span> = Lượng mưa. Khi có mưa (cột xanh cao) → nhiệt độ thường giảm.
+      </div>
+      <ResponsiveContainer width="100%" height={350}>
       <ComposedChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis 
@@ -185,6 +223,8 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
         <YAxis 
           yAxisId="temp"
           label={{ value: 'Nhiệt độ (°C)', angle: -90, position: 'insideLeft' }}
+          domain={tempDomain}
+          tickFormatter={(value) => Math.round(value).toString()}
         />
         <Tooltip 
           content={<CustomTooltip />} 
@@ -238,7 +278,9 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
         />
       </ComposedChart>
     </ResponsiveContainer>
-  );
+    </div>
+    );
+  };
 
   // Wind chart
   const WindChart = () => {
@@ -246,15 +288,8 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
     const hasWindData = chartData.some(d => d.windspeed != null && d.windspeed !== undefined);
     const hasWindGustsData = chartData.some(d => d.windgusts != null && d.windgusts !== undefined);
     
-    // Tính toán max values, bao gồm cả 0
-    const windSpeeds = chartData.map(d => d.windspeed != null ? d.windspeed : 0);
-    const windGusts = chartData.map(d => d.windgusts != null ? d.windgusts : 0);
-    const maxWindSpeed = Math.max(...windSpeeds, 0);
-    const maxWindGusts = Math.max(...windGusts, 0);
-    
-    // Domain tối thiểu là 10 để hiển thị rõ hơn, hoặc dựa trên max value
-    const maxValue = Math.max(maxWindSpeed, maxWindGusts, 10);
-    const yAxisDomain = [0, maxValue * 1.1]; // Thêm 10% padding
+    // Domain cố định để luôn hiển thị cả 2 đường tham chiếu (Gió mạnh: 30, Rất mạnh: 40)
+    const yAxisDomain = [0, 45];
 
     // Chỉ báo không có dữ liệu khi thực sự không có field (null/undefined)
     if (!hasWindData && !hasWindGustsData) {
@@ -271,60 +306,66 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
     }
 
     return (
-      <ResponsiveContainer width="100%" height={300}>
-        <ComposedChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
-            dataKey="time" 
-            tick={{ fontSize: 11 }}
-            angle={-45}
-            textAnchor="end"
-            height={70}
-            interval="preserveStartEnd"
-          />
-          <YAxis 
-            label={{ value: 'Tốc độ (km/h)', angle: -90, position: 'insideLeft' }}
-            domain={yAxisDomain}
-          />
-          <Tooltip 
-            content={<CustomTooltip />} 
-            wrapperStyle={{ zIndex: 9999 }}
-            position={{ y: -10 }}
-          />
-          <Legend 
-            wrapperStyle={{ paddingTop: '20px' }}
-            verticalAlign="bottom"
-          />
-          {hasWindData && (
-            <>
-              <Bar 
-                dataKey="windspeed" 
-                fill="#52c41a" 
-                name="Gió (km/h)"
-                radius={[4, 4, 0, 0]}
-                opacity={0.6}
-              />
+      <div>
+        <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#f5f5f5', borderRadius: '6px', fontSize: '12px' }}>
+          💡 Cột/đường <span style={{ color: '#52c41a' }}>xanh lá</span> = Tốc độ gió trung bình. Đường <span style={{ color: '#ff4d4f' }}>đỏ nét đứt</span> = Gió giật (đột ngột). Vượt ngưỡng <strong>30 km/h</strong> = gió mạnh, <strong>40 km/h</strong> = rất mạnh (nguy hiểm cho công trình).
+        </div>
+        <ResponsiveContainer width="100%" height={300}>
+          <ComposedChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="time" 
+              tick={{ fontSize: 11 }}
+              angle={-45}
+              textAnchor="end"
+              height={70}
+              interval="preserveStartEnd"
+            />
+            <YAxis 
+              label={{ value: 'Tốc độ (km/h)', angle: -90, position: 'insideLeft' }}
+              domain={yAxisDomain}
+              ticks={[0, 10, 20, 30, 40]}
+              tickFormatter={(value) => Math.round(value).toString()}
+            />
+            <Tooltip 
+              content={<CustomTooltip />} 
+              wrapperStyle={{ zIndex: 9999 }}
+              position={{ y: -10 }}
+            />
+            <Legend 
+              wrapperStyle={{ paddingTop: '20px' }}
+              verticalAlign="bottom"
+            />
+            {hasWindData && (
+              <>
+                <Bar 
+                  dataKey="windspeed" 
+                  fill="#52c41a" 
+                  name="Gió (km/h)"
+                  radius={[4, 4, 0, 0]}
+                  opacity={0.6}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="windspeed" 
+                  stroke="#52c41a" 
+                  strokeWidth={3}
+                  dot={{ r: 5, fill: '#52c41a' }}
+                  activeDot={{ r: 7 }}
+                  name="Gió (km/h)"
+                />
+              </>
+            )}
+            {hasWindGustsData && (
               <Line 
                 type="monotone" 
-                dataKey="windspeed" 
-                stroke="#52c41a" 
-                strokeWidth={3}
-                dot={{ r: 5, fill: '#52c41a' }}
-                activeDot={{ r: 7 }}
-                name="Gió (km/h)"
-              />
-            </>
-          )}
-          {hasWindGustsData && (
-            <Line 
-              type="monotone" 
-              dataKey="windgusts" 
-              stroke="#ff4d4f" 
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={{ r: 4, fill: '#ff4d4f' }}
-              activeDot={{ r: 6 }}
-              name="Gió giật (km/h)"
+                dataKey="windgusts" 
+                stroke="#ff4d4f" 
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={{ r: 4, fill: '#ff4d4f' }}
+                activeDot={{ r: 6 }}
+                name="Gió giật (km/h)"
             />
           )}
           <ReferenceLine 
@@ -339,66 +380,30 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
             strokeDasharray="3 3" 
             label={{ value: "Rất mạnh", position: "top", offset: 5 }} 
           />
-        </ComposedChart>
-      </ResponsiveContainer>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
     );
   };
 
-  // UV and Humidity chart
-  const UVHumidityChart = () => {
-    // Kiểm tra và tính toán domain
-    // Filter để loại bỏ null/undefined, nhưng giữ 0 (0% độ ẩm hoặc UV = 0 là hợp lệ)
+  // UV and Cloud chart (UV & Mây) - Mây che nắng → giảm UV
+  const UVCloudChart = () => {
     const uvValues = chartData
-      .map(d => d.uvIndex != null && d.uvIndex !== undefined && !isNaN(d.uvIndex) ? d.uvIndex : null)
-      .filter(v => v !== null && v !== undefined);
-    const humidityValues = chartData
-      .map(d => d.humidity != null && d.humidity !== undefined && !isNaN(d.humidity) ? d.humidity : null)
-      .filter(v => v !== null && v !== undefined);
-    
-    // Debug log để kiểm tra dữ liệu (chỉ log khi không có dữ liệu)
-    if (uvValues.length === 0 && humidityValues.length === 0) {
-      console.warn('UVHumidityChart: No UV or Humidity data found', {
-        chartDataLength: chartData.length,
-        sampleChartData: chartData.slice(0, 3).map(d => ({ 
-          time: d.time, 
-          uvIndex: d.uvIndex, 
-          humidity: d.humidity 
-        })),
-        sampleRawData: hourly.hourly?.slice(0, 3).map(h => ({
-          time: h.time,
-          uv_index: h.uv_index,
-          relativehumidity_2m: h.relativehumidity_2m
-        })),
-        allUVValues: chartData.map(d => d.uvIndex),
-        allHumidityValues: chartData.map(d => d.humidity)
-      });
-    }
-    
-    const maxUV = uvValues.length > 0 ? Math.max(...uvValues) : 11;
-    const maxHumidity = humidityValues.length > 0 ? Math.max(...humidityValues, 100) : 100;
-    
-    // Domain cho UV Index (thường 0-11)
-    const uvDomain = [0, Math.max(maxUV, 11) * 1.1];
-    // Domain cho Humidity (%)
-    const humidityDomain = [0, 100];
+      .map(d => d.uvIndex != null && !isNaN(d.uvIndex) ? d.uvIndex : null)
+      .filter(v => v !== null);
+    const cloudcoverValues = chartData
+      .map(d => d.cloudcover != null && !isNaN(d.cloudcover) ? d.cloudcover : null)
+      .filter(v => v !== null);
 
     const hasUVData = uvValues.length > 0;
-    const hasHumidityData = humidityValues.length > 0;
+    const hasCloudData = cloudcoverValues.length > 0;
 
-    // Hiển thị cảnh báo nếu không có cả 2 metrics
-    if (!hasUVData && !hasHumidityData) {
+    if (!hasUVData && !hasCloudData) {
       return (
         <div style={{ textAlign: 'center', padding: '40px' }}>
           <Alert
             message="Không có dữ liệu"
-            description={
-              <div>
-                <div>Dữ liệu UV và độ ẩm không khả dụng cho khoảng thời gian này.</div>
-                <div style={{ marginTop: '8px', fontSize: '12px', color: '#8c8c8c' }}>
-                  Có thể do API không trả về dữ liệu cho vị trí này. Vui lòng thử lại sau.
-                </div>
-              </div>
-            }
+            description="Dữ liệu UV và mây không khả dụng cho khoảng thời gian này."
             type="info"
             showIcon
           />
@@ -406,22 +411,11 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
       );
     }
 
-    // Hiển thị cảnh báo nếu thiếu 1 trong 2 metrics
-    const missingDataWarning = (!hasUVData || !hasHumidityData) ? (
-      <div style={{ marginBottom: '16px' }}>
-        <Alert
-          message={!hasUVData ? "Thiếu dữ liệu UV Index" : "Thiếu dữ liệu Độ ẩm"}
-          description={`Chỉ hiển thị ${hasUVData ? 'UV Index' : ''}${hasUVData && hasHumidityData ? ' và ' : ''}${hasHumidityData ? 'Độ ẩm' : ''}.`}
-          type="warning"
-          showIcon
-          closable
-        />
-      </div>
-    ) : null;
-
     return (
       <div>
-        {missingDataWarning}
+        <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#f5f5f5', borderRadius: '6px', fontSize: '12px' }}>
+          💡 Đường <span style={{ color: '#fa8c16' }}>cam</span> = Chỉ số UV (0-12). Cột <span style={{ color: '#8c8c8c' }}>xám</span> = Độ che phủ mây (%). Khi mây tăng (cột xám cao) → UV giảm (đường cam xuống). UV {">"} 6 = <strong>cao</strong>, {">"} 8 = <strong>rất cao</strong> (cần bảo vệ da).
+        </div>
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -436,13 +430,17 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
             <YAxis 
               yAxisId="left"
               label={{ value: 'UV Index', angle: -90, position: 'insideLeft' }}
-              domain={uvDomain}
+              domain={[0, 12]}
+              ticks={[0, 2, 4, 6, 8, 10, 12]}
+              tickFormatter={(value) => Math.round(value).toString()}
             />
             <YAxis 
               yAxisId="right"
               orientation="right"
-              label={{ value: 'Độ ẩm (%)', angle: 90, position: 'insideRight' }}
-              domain={humidityDomain}
+              label={{ value: 'Mây (%)', angle: 90, position: 'insideRight' }}
+              domain={[0, 100]}
+              ticks={[0, 25, 50, 75, 100]}
+              tick={{ fontSize: 11 }}
             />
             <Tooltip 
               content={<CustomTooltip />} 
@@ -453,34 +451,21 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
               wrapperStyle={{ paddingTop: '20px' }}
               verticalAlign="bottom"
             />
-          {hasHumidityData && (
-            <>
+            {hasCloudData && (
               <Bar 
                 yAxisId="right"
-                dataKey="humidity" 
-                fill="#91d5ff" 
-                name="Độ ẩm (%)"
+                dataKey="cloudcover" 
+                fill="#d9d9d9" 
+                name="Mây (%)"
                 radius={[4, 4, 0, 0]}
-                opacity={0.6}
+                opacity={0.5}
               />
-              <Line 
-                yAxisId="right"
-                type="monotone" 
-                dataKey="humidity" 
-                stroke="#1890ff" 
-                strokeWidth={2}
-                strokeDasharray="3 3"
-                dot={{ r: 4, fill: '#1890ff' }}
-                activeDot={{ r: 6 }}
-                name="Độ ẩm (%)"
-              />
-            </>
-          )}
-          {hasUVData && (
-            <>
-              <Line 
-                yAxisId="left"
-                type="monotone" 
+            )}
+            {hasUVData && (
+              <>
+                <Line 
+                  yAxisId="left"
+                  type="monotone" 
                 dataKey="uvIndex" 
                 stroke="#fa8c16" 
                 strokeWidth={3}
@@ -502,42 +487,49 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
                 strokeDasharray="3 3" 
                 label={{ value: "Rất cao", position: "top", offset: 5 }} 
               />
-            </>
-          )}
+              </>
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
     );
   };
 
-  // Visibility chart
+  // Visibility & Dew Point chart (Tầm nhìn & Điểm sương)
+  // Khi Nhiệt độ ≈ Điểm sương → Sương mù hình thành → Tầm nhìn giảm
   const VisibilityChart = () => {
-    // Kiểm tra và tính toán domain cho Y-axis
     const visibilityValues = chartData
       .map(d => d.visibility != null ? d.visibility : null)
       .filter(v => v != null);
-    const cloudcoverValues = chartData
-      .map(d => d.cloudcover != null ? d.cloudcover : null)
+    const tempValues = chartData
+      .map(d => d.temperature != null ? d.temperature : null)
+      .filter(v => v != null);
+    const dewpointValues = chartData
+      .map(d => d.dewpoint != null ? d.dewpoint : null)
       .filter(v => v != null);
     
-    const maxVisibility = visibilityValues.length > 0 ? Math.max(...visibilityValues) : 10;
-    const maxCloudcover = cloudcoverValues.length > 0 ? Math.max(...cloudcoverValues, 100) : 100;
-    
-    // Domain cho visibility (km) - thường từ 0-20km
-    const visibilityDomain = [0, Math.max(maxVisibility, 20) * 1.1];
-    
-    // Domain cho cloudcover (%) - từ 0-100
-    const cloudcoverDomain = [0, 100];
+    // Domain cho visibility (km)
+    const maxVisibility = visibilityValues.length > 0 
+      ? Math.max(...(visibilityValues as number[])) 
+      : 20;
+    const visibilityDomain = [0, Math.max(maxVisibility, 20)];
+
+    // Domain cho nhiệt độ (°C)
+    const allTempValues = [...(tempValues as number[]), ...(dewpointValues as number[])];
+    const minTemp = allTempValues.length > 0 ? Math.min(...allTempValues) : 0;
+    const maxTemp = allTempValues.length > 0 ? Math.max(...allTempValues) : 40;
+    const tempDomain = [Math.floor(minTemp - 5), Math.ceil(maxTemp + 5)];
 
     const hasVisibilityData = visibilityValues.length > 0;
-    const hasCloudcoverData = cloudcoverValues.length > 0;
+    const hasTempData = tempValues.length > 0;
+    const hasDewpointData = dewpointValues.length > 0;
 
-    if (!hasVisibilityData && !hasCloudcoverData) {
+    if (!hasVisibilityData && !hasTempData && !hasDewpointData) {
       return (
         <div style={{ textAlign: 'center', padding: '40px' }}>
           <Alert
             message="Không có dữ liệu"
-            description="Dữ liệu tầm nhìn và mây không khả dụng cho khoảng thời gian này."
+            description="Dữ liệu tầm nhìn và điểm sương không khả dụng cho khoảng thời gian này."
             type="info"
             showIcon
           />
@@ -546,102 +538,105 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
     }
 
     return (
-      <ResponsiveContainer width="100%" height={300}>
-        <ComposedChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
-            dataKey="time" 
-            tick={{ fontSize: 11 }}
-            angle={-45}
-            textAnchor="end"
-            height={70}
-            interval="preserveStartEnd"
-          />
-          <YAxis 
-            yAxisId="visibility"
-            label={{ value: 'Tầm nhìn (km)', angle: -90, position: 'insideLeft' }}
-            domain={visibilityDomain}
-          />
-          <YAxis 
-            yAxisId="cloudcover"
-            orientation="right"
-            label={{ value: 'Mây (%)', angle: 90, position: 'insideRight' }}
-            domain={cloudcoverDomain}
-          />
-        <Tooltip 
-          content={<CustomTooltip />} 
-          wrapperStyle={{ zIndex: 9999 }}
-          position={{ y: -10 }}
-        />
-        <Legend 
-          wrapperStyle={{ paddingTop: '20px' }}
-          verticalAlign="bottom"
-        />
-          {hasVisibilityData && (
-            <>
-              <Bar 
-                yAxisId="visibility"
-                dataKey="visibility" 
-                fill="#722ed1" 
-                name="Tầm nhìn (km)"
-                radius={[4, 4, 0, 0]}
-                opacity={0.6}
-              />
+      <div>
+        <div style={{ marginBottom: '12px', padding: '8px 12px', backgroundColor: '#f5f5f5', borderRadius: '6px', fontSize: '12px' }}>
+          💡 Khi đường <span style={{ color: '#ff4d4f' }}>Nhiệt độ</span> tiến gần đường <span style={{ color: '#1890ff' }}>Điểm sương</span> (khoảng cách {"<"} 2.5°C) → <strong>Sương mù hình thành</strong> → Tầm nhìn giảm
+        </div>
+        <ResponsiveContainer width="100%" height={300}>
+          <ComposedChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="time" 
+              tick={{ fontSize: 11 }}
+              angle={-45}
+              textAnchor="end"
+              height={70}
+              interval="preserveStartEnd"
+            />
+            <YAxis 
+              yAxisId="visibility"
+              label={{ value: 'Tầm nhìn (km)', angle: -90, position: 'insideLeft' }}
+              domain={visibilityDomain}
+              tickCount={6}
+              tickFormatter={(value) => Math.round(value).toString()}
+              tick={{ fontSize: 11 }}
+            />
+            <YAxis 
+              yAxisId="temp"
+              orientation="right"
+              label={{ value: 'Nhiệt độ (°C)', angle: 90, position: 'insideRight' }}
+              domain={tempDomain}
+              tickCount={6}
+              tickFormatter={(value) => Math.round(value).toString()}
+              tick={{ fontSize: 11 }}
+            />
+            <Tooltip 
+              content={<CustomTooltip />} 
+              wrapperStyle={{ zIndex: 9999 }}
+              position={{ y: -10 }}
+            />
+            <Legend 
+              wrapperStyle={{ paddingTop: '20px' }}
+              verticalAlign="bottom"
+            />
+            {hasVisibilityData && (
               <Line 
                 yAxisId="visibility"
                 type="monotone" 
                 dataKey="visibility" 
                 stroke="#722ed1" 
                 strokeWidth={3}
-                dot={{ r: 5, fill: '#722ed1' }}
-                activeDot={{ r: 7 }}
+                dot={{ r: 4, fill: '#722ed1' }}
+                activeDot={{ r: 6 }}
                 name="Tầm nhìn (km)"
               />
-            </>
-          )}
-          {hasCloudcoverData && (
-            <>
-              <Bar 
-                yAxisId="cloudcover"
-                dataKey="cloudcover" 
-                fill="#d9d9d9" 
-                name="Mây (%)"
-                radius={[4, 4, 0, 0]}
-                opacity={0.4}
-              />
+            )}
+            {hasTempData && (
               <Line 
-                yAxisId="cloudcover"
+                yAxisId="temp"
                 type="monotone" 
-                dataKey="cloudcover" 
-                stroke="#8c8c8c" 
+                dataKey="temperature" 
+                stroke="#ff4d4f" 
+                strokeWidth={2}
+                dot={{ r: 3, fill: '#ff4d4f' }}
+                activeDot={{ r: 5 }}
+                name="Nhiệt độ (°C)"
+              />
+            )}
+            {hasDewpointData && (
+              <Line 
+                yAxisId="temp"
+                type="monotone" 
+                dataKey="dewpoint" 
+                stroke="#1890ff" 
                 strokeWidth={2}
                 strokeDasharray="5 5"
-                dot={{ r: 4, fill: '#8c8c8c' }}
-                activeDot={{ r: 6 }}
-                name="Mây (%)"
+                dot={{ r: 3, fill: '#1890ff' }}
+                activeDot={{ r: 5 }}
+                name="Điểm sương (°C)"
               />
-            </>
-          )}
-          {hasVisibilityData && (
-            <>
-              <ReferenceLine 
-                yAxisId="visibility"
-                y={1} 
-                stroke="#ff4d4f" 
-                strokeDasharray="3 3" 
-                label={{ value: "Tầm nhìn kém", position: "top", offset: 5 }} 
-              />
-              <ReferenceLine 
-                yAxisId="visibility"
-                y={5} 
-                stroke="#faad14" 
-                strokeDasharray="3 3" 
-                label={{ value: "Tầm nhìn TB", position: "top", offset: 5 }} 
-              />
-            </>
-          )}
-        </ComposedChart>
-      </ResponsiveContainer>
+            )}
+            {hasVisibilityData && (
+              <>
+                <ReferenceLine 
+                  yAxisId="visibility"
+                  y={1} 
+                  stroke="#ff4d4f" 
+                  strokeDasharray="3 3" 
+                  label={{ value: "Tầm nhìn kém", position: "top", offset: 5 }} 
+                />
+                <ReferenceLine 
+                  yAxisId="visibility"
+                  y={5} 
+                  stroke="#faad14" 
+                  strokeDasharray="3 3" 
+                  label={{ value: "Tầm nhìn TB", position: "top", offset: 5 }} 
+                />
+              </>
+            )}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
     );
   };
 
@@ -658,12 +653,12 @@ const HourlyForecastChart: React.FC<HourlyForecastChartProps> = ({
     },
     {
       key: 'uv',
-      label: '☀️ UV & Độ ẩm',
-      children: <UVHumidityChart />,
+      label: '☀️ UV & Mây',
+      children: <UVCloudChart />,
     },
     {
       key: 'visibility',
-      label: '👁️ Tầm nhìn & Mây',
+      label: '🌫️ Tầm nhìn & Điểm sương',
       children: <VisibilityChart />,
     },
   ];

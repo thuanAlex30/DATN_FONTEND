@@ -94,6 +94,7 @@ export interface HourlyWeather {
   uv_index: number | null;
   visibility: number | null;
   is_day: number;
+  dewpoint_2m: number | null; // Điểm sương (°C) - quan trọng để xác định nguy cơ sương mù
 }
 
 export interface HourlyForecastResponse {
