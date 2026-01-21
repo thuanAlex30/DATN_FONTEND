@@ -40,7 +40,11 @@ interface IncidentItem {
 
 // const { Title } = Typography; // Title không còn dùng ở component con
 
-const IncidentList: React.FC = () => {
+interface IncidentListProps {
+  refreshTrigger?: number;
+}
+
+const IncidentList: React.FC<IncidentListProps> = ({ refreshTrigger }) => {
   const [incidents, setIncidents] = useState<IncidentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,63 +65,55 @@ const IncidentList: React.FC = () => {
     setModalImage(null);
   }, []);
 
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Add pagination to limit initial load (20 items per page)
+      const res = await incidentService.getIncidents(undefined, undefined, { page: 1, limit: 20 });
+      
+      const incidentsData = res.data?.success ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+      
+      setIncidents(incidentsData);
+    } catch (err: any) {
+      if (err.response?.status === 429) {
+        console.warn('Rate limit reached, will retry automatically');
+        setTimeout(() => {
+          fetchData();
+        }, 2000);
+        return;
+      }
+      
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        console.error('Request timeout:', err);
+        setError('Yêu cầu mất quá nhiều thời gian. Vui lòng thử lại.');
+        message.error('Yêu cầu mất quá nhiều thời gian. Vui lòng thử lại.');
+        return;
+      }
+      
+      console.error('IncidentList fetch error:', err);
+      setError('Không thể tải danh sách sự cố');
+      message.error('Không thể tải danh sách sự cố');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
-    let timeoutId: ReturnType<typeof setTimeout>;
     
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Add pagination to limit initial load (20 items per page)
-        const res = await incidentService.getIncidents(undefined, undefined, { page: 1, limit: 20 });
-        
-        if (!isMounted) return;
-        
-        const incidentsData = res.data?.success ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        
-        setIncidents(incidentsData);
-      } catch (err: any) {
-        if (!isMounted) return;
-        
-        if (err.response?.status === 429) {
-          console.warn('Rate limit reached, will retry automatically');
-          timeoutId = setTimeout(() => {
-            if (isMounted) {
-              fetchData();
-            }
-          }, 2000);
-          return;
-        }
-        
-        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
-          console.error('Request timeout:', err);
-          setError('Yêu cầu mất quá nhiều thời gian. Vui lòng thử lại.');
-          message.error('Yêu cầu mất quá nhiều thời gian. Vui lòng thử lại.');
-          return;
-        }
-        
-        console.error('IncidentList fetch error:', err);
-        setError('Không thể tải danh sách sự cố');
-        message.error('Không thể tải danh sách sự cố');
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
+    const fetch = async () => {
+      if (!isMounted) return;
+      await fetchData();
     };
     
-    // Load data immediately
-    fetchData();
+    fetch();
     
     return () => {
       isMounted = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
     };
-  }, []);
+  }, [fetchData, refreshTrigger]);
 
   // Filter incidents
   const filteredIncidents = incidents.filter(incident => {

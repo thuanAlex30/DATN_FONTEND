@@ -45,6 +45,7 @@ const AssignIncident: React.FC = () => {
   const [conflictData, setConflictData] = useState<LocationConflictError | null>(null);
   const [activeIncidentData, setActiveIncidentData] = useState<ActiveIncidentError | null>(null);
   const [users, setUsers] = useState<any[]>([]);
+  const [userStatusMap, setUserStatusMap] = useState<Record<string, { hasActiveIncident: boolean; activeIncident?: any }>>({});
   const [form] = Form.useForm();
   const [incident, setIncident] = useState<any>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -92,6 +93,35 @@ const AssignIncident: React.FC = () => {
         });
         
         setUsers(filteredUsers);
+
+        // Fetch active incidents cho mỗi manager
+        const statusMap: Record<string, { hasActiveIncident: boolean; activeIncident?: any }> = {};
+        
+        await Promise.all(
+          filteredUsers.map(async (user: any) => {
+            const userId = user.id || user._id;
+            try {
+              // Lấy incidents được phân công cho manager này
+              const res = await incidentService.getIncidents(undefined, userId);
+              const incidentsData = res.data?.success ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+              
+              // Kiểm tra xem có incident nào đang xử lý không
+              const activeIncident = incidentsData.find((inc: any) => inc.status === 'Đang xử lý');
+              
+              statusMap[userId] = {
+                hasActiveIncident: !!activeIncident,
+                activeIncident: activeIncident || undefined
+              };
+            } catch (err) {
+              console.error(`Error checking status for user ${userId}:`, err);
+              statusMap[userId] = {
+                hasActiveIncident: false
+              };
+            }
+          })
+        );
+        
+        setUserStatusMap(statusMap);
       } catch (err) {
         console.error('Error fetching users:', err);
       }
@@ -464,27 +494,57 @@ const AssignIncident: React.FC = () => {
                   {users.map(user => {
                     const userId = user.id || user._id;
                     const displayLabel = `${user.full_name} (${user.username})`;
+                    const userStatus = userStatusMap[userId];
+                    const hasActiveIncident = userStatus?.hasActiveIncident || false;
+                    const activeIncident = userStatus?.activeIncident;
+                    const incidentInfo = hasActiveIncident && activeIncident 
+                      ? ` - Đang xử lý: ${activeIncident.incidentId || activeIncident.title || 'N/A'}`
+                      : '';
+                    
                     return (
                       <Select.Option 
                         key={userId} 
                         value={userId}
                         label={displayLabel}
+                        disabled={hasActiveIncident}
+                        title={hasActiveIncident ? `Đang xử lý sự cố: ${activeIncident?.incidentId || activeIncident?.title || 'N/A'}` : 'Sẵn sàng nhận sự cố mới'}
                       >
-                        <Space>
-                          <Avatar 
-                            size="small" 
-                            icon={<UserOutlined />} 
-                            style={{ backgroundColor: '#1677ff' }} 
-                          />
-                          <div>
-                            <div style={{ fontWeight: 500 }}>
-                              {user.full_name}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                          <Space>
+                            <Avatar 
+                              size="small" 
+                              icon={<UserOutlined />} 
+                              style={{ 
+                                backgroundColor: hasActiveIncident ? '#d9d9d9' : '#1677ff' 
+                              }} 
+                            />
+                            <div>
+                              <div style={{ 
+                                fontWeight: 500,
+                                color: hasActiveIncident ? '#bfbfbf' : '#262626'
+                              }}>
+                                {user.full_name}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                                {user.username} • {user.role?.role_name || 'N/A'}
+                                {incidentInfo && (
+                                  <span style={{ color: '#fa8c16', marginLeft: 4 }}>
+                                    {incidentInfo}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <div style={{ fontSize: 12, color: '#8c8c8c' }}>
-                              {user.username} • {user.role?.role_name || 'N/A'}
-                            </div>
-                          </div>
-                        </Space>
+                          </Space>
+                          {hasActiveIncident ? (
+                            <Tag color="red" icon={<ClockCircleOutlined />} style={{ margin: 0 }}>
+                              Đang xử lý sự cố
+                            </Tag>
+                          ) : (
+                            <Tag color="green" icon={<CheckCircleOutlined />} style={{ margin: 0 }}>
+                              Sẵn sàng
+                            </Tag>
+                          )}
+                        </div>
                       </Select.Option>
                     );
                   })}

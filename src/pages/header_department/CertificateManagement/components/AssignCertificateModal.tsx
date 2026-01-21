@@ -46,6 +46,8 @@ const AssignCertificateModal: React.FC<AssignCertificateModalProps> = ({
   const [calculatedExpiryDate, setCalculatedExpiryDate] = useState<string | null>(null);
   // CRITICAL: Separate state to track selected users independently from form
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  // Khi có preSelectedUserId (mở từ màn hình 1 người cụ thể), chỉ cho phép cập nhật đúng 1 người đó
+  const isSingleUserMode = !!preSelectedUserId;
 
   useEffect(() => {
     if (visible) {
@@ -431,8 +433,8 @@ const AssignCertificateModal: React.FC<AssignCertificateModalProps> = ({
                 if (Array.isArray(value) && value.length > users.length) {
                   return Promise.reject(new Error('Số lượng người dùng được chọn không hợp lệ'));
                 }
-                // Additional check: warn if all users are selected
-                if (Array.isArray(value) && value.length === users.length && users.length > 1) {
+                // Additional check: warn if all users are selected (chỉ áp dụng khi cho phép multi-select)
+                if (!isSingleUserMode && Array.isArray(value) && value.length === users.length && users.length > 1) {
                   console.warn('⚠️ Validator: All users are selected!');
                 }
                 return Promise.resolve();
@@ -441,24 +443,27 @@ const AssignCertificateModal: React.FC<AssignCertificateModalProps> = ({
           ]}
         >
           <Select
-            mode="multiple"
-            placeholder="Chọn người dùng (có thể chọn nhiều)"
+            // Nếu mở từ màn hình 1 người (preSelectedUserId có giá trị) thì chỉ cho chọn đúng 1 user đó và khóa lại
+            mode={isSingleUserMode ? undefined : 'multiple'}
+            disabled={isSingleUserMode}
+            placeholder={isSingleUserMode ? 'Đang cập nhật chứng chỉ cho 1 người dùng' : 'Chọn người dùng (có thể chọn nhiều)'}
             loading={loadingUsers}
-            showSearch
-            allowClear
+            showSearch={!isSingleUserMode}
+            allowClear={!isSingleUserMode}
             maxTagCount="responsive"
             optionFilterProp="children"
             notFoundContent={loadingUsers ? <span>Đang tải...</span> : <span>Không tìm thấy người dùng</span>}
             onChange={(value) => {
+              // Trong chế độ 1 người, Select bị disable nên không vào đây
               console.log('🔍 UserIds changed:', value);
-              console.log('🔍 Selected count:', value ? value.length : 0);
+              console.log('🔍 Selected count:', value ? (Array.isArray(value) ? value.length : 1) : 0);
               console.log('🔍 Total users available:', users.length);
               
               // Ensure value is an array
               const selectedIds = Array.isArray(value) ? value : (value ? [value] : []);
               
-              // CRITICAL CHECK: If somehow all users are selected, warn and prevent
-              if (selectedIds.length === users.length && users.length > 1) {
+              // CRITICAL CHECK: If somehow all users are selected, warn and prevent (chỉ khi multi-select)
+              if (!isSingleUserMode && selectedIds.length === users.length && users.length > 1) {
                 console.warn('⚠️ WARNING: All users are being selected! This might be a bug.');
                 console.warn('⚠️ Selected IDs:', selectedIds);
                 console.warn('⚠️ All user IDs:', users.map(u => u._id));

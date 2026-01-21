@@ -5,14 +5,16 @@ import {
   Row,
   Col,
   Statistic,
-  Spin,
-  Alert
+  Alert,
+  Button,
+  Space
 } from 'antd';
 import { 
   ExclamationCircleOutlined, 
   ClockCircleOutlined,
   CheckCircleOutlined,
-  WarningOutlined
+  WarningOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 import IncidentList from './IncidentList';
 import incidentService from '../../../services/incidentService';
@@ -22,6 +24,7 @@ const { Title } = Typography;
 const IncidentManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [stats, setStats] = useState({
     total: 0,
     inProgress: 0,
@@ -94,6 +97,12 @@ const IncidentManagement: React.FC = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    await loadIncidentStats();
+    // Trigger refresh cho IncidentList
+    setRefreshTrigger(prev => prev + 1);
+  };
+
   useEffect(() => {
     let isMounted = true;
     
@@ -146,9 +155,20 @@ const IncidentManagement: React.FC = () => {
           boxShadow: '0 10px 30px rgba(24, 144, 255, 0.08)'
         }}
       >
-        <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ExclamationCircleOutlined style={{ color: '#1677ff' }} /> Quản lý sự cố
-        </Title>
+        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ExclamationCircleOutlined style={{ color: '#1677ff' }} /> Quản lý sự cố
+          </Title>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={handleRefresh}
+            loading={loading}
+            type="default"
+            style={{ borderRadius: 8 }}
+          >
+            Làm mới
+          </Button>
+        </Space>
       </Card>
 
       {/* Stats Overview */}
@@ -207,7 +227,7 @@ const IncidentManagement: React.FC = () => {
       </Row>
 
       {/* Incident List */}
-      <IncidentList />
+      <IncidentList refreshTrigger={refreshTrigger} />
     </div>
   );
 };

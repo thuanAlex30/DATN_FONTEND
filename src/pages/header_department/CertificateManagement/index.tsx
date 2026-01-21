@@ -46,6 +46,7 @@ import {
 import certificateService from '../../../services/certificateService';
 import CertificateFormModal from './components/CertificateFormModal';
 import RenewCertificateModal from './components/RenewCertificateModal';
+import RenewUserCertificateModal from './components/RenewUserCertificateModal';
 import ReminderSettingsModal from './components/ReminderSettingsModal';
 import AssignCertificateModal from './components/AssignCertificateModal';
 import { useSelector } from 'react-redux';
@@ -234,6 +235,9 @@ const CertificateManagement: React.FC = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  // Gia hạn chứng chỉ cá nhân
+  const [renewUserModalVisible, setRenewUserModalVisible] = useState(false);
+  const [selectedUserCertificate, setSelectedUserCertificate] = useState<any | null>(null);
 
   // Load statistics from API
   const loadStats = async () => {
@@ -769,6 +773,22 @@ const CertificateManagement: React.FC = () => {
     } catch (err) {
       console.error('Error viewing user certificate:', err);
       message.error('Không thể xem chi tiết chứng chỉ');
+    }
+  };
+
+  // Handle renew user certificate (personal)
+  const handleRenewUserCertificate = (userCertificate: any) => {
+    try {
+      const id = userCertificate?._id || userCertificate?.id;
+      if (!userCertificate || !id) {
+        message.warning('Chứng chỉ cá nhân không hợp lệ');
+        return;
+      }
+      setSelectedUserCertificate(userCertificate);
+      setRenewUserModalVisible(true);
+    } catch (err) {
+      console.error('Error preparing renew user certificate:', err);
+      message.error('Không thể mở cửa sổ gia hạn chứng chỉ cá nhân');
     }
   };
 
@@ -1712,20 +1732,65 @@ const CertificateManagement: React.FC = () => {
                               }
                             },
                             {
+                              title: 'Gia hạn',
+                              dataIndex: 'renewalStatus',
+                              key: 'renewalStatus',
+                              width: 160,
+                              render: (_: any, record: any) => {
+                                const renewalStatus = record.renewalStatus || 'NOT_REQUESTED';
+                                if (renewalStatus === 'PENDING') {
+                                  return (
+                                    <Tag color="orange" icon={<ClockCircleOutlined />}>
+                                      Đang chờ phê duyệt
+                                    </Tag>
+                                  );
+                                }
+                                if (renewalStatus === 'COMPLETED') {
+                                  return (
+                                    <Tag color="green" icon={<CheckCircleOutlined />}>
+                                      Đã gia hạn
+                                    </Tag>
+                                  );
+                                }
+                                if (renewalStatus === 'REJECTED') {
+                                  return (
+                                    <Tag color="red" icon={<ExclamationCircleOutlined />}>
+                                      Bị từ chối
+                                    </Tag>
+                                  );
+                                }
+                                return <span>-</span>;
+                              }
+                            },
+                            {
                               title: 'Thao tác',
                               key: 'actions',
                               width: 100,
-                              render: (_: any, record: any) => (
-                                <Space size="small">
-                                  <Tooltip title="Xem chi tiết">
-                                    <Button
-                                      type="text"
-                                      icon={<EyeOutlined />}
-                                      onClick={() => handleViewUserCertificate(record)}
-                                      style={{ color: '#3b82f6' }}
-                                    />
-                                  </Tooltip>
-                                  {isDepartmentHeader && (
+                              render: (_: any, record: any) => {
+                                const renewalStatus = record.renewalStatus || 'NOT_REQUESTED';
+                                const canApproveRenewal = isDepartmentHeader && renewalStatus === 'PENDING';
+
+                                return (
+                                  <Space size="small">
+                                    <Tooltip title="Xem chi tiết">
+                                      <Button
+                                        type="text"
+                                        icon={<EyeOutlined />}
+                                        onClick={() => handleViewUserCertificate(record)}
+                                        style={{ color: '#3b82f6' }}
+                                      />
+                                    </Tooltip>
+                                    {canApproveRenewal && (
+                                      <Tooltip title="Phê duyệt gia hạn">
+                                        <Button
+                                          type="text"
+                                          icon={<ReloadOutlined />}
+                                          onClick={() => handleRenewUserCertificate(record)}
+                                          style={{ color: '#16a34a' }}
+                                        />
+                                      </Tooltip>
+                                    )}
+                                    {isDepartmentHeader && (
                                     <Popconfirm
                                       title="Bạn có chắc chắn muốn xóa assignment này?"
                                       onConfirm={async () => {
@@ -1749,8 +1814,9 @@ const CertificateManagement: React.FC = () => {
                                       </Tooltip>
                                     </Popconfirm>
                                   )}
-                                </Space>
-                              )
+                                  </Space>
+                                );
+                              }
                             }
                           ]}
                           dataSource={userCertificates}
@@ -2058,7 +2124,7 @@ const CertificateManagement: React.FC = () => {
         mode="edit"
       />
 
-      {/* Renew Certificate Modal */}
+      {/* Renew Certificate Modal (Template) */}
       <RenewCertificateModal
         visible={renewModalVisible}
         onCancel={() => {
@@ -2067,6 +2133,23 @@ const CertificateManagement: React.FC = () => {
         }}
         onSuccess={handleModalSuccess}
         certificate={selectedCertificate}
+      />
+
+      {/* Renew User Certificate Modal (Personal) */}
+      <RenewUserCertificateModal
+        visible={renewUserModalVisible}
+        onCancel={() => {
+          setRenewUserModalVisible(false);
+          setSelectedUserCertificate(null);
+        }}
+        onSuccess={() => {
+          setRenewUserModalVisible(false);
+          setSelectedUserCertificate(null);
+          if (selectedUserId) {
+            loadUserCertificates(selectedUserId);
+          }
+        }}
+        userCertificate={selectedUserCertificate}
       />
 
       {/* Reminder Settings Modal */}

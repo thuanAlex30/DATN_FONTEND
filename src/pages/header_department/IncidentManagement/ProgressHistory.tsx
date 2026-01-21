@@ -25,7 +25,8 @@ import {
   FileTextOutlined,
   ArrowUpOutlined,
   CalendarOutlined,
-  PictureOutlined
+  PictureOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 import incidentService from '../../../services/incidentService';
 
@@ -65,38 +66,46 @@ const ProgressHistory: React.FC = () => {
   const [incident, setIncident] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchIncident = async () => {
+    if (!id) return;
+    
+    try {
+      setLoading(true);
+      const response = await incidentService.getIncidentById(id);
+      // ApiResponse.success() => { success, message, data }
+      const incidentData = response.data?.success ? response.data.data : response.data;
+      console.log('Incident data:', incidentData);
+      console.log('Histories:', incidentData?.histories);
+      if (incidentData?.histories) {
+        incidentData.histories.forEach((entry: any, index: number) => {
+          console.log(`History ${index}:`, {
+            action: entry.action,
+            findingsImages: entry.findingsImages,
+            hasFindingsImages: !!entry.findingsImages,
+            findingsImagesLength: entry.findingsImages?.length
+          });
+        });
+      }
+      setIncident(incidentData || null);
+    } catch (err: any) {
+      setError('Không thể tải thông tin sự cố');
+      message.error('Không thể tải thông tin sự cố');
+      console.error('Error fetching incident:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchIncident();
+    setRefreshing(false);
+    message.success('Đã làm mới dữ liệu');
+  };
 
   useEffect(() => {
-    const fetchIncident = async () => {
-      if (!id) return;
-      
-      try {
-        setLoading(true);
-        const response = await incidentService.getIncidentById(id);
-        // ApiResponse.success() => { success, message, data }
-        const incidentData = response.data?.success ? response.data.data : response.data;
-        console.log('Incident data:', incidentData);
-        console.log('Histories:', incidentData?.histories);
-        if (incidentData?.histories) {
-          incidentData.histories.forEach((entry: any, index: number) => {
-            console.log(`History ${index}:`, {
-              action: entry.action,
-              findingsImages: entry.findingsImages,
-              hasFindingsImages: !!entry.findingsImages,
-              findingsImagesLength: entry.findingsImages?.length
-            });
-          });
-        }
-        setIncident(incidentData || null);
-      } catch (err: any) {
-        setError('Không thể tải thông tin sự cố');
-        message.error('Không thể tải thông tin sự cố');
-        console.error('Error fetching incident:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchIncident();
   }, [id]);
 
@@ -276,11 +285,22 @@ const ProgressHistory: React.FC = () => {
           >
             Quay lại
           </Button>
-          <Badge 
-            count={incident.histories?.length || 0} 
-            style={{ backgroundColor: '#1677ff' }}
-            showZero
-          />
+          <Space>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={handleRefresh}
+              loading={refreshing}
+              type="default"
+              style={{ borderRadius: 8 }}
+            >
+              Làm mới
+            </Button>
+            <Badge 
+              count={incident?.histories?.length || 0} 
+              style={{ backgroundColor: '#1677ff' }}
+              showZero
+            />
+          </Space>
         </Space>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
           <div style={{

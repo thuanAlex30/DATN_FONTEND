@@ -16,7 +16,8 @@ import {
   Modal, 
   Button, 
   Statistic, 
-  Spin
+  Spin,
+  message
 } from 'antd';
 import { 
   SearchOutlined, 
@@ -26,7 +27,6 @@ import {
   CheckCircleOutlined, 
   WarningOutlined,
   ArrowLeftOutlined,
-  InfoCircleOutlined,
   ArrowUpOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -66,48 +66,56 @@ const AssignedIncidents: React.FC = () => {
     resolved: 0,
     critical: 0
   });
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchAssignedIncidents = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      // Lấy incidents được phân công cho manager hiện tại
+      const userId = user.id || (user as any)._id;
+      const res = await incidentService.getIncidents(undefined, userId);
+      const incidentsData = res.data?.success ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+      
+      // Filter thêm ở frontend để đảm bảo (nếu backend chưa filter đúng)
+      const assignedIncidents = incidentsData.filter((incident: IncidentItem) => {
+        const assignedToId = typeof incident.assignedTo === 'object' 
+          ? incident.assignedTo?._id 
+          : incident.assignedTo;
+        return assignedToId === userId;
+      });
+      
+      setIncidents(assignedIncidents);
+      
+      // Tính stats
+      const total = assignedIncidents.length;
+      const inProgress = assignedIncidents.filter((i: IncidentItem) => 
+        i.status === 'Đang xử lý'
+      ).length;
+      const resolved = assignedIncidents.filter((i: IncidentItem) => 
+        i.status === 'Đã đóng'
+      ).length;
+      const critical = assignedIncidents.filter((i: IncidentItem) => 
+        i.severity === 'rất nghiêm trọng' || i.severity === 'nặng'
+      ).length;
+      
+      setStats({ total, inProgress, resolved, critical });
+    } catch (err) {
+      console.error('Failed to load assigned incidents', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchAssignedIncidents();
+    setRefreshing(false);
+    message.success('Đã làm mới dữ liệu');
+  };
 
   useEffect(() => {
-    const fetchAssignedIncidents = async () => {
-      if (!user?.id) return;
-      
-      try {
-        setLoading(true);
-        // Lấy incidents được phân công cho manager hiện tại
-        const userId = user.id || (user as any)._id;
-        const res = await incidentService.getIncidents(undefined, userId);
-        const incidentsData = res.data?.success ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        
-        // Filter thêm ở frontend để đảm bảo (nếu backend chưa filter đúng)
-        const assignedIncidents = incidentsData.filter((incident: IncidentItem) => {
-          const assignedToId = typeof incident.assignedTo === 'object' 
-            ? incident.assignedTo?._id 
-            : incident.assignedTo;
-          return assignedToId === userId;
-        });
-        
-        setIncidents(assignedIncidents);
-        
-        // Tính stats
-        const total = assignedIncidents.length;
-        const inProgress = assignedIncidents.filter((i: IncidentItem) => 
-          i.status === 'Đang xử lý'
-        ).length;
-        const resolved = assignedIncidents.filter((i: IncidentItem) => 
-          i.status === 'Đã đóng'
-        ).length;
-        const critical = assignedIncidents.filter((i: IncidentItem) => 
-          i.severity === 'rất nghiêm trọng' || i.severity === 'nặng'
-        ).length;
-        
-        setStats({ total, inProgress, resolved, critical });
-      } catch (err) {
-        console.error('Failed to load assigned incidents', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchAssignedIncidents();
   }, [user]);
 
@@ -356,9 +364,18 @@ const AssignedIncidents: React.FC = () => {
             boxShadow: '0 10px 30px rgba(24, 144, 255, 0.08)'
           }}
         >
-          <Space style={{ marginBottom: '16px' }}>
+          <Space style={{ marginBottom: '16px', width: '100%', justifyContent: 'space-between' }}>
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/manager/dashboard')}>
               Quay lại
+            </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={handleRefresh}
+              loading={refreshing}
+              type="default"
+              style={{ borderRadius: 8 }}
+            >
+              Làm mới
             </Button>
           </Space>
           <Title level={2} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -19,7 +19,8 @@ import {
   WarningOutlined,
   ExclamationCircleOutlined,
   ClockCircleOutlined,
-  EyeOutlined
+  EyeOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 import certificateService from '../../../services/certificateService';
 import { useSelector } from 'react-redux';
@@ -218,6 +219,33 @@ const EmployeeCertificates: React.FC = () => {
     setModalVisible(true);
   };
 
+  const handleRequestRenewal = async (record: any) => {
+    try {
+      const id = record._id || record.id;
+      if (!id) {
+        return;
+      }
+
+      const now = new Date().toISOString();
+
+      await certificateService.updateUserCertificate(id, {
+        renewalStatus: 'PENDING',
+        renewalRequestedAt: now,
+        renewalRequestedBy: user?.id || undefined,
+      });
+
+      setCertificates(prev =>
+        prev.map(c =>
+          (c._id || c.id) === id
+            ? { ...c, renewalStatus: 'PENDING', renewalRequestedAt: now, renewalRequestedBy: user?.id }
+            : c,
+        ),
+      );
+    } catch (error: any) {
+      console.error('Error requesting renewal:', error);
+    }
+  };
+
   const columns = [
     {
       title: 'Chứng chỉ',
@@ -268,12 +296,18 @@ const EmployeeCertificates: React.FC = () => {
         const date = record.expiryDate || record.personalExpiryDate;
         const daysUntilExpiration = date ? getDaysUntilExpiration(date) : null;
         const reminderStatus = getRenewalReminderStatus(daysUntilExpiration);
+        const renewalStatus = record.renewalStatus || 'NOT_REQUESTED';
         
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
             <Tag color={getStatusColor(safeStatus)} icon={getStatusIcon(safeStatus)} className={styles.statusTag}>
               {safeStatus}
             </Tag>
+            {renewalStatus === 'PENDING' && (
+              <Tag color="orange" className={styles.statusTag}>
+                Đã gửi đề nghị gia hạn
+              </Tag>
+            )}
             {reminderStatus.show && (
               <Tag 
                 color={reminderStatus.color} 
@@ -291,18 +325,41 @@ const EmployeeCertificates: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 100,
-      render: (_: any, record: any) => (
-        <Tooltip title="Xem chi tiết">
-          <Button
-            type="text"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetails(record)}
-            className={styles.actionButton}
-            style={{ color: '#3b82f6' }}
-          />
-        </Tooltip>
-      )
+      width: 160,
+      render: (_: any, record: any) => {
+        const date = record.expiryDate || record.personalExpiryDate;
+        const days = date ? getDaysUntilExpiration(date) : null;
+        const renewalStatus = record.renewalStatus || 'NOT_REQUESTED';
+        const canRequest =
+          (days !== null && days <= 90) &&
+          renewalStatus !== 'PENDING' &&
+          renewalStatus !== 'COMPLETED';
+
+        return (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Tooltip title="Xem chi tiết">
+              <Button
+                type="text"
+                icon={<EyeOutlined />}
+                onClick={() => handleViewDetails(record)}
+                className={styles.actionButton}
+                style={{ color: '#3b82f6' }}
+              />
+            </Tooltip>
+            {canRequest && (
+              <Tooltip title="Đề nghị gia hạn">
+                <Button
+                  type="text"
+                  icon={<ReloadOutlined />}
+                  onClick={() => handleRequestRenewal(record)}
+                  className={styles.actionButton}
+                  style={{ color: '#16a34a' }}
+                />
+              </Tooltip>
+            )}
+          </div>
+        );
+      }
     }
   ];
 
