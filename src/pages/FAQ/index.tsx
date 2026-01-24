@@ -46,7 +46,7 @@ const FAQPage: React.FC = () => {
     },
     {
       key: '2',
-      label: 'Ai có thể sử dụng hệ thống này?',
+      label: 'Ai có thể có quyền sử dụng hệ thống này?',
       children: 'Hệ thống được thiết kế cho tất cả các thành viên trong tổ chức, bao gồm: Quản trị viên, Quản lý, Trưởng nhóm, Nhân viên, Giảng viên và Nhân viên an toàn. Mỗi vai trò có quyền truy cập và chức năng phù hợp.'
     },
     {
